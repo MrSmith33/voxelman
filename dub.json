@@ -1,0 +1,19 @@
+{
+	"name" : "voxelman",
+
+	"description" : "Voxel engine",
+	"authors" : [ "Andrey Penechko" ],
+	"license" : "BSL-1.0",
+
+	"dependencies" : {
+		"anchovy" : {"path" : "../anchovy", "version" : "~master"}
+	},
+
+	"targetName" : "voxelman",
+	
+	"sourcePaths" : [ "source" ],
+	"mainSourceFile": "source/main.d",
+	"targetPath" : "bin",
+	"workingDirectory" : "bin",
+	"targetType" : "executable"
+}
