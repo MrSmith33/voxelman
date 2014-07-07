@@ -20,13 +20,13 @@ class Attribute
 	bool normalized;
 }
 
-class Mesh
+class ChunkMesh
 {	
 	vec3 position;
-	Quaternionf	orientation;
-	ubyte[] meshData;
-	GLuint	vao;
-	GLuint	vbo;
+	ubyte[] data;
+	bool isDataDirty = false;
+	GLuint vao;
+	GLuint vbo;
 
 	this()
 	{
@@ -44,7 +44,7 @@ class Mesh
 	{
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo );
-		glBufferData(GL_ARRAY_BUFFER, meshData.length, meshData.ptr, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, null);
@@ -60,8 +60,18 @@ class Mesh
 		
 	void render()
 	{
-		glDrawArrays(GL_TRIANGLES, 0, meshData.length/24);//meshData.length/12);
+		if (isDataDirty)
+		{
+			glBindBuffer(GL_ARRAY_BUFFER, vbo );
+			glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
+			glEnableVertexAttribArray(0);
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, null);
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, cast(void*)(3*float.sizeof));
+			glBindBuffer(GL_ARRAY_BUFFER,0);
+			isDataDirty = false;
+		}
+		glDrawArrays(GL_TRIANGLES, 0, data.length/24);//data.length/12);
 	}
 	
 }
-

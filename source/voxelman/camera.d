@@ -36,7 +36,7 @@ public:
 		return perspective;
 	}
 
-	float _sensivity = 1.0f;
+	float sensivity = 1.0f;
 	Matrix4f perspective;
 	vec3 position = vec3(0, 0, 0);
 	vec3 target = vec3(0, 0, 1);

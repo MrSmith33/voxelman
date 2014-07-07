@@ -14,7 +14,8 @@ template:mainLayer {
 template:frameLayer {
 	tree layout="absolute" hasBack=false respondsToPointer=false {
 		frame id="infoFrame" minSize="150 200" caption="Info" position="645 5" {
-			label id="fpsLabel"
+			label id="fpsLabel" text="FPS 0"
+			label id="chunksRendered"
 		}
 		frame id="settingsFrame" minSize="150 200" caption="Settings" position="645 210" {
 			

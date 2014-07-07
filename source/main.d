@@ -21,6 +21,6 @@ import anchovy.gui;
 
 void main(string[] args)
 {
-	auto app = new TestApplication(uvec2(800, 600), "Voxel engine test");
+	auto app = new VoxelApplication(uvec2(800, 600), "Voxel engine test");
 	app.run(args);
 }
