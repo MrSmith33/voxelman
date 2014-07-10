@@ -16,19 +16,26 @@ import dlib.math.affine;
 import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui;
 import anchovy.gui.application.application;
+import anchovy.gui.databinding.list;
 
 import voxelman.fpscontroller;
+import voxelman.camera;
 
 class VoxelApplication : Application!GlfwWindow
 {
-	ChunkMan chunkMan;
+	__gshared ChunkMan chunkMan;
 	uvec3 viewSize;
 	ulong chunksRendered;
+	ulong vertsRendered;
+	ulong trisRendered;
 
 	ShaderProgram chunkShader;
 	GLuint cameraToClipMatrixLoc, worldToCameraMatrixLoc, modelToWorldMatrixLoc;
 
 	FpsController fpsController;
+	bool mouseLocked;
+
+	Widget debugInfo;
 
 	this(uvec2 windowSize, string caption)
 	{
@@ -63,10 +70,16 @@ class VoxelApplication : Application!GlfwWindow
 
 		fpsHelper.limitFps = false;
 
+		// Setup rendering
+
 		clearColor = Color(255, 255, 255);
 		renderer.setClearColor(clearColor);
 
 		fpsController = new FpsController;
+		fpsController.move(vec3(0, 4, 64));
+		fpsController.camera.sensivity = 0.4;
+
+		// Setupr shaders
 
 		string vShader = cast(string)read("perspective.vert");		
 		string fShader = cast(string)read("colored.frag");		
@@ -85,7 +98,16 @@ class VoxelApplication : Application!GlfwWindow
 			modelToWorldMatrixLoc = glGetUniformLocation( chunkShader.program, "modelToWorldMatrix" );//model transformation
 			worldToCameraMatrixLoc = glGetUniformLocation( chunkShader.program, "worldToCameraMatrix" );//camera trandformation
 			cameraToClipMatrixLoc = glGetUniformLocation( chunkShader.program, "cameraToClipMatrix" );//perspective	
+
+			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+			glUniformMatrix4fv(worldToCameraMatrixLoc, 1, GL_FALSE, cast(const float*)fpsController.cameraMatrix);
+			glUniformMatrix4fv(cameraToClipMatrixLoc, 1, GL_FALSE, cast(const float*)fpsController.camera.perspective.arrayof);
 		chunkShader.unbind;
+
+		// Bind events
+
+		aggregator.window.windowResized.connect(&windowResized);
+		aggregator.window.keyReleased.connect(&keyReleased);
 
 		// ----------------------------- Creating widgets -----------------------------
 		templateManager.parseFile("voxelman.sdl");
@@ -96,11 +118,6 @@ class VoxelApplication : Application!GlfwWindow
 		auto frameLayer = context.createWidget("frameLayer");
 		context.addRoot(frameLayer);
 
-		// FPS printing
-		auto fpsLabel = context.getWidgetById("fpsLabel");
-		auto fpsSlot = (FpsHelper* helper){fpsLabel["text"] = "FPS "~to!string(helper.fps);};
-		fpsHelper.fpsUpdated.connect(fpsSlot);
-
 		// Frames
 		addHideHandler("infoFrame");
 		addHideHandler("settingsFrame");
@@ -108,23 +125,64 @@ class VoxelApplication : Application!GlfwWindow
 		setupFrameShowButton("showInfo", "infoFrame");
 		setupFrameShowButton("showSettings", "settingsFrame");
 
+		debugInfo = context.getWidgetById("debugInfo");
+		foreach(i; 0..10) context.createWidget("label", debugInfo);
+
 		writeln("\n----------------------------- Load end -----------------------------\n");
 
 		// ----------------------------- init chunks ---------------------------
 
 		chunkMan.init();
-		chunkMan.loadChunk(ChunkCoord(0, 0, 0));
+		chunkMan.loadRegion(ChunkRegion(ChunkCoord(-10, -5, -10), uvec3(50, 10, 50)));
 	}
 
+	ulong lastFrameLoadedChunks = 0;
 	override void update(double dt)
 	{
-		auto renderedLabel = context.getWidgetById("chunksRendered");
-		renderedLabel["text"] = format("Chunks rendered %s", chunksRendered);
-		chunksRendered = 0;
-
 		fpsHelper.update(dt);
+
+		printDebug();
+
 		timerManager.updateTimers(window.elapsedTime);
 		context.update(dt);
+
+		updateController(dt);
+	}
+
+	void printDebug()
+	{
+		// Print debug info
+		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
+
+		lines[ 0]["text"] = format("FPS: %s", fpsHelper.fps).to!dstring;
+		lines[ 1]["text"] = format("Chunks %s", chunksRendered).to!dstring;
+		chunksRendered = 0;
+
+		ulong chunksLoaded = totalLoadedChunks;
+		lines[ 2]["text"] = format("Chunks per frame loaded: %s",
+			chunksLoaded - lastFrameLoadedChunks).to!dstring;
+		lines[ 3]["text"] = format("Chunks total loaded: %s",
+			chunksLoaded).to!dstring;
+		lastFrameLoadedChunks = chunksLoaded;
+
+		lines[ 4]["text"] = format("Vertexes %s", vertsRendered).to!dstring;
+		vertsRendered = 0;
+		lines[ 5]["text"] = format("Triangles %s", trisRendered).to!dstring;
+		trisRendered = 0;
+
+		vec3 pos = fpsController.camera.position;
+		lines[ 6]["text"] = format("Position: X %.2f, Y %.2f, Z %.2f",
+			pos.x, pos.y, pos.z).to!dstring;
+
+		vec3 target = fpsController.camera.target;
+		lines[ 7]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
+			target.x, target.y, target.z).to!dstring;
+	}
+
+	void windowResized(uvec2 newSize)
+	{
+		fpsController.camera.aspect = cast(float)newSize.x/newSize.y;
+		fpsController.camera.updatePerspective();
 	}
 
 	override void draw()
@@ -146,18 +204,30 @@ class VoxelApplication : Application!GlfwWindow
 		glEnable(GL_DEPTH_TEST);
 		
 		chunkShader.bind;
-		glUniformMatrix4fv(worldToCameraMatrixLoc, 1, GL_FALSE, fpsController.cameraMatrix);
+		glUniformMatrix4fv(worldToCameraMatrixLoc, 1, GL_FALSE,
+			fpsController.cameraMatrix);
+		glUniformMatrix4fv(cameraToClipMatrixLoc, 1, GL_FALSE,
+			cast(const float*)fpsController.camera.perspective.arrayof);
 
 		Matrix4f modelToWorldMatrix;
 		foreach(Chunk* c; chunkMan.visibleChunks)
 		{
+			// Frustum culling
+			/*svec4 svecMin = c.coord.vector * chunkSize;
+			vec3 vecMin = vec3(svecMin.x, svecMin.y, svecMin.z);
+			vec3 vecMax = vecMin + chunkSize;
+			auto result = fpsController.camera.frustumAABBIntersect(vecMin, vecMax);
+			if (result == IntersectionResult.outside) continue;*/
+
 			modelToWorldMatrix = translationMatrix!float(c.mesh.position);
-			
-			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE, cast(const float*)modelToWorldMatrix.arrayof);
+			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE,
+				cast(const float*)modelToWorldMatrix.arrayof);
 			
 			c.mesh.bind;
 			c.mesh.render;
 			++chunksRendered;
+			vertsRendered += c.mesh.numVertexes;
+			trisRendered += c.mesh.numTris;
 		}
 		chunkShader.unbind;
 
@@ -166,6 +236,73 @@ class VoxelApplication : Application!GlfwWindow
 		renderer.setColor(Color(0,0,0,1));
 		//renderer.drawRect(Rect(width/2-7, height/2-1, 14, 2));
 		//renderer.drawRect(Rect(width/2-1, height/2-7, 2, 14));
+	}
+
+	void updateController(double dt)
+	{
+		if(mouseLocked)
+		{
+			ivec2 mousePos = window.mousePosition;
+			mousePos -= cast(ivec2)(window.size) / 2;
+
+			if(mousePos.x !=0 || mousePos.y !=0)
+			{
+				fpsController.rotateHor(mousePos.x);
+				fpsController.rotateVert(mousePos.y);
+			}
+			window.mousePosition = cast(ivec2)(window.size) / 2;
+
+			uint cameraSpeed = 30;
+			vec3 posDelta = vec3(0,0,0);
+			if(window.isKeyPressed(KeyCode.KEY_LEFT_SHIFT)) cameraSpeed = 80;
+
+			if(window.isKeyPressed(KeyCode.KEY_D)) posDelta.x = 1;
+			else if(window.isKeyPressed(KeyCode.KEY_A)) posDelta.x = -1;
+
+			if(window.isKeyPressed(KeyCode.KEY_W)) posDelta.z = 1;
+			else if(window.isKeyPressed(KeyCode.KEY_S)) posDelta.z = -1;
+
+			if(window.isKeyPressed(GLFW_KEY_SPACE)) posDelta.y = 1;
+			else if(window.isKeyPressed(GLFW_KEY_LEFT_CONTROL)) posDelta.y = -1;
+
+			if (posDelta != vec3(0))
+			{
+				posDelta *= cameraSpeed * dt;
+				fpsController.moveAxis(posDelta);
+			}
+		}
+	}
+
+	void keyReleased(uint keyCode)
+	{
+		switch(keyCode)
+		{
+			case KeyCode.KEY_Q: mouseLocked = !mouseLocked;
+				if (mouseLocked)
+					window.mousePosition = cast(ivec2)(window.size) / 2;
+				break;
+			case KeyCode.KEY_P: fpsController.printVectors; break;
+			case KeyCode.KEY_I: fpsController.moveAxis(vec3(0, 0, 1)); break;
+			case KeyCode.KEY_K: fpsController.moveAxis(vec3(0, 0, -1)); break;
+			case KeyCode.KEY_J: fpsController.moveAxis(vec3(-1, 0, 0)); break;
+			case KeyCode.KEY_L: fpsController.moveAxis(vec3(1, 0, 0)); break;
+			case KeyCode.KEY_O: fpsController.moveAxis(vec3(0, 1, 0)); break;
+			case KeyCode.KEY_U: fpsController.moveAxis(vec3(0, -1, 0)); break;
+			case KeyCode.KEY_UP: fpsController.rotateVert(-45); break;
+			case KeyCode.KEY_DOWN: fpsController.rotateVert(45); break;
+			case KeyCode.KEY_LEFT: fpsController.rotateHor(-45); break;
+			case KeyCode.KEY_RIGHT: fpsController.rotateHor(45); break;
+			case KeyCode.KEY_R: resetCamera(); break;
+			default: break;
+		}
+	}
+
+	void resetCamera()
+	{
+		fpsController.camera.position=vec3(0,0,0);
+		fpsController.angleHor = 0;
+		fpsController.angleVert = 0;		
+		fpsController.update();
 	}
 
 	override void closePressed()
@@ -184,7 +321,7 @@ import voxelman.chunkmesh;
 
 enum chunkSize = 16;
 alias BlockType = ubyte;
-alias Vector!(short, 4) s4vec;
+alias Vector!(short, 4) svec4;
 
 // chunk position in chunk coordinate space
 struct ChunkCoord
@@ -196,7 +333,7 @@ struct ChunkCoord
 			short x, y, z;
 			short _;
 		}
-		s4vec vector;
+		svec4 vector;
 		ulong asLong;
 	}
 
@@ -221,6 +358,11 @@ struct ChunkRegion
 		if (otherCoord.z < coord.z || otherCoord.z >= coord.z + size.z) return false;
 		return true;
 	}
+
+	auto chunksNotIn(ChunkRegion other)
+	{
+
+	}
 }
 
 // Chunk data
@@ -229,7 +371,7 @@ struct ChunkData
 	/// null if homogeneous is true, or contains chunk data otherwise
 	BlockType[] typeData;
 	/// type of common block
-	BlockType uniformType = 1; // Unknown block
+	BlockType uniformType = 0; // Unknown block
 	/// is chunk filled with block of the same type
 	bool uniform = true;
 }
@@ -264,9 +406,10 @@ struct Chunk
 // Chunk storage
 struct ChunkMan
 {
-	ChunkRegion visibleRegion;
-	Chunk*[ulong] chunks;
+	__gshared ChunkRegion visibleRegion;
+	__gshared Chunk*[ulong] chunks;
 	ChunkCoord observerPosition;
+	uint observeRadius;
 	IBlock[] blockTypes;
 
 	Chunk* unknownChunk;
@@ -312,7 +455,9 @@ struct ChunkMan
 
 		if (chunkPos == observerPosition) return;
 
-		ChunkRegion newRegion = ChunkRegion(chunkPos, visibleRegion.size);
+		ChunkRegion newRegion = ChunkRegion(
+			cast(ChunkCoord)(chunkPos.vector - cast(short)observeRadius),
+			visibleRegion.size);
 		updateVisibleRegion(newRegion);
 	}
 
@@ -321,7 +466,13 @@ struct ChunkMan
 		auto oldRegion = visibleRegion;
 		visibleRegion = newRegion;
 
-		// not done
+		if (oldRegion.size == uvec3(0, 0, 0))
+		{
+			loadRegion(visibleRegion);
+			return;
+		}
+
+
 	}
 
 	// Add already created chunk to storage
@@ -354,6 +505,8 @@ struct ChunkMan
 
 	void removeChunk(Chunk* chunk)
 	{
+		if (chunk is unknownChunk) return;
+
 		void detachNeighbour(ubyte side)()
 		{
 			if (chunk.neighbours[side])
@@ -383,12 +536,21 @@ struct ChunkMan
 		pool.put(task!chunkGenWorker(chunk, &this));
 		++numLoadChunkTasks;
 	}
+
+	void loadRegion(ChunkRegion region)
+	{
+		foreach(short x; region.coord.x..cast(short)(region.coord.x + region.size.x))
+		foreach(short y; region.coord.y..cast(short)(region.coord.y + region.size.y))
+		foreach(short z; region.coord.z..cast(short)(region.coord.z + region.size.z))
+		{
+			loadChunk(ChunkCoord(x, y, z));
+		}
+	}
 }
 
 // Stats
-ulong numLoadChunkTasks;
-ulong totalLoadedChunks;
-ulong frameLoadedChunks;
+__gshared ulong numLoadChunkTasks;
+__gshared ulong totalLoadedChunks;
 
 //------------------------------------------------------------------------------
 //----------------------- Chunk generation -------------------------------------
@@ -405,7 +567,7 @@ void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
 	cd.typeData = new BlockType[chunkSize^^3];
 	cd.uniform = true;
 	
-	cd.typeData[0] = getBlock(
+	cd.typeData[0] = getBlock3d(
 		wx*chunkSize,
 		wy*chunkSize,
 		wz*chunkSize);
@@ -418,7 +580,7 @@ void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
 		by = (i>>8) & (chunkSize-1);
 		bz = (i>>4) & (chunkSize-1);
 
-		cd.typeData[i] = getBlock(
+		cd.typeData[i] = getBlock3d(
 			bx + wx * chunkSize,
 			by + wy * chunkSize,
 			bz + wz * chunkSize);
@@ -441,24 +603,44 @@ void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
 	chunk.data = cd;
 	chunk.isLoaded = true;
 
-	writefln("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
+	//writefln("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
+
+	++totalLoadedChunks;
 
 	if (chunk.isVisible)
 	{
 		auto pool = taskPool();
 		pool.put(task!chunkMeshWorker(chunk, cman));
+		//chunkMeshWorker(chunk, cman);
 	}
 
-	++totalLoadedChunks;
-	++frameLoadedChunks;
 }
 
 import anchovy.utils.noise.simplex;
 
 // Gen single block
-BlockType getBlock( int x, int y, int z)
+BlockType getBlock2d( int x, int y, int z)
 {
-	if ((Simplex.noise(cast(float)x/42, cast(float)z/42)*10 )>=y) return 2;
+	enum numOctaves = 6;
+	enum divider = 50; // bigger - smoother
+	enum heightModifier = 4; // bigger - higher
+
+	float noise = 0.0;
+	foreach(i; 1..numOctaves+1)
+	{
+		// [-1; 1]
+		noise += Simplex.noise(cast(float)x/(divider*i), cast(float)z/(divider*i))*i*heightModifier;
+	}
+
+	if (noise >= y) return 2;
+	else return 1;
+}
+
+BlockType getBlock3d( int x, int y, int z)
+{
+	// [-1; 1]
+	float noise = Simplex.noise(cast(float)x/42, cast(float)y/42, cast(float)z/42);
+	if (noise > 0.5) return 2;
 	else return 1;
 }
 
@@ -513,12 +695,12 @@ const float[18][6] faces =
 ];
 
 const float[18] colors =
-[0.0,0.6,0.0,
+[0.0,0.7,0.0,
+ 0.0,0.75,0.0,
  0.0,0.6,0.0,
- 0.0,0.6,0.0,
- 0.0,0.6,0.0,
+ 0.0,0.5,0.0,
  0.0,0.4,0.0,
- 0.0,0.8,0.0,];
+ 0.0,0.85,0.0,];
 
 enum Side : ubyte
 {
@@ -645,40 +827,56 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 	
 	bool getTransparency(int tx, int ty, int tz, ubyte side)
 	{
+		ubyte x = cast(ubyte)tx;
+		ubyte y = cast(ubyte)ty;
+		ubyte z = cast(ubyte)tz;
+
 		if(tx == -1) // west
-		{
-			return cman.blockTypes[ cNeigh[Side.west].getBlockType(chunkSize-1, cast(ubyte)ty, cast(ubyte)tz) ].isSideTransparent(side);
-		}
-		if(tx == 16) // east
-		{
-			return cman.blockTypes[ cNeigh[Side.east].getBlockType(0, cast(ubyte)ty, cast(ubyte)tz) ].isSideTransparent(side);
-		}
+			return cman.blockTypes[ cNeigh[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
+		else if(tx == 16) // east
+			return cman.blockTypes[ cNeigh[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
 
 		if(ty == -1) // bottom
-		{
-			return cman.blockTypes[ cNeigh[Side.bottom].getBlockType(cast(ubyte)tx, chunkSize-1, cast(ubyte)tz) ].isSideTransparent(side);
-		}
-		if(ty == 16) // top
-		{
-			return cman.blockTypes[ cNeigh[Side.top].getBlockType(cast(ubyte)tx, 0, cast(ubyte)tz) ].isSideTransparent(side);
-		}
+			return cman.blockTypes[ cNeigh[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
+		else if(ty == 16) // top
+			return cman.blockTypes[ cNeigh[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
 
 		if(tz == -1) // north
-		{
-			return cman.blockTypes[ cNeigh[Side.north].getBlockType(cast(ubyte)tx, cast(ubyte)ty, chunkSize-1) ].isSideTransparent(side);
-		}
-		if(tz == 16) // south
-		{
-			return cman.blockTypes[ cNeigh[Side.south].getBlockType(cast(ubyte)tx, cast(ubyte)ty, 0) ].isSideTransparent(side);
-		}
+			return cman.blockTypes[ cNeigh[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
+		else if(tz == 16) // south
+			return cman.blockTypes[ cNeigh[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
 		
-		return cman.blockTypes[ chunk.getBlockType(cast(ubyte)tx, cast(ubyte)ty, cast(ubyte)tz) ].isSideTransparent(side);
+		return cman.blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
 	}
 	
 	ubyte sides = 0;
 	ubyte sidenum = 0;
 	byte[3] offset;
 
+	if (chunk.data.uniform)
+	{
+		foreach (uint index; 0..chunkSize^^3)
+		{
+			bx = index & 15, by = (index>>8) & 15, bz = (index>>4) & 15;
+			sides = 0;
+			sidenum = 0;
+			
+			foreach(ubyte side; 0..6)
+			{
+				offset = sideOffsets[side];
+				
+				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], side))
+				{	
+					sides |= 2^^(side);
+					++sidenum;
+				}
+			}
+			
+			appender ~= cman.blockTypes[chunk.data.uniformType]
+							.getMesh(bx, by, bz, sides, sidenum);
+		} // foreach
+	}
+	else
 	foreach (uint index, ref ubyte val; chunk.data.typeData)
 	{
 		if (isVisibleBlock(val))
@@ -705,11 +903,9 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 	chunk.mesh.data = cast(ubyte[])appender.data;
 
 	ChunkCoord coord = chunk.coord;
-	chunk.mesh.position = vec3(coord.x * chunkSize,
-							   coord.y * chunkSize,
-							   coord.z * chunkSize);
+	chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize;
 	chunk.mesh.isDataDirty = true;
-	chunk.hasMesh = true;
+	chunk.hasMesh = chunk.mesh.data.length > 0;
 
-	writefln("Chunk mesh generated at %s", chunk.coord);
+	//writefln("Chunk mesh generated at %s", chunk.coord);
 }

@@ -23,8 +23,8 @@ template:fill {
 }
 
 template:widgetlist container="canvas" {
-	tree layout="horizontal" vexpand=true hexpand=true {
-		widget name="viewport" layout="horizontal" clipContent=true hexpand=true vexpand=true style="edit"{
+	tree layout="horizontal" vexpand=true hexpand=true hasBack=false {
+		widget name="viewport" layout="horizontal" clipContent=true hexpand=true vexpand=true hasBack=false {
 			widget name="canvas" layout="vertical" vexpand=true padding=2 hasBack=false
 		}
 		scrollbar-vert name="vert-scroll" vexpand=true minSize="18 32"

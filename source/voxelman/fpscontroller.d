@@ -20,19 +20,9 @@ class FpsController
 	this()
 	{
 		camera = new Camera;
-		_angleHor = 0;
-		_angleVert = 0;
+		angleHor = 0;
+		angleVert = 0;
 		camera.sensivity = 1;
-	}
-
-	/++
-	 + Moves position by Vector3f vec. vec must be product of dir vector and distance scalar
-	 +/
-	void move(Vector3f dir, float dist)
-	{
-		if (isUpdated == false) update();
-		camera.position += dir * dist;
-		isUpdated = false;
 	}
 
 	void move(Vector3f vec)
@@ -42,35 +32,51 @@ class FpsController
 		isUpdated = false;
 	}
 	
-	void mveAxis(Vector3f vec)
+	void moveAxis(vec3 vec)
 	{
 		if (isUpdated == false) update();
-		camera.position += right * vec.x;
+
+		// Strafe
+		vec3 horRight = vec3(1,0,0);
+		horRight = rotationQuatHor.rotate(horRight);
+		horRight.normalize();
+		camera.position += horRight * vec.x * vec3(1,1,-1);
+
+		// Move up/down
 		camera.position.y += vec.y;
-		camera.position -= camera.target * vec.z;
+
+		// Move forward
+		vec3 horTarget = vec3(0,0,1);
+		horTarget = rotationQuatHor.rotate(horTarget);
+		horTarget.normalize();
+		camera.position += horTarget * vec.z * vec3(1,1,-1);
+		
 		isUpdated = false;
 	}
 	
 	void rotateHor(float angle)
 	{
-		_angleHor += angle * camera.sensivity;		
+		angleHor += angle * camera.sensivity;
+		angleHor %= 360;
 		isUpdated = false;
 	}
 	
 	void rotateVert(float angle)
 	{
-		_angleVert += angle * camera.sensivity;
-		_angleVert = clamp!float(_angleVert, _angleVertMin, _angleVertMax);
+		angleVert += angle * camera.sensivity;
+		angleVert = clamp!float(angleVert, angleVertMin, angleVertMax);
 		isUpdated = false;
 	}
-	
 
 	void update()
-	{		
-		rotationQuat = rotation!float(Vector3f(1,0,0), degtorad!float(-_angleVert)) * rotation!float(Vector3f(0,1,0), degtorad!float(-_angleHor));
+	{
+		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(angleHor));
+		rotationQuatVert = rotation!float(Vector3f(1,0,0), degtorad!float(angleVert));
+		
+		rotationQuat = rotationQuatVert * rotationQuatHor;
 		rotationQuat.normalize();
-		//writeln(rotationQuat);
-		Matrix4f rotation = fromEuler!float(Vector3f(degtorad!float(_angleVert), degtorad!float(_angleHor), 0));
+
+		Matrix4f rotation = rotationQuat.toMatrix4x4;//fromEuler!float(vec3(degtorad!float(-angleVert), degtorad!float(-angleHor), 0));
 		Matrix4f proj = translationMatrix(-camera.position);
 		calcVectors();
 
@@ -86,35 +92,40 @@ class FpsController
 	
 	void printVectors()
 	{
-		writefln("camera.position\t%s\ncamera.target\t%s\ncamera.up\t%s\nright\t\t%s",camera.position, camera.target, camera.up, right);	
+		writefln("camera\nposition\t%s\ttarget\t%s\tup\t%s\tright\t%s",
+			camera.position, camera.target, camera.up, right);
 	}
 		
 	private void calcVectors()
 	{
 		camera.target	= vec3(0,0,1);
 		camera.up		= vec3(0,1,0);
-		right			= vec3(1,0,0);	
+		right			= vec3(-1,0,0);
 		
 		camera.target = rotationQuat.rotate(camera.target);
-		//writeln(camera.target);
 		camera.target.normalize();
+
 		camera.target.y = 0;
+		
 		rotationQuat.rotate(camera.up);
 		camera.up.normalize();
-		right = cross(camera.target, Vector3f(0,1,0));
+		
+		right = cross(camera.up, camera.target);
 	}
 	
 	Camera camera;
 
-	float _angleHor;				//yaw
-	float _angleVert;				//pitch
+	float angleHor;				//yaw
+	float angleVert;				//pitch
 	
-	float _angleVertMin = -90.0f;	//minimum pitch
-	float _angleVertMax =  90.0f;	//maximal pitch
+	enum angleVertMin = -90.0f;	//minimum pitch
+	enum angleVertMax =  90.0f;	//maximal pitch
 	
 	Matrix4f cameraToClipMatrix;
 	Quaternionf rotationQuat;
-	Vector3f right	= vec3(1,0,0);	//for strafe
+	Quaternionf rotationQuatHor;
+	Quaternionf rotationQuatVert;
+	vec3 right	= vec3(1,0,0);	//for strafe
 	
 	bool isUpdated = false;
 }

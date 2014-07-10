@@ -73,5 +73,8 @@ class ChunkMesh
 		}
 		glDrawArrays(GL_TRIANGLES, 0, data.length/24);//data.length/12);
 	}
+
+	ulong numVertexes() {return data.length/24;}
+	ulong numTris() {return data.length/72;}
 	
 }
