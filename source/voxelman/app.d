@@ -76,7 +76,7 @@ class VoxelApplication : Application!GlfwWindow
 		renderer.setClearColor(clearColor);
 
 		fpsController = new FpsController;
-		fpsController.move(vec3(0, 4, 64));
+		//fpsController.move(vec3(0, 4, 64));
 		fpsController.camera.sensivity = 0.4;
 
 		// Setupr shaders
@@ -133,7 +133,7 @@ class VoxelApplication : Application!GlfwWindow
 		// ----------------------------- init chunks ---------------------------
 
 		chunkMan.init();
-		chunkMan.loadRegion(ChunkRegion(ChunkCoord(-10, -5, -10), uvec3(50, 10, 50)));
+		chunkMan.updateObserverPosition(fpsController.camera.position);
 	}
 
 	ulong lastFrameLoadedChunks = 0;
@@ -147,6 +147,7 @@ class VoxelApplication : Application!GlfwWindow
 		context.update(dt);
 
 		updateController(dt);
+		chunkMan.updateObserverPosition(fpsController.camera.position);
 	}
 
 	void printDebug()
@@ -218,6 +219,7 @@ class VoxelApplication : Application!GlfwWindow
 			vec3 vecMax = vecMin + chunkSize;
 			auto result = fpsController.camera.frustumAABBIntersect(vecMin, vecMax);
 			if (result == IntersectionResult.outside) continue;*/
+			if (!c.hasMesh) continue;
 
 			modelToWorldMatrix = translationMatrix!float(c.mesh.position);
 			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE,
@@ -343,13 +345,23 @@ struct ChunkCoord
 	{
 		return format("{%s %s %s}", x, y, z);
 	}
+
+	bool opEquals(ChunkCoord other)
+	{
+		return asLong == other.asLong;
+	}
 }
 
 // 3d slice of chunks
-struct ChunkRegion
+struct ChunkRange
 {
 	ChunkCoord coord;
-	uvec3 size;
+	ivec3 size;
+
+	int volume()
+	{
+		return size.x * size.y * size.z;
+	}
 
 	bool contains(ChunkCoord otherCoord)
 	{
@@ -359,10 +371,179 @@ struct ChunkRegion
 		return true;
 	}
 
-	auto chunksNotIn(ChunkRegion other)
-	{
+	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;
+	import std.range : iota;
+	import std.array : array;
 
+	auto chunkCoords()
+	{
+		return cartesianProduct(
+			iota(coord.x, cast(short)(coord.x+size.x)),
+			iota(coord.y, cast(short)(coord.y+size.y)),
+			iota(coord.z, cast(short)(coord.z+size.z)))
+			.map!((a)=>ChunkCoord(a[0], a[1], a[2]));
 	}
+
+	auto chunksNotIn(ChunkRange other)
+	{
+		auto intersection = rangeIntersection(this, other);
+		ChunkRange[] ranges;
+
+		if (intersection.size == ivec3(0,0,0)) 
+			ranges = [this];
+		else
+			ranges = octoSlice(intersection)[]
+				.filter!((a) => a != intersection)
+				.array;
+
+		return ranges
+			.map!((a) => a.chunkCoords)
+			.joiner;
+	}
+
+	unittest
+	{
+		ChunkRange cr = {{0,0,0}, ivec3(2,2,2)};
+		ChunkRange other1 = {{1,1,1}, ivec3(2,2,2)}; // opposite intersection {1,1,1}
+		ChunkRange other2 = {{2,2,2}, ivec3(2,2,2)}; // no intersection
+		ChunkRange other3 = {{0,0,1}, ivec3(2,2,2)}; // half intersection
+		ChunkRange other4 = {{0,0,-1}, ivec3(2,2,2)}; // half intersection
+
+		ChunkRange half1 = {{0,0,0}, ivec3(2,2,1)};
+		ChunkRange half2 = {{0,0,1}, ivec3(2,2,1)};
+
+		assert( !cr.chunksNotIn(other1).canFind(ChunkCoord(1,1,1)) );
+		assert( equal(cr.chunksNotIn(other2), cr.chunkCoords) );
+		assert( equal(cr.chunksNotIn(other3), half1.chunkCoords) );
+		assert( equal(cr.chunksNotIn(other4), half2.chunkCoords) );
+	}
+
+	/// Slice range in 8 pieces as octree by corner piece.
+	/// Return all 8 pieces.
+	/// corner piece must be in the corner of this range.
+	ChunkRange[8] octoSlice(ChunkRange corner)
+	{
+		// opposite corner coordinates.
+		short cx, cy, cz;
+
+		if (corner.coord.x == coord.x) // x0
+			cx = cast(short)(corner.coord.x + corner.size.x);
+		else // x1
+			cx = corner.coord.x;
+
+		if (corner.coord.y == coord.y) // y0
+			cy = cast(short)(corner.coord.y + corner.size.y);
+		else // y1
+			cy = corner.coord.y;
+
+		if (corner.coord.z == coord.z) // z0
+			cz = cast(short)(corner.coord.z + corner.size.z);
+		else // z1
+			cz = corner.coord.z;
+
+
+		// origin coordinates
+		short ox = coord.x, oy = coord.y, oz = coord.z;
+		// opposite corner size.
+		int csizex = size.x-(cx-ox), csizey = size.y-(cy-oy), csizez = size.z-(cz-oz);
+		// origin size
+		int osizex = size.x-csizex, osizey = size.y-csizey, osizez = size.z-csizez;
+		//writefln("cx %s cy %s cz %s", cx, cy, cz);
+		//writefln("csizex %s csizey %s csizez %s", csizex, csizey, csizez);
+		//writefln("ox %s oy %s oz %s", ox, oy, oz);
+		//writefln("osizex %s osizey %s osizez %s", osizex, osizey, osizez);
+		//writefln("sizex %s sizey %s sizez %s", size.x, size.y, size.z);
+		//writefln("Corner %s", corner);
+
+
+		alias CC = ChunkCoord;
+		ChunkRange rx0y0z0 = {CC(ox,oy,oz), ivec3(osizex, osizey, osizez)};
+		ChunkRange rx0y0z1 = {CC(ox,oy,cz), ivec3(osizex, osizey, csizez)};
+		ChunkRange rx0y1z0 = {CC(ox,cy,oz), ivec3(osizex, csizey, osizez)};
+		ChunkRange rx0y1z1 = {CC(ox,cy,cz), ivec3(osizex, csizey, csizez)};
+
+		ChunkRange rx1y0z0 = {CC(cx,oy,oz), ivec3(csizex, osizey, osizez)};
+		ChunkRange rx1y0z1 = {CC(cx,oy,cz), ivec3(csizex, osizey, csizez)};
+		ChunkRange rx1y1z0 = {CC(cx,cy,oz), ivec3(csizex, csizey, osizez)};
+		ChunkRange rx1y1z1 = {CC(cx,cy,cz), ivec3(csizex, csizey, csizez)};
+
+		return [
+		rx0y0z0, rx0y0z1, rx0y1z0, rx0y1z1,
+		rx1y0z0, rx1y0z1, rx1y1z0, rx1y1z1];
+	}
+}
+
+ChunkRange rangeIntersection(ChunkRange r1, ChunkRange r2)
+{
+	ChunkRange result;
+	if (r1.coord.x < r2.coord.x)
+	{
+		if (r1.coord.x + r1.size.x < r2.coord.x) return ChunkRange();
+		result.coord.x = r2.coord.x;
+		result.size.x = r1.size.x - (r2.coord.x - r1.coord.x);
+	}
+	else
+	{
+		if (r2.coord.x + r2.size.x < r1.coord.x) return ChunkRange();
+		result.coord.x = r1.coord.x;
+		result.size.x = r2.size.x - (r1.coord.x - r2.coord.x);
+	}
+
+	if (r1.coord.y < r2.coord.y)
+	{
+		if (r1.coord.y + r1.size.y < r2.coord.y) return ChunkRange();
+		result.coord.y = r2.coord.y;
+		result.size.y = r1.size.y - (r2.coord.y - r1.coord.y);
+	}
+	else
+	{
+		if (r2.coord.y + r2.size.y < r1.coord.y) return ChunkRange();
+		result.coord.y = r1.coord.y;
+		result.size.y = r2.size.y - (r1.coord.y - r2.coord.y);
+	}
+
+	if (r1.coord.z < r2.coord.z)
+	{
+		if (r1.coord.z + r1.size.z < r2.coord.z) return ChunkRange();
+		result.coord.z = r2.coord.z;
+		result.size.z = r1.size.z - (r2.coord.z - r1.coord.z);
+	}
+	else
+	{
+		if (r2.coord.z + r2.size.z < r1.coord.z) return ChunkRange();
+		result.coord.z = r1.coord.z;
+		result.size.z = r2.size.z - (r1.coord.z - r2.coord.z);
+	}
+
+	result.size.x = result.size.x > 0 ? result.size.x : -result.size.x;
+	result.size.y = result.size.y > 0 ? result.size.y : -result.size.y;
+	result.size.z = result.size.z > 0 ? result.size.z : -result.size.z;
+
+	return result;
+}
+
+unittest
+{
+	assert(rangeIntersection(
+		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,2)),
+		ChunkRange(ChunkCoord(1,1,1), ivec3(2,2,2))) ==
+		ChunkRange(ChunkCoord(1,1,1), ivec3(1,1,1)));
+	assert(rangeIntersection(
+		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,2)),
+		ChunkRange(ChunkCoord(3,3,3), ivec3(4,4,4))) ==
+		ChunkRange(ChunkCoord()));
+	assert(rangeIntersection(
+		ChunkRange(ChunkCoord(1,1,1), ivec3(2,2,2)),
+		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,2))) ==
+		ChunkRange(ChunkCoord(1,1,1), ivec3(1,1,1)));
+	assert(rangeIntersection(
+		ChunkRange(ChunkCoord(1,1,1), ivec3(1,1,1)),
+		ChunkRange(ChunkCoord(1,1,1), ivec3(1,1,1))) ==
+		ChunkRange(ChunkCoord(1,1,1), ivec3(1,1,1)));
+	assert(rangeIntersection(
+		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,2)),
+		ChunkRange(ChunkCoord(0,0,-1), ivec3(2,2,2))) ==
+		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,1)));
 }
 
 // Chunk data
@@ -406,13 +587,13 @@ struct Chunk
 // Chunk storage
 struct ChunkMan
 {
-	__gshared ChunkRegion visibleRegion;
+	ChunkRange visibleRegion;
 	__gshared Chunk*[ulong] chunks;
-	ChunkCoord observerPosition;
-	uint observeRadius;
-	IBlock[] blockTypes;
+	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
+	uint viewRadius = 10;
+	__gshared IBlock[] blockTypes;
 
-	Chunk* unknownChunk;
+	__gshared Chunk* unknownChunk;
 
 	void init()
 	{
@@ -449,30 +630,42 @@ struct ChunkMan
 	void updateObserverPosition(vec3 cameraPos)
 	{
 		ChunkCoord chunkPos = ChunkCoord(
-			to!short(cameraPos.x) >> 4,
-			to!short(cameraPos.y) >> 4,
-			to!short(cameraPos.z) >> 4);
+			to!short(to!int(cameraPos.x) >> 4),
+			to!short(to!int(cameraPos.y) >> 4),
+			to!short(to!int(cameraPos.z) >> 4));
 
 		if (chunkPos == observerPosition) return;
 
-		ChunkRegion newRegion = ChunkRegion(
-			cast(ChunkCoord)(chunkPos.vector - cast(short)observeRadius),
-			visibleRegion.size);
+		auto size = viewRadius*2 + 1;
+		ChunkRange newRegion = ChunkRange(
+			cast(ChunkCoord)(chunkPos.vector - cast(short)viewRadius),
+			ivec3(size, size, size));
+
 		updateVisibleRegion(newRegion);
 	}
 
-	void updateVisibleRegion(ChunkRegion newRegion)
+	void updateVisibleRegion(ChunkRange newRegion)
 	{
 		auto oldRegion = visibleRegion;
 		visibleRegion = newRegion;
 
-		if (oldRegion.size == uvec3(0, 0, 0))
+		if (oldRegion.size == ivec3(0, 0, 0))
 		{
 			loadRegion(visibleRegion);
 			return;
 		}
 
+		// remove chunks
+		foreach(chunkCoord; oldRegion.chunksNotIn(newRegion))
+		{
+			removeChunk(getChunk(chunkCoord));
+		}
 
+		// load chunks
+		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
+		{
+			loadChunk(chunkCoord);
+		}
 	}
 
 	// Add already created chunk to storage
@@ -529,6 +722,7 @@ struct ChunkMan
 
 	void loadChunk(ChunkCoord coord)
 	{
+		if (coord.asLong in chunks) return;
 		Chunk* chunk = createEmptyChunk(coord);
 		addChunk(chunk);
 		
@@ -537,7 +731,7 @@ struct ChunkMan
 		++numLoadChunkTasks;
 	}
 
-	void loadRegion(ChunkRegion region)
+	void loadRegion(ChunkRange region)
 	{
 		foreach(short x; region.coord.x..cast(short)(region.coord.x + region.size.x))
 		foreach(short y; region.coord.y..cast(short)(region.coord.y + region.size.y))
@@ -649,7 +843,7 @@ BlockType getBlock3d( int x, int y, int z)
 //------------------------------------------------------------------------------
 
 // mesh for single block
-const float[18][6] faces =
+immutable float[18][6] faces =
 [
 	[-0.5f,-0.5f,-0.5f, // triangle 1 : begin // north
 	 0.5f,-0.5f,-0.5f,
@@ -694,7 +888,7 @@ const float[18][6] faces =
 	 0.5f, 0.5f,-0.5f]
 ];
 
-const float[18] colors =
+immutable float[18] colors =
 [0.0,0.7,0.0,
  0.0,0.75,0.0,
  0.0,0.6,0.0,
@@ -714,10 +908,10 @@ enum Side : ubyte
 	top		= 5,
 }
 
-ubyte[6] oppSide =
+immutable ubyte[6] oppSide =
 [1, 0, 3, 2, 5, 4];
 
-byte[3][6] sideOffsets =
+immutable byte[3][6] sideOffsets =
 [
 	[ 0, 0,-1],
 	[ 0, 0, 1],
@@ -809,7 +1003,7 @@ class AirBlock : IBlock
 //------------------------------------------------------------------------------
 //-------------------- Chunk mesh generation -----------------------------------
 //------------------------------------------------------------------------------
-
+import core.exception;
 void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 {
 	assert(chunk);
@@ -819,6 +1013,7 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 	ubyte bx, by, bz;
 
 	Chunk*[6] cNeigh = chunk.neighbours;
+	auto blockTypes = cman.blockTypes;
 
 	bool isVisibleBlock(uint id)
 	{
@@ -832,23 +1027,24 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return cman.blockTypes[ cNeigh[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
 		else if(tx == 16) // east
-			return cman.blockTypes[ cNeigh[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
 
 		if(ty == -1) // bottom
-			return cman.blockTypes[ cNeigh[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
 		else if(ty == 16) // top
-			return cman.blockTypes[ cNeigh[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
 
 		if(tz == -1) // north
-			return cman.blockTypes[ cNeigh[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
 		else if(tz == 16) // south
-			return cman.blockTypes[ cNeigh[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
+			return blockTypes[ cNeigh[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
 		
-		return cman.blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
+		return blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
 	}
 	
+
 	ubyte sides = 0;
 	ubyte sidenum = 0;
 	byte[3] offset;
