@@ -6,7 +6,7 @@
 	"license" : "BSL-1.0",
 
 	"dependencies" : {
-		"anchovy" : {"path" : "../anchovy", "version" : "~master"}
+		"anchovy" : {"version" : "*"}
 	},
 
 	"targetName" : "voxelman",
