@@ -9,6 +9,9 @@ module voxelman.app;
 import std.stdio : writeln;
 import std.string : format;
 import std.parallelism;
+import std.concurrency;
+import std.datetime;
+import core.atomic;
 
 import dlib.math.matrix;
 import dlib.math.affine;
@@ -30,7 +33,6 @@ class VoxelApplication : Application!GlfwWindow
 	ulong trisRendered;
 
 	ShaderProgram chunkShader;
-	GLuint cameraToClipMatrixLoc, worldToCameraMatrixLoc, modelToWorldMatrixLoc;
 
 	FpsController fpsController;
 	bool mouseLocked;
@@ -136,6 +138,11 @@ class VoxelApplication : Application!GlfwWindow
 		chunkMan.updateObserverPosition(fpsController.camera.position);
 	}
 
+	override void unload()
+	{
+		chunkMan.stop();
+	}
+
 	ulong lastFrameLoadedChunks = 0;
 	override void update(double dt)
 	{
@@ -148,6 +155,7 @@ class VoxelApplication : Application!GlfwWindow
 
 		updateController(dt);
 		chunkMan.updateObserverPosition(fpsController.camera.position);
+		chunkMan.update();
 	}
 
 	void printDebug()
@@ -546,6 +554,18 @@ unittest
 		ChunkRange(ChunkCoord(0,0,0), ivec3(2,2,1)));
 }
 
+struct ChunkSide
+{
+	/// null if homogeneous is true, or contains chunk slice otherwise
+	BlockType[] typeData;
+	/// type of common block
+	BlockType uniformType = 0; // Unknown block
+	/// is chunk filled with block of the same type
+	bool uniform = true;
+
+	Side side;
+}
+
 // Chunk data
 struct ChunkData
 {
@@ -555,11 +575,33 @@ struct ChunkData
 	BlockType uniformType = 0; // Unknown block
 	/// is chunk filled with block of the same type
 	bool uniform = true;
+
+	ChunkSide getSide(Side side)
+	{
+		final switch(side)
+		{
+			case Side.north:
+			case Side.south:
+			case Side.east:
+			case Side.west:
+			case Side.bottom:
+			case Side.top:
+		}
+	}
 }
 
 // Single chunk
 struct Chunk
 {
+	enum State
+	{
+		notLoaded, // needs loading
+		isLoading, // do nothing while loading
+		isMeshing, // do nothing while meshing
+		ready,     // render
+		//changed,   // needs meshing, render
+	}
+
 	@disable this();
 
 	this(ChunkCoord coord)
@@ -584,21 +626,112 @@ struct Chunk
 	bool hasMesh = false;
 }
 
-// Chunk storage
+struct ChunkGenResult
+{
+	ChunkData chunkData;
+	ChunkCoord coord;
+}
+
+struct MeshGenResult
+{
+	ubyte[] meshData;
+	ChunkCoord coord;
+}
+
+//------------------------------------------------------------------------------
+//------------------------------ Chunk storage ---------------------------------
+//------------------------------------------------------------------------------
+
+// 
 struct ChunkMan
 {
 	ChunkRange visibleRegion;
 	__gshared Chunk*[ulong] chunks;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
 	uint viewRadius = 10;
-	__gshared IBlock[] blockTypes;
+	IBlock[] blockTypes;
 
-	__gshared Chunk* unknownChunk;
+	Chunk* unknownChunk;
+	Chunk*[6] unknownNeighbours;
 
 	void init()
 	{
 		loadBlockTypes();
 		unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
+		unknownNeighbours = 
+		[unknownChunk, unknownChunk, unknownChunk,
+		 unknownChunk, unknownChunk, unknownChunk];
+		static void doNothing(){}
+		taskPool.put(task!doNothing());
+		spawn(&doNothing);
+	}
+
+	void stop()
+	{
+		taskPool.stop;
+	}
+
+	void update()
+	{
+		bool message = true;
+		while (message)
+		{
+			message = receiveTimeout(0.msecs,
+				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);},
+				(immutable(MeshGenResult)* data){onMeshLoaded(cast(MeshGenResult*)data);}
+				);
+		}
+	}
+
+	void onChunkLoaded(ChunkGenResult* data)
+	{
+		if (!visibleRegion.contains(data.coord))
+		{
+			// TODO: destroy data
+			return;
+		}
+
+		//writefln("Chunk data received in main thread");
+
+		Chunk* chunk = getChunk(data.coord);
+
+		chunk.isVisible = true;
+		if (data.chunkData.uniform)
+		{
+			chunk.isVisible = blockTypes[data.chunkData.uniformType].isVisible;
+		}
+		
+		chunk.data = data.chunkData;
+		chunk.isLoaded = true;
+
+		++totalLoadedChunks;
+
+		if (chunk.isVisible)
+		{
+			auto pool = taskPool();
+			pool.put(task!chunkMeshWorker(chunk, chunk.neighbours, &this, thisTid()));
+			//chunkMeshWorker(chunk, cman);
+		}
+	}
+
+	void onMeshLoaded(MeshGenResult* data)
+	{
+		if (!visibleRegion.contains(data.coord))
+		{
+			// TODO: destroy data
+			return;
+		}
+
+		Chunk* chunk = getChunk(data.coord);
+
+		chunk.mesh.data = data.meshData;
+		
+		ChunkCoord coord = chunk.coord;
+		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize;
+		chunk.mesh.isDataDirty = true;
+		chunk.hasMesh = chunk.mesh.data.length > 0;
+
+		//writefln("Chunk mesh generated at %s", chunk.coord);
 	}
 
 	void loadBlockTypes()
@@ -727,7 +860,7 @@ struct ChunkMan
 		addChunk(chunk);
 		
 		auto pool = taskPool();
-		pool.put(task!chunkGenWorker(chunk, &this));
+		pool.put(task!chunkGenWorker(chunk.coord, thisTid()));
 		++numLoadChunkTasks;
 	}
 
@@ -747,14 +880,12 @@ __gshared ulong numLoadChunkTasks;
 __gshared ulong totalLoadedChunks;
 
 //------------------------------------------------------------------------------
-//----------------------- Chunk generation -------------------------------------
+//----------------------------- Chunk generation -------------------------------
 //------------------------------------------------------------------------------
 
 // Gen single chunk
-void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
+void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 {
-	ChunkCoord coord = chunk.coord;
-
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
 	ChunkData cd;
@@ -774,6 +905,7 @@ void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
 		by = (i>>8) & (chunkSize-1);
 		bz = (i>>4) & (chunkSize-1);
 
+		// Actual block gen
 		cd.typeData[i] = getBlock3d(
 			bx + wx * chunkSize,
 			by + wy * chunkSize,
@@ -785,29 +917,16 @@ void chunkGenWorker(Chunk* chunk, ChunkMan* cman)
 		}
 	}
 
-	chunk.isVisible = true;
-
 	if(cd.uniform)
 	{
 		delete cd.typeData;
 		cd.uniformType = type;
-		chunk.isVisible = cman.blockTypes[cd.uniformType].isVisible;
 	}
-	
-	chunk.data = cd;
-	chunk.isLoaded = true;
 
 	//writefln("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
 
-	++totalLoadedChunks;
-
-	if (chunk.isVisible)
-	{
-		auto pool = taskPool();
-		pool.put(task!chunkMeshWorker(chunk, cman));
-		//chunkMeshWorker(chunk, cman);
-	}
-
+	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(cd, coord);
+	mainThread.send(result);
 }
 
 import anchovy.utils.noise.simplex;
@@ -839,7 +958,7 @@ BlockType getBlock3d( int x, int y, int z)
 }
 
 //------------------------------------------------------------------------------
-//-------------------------- Block data ----------------------------------------
+//------------------------------- Block data -----------------------------------
 //------------------------------------------------------------------------------
 
 // mesh for single block
@@ -904,8 +1023,8 @@ enum Side : ubyte
 	east	= 2,
 	west	= 3,
 	
-	bottom	= 4,
-	top		= 5,
+	up		= 4,
+	down	= 5,
 }
 
 immutable ubyte[6] oppSide =
@@ -1004,7 +1123,7 @@ class AirBlock : IBlock
 //-------------------- Chunk mesh generation -----------------------------------
 //------------------------------------------------------------------------------
 import core.exception;
-void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
+void chunkMeshWorker(Chunk* chunk, Chunk*[6] neighbours, ChunkMan* cman, Tid mainThread)
 {
 	assert(chunk);
 	assert(cman);
@@ -1012,8 +1131,15 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 	Appender!(float[]) appender;
 	ubyte bx, by, bz;
 
-	Chunk*[6] cNeigh = chunk.neighbours;
-	auto blockTypes = cman.blockTypes;
+	//Chunk*[6] cNeigh = chunk.neighbours;
+	//cNeigh[0] = *atomicLoadLocal(chunk.neighbours[0]);
+	//cNeigh[1] = *atomicLoadLocal(chunk.neighbours[1]);
+	//cNeigh[2] = *atomicLoadLocal(chunk.neighbours[2]);
+	//cNeigh[3] = *atomicLoadLocal(chunk.neighbours[3]);
+	//cNeigh[4] = *atomicLoadLocal(chunk.neighbours[4]);
+	//cNeigh[5] = *atomicLoadLocal(chunk.neighbours[5]);
+
+	IBlock[] blockTypes = cman.blockTypes;//*atomicLoadLocal(cman.blockTypes);
 
 	bool isVisibleBlock(uint id)
 	{
@@ -1027,19 +1153,19 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blockTypes[ cNeigh[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
 		else if(tx == 16) // east
-			return blockTypes[ cNeigh[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
 
 		if(ty == -1) // bottom
-			return blockTypes[ cNeigh[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
 		else if(ty == 16) // top
-			return blockTypes[ cNeigh[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
 
 		if(tz == -1) // north
-			return blockTypes[ cNeigh[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
 		else if(tz == 16) // south
-			return blockTypes[ cNeigh[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
+			return blockTypes[ neighbours[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
 		
 		return blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
 	}
@@ -1096,12 +1222,16 @@ void chunkMeshWorker(Chunk* chunk, ChunkMan* cman)
 		} // if(val != 0)
 	} // foreach
 
-	chunk.mesh.data = cast(ubyte[])appender.data;
+	auto result = cast(immutable(MeshGenResult)*)new MeshGenResult(cast(ubyte[])appender.data, chunk.coord);
+	mainThread.send(result);
+}
 
-	ChunkCoord coord = chunk.coord;
-	chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize;
-	chunk.mesh.isDataDirty = true;
-	chunk.hasMesh = chunk.mesh.data.length > 0;
+void atomicStoreLocal(T)(ref T var, auto ref T value)
+{
+	atomicStore(*cast(shared(T)*)(&var), cast(shared(T))value);
+}
 
-	//writefln("Chunk mesh generated at %s", chunk.coord);
+T atomicLoadLocal(T)(ref const T var)
+{
+	return cast(T)atomicLoad(*cast(shared(const T)*)(&var));
 }
