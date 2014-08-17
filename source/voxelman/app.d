@@ -621,7 +621,7 @@ struct Chunk
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
 	{
 		if (data.uniform) return data.uniformType;
-		return data.typeData[cx + cy*chunkSize^^2 + cz*chunkSize];
+		return data.typeData[cx + cy*chunkSizeSqr + cz*chunkSize];
 	}
 
 	bool areAllAdjacentLoaded() @property
@@ -641,7 +641,7 @@ struct Chunk
 
 	bool needsMesh() @property
 	{
-		return isVisible && !hasMesh && !isMeshing;
+		return isLoaded && isVisible && !hasMesh && !isMeshing;
 	}
 
 	bool isUsed() @property
@@ -672,12 +672,13 @@ struct Chunk
 	bool isMeshing = false;
 
 	// How many tasks are reading or writing this chunk
-	size_t numReaders = 0;
+	byte numReaders = 0;
 	bool hasWriter = false;
 
 	Chunk* next;
 	Chunk* prev;
-	static Chunk* unknownChunk;
+
+	static Chunk* unknownChunk = new Chunk(ChunkCoord(0, 0, 0));;
 }
 
 struct ChunkGenResult
@@ -722,7 +723,7 @@ struct ChunkMan
 	void init()
 	{
 		loadBlockTypes();
-		Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
+		//Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
 		meshWorkerTid = spawnLinked(&meshWorkerThread, thisTid, cast(shared)&this);
 		chunkGenWorkerTid = spawnLinked(&chunkGenWorkerThread, thisTid);
 	}
@@ -763,7 +764,7 @@ struct ChunkMan
 		++totalLoadedChunks;
 		--numLoadChunkTasks;
 
-		if (!visibleRegion.contains(data.coord))
+		if (chunk.isMarkedForDeletion)
 		{
 			delete data;
 			return;
@@ -864,13 +865,7 @@ struct ChunkMan
 	void updateChunks()
 	{
 		// See if anything breaks
-		assert(!Chunk.unknownChunk.isUsed);
-		assert(Chunk.unknownChunk.adjacent[0] is null);
-		assert(Chunk.unknownChunk.adjacent[1] is null);
-		assert(Chunk.unknownChunk.adjacent[2] is null);
-		assert(Chunk.unknownChunk.adjacent[3] is null);
-		assert(Chunk.unknownChunk.adjacent[4] is null);
-		assert(Chunk.unknownChunk.adjacent[5] is null);
+		assert(*Chunk.unknownChunk == Chunk.init);
 
 		processRemoveQueue();
 	}
@@ -1087,6 +1082,7 @@ struct ChunkMan
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord.asLong);
+		delete chunk.mesh;
 		delete chunk.data.typeData;
 		delete chunk;
 	}
