@@ -73,7 +73,7 @@ class VoxelApplication : Application!GlfwWindow
 			writeln(item);
 		writeln("---------------------------------------------------------\n");
 
-		//GC.disable;
+		GC.disable;
 
 		fpsHelper.limitFps = false;
 
@@ -656,6 +656,11 @@ struct Chunk
 		return false;
 	}
 
+	bool isMarkedForDeletion() @property
+	{
+		return next || prev;
+	}
+
 	ChunkData data;
 	ChunkMesh mesh;
 	ChunkCoord coord;
@@ -671,6 +676,7 @@ struct Chunk
 	bool hasWriter = false;
 
 	Chunk* next;
+	Chunk* prev;
 	static Chunk* unknownChunk;
 }
 
@@ -693,21 +699,22 @@ struct MeshGenResult
 // 
 struct ChunkMan
 {
-	ChunkRange visibleRegion;
-
 	Chunk*[ulong] chunks;
+	Chunk*[6] unknownAdjacent;
+
 	Chunk* removeQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
+	
 	// Stats
 	size_t numLoadChunkTasks;
 	size_t numMeshChunkTasks;
 	size_t totalLoadedChunks;
 
+	ChunkRange visibleRegion;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
-	uint viewRadius = 3;
+	uint viewRadius = 7;
+	
 	IBlock[] blockTypes;
-
-	Chunk*[6] unknownAdjacent;
 
 	Tid meshWorkerTid;
 	Tid chunkGenWorkerTid;
@@ -716,8 +723,6 @@ struct ChunkMan
 	{
 		loadBlockTypes();
 		Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
-		static void doNothing(){}
-		taskPool.put(task!doNothing());
 		meshWorkerTid = spawnLinked(&meshWorkerThread, thisTid, cast(shared)&this);
 		chunkGenWorkerTid = spawnLinked(&chunkGenWorkerThread, thisTid);
 	}
@@ -730,7 +735,7 @@ struct ChunkMan
 	void update()
 	{
 		//writefln("cm.update");
-		stdout.flush;
+		//stdout.flush;
 		bool message = true;
 		while (message)
 		{
@@ -839,6 +844,23 @@ struct ChunkMan
 		writeln;
 	}
 
+	void printAdjacent(Chunk* chunk)
+	{
+		void printChunk(Side side)
+		{
+			byte[3] offset = sideOffsets[side];
+			ChunkCoord otherCoord = ChunkCoord(cast(short)(chunk.coord.x + offset[0]),
+												cast(short)(chunk.coord.y + offset[1]),
+												cast(short)(chunk.coord.z + offset[2]));
+			Chunk* c = getChunk(otherCoord);
+			writef("%s", c==Chunk.unknownChunk ? "unknownChunk" : "a");
+		}
+
+		foreach(s; Side.min..Side.max)
+			printChunk(s);
+		writeln;
+	}
+
 	void updateChunks()
 	{
 		// See if anything breaks
@@ -856,30 +878,26 @@ struct ChunkMan
 	void processRemoveQueue()
 	{
 		Chunk* chunk = removeQueue;
-		Chunk* newRemoveQueue;
 
 		while(chunk)
 		{
 			assert(chunk != Chunk.unknownChunk);
 			//printList(chunk);
 
-			if (!chunk.isUsed)// && !chunk.adjacentUsed)
+			if (!chunk.isUsed)
 			{
 				auto toRemove = chunk;
 				chunk = chunk.next;
+
+				removeFromRemoveQueue(toRemove);
 				removeChunk(toRemove);
 			}
 			else
 			{
 				auto c = chunk;
 				chunk = chunk.next;
-
-				c.next = newRemoveQueue;
-				newRemoveQueue = c;
 			}
 		}
-
-		removeQueue = newRemoveQueue;
 	}
 
 	void loadBlockTypes()
@@ -908,6 +926,13 @@ struct ChunkMan
 		.filter!((c) => c.isLoaded && c.isVisible);
 	}
 
+	ChunkRange calcChunkRange(ChunkCoord coord)
+	{
+		auto size = viewRadius*2 + 1;
+		return ChunkRange(cast(ChunkCoord)(coord.vector - cast(short)viewRadius),
+			ivec3(size, size, size));
+	}
+
 	void updateObserverPosition(vec3 cameraPos)
 	{
 		//writefln("updateObserverPosition start");
@@ -917,12 +942,10 @@ struct ChunkMan
 			to!short(to!int(cameraPos.z) >> 4));
 
 		if (chunkPos == observerPosition) return;
-
-		auto size = viewRadius*2 + 1;
-		ChunkRange newRegion = ChunkRange(
-			cast(ChunkCoord)(chunkPos.vector - cast(short)viewRadius),
-			ivec3(size, size, size));
-
+		observerPosition = chunkPos;
+		
+		ChunkRange newRegion = calcChunkRange(chunkPos);
+		
 		//writefln("updateObserverPosition 1");
 		updateVisibleRegion(newRegion);
 		//writefln("updateObserverPosition end");
@@ -944,8 +967,8 @@ struct ChunkMan
 
 		if (cond)
 		{
-			writefln("loadRegion");
-			stdout.flush;
+			//writefln("loadRegion");
+			//stdout.flush;
 			loadRegion(newRegion);
 			return;
 		}
@@ -961,7 +984,7 @@ struct ChunkMan
 		foreach(chunkCoord; chunksToRemove)
 		{
 			//writefln("add");
-			stdout.flush;
+			//stdout.flush;
 			addToRemoveQueue(getChunk(chunkCoord));
 		}
 
@@ -1009,11 +1032,31 @@ struct ChunkMan
 	{
 		assert(chunk);
 		assert(chunk != Chunk.unknownChunk);
-		//writefln("addToRemoveQueue %s %s next %s", chunk.coord, chunk, removeQueue);
+		//writefln("addToRemoveQueue %s pos %s", chunk.coord, observerPosition);
+		//printAdjacent(chunk);
 		
 		chunk.next = removeQueue;
+		if (removeQueue) removeQueue.prev = chunk;
 		removeQueue = chunk;
 		++numChunksToRemove;
+	}
+
+	void removeFromRemoveQueue(Chunk* chunk)
+	{
+		assert(chunk);
+		assert(chunk != Chunk.unknownChunk);
+
+		if (chunk.prev)
+			chunk.prev.next = chunk.next;
+		else
+			removeQueue = chunk.next;
+
+		if (chunk.next)
+			chunk.next.prev = chunk.prev;
+
+		chunk.next = null;
+		chunk.prev = null;
+		--numChunksToRemove;
 	}
 
 	void removeChunk(Chunk* chunk)
@@ -1046,13 +1089,16 @@ struct ChunkMan
 		chunks.remove(chunk.coord.asLong);
 		delete chunk.data.typeData;
 		delete chunk;
-
-		--numChunksToRemove;
 	}
 
 	void loadChunk(ChunkCoord coord)
 	{
-		if (coord.asLong in chunks) return;
+		if (auto chunk = coord.asLong in chunks) 
+		{
+			if ((*chunk).isMarkedForDeletion)
+				removeFromRemoveQueue(*chunk);
+			return;
+		}
 		Chunk* chunk = createEmptyChunk(coord);
 		addChunk(chunk);
 

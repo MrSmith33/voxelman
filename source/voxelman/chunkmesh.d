@@ -71,7 +71,7 @@ class ChunkMesh
 			glBindBuffer(GL_ARRAY_BUFFER,0);
 			isDataDirty = false;
 		}
-		glDrawArrays(GL_TRIANGLES, 0, data.length/24);//data.length/12);
+		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/24));//data.length/12);
 	}
 
 	ulong numVertexes() {return data.length/24;}
