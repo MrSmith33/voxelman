@@ -13,7 +13,7 @@ import std.concurrency;
 import std.datetime;
 import core.atomic;
 import core.memory;
-
+import core.thread : thread_joinAll;
 import dlib.math.matrix;
 import dlib.math.affine;
 
@@ -27,6 +27,8 @@ import voxelman.camera;
 
 __gshared ChunkMan chunkMan;
 
+//version = manualGC;
+
 class VoxelApplication : Application!GlfwWindow
 {
 	uvec3 viewSize;
@@ -39,6 +41,7 @@ class VoxelApplication : Application!GlfwWindow
 
 	FpsController fpsController;
 	bool mouseLocked;
+	bool autoMove;
 
 	Widget debugInfo;
 
@@ -73,7 +76,7 @@ class VoxelApplication : Application!GlfwWindow
 			writeln(item);
 		writeln("---------------------------------------------------------\n");
 
-		GC.disable;
+		version(manualGC) GC.disable;
 
 		fpsHelper.limitFps = false;
 
@@ -133,7 +136,7 @@ class VoxelApplication : Application!GlfwWindow
 		setupFrameShowButton("showSettings", "settingsFrame");
 
 		debugInfo = context.getWidgetById("debugInfo");
-		foreach(i; 0..10) context.createWidget("label", debugInfo);
+		foreach(i; 0..11) context.createWidget("label", debugInfo);
 
 		writeln("\n----------------------------- Load end -----------------------------\n");
 
@@ -151,23 +154,16 @@ class VoxelApplication : Application!GlfwWindow
 	ulong lastFrameLoadedChunks = 0;
 	override void update(double dt)
 	{
-		//writefln("update start");
 		stdout.flush;
 		fpsHelper.update(dt);
 
 		printDebug();
-		//writefln("update 1");
 		timerManager.updateTimers(window.elapsedTime);
-		//writefln("update 2");
 		context.update(dt);
-		//writefln("update 3");
 
 		updateController(dt);
-		//writefln("update 4");
 		chunkMan.update();
-		//writefln("update 5");
 		chunkMan.updateObserverPosition(fpsController.camera.position);
-		//writefln("update end");
 	}
 
 	void printDebug()
@@ -200,7 +196,7 @@ class VoxelApplication : Application!GlfwWindow
 			target.x, target.y, target.z).to!dstring;
 		lines[ 8]["text"] = format("Chunks to remove: %s", chunkMan.numChunksToRemove).to!dstring;
 		lines[ 9]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
-		
+		lines[ 10]["text"] = format("Chunks to mesh: %s", chunkMan.numMeshChunkTasks).to!dstring;
 	}
 
 	void windowResized(uvec2 newSize)
@@ -221,6 +217,7 @@ class VoxelApplication : Application!GlfwWindow
 		context.eventDispatcher.draw();
 
 		window.swapBuffers();
+		version(manualGC) GC.collect();
 	}
 
 	void drawScene()
@@ -242,7 +239,7 @@ class VoxelApplication : Application!GlfwWindow
 			vec3 vecMax = vecMin + chunkSize;
 			auto result = fpsController.camera.frustumAABBIntersect(vecMin, vecMax);
 			if (result == IntersectionResult.outside) continue;*/
-			if (!c.hasMesh) continue;
+			if (!c.hasMesh || c.mesh is null) continue;
 
 			modelToWorldMatrix = translationMatrix!float(c.mesh.position);
 			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE,
@@ -259,8 +256,8 @@ class VoxelApplication : Application!GlfwWindow
 		glDisable(GL_DEPTH_TEST);
 		
 		renderer.setColor(Color(0,0,0,1));
-		//renderer.drawRect(Rect(width/2-7, height/2-1, 14, 2));
-		//renderer.drawRect(Rect(width/2-1, height/2-7, 2, 14));
+		renderer.drawRect(Rect(window.size.x/2-7, window.size.y/2-1, 14, 2));
+		renderer.drawRect(Rect(window.size.x/2-1, window.size.y/2-7, 2, 14));
 	}
 
 	void updateController(double dt)
@@ -297,10 +294,10 @@ class VoxelApplication : Application!GlfwWindow
 			}
 		}
 		// TODO: remove after bug is found
-		else
+		else if (autoMove)
 		{
 			// Automoving
-			fpsController.moveAxis(vec3(0,0,10)*dt);
+			fpsController.moveAxis(vec3(0,0,20)*dt);
 		}
 	}
 
@@ -381,6 +378,21 @@ struct ChunkCoord
 	{
 		return asLong == other.asLong;
 	}
+
+	size_t manhattanDist(ChunkCoord other)
+	{
+		return other.x > x ? other.x - x : x - other.x +
+				other.y > y ? other.y - y : y - other.y +
+				other.z > z ? other.z - z : z - other.z;
+	}
+
+	double euclidDist(ChunkCoord other)
+	{
+		import std.math : sqrt;
+		return sqrt(cast(real)(other.x > x ? other.x - x : x - other.x)^^2 +
+				(other.y > y ? other.y - y : y - other.y)^^2 +
+				(other.z > z ? other.z - z : z - other.z)^^2);
+	}
 }
 
 // 3d slice of chunks
@@ -403,9 +415,10 @@ struct ChunkRange
 	}
 
 	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;
-	import std.range : iota;
+	import std.range : iota, walkLength;
 	import std.array : array;
 
+	// generates all chunk coordinates that are contained inside chunk range.
 	auto chunkCoords()
 	{
 		return cartesianProduct(
@@ -415,17 +428,15 @@ struct ChunkRange
 			.map!((a)=>ChunkCoord(a[0], a[1], a[2]));
 	}
 
+	unittest
+	{
+		assert(ChunkRange(ChunkCoord(0,0,0), ivec3(3,3,3)).chunkCoords.walkLength == 27);
+	}
+
 	auto chunksNotIn(ChunkRange other)
 	{
-		//writefln("chunksNotIn start");
-		stdout.flush;
-		
-		
 		auto intersection = rangeIntersection(this, other);
 		ChunkRange[] ranges;
-
-		//writefln("chunksNotIn 1");
-		stdout.flush;
 
 		if (intersection.size == ivec3(0,0,0)) 
 			ranges = [this];
@@ -433,9 +444,6 @@ struct ChunkRange
 			ranges = octoSlice(intersection)[]
 				.filter!((a) => a != intersection)
 				.array;
-
-		//writefln("chunksNotIn 2");
-		stdout.flush;
 
 		return ranges
 			.map!((a) => a.chunkCoords)
@@ -615,7 +623,7 @@ struct Chunk
 	this(ChunkCoord coord)
 	{
 		this.coord = coord;
-		mesh = new ChunkMesh();
+		//mesh = new ChunkMesh();
 	}
 
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
@@ -649,7 +657,7 @@ struct Chunk
 		return numReaders > 0 || hasWriter;
 	}
 
-	bool adjacentUsed() @property
+	bool isAnyAdjacentUsed() @property
 	{
 		foreach(a; adjacent)
 			if (a != Chunk.unknownChunk && a.isUsed) return true;
@@ -672,13 +680,22 @@ struct Chunk
 	bool isMeshing = false;
 
 	// How many tasks are reading or writing this chunk
-	byte numReaders = 0;
 	bool hasWriter = false;
+	ushort numReaders = 0;
 
+	// In deletion queue.
 	Chunk* next;
 	Chunk* prev;
 
-	static Chunk* unknownChunk = new Chunk(ChunkCoord(0, 0, 0));;
+	// Null chunk.
+	static Chunk* unknownChunk;
+	static Chunk* initChunk; // To compare with unknownChunk. If differs, there is an error in the code.
+}
+
+static this()
+{
+	Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
+	Chunk.initChunk = new Chunk(ChunkCoord(0, 0, 0));
 }
 
 struct ChunkGenResult
@@ -701,9 +718,8 @@ struct MeshGenResult
 struct ChunkMan
 {
 	Chunk*[ulong] chunks;
-	Chunk*[6] unknownAdjacent;
 
-	Chunk* removeQueue; // head of slist. Follow 'next' pointer in chunk
+	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
 	
 	// Stats
@@ -718,19 +734,26 @@ struct ChunkMan
 	IBlock[] blockTypes;
 
 	Tid meshWorkerTid;
-	Tid chunkGenWorkerTid;
+	enum numGenWorkers = 6;
+	uint nextGenWorker;
+	Tid[] chunkGenWorkerTids;
 
 	void init()
 	{
 		loadBlockTypes();
 		//Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
 		meshWorkerTid = spawnLinked(&meshWorkerThread, thisTid, cast(shared)&this);
-		chunkGenWorkerTid = spawnLinked(&chunkGenWorkerThread, thisTid);
+		foreach(_; 0..numGenWorkers)
+			chunkGenWorkerTids ~= spawnLinked(&chunkGenWorkerThread, thisTid);
 	}
 
 	void stop()
 	{
 		taskPool.stop;
+		meshWorkerTid.prioritySend(0);
+		foreach(genWorker; chunkGenWorkerTids)
+			genWorker.prioritySend(0);
+		thread_joinAll();
 	}
 
 	void update()
@@ -824,6 +847,7 @@ struct ChunkMan
 		}
 
 		// Attach mesh
+		if (chunk.mesh is null) chunk.mesh = new ChunkMesh();
 		chunk.mesh.data = data.meshData;
 		
 		ChunkCoord coord = chunk.coord;
@@ -865,14 +889,14 @@ struct ChunkMan
 	void updateChunks()
 	{
 		// See if anything breaks
-		assert(*Chunk.unknownChunk == Chunk.init);
+		assert(*Chunk.unknownChunk == *Chunk.initChunk);
 
 		processRemoveQueue();
 	}
 
 	void processRemoveQueue()
 	{
-		Chunk* chunk = removeQueue;
+		Chunk* chunk = chunksToRemoveQueue;
 
 		while(chunk)
 		{
@@ -899,7 +923,7 @@ struct ChunkMan
 	{
 		blockTypes ~= new UnknownBlock(0);
 		blockTypes ~= new AirBlock(1);
-		blockTypes ~= new SolidBlock(2);
+		blockTypes ~= new DirtBlock(2);
 	}
 
 	Chunk* createEmptyChunk(ChunkCoord coord)
@@ -930,7 +954,6 @@ struct ChunkMan
 
 	void updateObserverPosition(vec3 cameraPos)
 	{
-		//writefln("updateObserverPosition start");
 		ChunkCoord chunkPos = ChunkCoord(
 			to!short(to!int(cameraPos.x) >> 4),
 			to!short(to!int(cameraPos.y) >> 4),
@@ -941,51 +964,35 @@ struct ChunkMan
 		
 		ChunkRange newRegion = calcChunkRange(chunkPos);
 		
-		//writefln("updateObserverPosition 1");
 		updateVisibleRegion(newRegion);
-		//writefln("updateObserverPosition end");
 	}
 
 	void updateVisibleRegion(ChunkRange newRegion)
 	{
-		//writefln("updateVisibleRegion start");
 		auto oldRegion = visibleRegion;
 		visibleRegion = newRegion;
-		//writefln("updateVisibleRegion 1");
-		//stdout.flush;
 
 		bool cond = oldRegion.size.x == 0 &&
 			oldRegion.size.y == 0 &&
 			oldRegion.size.z == 0;
 
-		//writefln("cond == %s", cond);
-
 		if (cond)
 		{
-			//writefln("loadRegion");
-			//stdout.flush;
 			loadRegion(newRegion);
 			return;
 		}
 
-		//writefln("new region");
-		//stdout.flush;
-
-
 		auto chunksToRemove = oldRegion.chunksNotIn(newRegion);
-		//writefln("updateVisibleRegion 2");
-		//stdout.flush;
+
 		// remove chunks
 		foreach(chunkCoord; chunksToRemove)
 		{
-			//writefln("add");
-			//stdout.flush;
 			addToRemoveQueue(getChunk(chunkCoord));
 		}
 
-		//writefln("updateVisibleRegion 3");
-
 		// load chunks
+		// ChunkCoord[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
+		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
 		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
 		{
 			loadChunk(chunkCoord);
@@ -1030,9 +1037,9 @@ struct ChunkMan
 		//writefln("addToRemoveQueue %s pos %s", chunk.coord, observerPosition);
 		//printAdjacent(chunk);
 		
-		chunk.next = removeQueue;
-		if (removeQueue) removeQueue.prev = chunk;
-		removeQueue = chunk;
+		chunk.next = chunksToRemoveQueue;
+		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
+		chunksToRemoveQueue = chunk;
 		++numChunksToRemove;
 	}
 
@@ -1044,7 +1051,7 @@ struct ChunkMan
 		if (chunk.prev)
 			chunk.prev.next = chunk.next;
 		else
-			removeQueue = chunk.next;
+			chunksToRemoveQueue = chunk.next;
 
 		if (chunk.next)
 			chunk.next.prev = chunk.prev;
@@ -1060,7 +1067,7 @@ struct ChunkMan
 		assert(chunk != Chunk.unknownChunk);
 
 		assert(!chunk.isUsed);
-		//assert(!chunk.adjacentUsed);
+		//assert(!chunk.isAnyAdjacentUsed);
 
 		//writefln("remove chunk at %s", chunk.coord);
 
@@ -1082,6 +1089,7 @@ struct ChunkMan
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord.asLong);
+		if (chunk.mesh) chunk.mesh.free();
 		delete chunk.mesh;
 		delete chunk.data.typeData;
 		delete chunk;
@@ -1102,7 +1110,10 @@ struct ChunkMan
 		//auto pool = taskPool();
 		//pool.put(task!chunkGenWorker(chunk.coord, thisTid()));
 		++numLoadChunkTasks;
-		chunkGenWorkerTid.send(chunk.coord);
+
+		nextGenWorker %= numGenWorkers;
+		chunkGenWorkerTids[nextGenWorker].send(chunk.coord);
+		++nextGenWorker;
 	}
 
 	void loadRegion(ChunkRange region)
@@ -1122,13 +1133,21 @@ struct ChunkMan
 
 void chunkGenWorkerThread(Tid mainTid)
 {
-	bool running = true;
-	while (running)
+	try
 	{
-		receive(
-			(ChunkCoord coord){chunkGenWorker(coord, mainTid);},
-			(Variant v){running = false;}
-		);
+		bool running = true;
+		while (running)
+		{
+			receive(
+				(ChunkCoord coord){chunkGenWorker(coord, mainTid);},
+				(Variant v){running = false;}
+			);
+		}
+	}
+	catch(Throwable t)
+	{
+		writeln(t, " from gen worker");
+		throw t;
 	}
 }
 
@@ -1141,7 +1160,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	cd.typeData = new BlockType[chunkSize^^3];
 	cd.uniform = true;
 	
-	cd.typeData[0] = getBlock3d(
+	cd.typeData[0] = generateBlock(
 		wx*chunkSize,
 		wy*chunkSize,
 		wz*chunkSize);
@@ -1155,7 +1174,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 		bz = (i>>4) & (chunkSize-1);
 
 		// Actual block gen
-		cd.typeData[i] = getBlock3d(
+		cd.typeData[i] = generateBlock(
 			bx + wx * chunkSize,
 			by + wy * chunkSize,
 			bz + wz * chunkSize);
@@ -1168,7 +1187,8 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 
 	if(cd.uniform)
 	{
-		delete cd.typeData;
+		//delete cd.typeData;
+		cd.typeData = null;
 		cd.uniformType = type;
 	}
 
@@ -1179,6 +1199,8 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 }
 
 import anchovy.utils.noise.simplex;
+
+alias generateBlock = getBlock2d3d;
 
 // Gen single block
 BlockType getBlock2d( int x, int y, int z)
@@ -1203,6 +1225,35 @@ BlockType getBlock3d( int x, int y, int z)
 	// [-1; 1]
 	float noise = Simplex.noise(cast(float)x/42, cast(float)y/42, cast(float)z/42);
 	if (noise > 0.5) return 2;
+	else return 1;
+}
+
+BlockType getBlock2d3d( int x, int y, int z)
+{
+	enum numOctaves = 6;
+	enum divider = 50; // bigger - smoother
+	enum heightModifier = 4; // bigger - higher
+
+	float noise = 0.0;
+	foreach(i; 1..numOctaves+1)
+	{
+		// [-1; 1]
+		noise += Simplex.noise(cast(float)x/(divider*i), cast(float)z/(divider*i))*i*heightModifier;
+	}
+
+	if (noise >= y)
+	{
+		// [-1; 1]
+		float noise3d = Simplex.noise(cast(float)x/42, cast(float)y/42, cast(float)z/42);
+		if (noise3d > -0.1) return 2;
+		else return 1;
+	}
+	else return 1;
+}
+
+BlockType getBlockTest( int x, int y, int z)
+{
+	if (x % 4 > 1 && y % 4 > 1 && z % 4 > 1) return 2;
 	else return 1;
 }
 
@@ -1241,6 +1292,13 @@ immutable float[18][6] faces =
 	-0.5f, 0.5f,-0.5f,
 	-0.5f, 0.5f, 0.5f],
 
+	[0.5f, 0.5f, 0.5f, // top
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f,-0.5f,
+	 0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f,-0.5f,
+	 0.5f, 0.5f,-0.5f],
+
 	[-0.5f,-0.5f, 0.5f, // bottom
 	 0.5f,-0.5f, 0.5f,
 	 0.5f,-0.5f,-0.5f,
@@ -1248,21 +1306,7 @@ immutable float[18][6] faces =
 	 0.5f,-0.5f,-0.5f,
 	-0.5f,-0.5f,-0.5f],
 
-	[0.5f, 0.5f, 0.5f, // top
-	-0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f,-0.5f,
-	 0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f,-0.5f,
-	 0.5f, 0.5f,-0.5f]
 ];
-
-immutable float[18] colors =
-[0.0,0.7,0.0,
- 0.0,0.75,0.0,
- 0.0,0.6,0.0,
- 0.0,0.5,0.0,
- 0.0,0.4,0.0,
- 0.0,0.85,0.0,];
 
 enum Side : ubyte
 {
@@ -1285,13 +1329,13 @@ immutable byte[3][6] sideOffsets =
 	[ 0, 0, 1],
 	[ 1, 0, 0],
 	[-1, 0, 0],
-	[ 0,-1, 0],
 	[ 0, 1, 0],
+	[ 0,-1, 0],
 ];
 
 abstract class IBlock
 {
-	this(BlockType id)
+	pure this(BlockType id)
 	{
 		this.id = id;
 	}
@@ -1311,11 +1355,18 @@ abstract class IBlock
 
 class SolidBlock : IBlock
 {
-	this(BlockType id){super(id);}
+	pure this(BlockType id){super(id);}
 
 	override bool isSideTransparent(ubyte side) {return false;}
 
 	override bool isVisible() {return true;}
+
+	immutable(float)[] colors =
+	[
+		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
+	];
+
+	float r = 1, g = 1, b = 1;
 
 	override float[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 	{
@@ -1331,12 +1382,36 @@ class SolidBlock : IBlock
 					data ~= faces[i][v]  +bx;
 					data ~= faces[i][v+1]+by;
 					data ~= faces[i][v+2]+bz;
-					data ~= colors[i*3..i*3+3];
+					data ~= colors[i] * r;
+					data ~= colors[i] * g;
+					data ~= colors[i] * b;
 				} // for v
 			} // if
 		} // for i
 
 		return data;
+	}
+}
+
+class GrassBlock : SolidBlock
+{
+	pure this(BlockType id)
+	{
+		super(id);
+		r = 0.0;
+		g = 0.0;
+		b = 0.0;
+	}
+}
+
+class DirtBlock : SolidBlock
+{
+	pure this(BlockType id)
+	{
+		super(id);
+		r = 1.0;
+		g = 0.6;
+		b = 0.0;
 	}
 }
 
@@ -1390,7 +1465,7 @@ void meshWorkerThread(Tid mainTid, shared(ChunkMan)* cman)
 	}
 	catch(Throwable t)
 	{
-		writeln(t);
+		writeln(t, " from mesh worker");
 		throw t;
 	}
 }
@@ -1399,6 +1474,7 @@ void chunkMeshWorker(Chunk* chunk, Chunk*[6] adjacent, ChunkMan* cman, Tid mainT
 in
 {
 	assert(chunk);
+	assert(!chunk.hasWriter);
 	assert(cman);
 	foreach(a; adjacent)
 	{
@@ -1431,21 +1507,28 @@ body
 			return blockTypes[ adjacent[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
 
 		if(ty == -1) // bottom
+		{
+			assert(side == Side.top, to!string(side));
 			return blockTypes[ adjacent[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
+		}
 		else if(ty == chunkSize) // top
+		{
 			return blockTypes[ adjacent[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
+		}
 
-		if(tz == -1) // south
-			return blockTypes[ adjacent[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
-		else if(tz == chunkSize) // north
+		if(tz == -1) // north
 			return blockTypes[ adjacent[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
+		else if(tz == chunkSize) // south
+			return blockTypes[ adjacent[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
 		
 		return blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
 	}
 	
-
+	// Bit flags of sides to render
 	ubyte sides = 0;
+	// Num of sides to render
 	ubyte sidenum = 0;
+	// Offset to adjacent block
 	byte[3] offset;
 
 	if (chunk.data.uniform)
@@ -1484,7 +1567,7 @@ body
 			{
 				offset = sideOffsets[side];
 				
-				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], side))
+				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], oppSide[side]))
 				{	
 					sides |= 2^^(side);
 					++sidenum;
@@ -1495,7 +1578,8 @@ body
 		} // if(val != 0)
 	} // foreach
 
-	auto result = cast(immutable(MeshGenResult)*)new MeshGenResult(cast(ubyte[])appender.data, chunk.coord);
+	auto result = cast(immutable(MeshGenResult)*)
+		new MeshGenResult(cast(ubyte[])appender.data, chunk.coord);
 	mainThread.send(result);
 }
 

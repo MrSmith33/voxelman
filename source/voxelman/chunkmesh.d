@@ -6,6 +6,10 @@ Authors: Andrey Penechko.
 
 module voxelman.chunkmesh;
 
+import std.stdio;
+import core.atomic;
+import std.concurrency : thisTid;
+
 public import dlib.math.vector;
 public import dlib.math.quaternion;
 import derelict.opengl3.gl3;
@@ -28,13 +32,25 @@ class ChunkMesh
 	GLuint vao;
 	GLuint vbo;
 
+	private shared static size_t _meshInstanceCount;
+	static size_t meshInstanceCount() @property
+	{
+		return atomicLoad(_meshInstanceCount);
+	}
+
 	this()
 	{
+		atomicOp!("+=")(_meshInstanceCount, 1);
 		glGenBuffers( 1, &vbo );
 		glGenVertexArrays(1, &vao);
 	}
 
 	~this()
+	{
+		atomicOp!("-=")(_meshInstanceCount, 1);
+	}
+
+	void free()
 	{
 		glDeleteBuffers(1, &vbo);
 		glDeleteVertexArrays(1, &vao);
