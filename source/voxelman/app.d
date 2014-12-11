@@ -714,6 +714,41 @@ struct MeshGenResult
 //------------------------------ Chunk storage ---------------------------------
 //------------------------------------------------------------------------------
 
+struct WorkerGroup(uint numWorkers, alias workerFun)
+{
+	import std.traits : ParameterTypeTuple;
+
+	private bool _areWorkersStarted;
+	private uint _nextWorker;
+	private Tid[] _workers;
+	private shared bool _areWorkersRunning;
+
+	void startWorkers(ParameterTypeTuple!workerFun args)
+	{
+		if (_areWorkersStarted) return;
+		atomicStore(_areWorkersRunning, true);
+		foreach(_; 0..numWorkers)
+			_workers ~= spawnLinked(&workerFun, args);
+		foreach(worker; _workers)
+			worker.send(&_areWorkersRunning);
+		_areWorkersStarted = true;
+	}
+
+	Tid nextWorker() @property
+	{
+		_nextWorker %= numWorkers;
+		return _workers[_nextWorker++];
+	}
+
+	void stopWorkers()
+	{
+		foreach(worker; _workers)
+			worker.prioritySend(0);
+		atomicStore(_areWorkersRunning, false);
+		_areWorkersStarted = false;
+	}
+}
+
 // 
 struct ChunkMan
 {
@@ -733,26 +768,24 @@ struct ChunkMan
 	
 	IBlock[] blockTypes;
 
-	Tid meshWorkerTid;
-	enum numGenWorkers = 6;
-	uint nextGenWorker;
-	Tid[] chunkGenWorkerTids;
+	WorkerGroup!(6, chunkGenWorkerThread) genWorkers;
+	WorkerGroup!(6, meshWorkerThread) meshWorkers;
 
 	void init()
 	{
 		loadBlockTypes();
 		//Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
-		meshWorkerTid = spawnLinked(&meshWorkerThread, thisTid, cast(shared)&this);
-		foreach(_; 0..numGenWorkers)
-			chunkGenWorkerTids ~= spawnLinked(&chunkGenWorkerThread, thisTid);
+
+		genWorkers.startWorkers(thisTid);
+		meshWorkers.startWorkers(thisTid, cast(shared)&this);
 	}
 
 	void stop()
 	{
 		taskPool.stop;
-		meshWorkerTid.prioritySend(0);
-		foreach(genWorker; chunkGenWorkerTids)
-			genWorker.prioritySend(0);
+		genWorkers.stopWorkers();
+		meshWorkers.stopWorkers();
+
 		thread_joinAll();
 	}
 
@@ -820,7 +853,7 @@ struct ChunkMan
 			//pool.put(task!chunkMeshWorker(chunk, chunk.adjacent, &this, thisTid()));
 			//chunkMeshWorker(chunk, cman);
 			++numMeshChunkTasks;
-			meshWorkerTid.send(cast(shared(Chunk)*)chunk);
+			meshWorkers.nextWorker.send(cast(shared(Chunk)*)chunk);
 		}
 	}
 
@@ -923,7 +956,8 @@ struct ChunkMan
 	{
 		blockTypes ~= new UnknownBlock(0);
 		blockTypes ~= new AirBlock(1);
-		blockTypes ~= new DirtBlock(2);
+		blockTypes ~= new GrassBlock(2);
+		blockTypes ~= new DirtBlock(3);
 	}
 
 	Chunk* createEmptyChunk(ChunkCoord coord)
@@ -1111,9 +1145,7 @@ struct ChunkMan
 		//pool.put(task!chunkGenWorker(chunk.coord, thisTid()));
 		++numLoadChunkTasks;
 
-		nextGenWorker %= numGenWorkers;
-		chunkGenWorkerTids[nextGenWorker].send(chunk.coord);
-		++nextGenWorker;
+		genWorkers.nextWorker.send(chunk.coord);
 	}
 
 	void loadRegion(ChunkRange region)
@@ -1135,12 +1167,15 @@ void chunkGenWorkerThread(Tid mainTid)
 {
 	try
 	{
-		bool running = true;
-		while (running)
+		shared(bool)* isRunning;
+		bool isRunningLocal = true;
+		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
+
+		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
 				(ChunkCoord coord){chunkGenWorker(coord, mainTid);},
-				(Variant v){running = false;}
+				(Variant v){isRunningLocal = false;}
 			);
 		}
 	}
@@ -1200,7 +1235,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 
 import anchovy.utils.noise.simplex;
 
-alias generateBlock = getBlock2d3d;
+alias generateBlock = getBlock2d;
 
 // Gen single block
 BlockType getBlock2d( int x, int y, int z)
@@ -1399,7 +1434,7 @@ class GrassBlock : SolidBlock
 	{
 		super(id);
 		r = 0.0;
-		g = 0.0;
+		g = 1.0;
 		b = 0.0;
 	}
 }
@@ -1452,14 +1487,18 @@ void meshWorkerThread(Tid mainTid, shared(ChunkMan)* cman)
 {
 	try
 	{
-		bool running = true;
-		while (running)
+		shared(bool)* isRunning;
+		bool isRunningLocal = true;
+		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
+
+		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
-				(shared(Chunk)* chunk){
+				(shared(Chunk)* chunk)
+				{
 					chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, cast(ChunkMan*)cman, mainTid);
-					},
-				(Variant v){running = false;}
+				},
+				(Variant v){isRunningLocal = false;}
 			);
 		}
 	}
