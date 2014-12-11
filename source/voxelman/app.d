@@ -42,6 +42,7 @@ class VoxelApplication : Application!GlfwWindow
 	FpsController fpsController;
 	bool mouseLocked;
 	bool autoMove;
+	bool doUpdateObserverPosition = true;
 
 	Widget debugInfo;
 
@@ -82,11 +83,11 @@ class VoxelApplication : Application!GlfwWindow
 
 		// Setup rendering
 
-		clearColor = Color(255, 255, 255);
+		clearColor = Color(200, 200, 255);
 		renderer.setClearColor(clearColor);
 
 		fpsController = new FpsController;
-		//fpsController.move(vec3(0, 4, 64));
+		fpsController.move(vec3(0, 100, 0));
 		fpsController.camera.sensivity = 0.4;
 
 		// Setup shaders
@@ -163,7 +164,8 @@ class VoxelApplication : Application!GlfwWindow
 
 		updateController(dt);
 		chunkMan.update();
-		chunkMan.updateObserverPosition(fpsController.camera.position);
+		if (doUpdateObserverPosition)
+			chunkMan.updateObserverPosition(fpsController.camera.position);
 	}
 
 	void printDebug()
@@ -239,7 +241,6 @@ class VoxelApplication : Application!GlfwWindow
 			vec3 vecMax = vecMin + chunkSize;
 			auto result = fpsController.camera.frustumAABBIntersect(vecMin, vecMax);
 			if (result == IntersectionResult.outside) continue;*/
-			if (!c.hasMesh || c.mesh is null) continue;
 
 			modelToWorldMatrix = translationMatrix!float(c.mesh.position);
 			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE,
@@ -315,7 +316,7 @@ class VoxelApplication : Application!GlfwWindow
 			case KeyCode.KEY_J: fpsController.moveAxis(vec3(-1, 0, 0)); break;
 			case KeyCode.KEY_L: fpsController.moveAxis(vec3(1, 0, 0)); break;
 			case KeyCode.KEY_O: fpsController.moveAxis(vec3(0, 1, 0)); break;
-			case KeyCode.KEY_U: fpsController.moveAxis(vec3(0, -1, 0)); break;
+			case KeyCode.KEY_U: doUpdateObserverPosition = !doUpdateObserverPosition; break;
 			case KeyCode.KEY_T: fpsController.moveAxis(vec3(0, 0, 128)); break;
 			case KeyCode.KEY_UP: fpsController.rotateVert(-45); break;
 			case KeyCode.KEY_DOWN: fpsController.rotateVert(45); break;
@@ -764,12 +765,12 @@ struct ChunkMan
 
 	ChunkRange visibleRegion;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
-	uint viewRadius = 12;
+	uint viewRadius = 10;
 	
 	IBlock[] blockTypes;
 
-	WorkerGroup!(6, chunkGenWorkerThread) genWorkers;
-	WorkerGroup!(6, meshWorkerThread) meshWorkers;
+	WorkerGroup!(4, chunkGenWorkerThread) genWorkers;
+	WorkerGroup!(4, meshWorkerThread) meshWorkers;
 
 	void init()
 	{
@@ -884,7 +885,7 @@ struct ChunkMan
 		chunk.mesh.data = data.meshData;
 		
 		ChunkCoord coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize;
+		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize - 0.5f;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
@@ -976,7 +977,7 @@ struct ChunkMan
 	{
 		return chunks
 		.byValue
-		.filter!((c) => c.isLoaded && c.isVisible);
+		.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
 
 	ChunkRange calcChunkRange(ChunkCoord coord)
@@ -1320,49 +1321,49 @@ BlockType getBlockTest( int x, int y, int z)
 //------------------------------------------------------------------------------
 
 // mesh for single block
-immutable float[18][6] faces =
+immutable ubyte[18 * 6] faces =
 [
-	[-0.5f,-0.5f,-0.5f, // triangle 1 : begin // north
-	 0.5f,-0.5f,-0.5f,
-	 0.5f, 0.5f,-0.5f, // triangle 1 : end
-	-0.5f,-0.5f,-0.5f, // triangle 2 : begin
-	 0.5f, 0.5f,-0.5f,
-	-0.5f, 0.5f,-0.5f], // triangle 2 : end
-
-	[0.5f,-0.5f, 0.5f, // south
-	-0.5f,-0.5f, 0.5f,
-	-0.5f, 0.5f, 0.5f,
-	 0.5f,-0.5f, 0.5f,
-	-0.5f, 0.5f, 0.5f,
-	 0.5f, 0.5f, 0.5f],
-
-	[0.5f,-0.5f,-0.5f, // east
-	 0.5f,-0.5f, 0.5f,
-	 0.5f, 0.5f, 0.5f,
-	 0.5f,-0.5f,-0.5f,
-	 0.5f, 0.5f, 0.5f,
-	 0.5f, 0.5f,-0.5f],
-
-	[-0.5f,-0.5f, 0.5f, // west
-	-0.5f,-0.5f,-0.5f,
-	-0.5f, 0.5f,-0.5f,
-	-0.5f,-0.5f, 0.5f,
-	-0.5f, 0.5f,-0.5f,
-	-0.5f, 0.5f, 0.5f],
-
-	[0.5f, 0.5f, 0.5f, // top
-	-0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f,-0.5f,
-	 0.5f, 0.5f, 0.5f,
-	-0.5f, 0.5f,-0.5f,
-	 0.5f, 0.5f,-0.5f],
-
-	[-0.5f,-0.5f, 0.5f, // bottom
-	 0.5f,-0.5f, 0.5f,
-	 0.5f,-0.5f,-0.5f,
-	-0.5f,-0.5f, 0.5f,
-	 0.5f,-0.5f,-0.5f,
-	-0.5f,-0.5f,-0.5f],
+	0, 0, 0, // triangle 1 : begin // north
+	1, 0, 0,
+	1, 1, 0, // triangle 1 : end
+	0, 0, 0, // triangle 2 : begin
+	1, 1, 0,
+	0, 1, 0, // triangle 2 : end
+ 
+	1, 0, 1, // south
+	0, 0, 1,
+	0, 1, 1,
+	1, 0, 1,
+	0, 1, 1,
+	1, 1, 1,
+ 
+	1, 0, 0, // east
+	1, 0, 1,
+	1, 1, 1,
+	1, 0, 0,
+	1, 1, 1,
+	1, 1, 0,
+ 
+	0, 0, 1, // west
+	0, 0, 0,
+	0, 1, 0,
+	0, 0, 1,
+	0, 1, 0,
+	0, 1, 1,
+ 
+	1, 1, 1, // top
+	0, 1, 1,
+	0, 1, 0,
+	1, 1, 1,
+	0, 1, 0,
+	1, 1, 0,
+ 
+	0, 0, 1, // bottom
+	1, 0, 1,
+	1, 0, 0,
+	0, 0, 1,
+	1, 0, 0,
+	0, 0, 0,
 
 ];
 
@@ -1405,7 +1406,7 @@ abstract class IBlock
 	
 	//Must return mesh for block in given position for given sides
 	//sides is contains [6] bit flags of wich side must be builded
-	float[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum);
+	ubyte[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum);
 	
 	float texX1, texY1, texX2, texY2;
 	BlockType id;
@@ -1424,11 +1425,11 @@ class SolidBlock : IBlock
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
-	float r = 1, g = 1, b = 1;
+	ubyte r = 1, g = 1, b = 1;
 
-	override float[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
+	override ubyte[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 	{
-		float[] data;
+		ubyte[] data;
 		data.reserve(sidesnum*36);
 
 		foreach(ubyte i; 0..6)
@@ -1437,12 +1438,12 @@ class SolidBlock : IBlock
 			{
 				for (size_t v = 0; v!=18; v+=3)
 				{
-					data ~= faces[i][v]  +bx;
-					data ~= faces[i][v+1]+by;
-					data ~= faces[i][v+2]+bz;
-					data ~= colors[i] * r;
-					data ~= colors[i] * g;
-					data ~= colors[i] * b;
+					data ~= cast(ubyte)(faces[18*i+v] + bx);
+					data ~= cast(ubyte)(faces[18*i+v+1] + by);
+					data ~= cast(ubyte)(faces[18*i+v+2] + bz);
+					data ~= cast(ubyte)(colors[i] * r);
+					data ~= cast(ubyte)(colors[i] * g);
+					data ~= cast(ubyte)(colors[i] * b);
 				} // for v
 			} // if
 		} // for i
@@ -1456,9 +1457,9 @@ class GrassBlock : SolidBlock
 	pure this(BlockType id)
 	{
 		super(id);
-		r = 0.0;
-		g = 1.0;
-		b = 0.0;
+		r = 0;
+		g = 255;
+		b = 0;
 	}
 }
 
@@ -1467,9 +1468,9 @@ class DirtBlock : SolidBlock
 	pure this(BlockType id)
 	{
 		super(id);
-		r = 1.0;
-		g = 0.6;
-		b = 0.0;
+		r = 255;
+		g = 140;
+		b = 0;
 	}
 }
 
@@ -1481,7 +1482,7 @@ class UnknownBlock : IBlock
 
 	override bool isVisible() {return false;}
 
-	override float[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
+	override ubyte[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 	{
 		return null;
 	}
@@ -1495,7 +1496,7 @@ class AirBlock : IBlock
 
 	override bool isVisible() {return false;}
 
-	override float[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
+	override ubyte[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 	{
 		return null;
 	}
@@ -1547,7 +1548,7 @@ in
 }
 body
 {
-	Appender!(float[]) appender;
+	Appender!(ubyte[]) appender;
 	ubyte bx, by, bz;
 
 	IBlock[] blockTypes = cman.blockTypes;

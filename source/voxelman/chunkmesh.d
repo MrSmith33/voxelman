@@ -55,17 +55,27 @@ class ChunkMesh
 		glDeleteBuffers(1, &vbo);
 		glDeleteVertexArrays(1, &vao);
 	}
-	
-	void load()
+
+	alias ElemType = ubyte;
+	enum vertexSize = ubyte.sizeof * 6;
+
+	void loadBuffer()
 	{
-		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo );
 		glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, null);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, cast(void*)(3*float.sizeof));
+		// coords
+		glVertexAttribPointer(0, 3, GL_UNSIGNED_BYTE, GL_FALSE, vertexSize, null);
+		// color
+		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, vertexSize, cast(void*)(vertexSize / 2));
 		glBindBuffer(GL_ARRAY_BUFFER,0);
+	}
+	
+	void load()
+	{
+		glBindVertexArray(vao);
+		loadBuffer();
 		glBindVertexArray(0);
 	}
 	
@@ -78,19 +88,13 @@ class ChunkMesh
 	{
 		if (isDataDirty)
 		{
-			glBindBuffer(GL_ARRAY_BUFFER, vbo );
-			glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
-			glEnableVertexAttribArray(0);
-			glEnableVertexAttribArray(1);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, null);
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6*float.sizeof, cast(void*)(3*float.sizeof));
-			glBindBuffer(GL_ARRAY_BUFFER,0);
+			loadBuffer();
 			isDataDirty = false;
 		}
-		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/24));//data.length/12);
+		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/vertexSize));//data.length/12);
 	}
 
-	ulong numVertexes() {return data.length/24;}
-	ulong numTris() {return data.length/72;}
+	ulong numVertexes() {return data.length/vertexSize;}
+	ulong numTris() {return data.length/(vertexSize*3);}
 	
 }
