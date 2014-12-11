@@ -764,7 +764,7 @@ struct ChunkMan
 
 	ChunkRange visibleRegion;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
-	uint viewRadius = 7;
+	uint viewRadius = 12;
 	
 	IBlock[] blockTypes;
 
@@ -1194,11 +1194,11 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	ChunkData cd;
 	cd.typeData = new BlockType[chunkSize^^3];
 	cd.uniform = true;
+
+	Generator generator = Generator(coord);
+	generator.genPerChunkData();
 	
-	cd.typeData[0] = generateBlock(
-		wx*chunkSize,
-		wy*chunkSize,
-		wz*chunkSize);
+	cd.typeData[0] = generator.generateBlock(0, 0, 0);
 	BlockType type = cd.typeData[0];
 	
 	int bx, by, bz;
@@ -1209,10 +1209,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 		bz = (i>>4) & (chunkSize-1);
 
 		// Actual block gen
-		cd.typeData[i] = generateBlock(
-			bx + wx * chunkSize,
-			by + wy * chunkSize,
-			bz + wz * chunkSize);
+		cd.typeData[i] = generator.generateBlock(bx, by, bz);
 
 		if(cd.uniform && cd.typeData[i] != type)
 		{
@@ -1235,10 +1232,37 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 
 import anchovy.utils.noise.simplex;
 
-alias generateBlock = getBlock2d;
+alias Generator = Generator2d;
 
-// Gen single block
-BlockType getBlock2d( int x, int y, int z)
+struct Generator2d
+{
+	ChunkCoord coord;
+	private int[chunkSizeSqr] heightMap;
+	private int chunkXOffset;
+	private int chunkYOffset;
+	private int chunkZOffset;
+
+	void genPerChunkData()
+	{
+		chunkXOffset = coord.x * chunkSize;
+		chunkYOffset = coord.y * chunkSize;
+		chunkZOffset = coord.z * chunkSize;
+		foreach(i, ref elem; heightMap)
+		{
+			int cx = i & (chunkSize-1);
+			int cz = (i>>4) & (chunkSize-1);
+			elem = cast(int)noise2d(chunkXOffset + cx, chunkZOffset + cz);
+		}
+	}
+
+	BlockType generateBlock(int x, int y, int z)
+	{
+		if (heightMap[z * chunkSize + x] >= (chunkYOffset + y)) return 2;
+		else return 1;
+	}
+}
+
+float noise2d(int x, int z)
 {
 	enum numOctaves = 6;
 	enum divider = 50; // bigger - smoother
@@ -1250,6 +1274,14 @@ BlockType getBlock2d( int x, int y, int z)
 		// [-1; 1]
 		noise += Simplex.noise(cast(float)x/(divider*i), cast(float)z/(divider*i))*i*heightModifier;
 	}
+
+	return noise;
+}
+
+// Gen single block
+BlockType getBlock2d( int x, int y, int z)
+{
+	float noise = noise2d(x, z);
 
 	if (noise >= y) return 2;
 	else return 1;
@@ -1265,16 +1297,7 @@ BlockType getBlock3d( int x, int y, int z)
 
 BlockType getBlock2d3d( int x, int y, int z)
 {
-	enum numOctaves = 6;
-	enum divider = 50; // bigger - smoother
-	enum heightModifier = 4; // bigger - higher
-
-	float noise = 0.0;
-	foreach(i; 1..numOctaves+1)
-	{
-		// [-1; 1]
-		noise += Simplex.noise(cast(float)x/(divider*i), cast(float)z/(divider*i))*i*heightModifier;
-	}
+	float noise = noise2d(x, z);
 
 	if (noise >= y)
 	{
