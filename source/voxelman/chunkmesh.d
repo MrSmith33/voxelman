@@ -6,8 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.chunkmesh;
 
-import std.stdio;
-import core.atomic;
+import core.atomic : atomicLoad, atomicOp;
 import std.concurrency : thisTid;
 
 public import dlib.math.vector;
