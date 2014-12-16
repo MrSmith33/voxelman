@@ -5,12 +5,12 @@ layout(location = 1) in vec4 color;
 
 smooth out vec4 theColor;
 
-uniform mat4 cameraToClipMatrix;
-uniform mat4 worldToCameraMatrix;
-uniform mat4 modelToWorldMatrix;
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
 
 void main()
 {
-	gl_Position = cameraToClipMatrix * worldToCameraMatrix * modelToWorldMatrix * position;
+	gl_Position = projection * view * model * position;
 	theColor = color;
 }

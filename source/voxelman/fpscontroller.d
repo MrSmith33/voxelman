@@ -15,16 +15,8 @@ import dlib.math.utils;
 
 import voxelman.camera;
 
-class FpsController
+struct FpsController
 {
-	this()
-	{
-		camera = new Camera;
-		angleHor = 0;
-		angleVert = 0;
-		camera.sensivity = 1;
-	}
-
 	void move(Vector3f vec)
 	{
 		if (isUpdated == false) update();
@@ -81,6 +73,7 @@ class FpsController
 		calcVectors();
 
 		cameraToClipMatrix = rotation * proj;
+		camera.updateFrustum(cameraToClipMatrix);
 		isUpdated = true;
 	}
 
@@ -115,8 +108,8 @@ class FpsController
 	
 	Camera camera;
 
-	float angleHor;				//yaw
-	float angleVert;				//pitch
+	float angleHor = 0;				//yaw
+	float angleVert = 0;				//pitch
 	
 	enum angleVertMin = -90.0f;	//minimum pitch
 	enum angleVertMax =  90.0f;	//maximal pitch

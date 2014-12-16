@@ -18,14 +18,9 @@ enum IntersectionResult
 	intersect
 }
 
-class Camera
+struct Camera
 {
 public:
-	this()
-	{
-		updatePerspective();
-	}
-		
 	this(float fov ,
 		 float aspect,
 		 float near,
@@ -35,14 +30,18 @@ public:
 		this.aspect	= aspect;
 		this.near	= near;
 		this.far	= far;
-		updatePerspective();
+		updateProjection();
 	}
 	
-	Matrix4f updatePerspective()
+	Matrix4f updateProjection()
 	{
 		perspective = perspectiveMatrix(fov, aspect, near, far);
-		frustum = extractPlanes(perspective);
 		return perspective;
+	}
+
+	void updateFrustum(Matrix4f mvp)
+	{
+		frustum = extractPlanes(mvp);
 	}
 
 	IntersectionResult frustumAABBIntersect(vec3 minPos, vec3 maxPos)
@@ -77,48 +76,36 @@ public:
 				vmax.z = minPos.z;
 			}
 
-			if(dot(planes[i].normal, vmin) + planes[i].d > 0) 
-				return IntersectionResult.outside; 
-			if(dot(planes[i].normal, vmax) + planes[i].d >= 0) 
-				return IntersectionResult.intersect; 
+			if(dot(planes[i].normal, vmin) + planes[i].d > 0)
+				return IntersectionResult.outside;
+			if(dot(planes[i].normal, vmax) + planes[i].d >= 0)
+				return IntersectionResult.intersect;
 		}
 
 		return IntersectionResult.inside;
 	}
 
-	Plane[6] extractPlanes(const ref Matrix4f comboMatrix)
+	Plane[6] extractPlanes(const ref Matrix4f m)
 	{
 		Plane[6] p_planes;
 		// Left clipping plane
-		p_planes[0].a = comboMatrix.a41 + comboMatrix.a11;
-		p_planes[0].b = comboMatrix.a42 + comboMatrix.a12;
-		p_planes[0].c = comboMatrix.a43 + comboMatrix.a13;
-		p_planes[0].d = comboMatrix.a44 + comboMatrix.a14;
+		p_planes[0] = Plane(m.a41 + m.a11, m.a42 + m.a12, m.a43 + m.a13, m.a44 + m.a14);
+		p_planes[0].normalize();
 		// Right clipping plane
-		p_planes[1].a = comboMatrix.a41 - comboMatrix.a11;
-		p_planes[1].b = comboMatrix.a42 - comboMatrix.a12;
-		p_planes[1].c = comboMatrix.a43 - comboMatrix.a13;
-		p_planes[1].d = comboMatrix.a44 - comboMatrix.a14;
+		p_planes[1] = Plane(m.a41 - m.a11, m.a42 - m.a12, m.a43 - m.a13, m.a44 - m.a14);
+		p_planes[1].normalize();
 		// Top clipping plane
-		p_planes[2].a = comboMatrix.a41 - comboMatrix.a21;
-		p_planes[2].b = comboMatrix.a42 - comboMatrix.a22;
-		p_planes[2].c = comboMatrix.a43 - comboMatrix.a23;
-		p_planes[2].d = comboMatrix.a44 - comboMatrix.a24;
+		p_planes[2] = Plane(m.a41 - m.a21, m.a42 - m.a22, m.a43 - m.a23, m.a44 - m.a24);
+		p_planes[2].normalize();
 		// Bottom clipping plane
-		p_planes[3].a = comboMatrix.a41 + comboMatrix.a21;
-		p_planes[3].b = comboMatrix.a42 + comboMatrix.a22;
-		p_planes[3].c = comboMatrix.a43 + comboMatrix.a23;
-		p_planes[3].d = comboMatrix.a44 + comboMatrix.a24;
+		p_planes[3] = Plane(m.a41 + m.a21, m.a42 + m.a22, m.a43 + m.a23, m.a44 + m.a24);
+		p_planes[3].normalize();
 		// Near clipping plane
-		p_planes[4].a = comboMatrix.a41 + comboMatrix.a31;
-		p_planes[4].b = comboMatrix.a42 + comboMatrix.a32;
-		p_planes[4].c = comboMatrix.a43 + comboMatrix.a33;
-		p_planes[4].d = comboMatrix.a44 + comboMatrix.a34;
+		p_planes[4] = Plane(m.a41 + m.a31, m.a42 + m.a32, m.a43 + m.a33, m.a44 + m.a34);
+		p_planes[4].normalize();
 		// Far clipping plane
-		p_planes[5].a = comboMatrix.a41 - comboMatrix.a31;
-		p_planes[5].b = comboMatrix.a42 - comboMatrix.a32;
-		p_planes[5].c = comboMatrix.a43 - comboMatrix.a33;
-		p_planes[5].d = comboMatrix.a44 - comboMatrix.a34;
+		p_planes[5] = Plane(m.a41 - m.a31, m.a42 - m.a32, m.a43 - m.a33, m.a44 - m.a34);
+		p_planes[5].normalize();
 
 		return p_planes;
 	}

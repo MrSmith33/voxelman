@@ -14,7 +14,7 @@ public import dlib.math.vector;
 public import dlib.math.quaternion;
 import derelict.opengl3.gl3;
 
-class Attribute
+struct Attribute
 {
 	uint location;
 	uint elementNum;///number of 
@@ -23,6 +23,8 @@ class Attribute
 	uint offset;///offset from the begining of buffer
 	bool normalized;
 }
+
+
 
 class ChunkMesh
 {	
@@ -57,7 +59,7 @@ class ChunkMesh
 	}
 
 	alias ElemType = ubyte;
-	enum vertexSize = ubyte.sizeof * 6;
+	enum vertexSize = ubyte.sizeof * 8;
 
 	void loadBuffer()
 	{

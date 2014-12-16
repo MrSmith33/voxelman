@@ -37,9 +37,10 @@ class VoxelApplication : Application!GlfwWindow
 	ulong trisRendered;
 
 	ShaderProgram chunkShader;
-	GLuint cameraToClipMatrixLoc, worldToCameraMatrixLoc, modelToWorldMatrixLoc;
+	GLuint modelLoc, viewLoc, projectionLoc;
 
 	FpsController fpsController;
+	FpsController secondFpsController;
 	bool mouseLocked;
 	bool autoMove;
 	bool doUpdateObserverPosition = true;
@@ -83,17 +84,18 @@ class VoxelApplication : Application!GlfwWindow
 
 		// Setup rendering
 
-		clearColor = Color(200, 200, 255);
+		clearColor = Color(115,200,169);
 		renderer.setClearColor(clearColor);
 
-		fpsController = new FpsController;
-		fpsController.move(vec3(0, 100, 0));
+		fpsController.move(vec3(0, 200, 0));
 		fpsController.camera.sensivity = 0.4;
+		fpsController.camera.updateProjection();
+		secondFpsController.camera.updateProjection();
 
 		// Setup shaders
 
-		string vShader = cast(string)read("perspective.vert");		
-		string fShader = cast(string)read("colored.frag");		
+		string vShader = cast(string)read("perspective.vert");
+		string fShader = cast(string)read("colored.frag");
 		chunkShader = new ShaderProgram(vShader, fShader);
 
 		if(!chunkShader.compile())
@@ -106,13 +108,13 @@ class VoxelApplication : Application!GlfwWindow
 		}
 
 		chunkShader.bind;
-			modelToWorldMatrixLoc = glGetUniformLocation( chunkShader.program, "modelToWorldMatrix" );//model transformation
-			worldToCameraMatrixLoc = glGetUniformLocation( chunkShader.program, "worldToCameraMatrix" );//camera trandformation
-			cameraToClipMatrixLoc = glGetUniformLocation( chunkShader.program, "cameraToClipMatrix" );//perspective	
+			modelLoc = glGetUniformLocation( chunkShader.program, "model" );//model transformation
+			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
+			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective	
 
-			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-			glUniformMatrix4fv(worldToCameraMatrixLoc, 1, GL_FALSE, cast(const float*)fpsController.cameraMatrix);
-			glUniformMatrix4fv(cameraToClipMatrixLoc, 1, GL_FALSE, cast(const float*)fpsController.camera.perspective.arrayof);
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, cast(const float*)fpsController.cameraMatrix);
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, cast(const float*)fpsController.camera.perspective.arrayof);
 		chunkShader.unbind;
 
 		// Bind events
@@ -204,7 +206,7 @@ class VoxelApplication : Application!GlfwWindow
 	void windowResized(uvec2 newSize)
 	{
 		fpsController.camera.aspect = cast(float)newSize.x/newSize.y;
-		fpsController.camera.updatePerspective();
+		fpsController.camera.updateProjection();
 	}
 
 	override void draw()
@@ -227,24 +229,32 @@ class VoxelApplication : Application!GlfwWindow
 		glEnable(GL_DEPTH_TEST);
 		
 		chunkShader.bind;
-		glUniformMatrix4fv(worldToCameraMatrixLoc, 1, GL_FALSE,
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
 			fpsController.cameraMatrix);
-		glUniformMatrix4fv(cameraToClipMatrixLoc, 1, GL_FALSE,
+		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
 			cast(const float*)fpsController.camera.perspective.arrayof);
 
-		Matrix4f modelToWorldMatrix;
+		Matrix4f vp = secondFpsController.camera.perspective * secondFpsController.cameraToClipMatrix;
+		secondFpsController.camera.updateFrustum(vp);
+
+		Matrix4f modelMatrix;
 		foreach(Chunk* c; chunkMan.visibleChunks)
 		{
 			// Frustum culling
-			/*svec4 svecMin = c.coord.vector * chunkSize;
+			svec4 svecMin = c.coord.vector * chunkSize;
 			vec3 vecMin = vec3(svecMin.x, svecMin.y, svecMin.z);
 			vec3 vecMax = vecMin + chunkSize;
-			auto result = fpsController.camera.frustumAABBIntersect(vecMin, vecMax);
-			if (result == IntersectionResult.outside) continue;*/
 
-			modelToWorldMatrix = translationMatrix!float(c.mesh.position);
-			glUniformMatrix4fv(modelToWorldMatrixLoc, 1, GL_FALSE,
-				cast(const float*)modelToWorldMatrix.arrayof);
+			import dlib.geometry.frustum, dlib.geometry.aabb;
+			Frustum frustum;
+			frustum.fromMVP(vp);
+			if (frustum.intersectsAABB(boxFromMinMaxPoints(vecMin, vecMax))) continue;
+
+			auto test = secondFpsController.camera.frustumAABBIntersect(vecMin, vecMax);
+			if (test == IntersectionResult.outside) continue;
+
+			modelMatrix = translationMatrix!float(c.mesh.position);
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 			
 			c.mesh.bind;
 			c.mesh.render;
@@ -318,6 +328,7 @@ class VoxelApplication : Application!GlfwWindow
 			case KeyCode.KEY_O: fpsController.moveAxis(vec3(0, 1, 0)); break;
 			case KeyCode.KEY_U: doUpdateObserverPosition = !doUpdateObserverPosition; break;
 			case KeyCode.KEY_T: fpsController.moveAxis(vec3(0, 0, 128)); break;
+			case KeyCode.KEY_C: secondFpsController = fpsController; break;
 			case KeyCode.KEY_UP: fpsController.rotateVert(-45); break;
 			case KeyCode.KEY_DOWN: fpsController.rotateVert(45); break;
 			case KeyCode.KEY_LEFT: fpsController.rotateHor(-45); break;
@@ -349,8 +360,10 @@ import std.algorithm : filter;
 import std.conv : to;
 import voxelman.chunkmesh;
 
-enum chunkSize = 16;
+enum chunkSize = 32;
+enum chunkSizeBits = chunkSize - 1;
 enum chunkSizeSqr = chunkSize * chunkSize;
+enum chunkSizeCube = chunkSize * chunkSize * chunkSize;
 alias BlockType = ubyte;
 alias Vector!(short, 4) svec4;
 
@@ -765,7 +778,7 @@ struct ChunkMan
 
 	ChunkRange visibleRegion;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
-	uint viewRadius = 10;
+	uint viewRadius = 5;
 	
 	IBlock[] blockTypes;
 
@@ -959,6 +972,7 @@ struct ChunkMan
 		blockTypes ~= new AirBlock(1);
 		blockTypes ~= new GrassBlock(2);
 		blockTypes ~= new DirtBlock(3);
+		blockTypes ~= new StoneBlock(4);
 	}
 
 	Chunk* createEmptyChunk(ChunkCoord coord)
@@ -990,9 +1004,9 @@ struct ChunkMan
 	void updateObserverPosition(vec3 cameraPos)
 	{
 		ChunkCoord chunkPos = ChunkCoord(
-			to!short(to!int(cameraPos.x) >> 4),
-			to!short(to!int(cameraPos.y) >> 4),
-			to!short(to!int(cameraPos.z) >> 4));
+			to!short(to!int(cameraPos.x) / chunkSize),
+			to!short(to!int(cameraPos.y) / chunkSize),
+			to!short(to!int(cameraPos.z) / chunkSize));
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;
@@ -1193,7 +1207,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
 	ChunkData cd;
-	cd.typeData = new BlockType[chunkSize^^3];
+	cd.typeData = new BlockType[chunkSizeCube];
 	cd.uniform = true;
 
 	Generator generator = Generator(coord);
@@ -1203,11 +1217,11 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	BlockType type = cd.typeData[0];
 	
 	int bx, by, bz;
-	foreach(i; 1..chunkSize^^3)
+	foreach(i; 1..chunkSizeCube)
 	{
-		bx = i & (chunkSize-1);
-		by = (i>>8) & (chunkSize-1);
-		bz = (i>>4) & (chunkSize-1);
+		bx = i & chunkSizeBits;
+		by = (i / chunkSizeSqr) & chunkSizeBits;
+		bz = (i / chunkSize) & chunkSizeBits;
 
 		// Actual block gen
 		cd.typeData[i] = generator.generateBlock(bx, by, bz);
@@ -1250,16 +1264,36 @@ struct Generator2d
 		chunkZOffset = coord.z * chunkSize;
 		foreach(i, ref elem; heightMap)
 		{
-			int cx = i & (chunkSize-1);
-			int cz = (i>>4) & (chunkSize-1);
+			int cx = i & chunkSizeBits;
+			int cz = (i / chunkSize) & chunkSizeBits;
 			elem = cast(int)noise2d(chunkXOffset + cx, chunkZOffset + cz);
 		}
 	}
 
 	BlockType generateBlock(int x, int y, int z)
 	{
-		if (heightMap[z * chunkSize + x] >= (chunkYOffset + y)) return 2;
-		else return 1;
+		int height = heightMap[z * chunkSize + x];
+		int blockY = chunkYOffset + y;
+		if (blockY > height) return 1;
+
+		float noise = Simplex.noise(cast(float)(chunkXOffset+x)/42,
+			cast(float)(chunkYOffset+y)/42, cast(float)(chunkZOffset+z)/42);
+		if (noise < -0.1) return 1;
+
+		if (blockY == height) return 2;
+		else if (blockY > height - 10) return 3;
+		else return 4;
+	}
+}
+
+struct TestGenerator
+{
+	ChunkCoord coord;
+	void genPerChunkData(){}
+
+	BlockType generateBlock(int x, int y, int z)
+	{
+		return getBlockTest(x + coord.x, y + coord.y, z + coord.z);
 	}
 }
 
@@ -1430,7 +1464,7 @@ class SolidBlock : IBlock
 	override ubyte[] getMesh(ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 	{
 		ubyte[] data;
-		data.reserve(sidesnum*36);
+		data.reserve(sidesnum*48);
 
 		foreach(ubyte i; 0..6)
 		{
@@ -1441,9 +1475,11 @@ class SolidBlock : IBlock
 					data ~= cast(ubyte)(faces[18*i+v] + bx);
 					data ~= cast(ubyte)(faces[18*i+v+1] + by);
 					data ~= cast(ubyte)(faces[18*i+v+2] + bz);
+					data ~= 0;
 					data ~= cast(ubyte)(colors[i] * r);
 					data ~= cast(ubyte)(colors[i] * g);
 					data ~= cast(ubyte)(colors[i] * b);
+					data ~= 0;
 				} // for v
 			} // if
 		} // for i
@@ -1468,9 +1504,20 @@ class DirtBlock : SolidBlock
 	pure this(BlockType id)
 	{
 		super(id);
-		r = 255;
-		g = 140;
+		r = 120;
+		g = 72;
 		b = 0;
+	}
+}
+
+class StoneBlock : SolidBlock
+{
+	pure this(BlockType id)
+	{
+		super(id);
+		r = 128;
+		g = 128;
+		b = 128;
 	}
 }
 
@@ -1596,9 +1643,11 @@ body
 
 	if (chunk.data.uniform)
 	{
-		foreach (uint index; 0..chunkSize^^3)
+		foreach (uint index; 0..chunkSizeCube)
 		{
-			bx = index & 15, by = (index>>8) & 15, bz = (index>>4) & 15;
+			bx = index & chunkSizeBits;
+			by = (index / chunkSizeSqr) & chunkSizeBits;
+			bz = (index / chunkSize) & chunkSizeBits;
 			sides = 0;
 			sidenum = 0;
 			
@@ -1622,7 +1671,9 @@ body
 	{
 		if (isVisibleBlock(val))
 		{	
-			bx = index & 15, by = (index>>8) & 15, bz = (index>>4) & 15;
+			bx = index & chunkSizeBits;
+			by = (index / chunkSizeSqr) & chunkSizeBits;
+			bz = (index / chunkSize) & chunkSizeBits;
 			sides = 0;
 			sidenum = 0;
 			
