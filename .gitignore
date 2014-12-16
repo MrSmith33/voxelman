@@ -1,0 +1,16 @@
+*.exe
+*.dll
+*.lib
+*.obj
+*.a
+*.so
+*.png
+*.zip
+.DS_Store
+lib/
+obj/
+deps/
+bin/
+.dub/
+*.sublime*
+dub.selections.json
