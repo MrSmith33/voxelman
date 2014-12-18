@@ -10,7 +10,7 @@ import std.datetime : msecs;
 import std.stdio : writef, writeln, writefln;
 import core.thread : thread_joinAll;
 
-import dlib.math.vector : vec3;
+import dlib.math.vector : vec3, ivec3;
 
 import voxelman.block;
 import voxelman.chunk;

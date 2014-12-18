@@ -21,7 +21,7 @@ enum IntersectionResult
 struct Camera
 {
 public:
-	this(float fov ,
+	this(float fov,
 		 float aspect,
 		 float near,
 		 float far)

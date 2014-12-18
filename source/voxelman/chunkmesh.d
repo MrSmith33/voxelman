@@ -9,8 +9,8 @@ module voxelman.chunkmesh;
 import core.atomic : atomicLoad, atomicOp;
 import std.concurrency : thisTid;
 
-public import dlib.math.vector;
-public import dlib.math.quaternion;
+import dlib.math.vector;
+import dlib.math.quaternion;
 import derelict.opengl3.gl3;
 
 struct Attribute
