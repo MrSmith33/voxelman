@@ -56,7 +56,7 @@ struct FpsController
 	void rotateVert(float angle)
 	{
 		angleVert += angle * camera.sensivity;
-		angleVert = clamp!float(angleVert, angleVertMin, angleVertMax);
+		angleVert = clamp!float(angleVert, ANGLE_VERT_MIN, ANGLE_VERT_MAX);
 		isUpdated = false;
 	}
 
@@ -111,8 +111,8 @@ struct FpsController
 	float angleHor = 0;				//yaw
 	float angleVert = 0;				//pitch
 	
-	enum angleVertMin = -90.0f;	//minimum pitch
-	enum angleVertMax =  90.0f;	//maximal pitch
+	enum ANGLE_VERT_MIN = -90.0f;	//minimum pitch
+	enum ANGLE_VERT_MAX =  90.0f;	//maximal pitch
 	
 	Matrix4f cameraToClipMatrix;
 	Quaternionf rotationQuat;

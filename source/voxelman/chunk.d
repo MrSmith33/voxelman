@@ -13,10 +13,10 @@ import voxelman.block;
 import voxelman.chunkmesh;
 
 
-enum chunkSize = 32;
-enum chunkSizeBits = chunkSize - 1;
-enum chunkSizeSqr = chunkSize * chunkSize;
-enum chunkSizeCube = chunkSize * chunkSize * chunkSize;
+enum CHUNK_SIZE = 32;
+enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
+enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
+enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 alias Vector!(short, 4) svec4;
 
@@ -298,7 +298,7 @@ struct Chunk
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
 	{
 		if (data.uniform) return data.uniformType;
-		return data.typeData[cx + cy*chunkSizeSqr + cz*chunkSize];
+		return data.typeData[cx + cy*CHUNK_SIZE_SQR + cz*CHUNK_SIZE];
 	}
 
 	bool areAllAdjacentLoaded() @property

@@ -240,9 +240,9 @@ class VoxelApplication : Application!GlfwWindow
 		foreach(Chunk* c; chunkMan.visibleChunks)
 		{
 			// Frustum culling
-			svec4 svecMin = c.coord.vector * chunkSize;
+			svec4 svecMin = c.coord.vector * CHUNK_SIZE;
 			vec3 vecMin = vec3(svecMin.x, svecMin.y, svecMin.z);
-			vec3 vecMax = vecMin + chunkSize;
+			vec3 vecMax = vecMin + CHUNK_SIZE;
 
 			import dlib.geometry.frustum, dlib.geometry.aabb;
 			Frustum frustum;

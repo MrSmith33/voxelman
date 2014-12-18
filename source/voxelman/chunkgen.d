@@ -54,7 +54,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
 	ChunkData cd;
-	cd.typeData = new BlockType[chunkSizeCube];
+	cd.typeData = new BlockType[CHUNK_SIZE_CUBE];
 	cd.uniform = true;
 
 	Generator generator = Generator(coord);
@@ -64,11 +64,11 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	BlockType type = cd.typeData[0];
 	
 	int bx, by, bz;
-	foreach(i; 1..chunkSizeCube)
+	foreach(i; 1..CHUNK_SIZE_CUBE)
 	{
-		bx = i & chunkSizeBits;
-		by = (i / chunkSizeSqr) & chunkSizeBits;
-		bz = (i / chunkSize) & chunkSizeBits;
+		bx = i & CHUNK_SIZE_BITS;
+		by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 
 		// Actual block gen
 		cd.typeData[i] = generator.generateBlock(bx, by, bz);
@@ -95,27 +95,27 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 struct Generator2d
 {
 	ChunkCoord coord;
-	private int[chunkSizeSqr] heightMap;
+	private int[CHUNK_SIZE_SQR] heightMap;
 	private int chunkXOffset;
 	private int chunkYOffset;
 	private int chunkZOffset;
 
 	void genPerChunkData()
 	{
-		chunkXOffset = coord.x * chunkSize;
-		chunkYOffset = coord.y * chunkSize;
-		chunkZOffset = coord.z * chunkSize;
+		chunkXOffset = coord.x * CHUNK_SIZE;
+		chunkYOffset = coord.y * CHUNK_SIZE;
+		chunkZOffset = coord.z * CHUNK_SIZE;
 		foreach(i, ref elem; heightMap)
 		{
-			int cx = i & chunkSizeBits;
-			int cz = (i / chunkSize) & chunkSizeBits;
+			int cx = i & CHUNK_SIZE_BITS;
+			int cz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			elem = cast(int)noise2d(chunkXOffset + cx, chunkZOffset + cz);
 		}
 	}
 
 	BlockType generateBlock(int x, int y, int z)
 	{
-		int height = heightMap[z * chunkSize + x];
+		int height = heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkYOffset + y;
 		if (blockY > height) return 1;
 
@@ -142,15 +142,15 @@ struct TestGenerator
 
 float noise2d(int x, int z)
 {
-	enum numOctaves = 6;
-	enum divider = 50; // bigger - smoother
-	enum heightModifier = 4; // bigger - higher
+	enum NUM_OCTAVES = 6;
+	enum DIVIDER = 50; // bigger - smoother
+	enum HEIGHT_MODIFIER = 4; // bigger - higher
 
 	float noise = 0.0;
-	foreach(i; 1..numOctaves+1)
+	foreach(i; 1..NUM_OCTAVES+1)
 	{
 		// [-1; 1]
-		noise += Simplex.noise(cast(float)x/(divider*i), cast(float)z/(divider*i))*i*heightModifier;
+		noise += Simplex.noise(cast(float)x/(DIVIDER*i), cast(float)z/(DIVIDER*i))*i*HEIGHT_MODIFIER;
 	}
 
 	return noise;

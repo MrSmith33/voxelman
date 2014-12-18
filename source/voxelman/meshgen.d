@@ -82,23 +82,23 @@ body
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blockTypes[ adjacent[Side.west].getBlockType(chunkSize-1, y, z) ].isSideTransparent(side);
-		else if(tx == chunkSize) // east
+			return blockTypes[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isSideTransparent(side);
+		else if(tx == CHUNK_SIZE) // east
 			return blockTypes[ adjacent[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
 
 		if(ty == -1) // bottom
 		{
 			assert(side == Side.top, to!string(side));
-			return blockTypes[ adjacent[Side.bottom].getBlockType(x, chunkSize-1, z) ].isSideTransparent(side);
+			return blockTypes[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isSideTransparent(side);
 		}
-		else if(ty == chunkSize) // top
+		else if(ty == CHUNK_SIZE) // top
 		{
 			return blockTypes[ adjacent[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
 		}
 
 		if(tz == -1) // north
-			return blockTypes[ adjacent[Side.north].getBlockType(x, y, chunkSize-1) ].isSideTransparent(side);
-		else if(tz == chunkSize) // south
+			return blockTypes[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isSideTransparent(side);
+		else if(tz == CHUNK_SIZE) // south
 			return blockTypes[ adjacent[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
 		
 		return blockTypes[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
@@ -113,11 +113,11 @@ body
 
 	if (chunk.data.uniform)
 	{
-		foreach (uint index; 0..chunkSizeCube)
+		foreach (uint index; 0..CHUNK_SIZE_CUBE)
 		{
-			bx = index & chunkSizeBits;
-			by = (index / chunkSizeSqr) & chunkSizeBits;
-			bz = (index / chunkSize) & chunkSizeBits;
+			bx = index & CHUNK_SIZE_BITS;
+			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
 			sidenum = 0;
 			
@@ -141,9 +141,9 @@ body
 	{
 		if (isVisibleBlock(val))
 		{	
-			bx = index & chunkSizeBits;
-			by = (index / chunkSizeSqr) & chunkSizeBits;
-			bz = (index / chunkSize) & chunkSizeBits;
+			bx = index & CHUNK_SIZE_BITS;
+			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
 			sidenum = 0;
 			

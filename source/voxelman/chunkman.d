@@ -149,7 +149,7 @@ struct ChunkMan
 		chunk.mesh.data = data.meshData;
 		
 		ChunkCoord coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * chunkSize - 0.5f;
+		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
@@ -258,9 +258,9 @@ struct ChunkMan
 		import std.conv : to;
 
 		ChunkCoord chunkPos = ChunkCoord(
-			to!short(to!int(cameraPos.x) / chunkSize),
-			to!short(to!int(cameraPos.y) / chunkSize),
-			to!short(to!int(cameraPos.z) / chunkSize));
+			to!short(to!int(cameraPos.x) / CHUNK_SIZE),
+			to!short(to!int(cameraPos.y) / CHUNK_SIZE),
+			to!short(to!int(cameraPos.z) / CHUNK_SIZE));
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;

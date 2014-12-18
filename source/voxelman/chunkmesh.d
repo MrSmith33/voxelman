@@ -58,7 +58,7 @@ class ChunkMesh
 	}
 
 	alias ElemType = ubyte;
-	enum vertexSize = ubyte.sizeof * 8;
+	enum VERTEX_SIZE = ubyte.sizeof * 8;
 
 	void loadBuffer()
 	{
@@ -67,9 +67,9 @@ class ChunkMesh
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		// coords
-		glVertexAttribPointer(0, 3, GL_UNSIGNED_BYTE, GL_FALSE, vertexSize, null);
+		glVertexAttribPointer(0, 3, GL_UNSIGNED_BYTE, GL_FALSE, VERTEX_SIZE, null);
 		// color
-		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, vertexSize, cast(void*)(vertexSize / 2));
+		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, VERTEX_SIZE, cast(void*)(VERTEX_SIZE / 2));
 		glBindBuffer(GL_ARRAY_BUFFER,0);
 	}
 	
@@ -92,10 +92,10 @@ class ChunkMesh
 			loadBuffer();
 			isDataDirty = false;
 		}
-		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/vertexSize));//data.length/12);
+		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/VERTEX_SIZE));//data.length/12);
 	}
 
-	ulong numVertexes() {return data.length/vertexSize;}
-	ulong numTris() {return data.length/(vertexSize*3);}
+	ulong numVertexes() {return data.length/VERTEX_SIZE;}
+	ulong numTris() {return data.length/(VERTEX_SIZE*3);}
 	
 }
