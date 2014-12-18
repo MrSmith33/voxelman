@@ -1,19 +1,15 @@
 module voxelman.region;
 
 import std.string : format;
-import std.bitmanip;
-import std.file : exists, writeToFile = write, mkdir, rmdirRecurse;
-import std.stdio;
-import std.path;
+import std.bitmanip : BitArray, nativeToBigEndian, bigEndianToNative;
+import std.file : exists;
+import std.stdio : writefln, writeln, File, SEEK_END;
+import std.path : isValidPath, dirSeparator;
 
 enum REGION_SIZE = 16;
 enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
 enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
 enum SECTOR_SIZE = 4096;
-
-
-enum CHUNK_SIZE = 16;
-enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 enum HEADER_SIZE = REGION_SIZE_CUBE * uint.sizeof;
 enum NUM_HEADER_SECTORS = HEADER_SIZE / SECTOR_SIZE;
@@ -267,22 +263,4 @@ struct Region
 				file.rawWrite(emptyByte);
 		}
 	}
-}
-
-unittest
-{
-	static ubyte[4096*4] buffer;
-	enum regionDir = "regions";
-
-	//if (exists(regionDir))
-	//	rmdirRecurse(regionDir);
-	//if (!exists(regionDir))
-	//	mkdir(regionDir);
-	import std.array;
-	ubyte[] arr = uninitializedArray!(ubyte[])(4096);
-	arr[] = 42;
-
-	Region region = Region(regionDir, 1,2,3);
-	//region.writeChunk(0, 0, 0, arr);
-	region.readChunk(0, 0, 0, buffer);
 }
