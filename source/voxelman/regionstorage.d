@@ -58,7 +58,7 @@ struct RegionStorage
 			writefln("CL %s", localChunkCoords);
 		}
 		return loadRegion(regionPos)
-			.isChunkOnDisk(localChunkCoords.x, localChunkCoords.y, localChunkCoords.z);
+			.isChunkOnDisk(localChunkCoords);
 	}
 
 	bool isRegionOnDisk(ivec3 regionPos)
@@ -74,8 +74,7 @@ struct RegionStorage
 		ivec3 localChunkCoords = calcLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		return region.readChunk(localChunkCoords.x, localChunkCoords.y,
-			localChunkCoords.z, outBuffer);
+		return region.readChunk(localChunkCoords, outBuffer);
 	}
 
 	void writeChunk(ivec3 chunkPos, in ubyte[] chunkData)
@@ -84,7 +83,7 @@ struct RegionStorage
 		ivec3 localChunkCoords = calcLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		region.writeChunk(localChunkCoords.x, localChunkCoords.y, localChunkCoords.z, chunkData);
+		region.writeChunk(localChunkCoords, chunkData);
 	}
 
 	private Region* loadRegion(ivec3 regionPos)

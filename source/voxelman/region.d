@@ -5,11 +5,12 @@ Authors: Andrey Penechko.
 */
 module voxelman.region;
 
-import std.string : format;
 import std.bitmanip : BitArray, nativeToBigEndian, bigEndianToNative;
 import std.file : exists;
-import std.stdio : writefln, writeln, File, SEEK_END;
 import std.path : isValidPath, dirSeparator;
+import std.stdio : writefln, writeln, File, SEEK_END;
+import std.string : format;
+import dlib.math.vector : ivec3;
 
 enum REGION_SIZE = 16;
 enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
@@ -60,10 +61,10 @@ struct Region
 
 	/// Returns true if chunk is presented on disk.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public bool isChunkOnDisk(int x, int y, int z)
+	public bool isChunkOnDisk(ivec3 chunkCoord)
 	{
-		assert(isValidCoord(x, y, z));
-		auto index = chunkIndex(x, y, z);
+		assert(isValidCoord(chunkCoord));
+		auto index = chunkIndex(chunkCoord);
 		return (offsets[index] & 0xFF) != 0;
 	}
 
@@ -73,19 +74,19 @@ struct Region
 	/// Returns: a slice of outBuffer with actual data or null if chunk was not
 	/// stored on disk previously.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public ubyte[] readChunk(int x, int y, int z, ubyte[] outBuffer)
+	public ubyte[] readChunk(ivec3 chunkCoord, ubyte[] outBuffer)
 	{
-		assert(isValidCoord(x, y, z));
-		if (!isChunkOnDisk(x, y, z)) return null;
+		assert(isValidCoord(chunkCoord));
+		if (!isChunkOnDisk(chunkCoord)) return null;
 
-		auto index = chunkIndex(x, y, z);
+		auto index = chunkIndex(chunkCoord);
 		auto sectorNumber = offsets[index] >> 8;
 		auto numSectors = offsets[index] & 0xFF;
 
 		// Chunk sector is after EOF.
 		if (sectorNumber + numSectors > sectors.length)
 		{
-			writefln("Invalid sector {%s, %s, %s}", x, y, z);
+			writefln("Invalid sector %s", chunkCoord);
 			return null;
 		}
 
@@ -96,21 +97,21 @@ struct Region
 
 		if (dataLength > numSectors * SECTOR_SIZE)
 		{
-			writefln("Invalid data length {%s, %s, %s}, %s > %s * %s",
-				x, y, z, dataLength, numSectors, SECTOR_SIZE);
+			writefln("Invalid data length %s, %s > %s * %s",
+				chunkCoord, dataLength, numSectors, SECTOR_SIZE);
 			return null;
 		}
 
 		return file.rawRead(outBuffer[0..dataLength]);
 	}
 
-	/// Writes chunk at x, y, z with data chunkData to disk.
+	/// Writes chunk at chunkCoord with data chunkData to disk.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public void writeChunk(int x, int y, int z, in ubyte[] chunkData)
+	public void writeChunk(ivec3 chunkCoord, in ubyte[] chunkData)
 	{
-		assert(isValidCoord(x, y, z));
+		assert(isValidCoord(chunkCoord));
 
-		auto index = chunkIndex(x, y, z);
+		auto index = chunkIndex(chunkCoord);
 		auto sectorNumber = offsets[index] >> 8;
 		auto numSectors = offsets[index] & 0xFF;
 
@@ -170,7 +171,7 @@ struct Region
 		// Use free sectors found in a file.
 		writeChunkData(firstFreeSector, chunkData);
 
-		setChunkOffset(x, y, z, firstFreeSector, cast(ubyte)sectorsNeeded);
+		setChunkOffset(chunkCoord, firstFreeSector, cast(ubyte)sectorsNeeded);
 		foreach(i; firstFreeSector..firstFreeSector + sectorsNeeded)
 			sectors[i] = false;
 
@@ -178,16 +179,16 @@ struct Region
 		fixPadding();
 	}
 
-	private bool isValidCoord(int x, int y, int z)
+	private bool isValidCoord(ivec3 chunkCoord)
 	{
-		return !(x < 0 || x >= REGION_SIZE ||
-				y < 0 || y >= REGION_SIZE ||
-				z < 0 || z >= REGION_SIZE);
+		return !(chunkCoord.x < 0 || chunkCoord.x >= REGION_SIZE ||
+				chunkCoord.y < 0 || chunkCoord.y >= REGION_SIZE ||
+				chunkCoord.z < 0 || chunkCoord.z >= REGION_SIZE);
 	}
 
-	private size_t chunkIndex(int x, int y, int z)
+	private size_t chunkIndex(ivec3 chunkCoord)
 	{
-		return x + y * REGION_SIZE + z * REGION_SIZE_SQR;
+		return chunkCoord.x + chunkCoord.y * REGION_SIZE + chunkCoord.z * REGION_SIZE_SQR;
 	}
 
 	private void openFile(string regionFilename)
@@ -247,9 +248,9 @@ struct Region
 		file.rawWrite(data);
 	}
 
-	private void setChunkOffset(int x, int y, int z, uint position, ubyte size)
+	private void setChunkOffset(ivec3 chunkCoord, uint position, ubyte size)
 	{
-		auto index = chunkIndex(x, y, z);
+		auto index = chunkIndex(chunkCoord);
 		uint offset = (position << 8) | size;
 		offsets[index] = offset;
 		file.seek(index * 4);

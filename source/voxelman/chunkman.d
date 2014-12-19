@@ -25,6 +25,7 @@ import voxelman.workergroup;
 
 enum string SAVE_DIR = "save";
 enum NUM_WORKERS = 4;
+enum VIEW_RADIUS = 6;
 ///
 struct ChunkMan
 {
@@ -42,7 +43,7 @@ struct ChunkMan
 
 	ChunkRange visibleRegion;
 	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
-	uint viewRadius = 5;
+	uint viewRadius = VIEW_RADIUS;
 	
 	IBlock[] blockTypes;
 
