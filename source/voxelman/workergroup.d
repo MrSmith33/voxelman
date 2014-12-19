@@ -8,20 +8,22 @@ module voxelman.workergroup;
 import core.atomic : atomicStore;
 import std.concurrency : Tid, spawnLinked, send, prioritySend;
 
-struct WorkerGroup(uint numWorkers, alias workerFun)
+struct WorkerGroup(alias workerFun)
 {
 	import std.traits : ParameterTypeTuple;
 
 	private bool _areWorkersStarted;
 	private uint _nextWorker;
 	private Tid[] _workers;
+	private uint _numWorkers;
 	private shared bool _areWorkersRunning;
 
-	void startWorkers(ParameterTypeTuple!workerFun args)
+	void startWorkers(uint numWorkers, ParameterTypeTuple!workerFun args)
 	{
 		if (_areWorkersStarted) return;
+		_numWorkers = numWorkers;
 		atomicStore(_areWorkersRunning, true);
-		foreach(_; 0..numWorkers)
+		foreach(_; 0.._numWorkers)
 			_workers ~= spawnLinked(&workerFun, args);
 		foreach(worker; _workers)
 			worker.send(&_areWorkersRunning);
@@ -30,7 +32,7 @@ struct WorkerGroup(uint numWorkers, alias workerFun)
 
 	Tid nextWorker() @property
 	{
-		_nextWorker %= numWorkers;
+		_nextWorker %= _numWorkers;
 		return _workers[_nextWorker++];
 	}
 

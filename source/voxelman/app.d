@@ -25,6 +25,8 @@ import voxelman.chunkman;
 
 __gshared ChunkMan chunkMan;
 
+enum startPos = vec3(0, 100, 0);
+
 //version = manualGC;
 version(manualGC) import core.memory;
 
@@ -86,7 +88,7 @@ class VoxelApplication : Application!GlfwWindow
 		clearColor = Color(115,200,169);
 		renderer.setClearColor(clearColor);
 
-		fpsController.move(vec3(0, 200, 0));
+		fpsController.move(startPos);
 		fpsController.camera.sensivity = 0.4;
 		fpsController.camera.updateProjection();
 		secondFpsController.camera.updateProjection();

@@ -21,7 +21,7 @@ import voxelman.meshgen;
 import voxelman.regionstorage;
 import voxelman.workergroup;
 
-version = Disk_Storage;
+//version = Disk_Storage;
 
 enum string SAVE_DIR = "save";
 enum NUM_WORKERS = 4;
