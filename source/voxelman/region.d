@@ -46,9 +46,9 @@ struct Region
 	private BitArray sectors;
 
 	@disable this();
-	this(string regionDir, int regionX, int regionY, int regionZ)
+	this(string regionFilename)
 	{
-		openFile(regionDir, regionX, regionY, regionZ);
+		openFile(regionFilename);
 	}
 
 	/// Closes the underlyiing file handle.
@@ -59,6 +59,7 @@ struct Region
 	}
 
 	/// Returns true if chunk is presented on disk.
+	/// Coords are region local. I.e. 0..REGION_SIZE
 	public bool isChunkOnDisk(int x, int y, int z)
 	{
 		assert(isValidCoord(x, y, z));
@@ -71,6 +72,7 @@ struct Region
 	/// outBuffer should be big enough to store chunk of any size.
 	/// Returns: a slice of outBuffer with actual data or null if chunk was not
 	/// stored on disk previously.
+	/// Coords are region local. I.e. 0..REGION_SIZE
 	public ubyte[] readChunk(int x, int y, int z, ubyte[] outBuffer)
 	{
 		assert(isValidCoord(x, y, z));
@@ -103,6 +105,7 @@ struct Region
 	}
 
 	/// Writes chunk at x, y, z with data chunkData to disk.
+	/// Coords are region local. I.e. 0..REGION_SIZE
 	public void writeChunk(int x, int y, int z, in ubyte[] chunkData)
 	{
 		assert(isValidCoord(x, y, z));
@@ -187,30 +190,26 @@ struct Region
 		return x + y * REGION_SIZE + z * REGION_SIZE_SQR;
 	}
 
-	private void openFile(string regionDir, int regionX, int regionY, int regionZ)
+	private void openFile(string regionFilename)
 	{
-		assert(isValidPath(regionDir));
-		string filename = format("%s%s%s_%s_%s.region",
-			regionDir, dirSeparator, regionX, regionY, regionZ);
-		writeln(filename);
-		assert(isValidPath(filename));
+		assert(isValidPath(regionFilename));
 
-		if (!exists(filename))
+		if (!exists(regionFilename))
 		{
-			writeln("write header");
-			file.open(filename, "wb+");
+			//writeln("write header");
+			file.open(regionFilename, "wb+");
 		
 			// Lets write chunk offset table.
 			foreach(_; 0..(REGION_SIZE_CUBE*uint.sizeof) / SECTOR_SIZE)
 				file.rawWrite(emptySector);
 
 			sectors.length = NUM_HEADER_SECTORS;
-			writefln("%b", sectors);
+			//writefln("%b", sectors);
 			return;
 		}
 
-		writeln("read header");
-		file.open(filename, "rb+");
+		//writeln("read header");
+		file.open(regionFilename, "rb+");
 		file.rawRead(offsets[]);
 
 		// File size is not multiple of SECTOR_SIZE, bump it.
@@ -238,7 +237,7 @@ struct Region
 			}
 		}
 
-		writefln("%b", sectors);
+		//writefln("%b", sectors);
 	}
 
 	private void writeChunkData(uint sectorNumber, in ubyte[] data)

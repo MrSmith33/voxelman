@@ -6,6 +6,7 @@
 	"license" : "BSL-1.0",
 
 	"dependencies" : {
+		"cbor-d" : ">=0.3.0",
 		"anchovy" : {"version" : "~master"}
 	},
 

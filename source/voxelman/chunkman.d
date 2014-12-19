@@ -10,6 +10,7 @@ import std.datetime : msecs;
 import std.stdio : writef, writeln, writefln;
 import core.thread : thread_joinAll;
 
+import cbor;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.block;
@@ -17,11 +18,18 @@ import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
 import voxelman.meshgen;
+import voxelman.regionstorage;
 import voxelman.workergroup;
 
+version = Disk_Storage;
+
+enum string SAVE_DIR = "save";
+enum NUM_WORKERS = 4;
 ///
 struct ChunkMan
 {
+	RegionStorage* regionStorage;
+	ubyte[4096*16] buffer;
 	Chunk*[ulong] chunks;
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
@@ -38,22 +46,24 @@ struct ChunkMan
 	
 	IBlock[] blockTypes;
 
-	WorkerGroup!(4, chunkGenWorkerThread) genWorkers;
-	WorkerGroup!(4, meshWorkerThread) meshWorkers;
+	WorkerGroup!(chunkGenWorkerThread) genWorkers;
+	WorkerGroup!(meshWorkerThread) meshWorkers;
 
 	void init()
 	{
+		regionStorage = new RegionStorage(SAVE_DIR);
 		loadBlockTypes();
-		//Chunk.unknownChunk = new Chunk(ChunkCoord(0, 0, 0));
 
-		genWorkers.startWorkers(thisTid);
-		meshWorkers.startWorkers(thisTid, cast(shared)&this);
+		genWorkers.startWorkers(NUM_WORKERS, thisTid);
+		meshWorkers.startWorkers(NUM_WORKERS, thisTid, cast(shared)&this);
 	}
 
 	void stop()
 	{
 		genWorkers.stopWorkers();
 		meshWorkers.stopWorkers();
+
+		regionStorage.clear();
 
 		thread_joinAll();
 	}
@@ -394,6 +404,8 @@ struct ChunkMan
 		chunks.remove(chunk.coord.asLong);
 		if (chunk.mesh) chunk.mesh.free();
 		delete chunk.mesh;
+		version(Disk_Storage)
+			saveChunk(chunk.coord, chunk.data);
 		delete chunk.data.typeData;
 		delete chunk;
 	}
@@ -412,7 +424,46 @@ struct ChunkMan
 		chunk.hasWriter = true;
 		++numLoadChunkTasks;
 
+		version(Disk_Storage)
+		if (regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)))
+		{
+			try
+			{
+				ChunkData cd = readChunk(coord);
+				ChunkGenResult* genResult = new ChunkGenResult(cd, coord);
+				onChunkLoaded(genResult);
+				return;
+			}
+			catch(Exception e)
+			{
+				writeln(e.msg);
+			}
+		}
+		
 		genWorkers.nextWorker.send(chunk.coord);
+	}
+
+	void saveChunk(ChunkCoord coord, ref ChunkData data)
+	{
+		if (regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)))
+			return;
+
+		try
+		{
+			size_t encodedSize = encodeCborArray(buffer[], data);
+			regionStorage.writeChunk(ivec3(coord.x, coord.y, coord.z), buffer[0..encodedSize]);
+		}
+		catch(Exception e)
+		{
+			writeln(e);
+		}
+	}
+
+	ChunkData readChunk(ChunkCoord coord)
+	{
+		assert(regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)));
+		auto data = regionStorage.readChunk(ivec3(coord.x, coord.y, coord.z), buffer[]);
+		return decodeCborSingleDup!ChunkData(data);
 	}
 
 	void loadRegion(ChunkRange region)
