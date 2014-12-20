@@ -67,8 +67,20 @@ struct ChunkMan
 
 	void stop()
 	{
+		writefln("stopping threads");
+		
 		genWorkers.stopWorkers();
 		meshWorkers.stopWorkers();
+
+		writefln("saving chunks %s", chunks.length);
+
+		foreach(chunk; chunks.byValue)
+			addToRemoveQueue(chunk);
+
+		while(chunks.length > 0)
+			processRemoveQueue();
+
+		writefln("saved");
 
 		regionStorage.clear();
 
@@ -77,8 +89,6 @@ struct ChunkMan
 
 	void update()
 	{
-		//writefln("cm.update");
-		//stdout.flush;
 		bool message = true;
 		while (message)
 		{
@@ -88,9 +98,7 @@ struct ChunkMan
 				);
 		}
 
-		//writefln("cm.update 1");
 		updateChunks();
-		//writefln("cm.update end");
 	}
 
 	void onChunkLoaded(ChunkGenResult* data)
@@ -354,8 +362,9 @@ struct ChunkMan
 	{
 		assert(chunk);
 		assert(chunk != Chunk.unknownChunk);
-		//writefln("addToRemoveQueue %s pos %s", chunk.coord, observerPosition);
-		//printAdjacent(chunk);
+
+		// already queued
+		if (chunk.next != null && chunk.prev != null) return;
 		
 		chunk.next = chunksToRemoveQueue;
 		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
@@ -464,7 +473,6 @@ struct ChunkMan
 		{
 			size_t encodedSize = encodeCborArray(buffer[], compressedData);
 			//writef("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
-			writeln;
 			regionStorage.writeChunk(coord.asivec3, buffer[0..encodedSize]);
 		}
 		catch(Exception e)
