@@ -12,6 +12,7 @@ import std.path : isValidPath, dirSeparator;
 import std.stdio : writef, writeln, writefln, FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
+import voxelman.chunk;
 import voxelman.region : Region, REGION_SIZE;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
@@ -111,25 +112,5 @@ struct RegionStorage
 		formattedWrite(appender, "%s%s%s_%s_%s.region",
 			regionDirectory, dirSeparator, regionPos.x, regionPos.y, regionPos.z);
 		return appender.data;
-	}
-
-	private ivec3 calcRegionPos(ivec3 chunkPos)
-	{
-		import std.math : floor;
-		return ivec3(
-			cast(int)floor(chunkPos.x / cast(float)REGION_SIZE),
-			cast(int)floor(chunkPos.y / cast(float)REGION_SIZE),
-			cast(int)floor(chunkPos.z / cast(float)REGION_SIZE));
-	}
-
-	private ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
-	{
-		chunkWorldPos.x %= REGION_SIZE;
-		chunkWorldPos.y %= REGION_SIZE;
-		chunkWorldPos.z %= REGION_SIZE;
-		if (chunkWorldPos.x < 0) chunkWorldPos.x += REGION_SIZE;
-		if (chunkWorldPos.y < 0) chunkWorldPos.y += REGION_SIZE;
-		if (chunkWorldPos.z < 0) chunkWorldPos.z += REGION_SIZE;
-		return chunkWorldPos;
 	}
 }

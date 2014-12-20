@@ -140,7 +140,7 @@ class VoxelApplication : Application!GlfwWindow
 		setupFrameShowButton("showSettings", "settingsFrame");
 
 		debugInfo = context.getWidgetById("debugInfo");
-		foreach(i; 0..11) context.createWidget("label", debugInfo);
+		foreach(i; 0..12) context.createWidget("label", debugInfo);
 
 		writeln("\n----------------------------- Load end -----------------------------\n");
 
@@ -193,15 +193,21 @@ class VoxelApplication : Application!GlfwWindow
 		trisRendered = 0;
 
 		vec3 pos = fpsController.camera.position;
-		lines[ 6]["text"] = format("Position: X %.2f, Y %.2f, Z %.2f",
+		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
+		ivec3 chunkPos = chunkMan.observerPosition.asivec3;
+		ivec3 regionPos = calcRegionPos(chunkPos);
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		lines[ 7]["text"] = format("Chunk: %s Region: %s",
+			chunkPos, regionPos).to!dstring;
+
 		vec3 target = fpsController.camera.target;
-		lines[ 7]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
+		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
 			target.x, target.y, target.z).to!dstring;
-		lines[ 8]["text"] = format("Chunks to remove: %s", chunkMan.numChunksToRemove).to!dstring;
-		lines[ 9]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
-		lines[ 10]["text"] = format("Chunks to mesh: %s", chunkMan.numMeshChunkTasks).to!dstring;
+		lines[ 9]["text"] = format("Chunks to remove: %s", chunkMan.numChunksToRemove).to!dstring;
+		lines[ 10]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
+		lines[ 11]["text"] = format("Chunks to mesh: %s", chunkMan.numMeshChunkTasks).to!dstring;
 	}
 
 	void windowResized(uvec2 newSize)

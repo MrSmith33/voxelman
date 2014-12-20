@@ -11,6 +11,7 @@ import dlib.math.vector;
 
 import voxelman.block;
 import voxelman.chunkmesh;
+import voxelman.region;
 
 
 enum CHUNK_SIZE = 16;
@@ -65,6 +66,26 @@ struct ChunkCoord
 				(other.y > y ? other.y - y : y - other.y)^^2 +
 				(other.z > z ? other.z - z : z - other.z)^^2);
 	}
+}
+
+ivec3 calcRegionPos(ivec3 chunkWorldPos)
+{
+	import std.math : floor;
+	return ivec3(
+		cast(int)floor(chunkWorldPos.x / cast(float)REGION_SIZE),
+		cast(int)floor(chunkWorldPos.y / cast(float)REGION_SIZE),
+		cast(int)floor(chunkWorldPos.z / cast(float)REGION_SIZE));
+}
+
+ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
+{
+	chunkWorldPos.x %= REGION_SIZE;
+	chunkWorldPos.y %= REGION_SIZE;
+	chunkWorldPos.z %= REGION_SIZE;
+	if (chunkWorldPos.x < 0) chunkWorldPos.x += REGION_SIZE;
+	if (chunkWorldPos.y < 0) chunkWorldPos.y += REGION_SIZE;
+	if (chunkWorldPos.z < 0) chunkWorldPos.z += REGION_SIZE;
+	return chunkWorldPos;
 }
 
 // 3d slice of chunks
