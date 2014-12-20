@@ -9,10 +9,12 @@ import std.array : Appender;
 import std.file : exists, mkdirRecurse;
 import std.format : formattedWrite;
 import std.path : isValidPath, dirSeparator;
-import std.stdio : writef, writeln, writefln;
+import std.stdio : writef, writeln, writefln, FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
 import voxelman.region : Region, REGION_SIZE;
+
+enum MAX_CACHED_REGIONS = FOPEN_MAX;
 
 /// Used for easy saving/loading chunks into region files.
 struct RegionStorage
@@ -26,12 +28,13 @@ struct RegionStorage
 	this(string regionDir)
 	{
 		assert(isValidPath(regionDir));
+
 		regionDirectory = regionDir;
 		if (!exists(regionDirectory))
 			mkdirRecurse(regionDirectory);
+
 		buffer = new char[1024];
 		appender = Appender!(char[])(buffer);
-		appender.clear();
 	}
 
 	void clear()
@@ -45,20 +48,12 @@ struct RegionStorage
 	bool isChunkOnDisk(ivec3 chunkPos)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		Region* region = getRegion(regionPos);
-
-		if (!isRegionOnDisk(regionPos))
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		
+		if (!isRegionOnDisk(regionPos)) 
 			return false;
 
-		ivec3 localChunkCoords = calcLocalPos(chunkPos);
-		if (localChunkCoords.x < 0 || localChunkCoords.y < 0 || localChunkCoords.z < 0)
-		{
-			writef("C %s : ", chunkPos);
-			writef("R %s : ", regionPos);
-			writefln("CL %s", localChunkCoords);
-		}
-		return loadRegion(regionPos)
-			.isChunkOnDisk(localChunkCoords);
+		return loadRegion(regionPos).isChunkOnDisk(localChunkCoords);
 	}
 
 	bool isRegionOnDisk(ivec3 regionPos)
@@ -71,7 +66,7 @@ struct RegionStorage
 	ubyte[] readChunk(ivec3 chunkPos, ubyte[] outBuffer)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcLocalPos(chunkPos);
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
 		return region.readChunk(localChunkCoords, outBuffer);
@@ -80,7 +75,7 @@ struct RegionStorage
 	void writeChunk(ivec3 chunkPos, in ubyte[] chunkData)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcLocalPos(chunkPos);
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
 		region.writeChunk(localChunkCoords, chunkData);
@@ -90,9 +85,13 @@ struct RegionStorage
 	{
 		if (auto region = getRegion(regionPos))
 			return region;
+
+		if (regions.length >= MAX_CACHED_REGIONS)
+			clear();
+
 		string filename = regionFilename(regionPos).idup;
-		//writeln(filename);
 		assert(isValidPath(filename));
+		
 		Region* region = new Region(filename);
 		regions[regionPos] = region;
 		return region;
@@ -116,10 +115,14 @@ struct RegionStorage
 
 	private ivec3 calcRegionPos(ivec3 chunkPos)
 	{
-		return chunkPos / REGION_SIZE;
+		import std.math : floor;
+		return ivec3(
+			cast(int)floor(chunkPos.x / cast(float)REGION_SIZE),
+			cast(int)floor(chunkPos.y / cast(float)REGION_SIZE),
+			cast(int)floor(chunkPos.z / cast(float)REGION_SIZE));
 	}
 
-	private ivec3 calcLocalPos(ivec3 chunkWorldPos)
+	private ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
 	{
 		chunkWorldPos.x %= REGION_SIZE;
 		chunkWorldPos.y %= REGION_SIZE;

@@ -12,13 +12,17 @@ import std.stdio : writefln, writeln, File, SEEK_END;
 import std.string : format;
 import dlib.math.vector : ivec3;
 
-enum REGION_SIZE = 16;
+int ceiling_pos (float X) {return (X-cast(int)(X)) > 0 ? cast(int)(X+1) : cast(int)(X);}
+int ceiling_neg (float X) {return (X-cast(int)(X)) < 0 ? cast(int)(X-1) : cast(int)(X);}
+int ceiling (float X) {return ((X) > 0) ? ceiling_pos(X) : ceiling_neg(X);}
+
+enum REGION_SIZE = 8;
 enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
 enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
-enum SECTOR_SIZE = 4096;
+enum SECTOR_SIZE = 512;
 
 enum HEADER_SIZE = REGION_SIZE_CUBE * uint.sizeof;
-enum NUM_HEADER_SECTORS = HEADER_SIZE / SECTOR_SIZE;
+enum NUM_HEADER_SECTORS = ceiling(float(HEADER_SIZE) / SECTOR_SIZE);
 enum CHUNK_HEADER_SIZE = uint.sizeof;
 
 // Chunk sectors number is stored as ubyte, so max 255 sectors can be used.
@@ -63,7 +67,7 @@ struct Region
 	/// Coords are region local. I.e. 0..REGION_SIZE
 	public bool isChunkOnDisk(ivec3 chunkCoord)
 	{
-		assert(isValidCoord(chunkCoord));
+		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 		auto index = chunkIndex(chunkCoord);
 		return (offsets[index] & 0xFF) != 0;
 	}
@@ -76,7 +80,7 @@ struct Region
 	/// Coords are region local. I.e. 0..REGION_SIZE
 	public ubyte[] readChunk(ivec3 chunkCoord, ubyte[] outBuffer)
 	{
-		assert(isValidCoord(chunkCoord));
+		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 		if (!isChunkOnDisk(chunkCoord)) return null;
 
 		auto index = chunkIndex(chunkCoord);
@@ -86,7 +90,8 @@ struct Region
 		// Chunk sector is after EOF.
 		if (sectorNumber + numSectors > sectors.length)
 		{
-			writefln("Invalid sector %s", chunkCoord);
+			writefln("Invalid sector chunk %s, sector %s, numSectors %s while total sectors %s",
+				chunkCoord, sectorNumber, numSectors, sectors.length);
 			return null;
 		}
 
@@ -94,6 +99,7 @@ struct Region
 		ubyte[4] uintBuffer;
 		file.rawRead(uintBuffer[]);
 		uint dataLength = bigEndianToNative!uint(uintBuffer);
+		//writefln("read data length %s BE %(%02x%)", dataLength, uintBuffer[]);
 
 		if (dataLength > numSectors * SECTOR_SIZE)
 		{
@@ -109,7 +115,7 @@ struct Region
 	/// Coords are region local. I.e. 0..REGION_SIZE
 	public void writeChunk(ivec3 chunkCoord, in ubyte[] chunkData)
 	{
-		assert(isValidCoord(chunkCoord));
+		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 
 		auto index = chunkIndex(chunkCoord);
 		auto sectorNumber = offsets[index] >> 8;
@@ -131,6 +137,7 @@ struct Region
 			writeChunkData(sectorNumber, chunkData);
 			return;
 		}
+		//writefln("searching for free sectors");
 
 		// Mark used sectors as free.
 		foreach(i; sectorNumber..sectorNumber + numSectors)
@@ -141,6 +148,8 @@ struct Region
 		// Find a sequence of free sectors of big enough size.
 		foreach(sectorIndex; sectors.bitsSet)
 		{
+			//writefln("index %s", sectorIndex);
+
 			if (numFreeSectors > 0)
 			{
 				if (sectorIndex - firstFreeSector > 1) ++numFreeSectors;
@@ -154,6 +163,7 @@ struct Region
 
 			if (numFreeSectors >= sectorsNeeded) break;
 		}
+		//writefln("first %s num %s", firstFreeSector, numFreeSectors);
 
 		if (numFreeSectors < sectorsNeeded)
 		{
@@ -168,6 +178,7 @@ struct Region
 			sectors.length = sectors.length + sectorsNeeded - numFreeSectors;
 		}
 
+		//writefln("first %s num %s", firstFreeSector, numFreeSectors);
 		// Use free sectors found in a file.
 		writeChunkData(firstFreeSector, chunkData);
 
@@ -199,13 +210,13 @@ struct Region
 		{
 			//writeln("write header");
 			file.open(regionFilename, "wb+");
-		
+			
 			// Lets write chunk offset table.
 			foreach(_; 0..(REGION_SIZE_CUBE*uint.sizeof) / SECTOR_SIZE)
 				file.rawWrite(emptySector);
 
 			sectors.length = NUM_HEADER_SECTORS;
-			//writefln("%b", sectors);
+			//writefln("sectors %b", sectors);
 			return;
 		}
 
@@ -238,12 +249,14 @@ struct Region
 			}
 		}
 
-		//writefln("%b", sectors);
+		//writefln("sectors %b", sectors);
 	}
 
 	private void writeChunkData(uint sectorNumber, in ubyte[] data)
 	{
 		file.seek(sectorNumber * SECTOR_SIZE);
+		//writefln("write data length %s BE %(%02x%), sector %s",
+		//	data.length, nativeToBigEndian(cast(uint)data.length), sectorNumber);
 		file.rawWrite(nativeToBigEndian(cast(uint)data.length));
 		file.rawWrite(data);
 	}

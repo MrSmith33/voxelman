@@ -13,7 +13,7 @@ import voxelman.block;
 import voxelman.chunkmesh;
 
 
-enum CHUNK_SIZE = 32;
+enum CHUNK_SIZE = 16;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
@@ -39,6 +39,11 @@ struct ChunkCoord
 	string toString()
 	{
 		return format("{%s %s %s}", x, y, z);
+	}
+
+	ivec3 asivec3() @property
+	{
+		return ivec3(x, y, z);
 	}
 
 	bool opEquals(ChunkCoord other)

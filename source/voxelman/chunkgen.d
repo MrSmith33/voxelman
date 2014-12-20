@@ -11,6 +11,7 @@ import std.variant : Variant;
 import core.atomic : atomicLoad;
 import core.exception : Throwable;
 
+import dlib.math.vector : ivec3;
 import anchovy.utils.noise.simplex;
 
 import voxelman.block;
@@ -18,6 +19,8 @@ import voxelman.chunk;
 
 
 alias Generator = Generator2d;
+//alias Generator = Generator2d3d;
+//alias Generator = TestGeneratorSmallCubes;
 
 struct ChunkGenResult
 {
@@ -57,7 +60,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	cd.typeData = new BlockType[CHUNK_SIZE_CUBE];
 	cd.uniform = true;
 
-	Generator generator = Generator(coord);
+	Generator generator = Generator(coord.asivec3 * CHUNK_SIZE);
 	generator.genPerChunkData();
 	
 	cd.typeData[0] = generator.generateBlock(0, 0, 0);
@@ -92,35 +95,25 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	mainThread.send(result);
 }
 
-struct Generator2d
+struct Generator2d3d
 {
-	ChunkCoord coord;
+	ivec3 chunkOffset;
+
 	private int[CHUNK_SIZE_SQR] heightMap;
-	private int chunkXOffset;
-	private int chunkYOffset;
-	private int chunkZOffset;
 
 	void genPerChunkData()
 	{
-		chunkXOffset = coord.x * CHUNK_SIZE;
-		chunkYOffset = coord.y * CHUNK_SIZE;
-		chunkZOffset = coord.z * CHUNK_SIZE;
-		foreach(i, ref elem; heightMap)
-		{
-			int cx = i & CHUNK_SIZE_BITS;
-			int cz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-			elem = cast(int)noise2d(chunkXOffset + cx, chunkZOffset + cz);
-		}
+		genPerChunkData2d(heightMap[], chunkOffset);
 	}
 
 	BlockType generateBlock(int x, int y, int z)
 	{
 		int height = heightMap[z * CHUNK_SIZE + x];
-		int blockY = chunkYOffset + y;
+		int blockY = chunkOffset.y + y;
 		if (blockY > height) return 1;
 
-		float noise = Simplex.noise(cast(float)(chunkXOffset+x)/42,
-			cast(float)(chunkYOffset+y)/42, cast(float)(chunkZOffset+z)/42);
+		float noise = Simplex.noise(cast(float)(chunkOffset.x+x)/42,
+			cast(float)(chunkOffset.y+y)/42, cast(float)(chunkOffset.z+z)/42);
 		if (noise < -0.1) return 1;
 
 		if (blockY == height) return 2;
@@ -129,14 +122,37 @@ struct Generator2d
 	}
 }
 
-struct TestGenerator
+struct Generator2d
 {
-	ChunkCoord coord;
+	ivec3 chunkOffset;
+
+	private int[CHUNK_SIZE_SQR] heightMap;
+
+	void genPerChunkData()
+	{
+		genPerChunkData2d(heightMap[], chunkOffset);
+	}
+
+	BlockType generateBlock(int x, int y, int z)
+	{
+		int height = heightMap[z * CHUNK_SIZE + x];
+		int blockY = chunkOffset.y + y;
+		if (blockY > height) return 1;
+		if (blockY == height) return 2;
+		else if (blockY > height - 10) return 3;
+		else return 4;
+	}
+}
+
+struct TestGeneratorSmallCubes
+{
+	ivec3 chunkOffset;
 	void genPerChunkData(){}
 
 	BlockType generateBlock(int x, int y, int z)
 	{
-		return getBlockTest(x + coord.x, y + coord.y, z + coord.z);
+		if (x % 2 == 0 && y % 2 == 0 && z % 2 == 0) return 2;
+		else return 1;
 	}
 }
 
@@ -156,39 +172,12 @@ float noise2d(int x, int z)
 	return noise;
 }
 
-// Gen single block
-BlockType getBlock2d( int x, int y, int z)
+void genPerChunkData2d(int[] heightMap, ivec3 chunkOffset)
 {
-	float noise = noise2d(x, z);
-
-	if (noise >= y) return 2;
-	else return 1;
-}
-
-BlockType getBlock3d( int x, int y, int z)
-{
-	// [-1; 1]
-	float noise = Simplex.noise(cast(float)x/42, cast(float)y/42, cast(float)z/42);
-	if (noise > 0.5) return 2;
-	else return 1;
-}
-
-BlockType getBlock2d3d( int x, int y, int z)
-{
-	float noise = noise2d(x, z);
-
-	if (noise >= y)
+	foreach(i, ref elem; heightMap)
 	{
-		// [-1; 1]
-		float noise3d = Simplex.noise(cast(float)x/42, cast(float)y/42, cast(float)z/42);
-		if (noise3d > -0.1) return 2;
-		else return 1;
+		int cx = i & CHUNK_SIZE_BITS;
+		int cz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+		elem = cast(int)noise2d(chunkOffset.x + cx, chunkOffset.z + cz);
 	}
-	else return 1;
-}
-
-BlockType getBlockTest( int x, int y, int z)
-{
-	if (x % 4 > 1 && y % 4 > 1 && z % 4 > 1) return 2;
-	else return 1;
 }

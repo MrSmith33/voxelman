@@ -19,18 +19,24 @@ import voxelman.chunkgen;
 import voxelman.chunkmesh;
 import voxelman.meshgen;
 import voxelman.regionstorage;
+import voxelman.rlecompression;
 import voxelman.workergroup;
 
-//version = Disk_Storage;
+version = Disk_Storage;
 
 enum string SAVE_DIR = "save";
-enum NUM_WORKERS = 4;
-enum VIEW_RADIUS = 6;
+enum NUM_WORKERS = 2;
+enum VIEW_RADIUS = 8;
+enum WORLD_SIZE = 12; // chunks
+enum BOUND_WORLD = false;
+
+private ubyte[4096*16] buffer;
+private ubyte[4096*16] compressBuffer;
+
 ///
 struct ChunkMan
 {
 	RegionStorage* regionStorage;
-	ubyte[4096*16] buffer;
 	Chunk*[ulong] chunks;
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
@@ -406,7 +412,10 @@ struct ChunkMan
 		if (chunk.mesh) chunk.mesh.free();
 		delete chunk.mesh;
 		version(Disk_Storage)
-			saveChunk(chunk.coord, chunk.data);
+		{
+			if (isChunkInWorldBounds(chunk.coord))
+				writeChunk(chunk.coord, chunk.data);
+		}
 		delete chunk.data.typeData;
 		delete chunk;
 	}
@@ -422,11 +431,13 @@ struct ChunkMan
 		Chunk* chunk = createEmptyChunk(coord);
 		addChunk(chunk);
 
+		if (!isChunkInWorldBounds(coord)) return;
+
 		chunk.hasWriter = true;
 		++numLoadChunkTasks;
 
 		version(Disk_Storage)
-		if (regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)))
+		if (regionStorage.isChunkOnDisk(coord.asivec3))
 		{
 			try
 			{
@@ -444,27 +455,36 @@ struct ChunkMan
 		genWorkers.nextWorker.send(chunk.coord);
 	}
 
-	void saveChunk(ChunkCoord coord, ref ChunkData data)
+	void writeChunk(ChunkCoord coord, ref ChunkData data)
 	{
-		if (regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)))
-			return;
-
+		//writef("writing chunk %s ", coord);
+		ChunkData compressedData = data;
+		compressedData.typeData = rleEncode(data.typeData, compressBuffer);
 		try
 		{
-			size_t encodedSize = encodeCborArray(buffer[], data);
-			regionStorage.writeChunk(ivec3(coord.x, coord.y, coord.z), buffer[0..encodedSize]);
+			size_t encodedSize = encodeCborArray(buffer[], compressedData);
+			//writef("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
+			writeln;
+			regionStorage.writeChunk(coord.asivec3, buffer[0..encodedSize]);
 		}
 		catch(Exception e)
 		{
-			writeln(e);
+			//writefln("error %s", e);
 		}
 	}
 
 	ChunkData readChunk(ChunkCoord coord)
 	{
-		assert(regionStorage.isChunkOnDisk(ivec3(coord.x, coord.y, coord.z)));
-		auto data = regionStorage.readChunk(ivec3(coord.x, coord.y, coord.z), buffer[]);
-		return decodeCborSingleDup!ChunkData(data);
+		assert(regionStorage.isChunkOnDisk(coord.asivec3));
+		//writef("reading chunk %s ", coord);
+		auto data = regionStorage.readChunk(coord.asivec3, buffer[]);
+		ChunkData compressedData = decodeCborSingle!ChunkData(data);
+		ChunkData uncompressedData = compressedData;
+		uncompressedData.typeData = rleDecode(compressedData.typeData, compressBuffer).dup;
+
+		//writefln("size %s compressed %s", uncompressedData.typeData.length, compressedData.typeData.length);
+
+		return uncompressedData;
 	}
 
 	void loadRegion(ChunkRange region)
@@ -475,5 +495,17 @@ struct ChunkMan
 		{
 			loadChunk(ChunkCoord(x, y, z));
 		}
+	}
+
+	bool isChunkInWorldBounds(ChunkCoord coord)
+	{
+		static if (BOUND_WORLD)
+		{
+			if(coord.x<0 || coord.y<0 || coord.z<0 || coord.x>=WORLD_SIZE ||
+				coord.y>=WORLD_SIZE || coord.z>=WORLD_SIZE)
+				return false;
+		}
+
+		return true;
 	}
 }
