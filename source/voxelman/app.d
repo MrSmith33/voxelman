@@ -93,6 +93,9 @@ class VoxelApplication : Application!GlfwWindow
 		fpsController.camera.updateProjection();
 		secondFpsController.camera.updateProjection();
 
+		fpsController.camera.aspect = cast(float)window.size.x/window.size.y;
+		fpsController.camera.updateProjection();
+
 		// Setup shaders
 
 		string vShader = cast(string)read("perspective.vert");
@@ -199,8 +202,8 @@ class VoxelApplication : Application!GlfwWindow
 		ivec3 chunkPos = chunkMan.observerPosition.asivec3;
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
-		lines[ 7]["text"] = format("Chunk: %s Region: %s",
-			chunkPos, regionPos).to!dstring;
+		lines[ 7]["text"] = format("C: %s R: %s L: %s",
+			chunkPos, regionPos, localChunkCoords).to!dstring;
 
 		vec3 target = fpsController.camera.target;
 		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
@@ -328,18 +331,18 @@ class VoxelApplication : Application!GlfwWindow
 					window.mousePosition = cast(ivec2)(window.size) / 2;
 				break;
 			case KeyCode.KEY_P: fpsController.printVectors; break;
-			case KeyCode.KEY_I: fpsController.moveAxis(vec3(0, 0, 1)); break;
-			case KeyCode.KEY_K: fpsController.moveAxis(vec3(0, 0, -1)); break;
-			case KeyCode.KEY_J: fpsController.moveAxis(vec3(-1, 0, 0)); break;
-			case KeyCode.KEY_L: fpsController.moveAxis(vec3(1, 0, 0)); break;
-			case KeyCode.KEY_O: fpsController.moveAxis(vec3(0, 1, 0)); break;
+			case KeyCode.KEY_I:
+
+				chunkMan
+				.regionStorage
+				.getChunkStoreInfo(chunkMan.observerPosition.asivec3)
+				.writeln("\n");
+				break;
+			case KeyCode.KEY_M:
+
+				break;
 			case KeyCode.KEY_U: doUpdateObserverPosition = !doUpdateObserverPosition; break;
-			case KeyCode.KEY_T: fpsController.moveAxis(vec3(0, 0, 128)); break;
 			case KeyCode.KEY_C: secondFpsController = fpsController; break;
-			case KeyCode.KEY_UP: fpsController.rotateVert(-45); break;
-			case KeyCode.KEY_DOWN: fpsController.rotateVert(45); break;
-			case KeyCode.KEY_LEFT: fpsController.rotateHor(-45); break;
-			case KeyCode.KEY_RIGHT: fpsController.rotateHor(45); break;
 			case KeyCode.KEY_R: resetCamera(); break;
 			default: break;
 		}

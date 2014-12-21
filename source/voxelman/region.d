@@ -16,7 +16,7 @@ int ceiling_pos (float X) {return (X-cast(int)(X)) > 0 ? cast(int)(X+1) : cast(i
 int ceiling_neg (float X) {return (X-cast(int)(X)) < 0 ? cast(int)(X-1) : cast(int)(X);}
 int ceiling (float X) {return ((X) > 0) ? ceiling_pos(X) : ceiling_neg(X);}
 
-enum REGION_SIZE = 8;
+enum REGION_SIZE = 16;
 enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
 enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
 enum SECTOR_SIZE = 512;
@@ -30,6 +30,30 @@ enum MAX_CHUNK_SECTORS = ubyte.max;
 
 
 private immutable ubyte[SECTOR_SIZE] emptySector;
+
+struct ChunkStoreInfo
+{
+	bool isStored;
+	ivec3 positionInRegion;
+	ivec3 positionInWorld;
+	ivec3 parentRegionPosition;
+	size_t headerIndex;
+
+	// following fields are only valid when isStored == true.
+	size_t sectorNumber;
+	size_t numSectors;
+	size_t dataLength;
+	size_t dataByteOffset() @property {return sectorNumber * SECTOR_SIZE;}
+
+	string toString()
+	{
+		return format("position in region %s\nposition in world %s\n"~
+			"parent region %s\nheader index %s\n"~
+			"data length %s\nsector number %s\ndata offset %s",
+			positionInRegion, positionInWorld, parentRegionPosition,
+			headerIndex, dataLength, sectorNumber, dataByteOffset);
+	}
+}
 
 /**
 	A storage for REGION_SIZE^3 offsets on a disk.
@@ -70,6 +94,28 @@ struct Region
 		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 		auto index = chunkIndex(chunkCoord);
 		return (offsets[index] & 0xFF) != 0;
+	}
+
+	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkCoord)
+	{
+		auto index = chunkIndex(chunkCoord);
+		auto sectorNumber = offsets[index] >> 8;
+		auto numSectors = offsets[index] & 0xFF;
+
+		ChunkStoreInfo res = ChunkStoreInfo(true, chunkCoord,
+			ivec3(), ivec3(), index, sectorNumber, numSectors);
+		if (!isChunkOnDisk(chunkCoord))
+		{
+			res.isStored = false;
+			return res;
+		}
+
+		file.seek(sectorNumber * SECTOR_SIZE);
+		ubyte[4] uintBuffer;
+		file.rawRead(uintBuffer[]);
+		res.dataLength = bigEndianToNative!uint(uintBuffer);
+
+		return res;
 	}
 
 	/// Reads chunk from a file.
@@ -197,11 +243,6 @@ struct Region
 				chunkCoord.z < 0 || chunkCoord.z >= REGION_SIZE);
 	}
 
-	private size_t chunkIndex(ivec3 chunkCoord)
-	{
-		return chunkCoord.x + chunkCoord.y * REGION_SIZE + chunkCoord.z * REGION_SIZE_SQR;
-	}
-
 	private void openFile(string regionFilename)
 	{
 		assert(isValidPath(regionFilename));
@@ -281,4 +322,9 @@ struct Region
 				file.rawWrite(emptyByte);
 		}
 	}
+}
+
+size_t chunkIndex(ivec3 chunkCoord)
+{
+	return chunkCoord.x + chunkCoord.y * REGION_SIZE + chunkCoord.z * REGION_SIZE_SQR;
 }

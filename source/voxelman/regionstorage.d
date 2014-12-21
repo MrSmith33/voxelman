@@ -13,7 +13,7 @@ import std.stdio : writef, writeln, writefln, FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
 import voxelman.chunk;
-import voxelman.region : Region, REGION_SIZE;
+import voxelman.region : Region, REGION_SIZE, ChunkStoreInfo, chunkIndex;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
 
@@ -51,10 +51,27 @@ struct RegionStorage
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 		
-		if (!isRegionOnDisk(regionPos)) 
+		if (!isRegionOnDisk(regionPos))
 			return false;
 
 		return loadRegion(regionPos).isChunkOnDisk(localChunkCoords);
+	}
+
+	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPos)
+	{
+		ivec3 regionPos = calcRegionPos(chunkPos);
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		
+		if (!isRegionOnDisk(regionPos))
+		{
+			return ChunkStoreInfo(false, localChunkCoords, chunkPos,
+				regionPos, chunkIndex(localChunkCoords));
+		}
+
+		auto res = loadRegion(regionPos).getChunkStoreInfo(localChunkCoords);
+		res.positionInWorld = chunkPos;
+		res.parentRegionPosition = regionPos;
+		return res;
 	}
 
 	bool isRegionOnDisk(ivec3 regionPos)
