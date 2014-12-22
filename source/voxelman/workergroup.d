@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.workergroup;
 
 import core.atomic : atomicStore;
-import std.concurrency : Tid, spawnLinked, send, prioritySend;
+import std.concurrency : Tid, spawn, send, prioritySend;
 
 struct WorkerGroup(alias workerFun)
 {
@@ -24,7 +24,7 @@ struct WorkerGroup(alias workerFun)
 		_numWorkers = numWorkers;
 		atomicStore(_areWorkersRunning, true);
 		foreach(_; 0.._numWorkers)
-			_workers ~= spawnLinked(&workerFun, args);
+			_workers ~= spawn(&workerFun, args);
 		foreach(worker; _workers)
 			worker.send(&_areWorkersRunning);
 		_areWorkersStarted = true;
@@ -34,6 +34,14 @@ struct WorkerGroup(alias workerFun)
 	{
 		_nextWorker %= _numWorkers;
 		return _workers[_nextWorker++];
+	}
+
+	void stopWorkersWhenDone()
+	{
+		atomicStore(_areWorkersRunning, false);
+		foreach(worker; _workers)
+			worker.send(0);
+		_areWorkersStarted = false;
 	}
 
 	void stopWorkers()

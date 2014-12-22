@@ -10,7 +10,6 @@ import std.datetime : msecs;
 import std.stdio : writef, writeln, writefln;
 import core.thread : thread_joinAll;
 
-import cbor;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.block;
@@ -18,25 +17,21 @@ import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
 import voxelman.meshgen;
-import voxelman.regionstorage;
-import voxelman.rlecompression;
+import voxelman.storageworker;
 import voxelman.workergroup;
 
 version = Disk_Storage;
 
 enum string SAVE_DIR = "save";
-enum NUM_WORKERS = 2;
+enum NUM_WORKERS = 4;
 enum VIEW_RADIUS = 8;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 
-private ubyte[4096*16] buffer;
-private ubyte[4096*16] compressBuffer;
 
 ///
 struct ChunkMan
 {
-	RegionStorage* regionStorage;
 	Chunk*[ulong] chunks;
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
@@ -55,34 +50,45 @@ struct ChunkMan
 
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(meshWorkerThread) meshWorkers;
+	WorkerGroup!(storageWorkerThread) storeWorker;
 
 	void init()
 	{
-		regionStorage = new RegionStorage(SAVE_DIR);
 		loadBlockTypes();
 
 		genWorkers.startWorkers(NUM_WORKERS, thisTid);
 		meshWorkers.startWorkers(NUM_WORKERS, thisTid, cast(shared)&this);
+		version(Disk_Storage)
+			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
 	}
 
 	void stop()
 	{
-		writefln("stopping threads");
-		
-		genWorkers.stopWorkers();
-		meshWorkers.stopWorkers();
-
 		writefln("saving chunks %s", chunks.length);
 
 		foreach(chunk; chunks.byValue)
 			addToRemoveQueue(chunk);
 
+		size_t toBeDone = chunks.length;
+		uint donePercentsPrev;
+
 		while(chunks.length > 0)
-			processRemoveQueue();
+		{
+			update();
 
-		writefln("saved");
+			auto donePercents = cast(float)(toBeDone - chunks.length) / toBeDone * 100;
+			if (donePercents >= donePercentsPrev + 10)
+			{
+				donePercentsPrev += 10;
+				writefln("saved %s%%", donePercentsPrev);
+			}
+		}
 
-		regionStorage.clear();
+		meshWorkers.stopWorkers();
+		genWorkers.stopWorkers();
+
+		version(Disk_Storage)
+			storeWorker.stopWorkersWhenDone();
 
 		thread_joinAll();
 	}
@@ -423,9 +429,10 @@ struct ChunkMan
 		version(Disk_Storage)
 		{
 			if (isChunkInWorldBounds(chunk.coord))
-				writeChunk(chunk.coord, chunk.data);
+			{
+				storeWorker.nextWorker.send(chunk.coord.asivec3, cast(shared)chunk.data, true);
+			}
 		}
-		delete chunk.data.typeData;
 		delete chunk;
 	}
 
@@ -446,54 +453,12 @@ struct ChunkMan
 		++numLoadChunkTasks;
 
 		version(Disk_Storage)
-		if (regionStorage.isChunkOnDisk(coord.asivec3))
-		{
-			try
-			{
-				ChunkData cd = readChunk(coord);
-				ChunkGenResult* genResult = new ChunkGenResult(cd, coord);
-				onChunkLoaded(genResult);
-				return;
-			}
-			catch(Exception e)
-			{
-				writeln(e.msg);
-			}
-		}
-		
-		genWorkers.nextWorker.send(chunk.coord);
+			storeWorker.nextWorker.send(coord.asivec3, genWorkers.nextWorker);
+		else
+			genWorkers.nextWorker.send(chunk.coord);
 	}
 
-	void writeChunk(ChunkCoord coord, ref ChunkData data)
-	{
-		//writef("writing chunk %s ", coord);
-		ChunkData compressedData = data;
-		compressedData.typeData = rleEncode(data.typeData, compressBuffer);
-		try
-		{
-			size_t encodedSize = encodeCborArray(buffer[], compressedData);
-			//writef("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
-			regionStorage.writeChunk(coord.asivec3, buffer[0..encodedSize]);
-		}
-		catch(Exception e)
-		{
-			//writefln("error %s", e);
-		}
-	}
 
-	ChunkData readChunk(ChunkCoord coord)
-	{
-		assert(regionStorage.isChunkOnDisk(coord.asivec3));
-		//writef("reading chunk %s ", coord);
-		auto data = regionStorage.readChunk(coord.asivec3, buffer[]);
-		ChunkData compressedData = decodeCborSingle!ChunkData(data);
-		ChunkData uncompressedData = compressedData;
-		uncompressedData.typeData = rleDecode(compressedData.typeData, compressBuffer).dup;
-
-		//writefln("size %s compressed %s", uncompressedData.typeData.length, compressedData.typeData.length);
-
-		return uncompressedData;
-	}
 
 	void loadRegion(ChunkRange region)
 	{

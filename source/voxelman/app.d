@@ -331,13 +331,13 @@ class VoxelApplication : Application!GlfwWindow
 					window.mousePosition = cast(ivec2)(window.size) / 2;
 				break;
 			case KeyCode.KEY_P: fpsController.printVectors; break;
-			case KeyCode.KEY_I:
+			//case KeyCode.KEY_I:
 
-				chunkMan
-				.regionStorage
-				.getChunkStoreInfo(chunkMan.observerPosition.asivec3)
-				.writeln("\n");
-				break;
+			//	chunkMan
+			//	.regionStorage
+			//	.getChunkStoreInfo(chunkMan.observerPosition.asivec3)
+			//	.writeln("\n");
+			//	break;
 			case KeyCode.KEY_M:
 
 				break;

@@ -14,7 +14,7 @@ import voxelman.chunkmesh;
 import voxelman.region;
 
 
-enum CHUNK_SIZE = 16;
+enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;

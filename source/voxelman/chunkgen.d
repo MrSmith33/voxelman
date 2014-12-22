@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.chunkgen;
 
 import std.concurrency : Tid, send, receive;
-import std.stdio : writeln;
+import std.stdio : writeln, writefln;
 import std.variant : Variant;
 import core.atomic : atomicLoad;
 import core.exception : Throwable;
