@@ -25,7 +25,7 @@ alias Generator = Generator2d;
 struct ChunkGenResult
 {
 	ChunkData chunkData;
-	ChunkCoord coord;
+	ivec3 coord;
 }
 
 void chunkGenWorkerThread(Tid mainTid)
@@ -39,7 +39,7 @@ void chunkGenWorkerThread(Tid mainTid)
 		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
-				(ChunkCoord coord){chunkGenWorker(coord, mainTid);},
+				(ivec3 coord){chunkGenWorker(coord, mainTid);},
 				(Variant v){isRunningLocal = false;}
 			);
 		}
@@ -52,7 +52,7 @@ void chunkGenWorkerThread(Tid mainTid)
 }
 
 // Gen single chunk
-void chunkGenWorker(ChunkCoord coord, Tid mainThread)
+void chunkGenWorker(ivec3 coord, Tid mainThread)
 {
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
@@ -60,7 +60,7 @@ void chunkGenWorker(ChunkCoord coord, Tid mainThread)
 	cd.typeData = new BlockType[CHUNK_SIZE_CUBE];
 	cd.uniform = true;
 
-	Generator generator = Generator(coord.asivec3 * CHUNK_SIZE);
+	Generator generator = Generator(coord * CHUNK_SIZE);
 	generator.genPerChunkData();
 	
 	cd.typeData[0] = generator.generateBlock(0, 0, 0);

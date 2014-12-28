@@ -32,7 +32,7 @@ enum BOUND_WORLD = false;
 ///
 struct ChunkMan
 {
-	Chunk*[ulong] chunks;
+	Chunk*[ivec3] chunks;
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
@@ -43,7 +43,7 @@ struct ChunkMan
 	size_t totalLoadedChunks;
 
 	ChunkRange visibleRegion;
-	ChunkCoord observerPosition = ChunkCoord(short.max, short.max, short.max);
+	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
 	uint viewRadius = VIEW_RADIUS;
 	
 	IBlock[] blockTypes;
@@ -79,7 +79,7 @@ struct ChunkMan
 			auto donePercents = cast(float)(toBeDone - chunks.length) / toBeDone * 100;
 			if (donePercents >= donePercentsPrev + 10)
 			{
-				donePercentsPrev += 10;
+				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
 				writefln("saved %s%%", donePercentsPrev);
 			}
 		}
@@ -179,7 +179,7 @@ struct ChunkMan
 		if (chunk.mesh is null) chunk.mesh = new ChunkMesh();
 		chunk.mesh.data = data.meshData;
 		
-		ChunkCoord coord = chunk.coord;
+		ivec3 coord = chunk.coord;
 		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
@@ -203,9 +203,9 @@ struct ChunkMan
 		void printChunk(Side side)
 		{
 			byte[3] offset = sideOffsets[side];
-			ChunkCoord otherCoord = ChunkCoord(cast(short)(chunk.coord.x + offset[0]),
-												cast(short)(chunk.coord.y + offset[1]),
-												cast(short)(chunk.coord.z + offset[2]));
+			ivec3 otherCoord = ivec3(chunk.coord.x + offset[0],
+									chunk.coord.y + offset[1],
+									chunk.coord.z + offset[2]);
 			Chunk* c = getChunk(otherCoord);
 			writef("%s", c==Chunk.unknownChunk ? "unknownChunk" : "a");
 		}
@@ -257,14 +257,14 @@ struct ChunkMan
 		blockTypes ~= new StoneBlock(4);
 	}
 
-	Chunk* createEmptyChunk(ChunkCoord coord)
+	Chunk* createEmptyChunk(ivec3 coord)
 	{
 		return new Chunk(coord);
 	}
 
-	Chunk* getChunk(ChunkCoord coord)
+	Chunk* getChunk(ivec3 coord)
 	{
-		Chunk** chunk = coord.asLong in chunks;
+		Chunk** chunk = coord in chunks;
 		if (chunk is null) return Chunk.unknownChunk;
 		return *chunk;
 	}
@@ -277,10 +277,10 @@ struct ChunkMan
 		.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
 
-	ChunkRange calcChunkRange(ChunkCoord coord)
+	ChunkRange calcChunkRange(ivec3 coord)
 	{
 		auto size = viewRadius*2 + 1;
-		return ChunkRange(cast(ChunkCoord)(coord.vector - cast(short)viewRadius),
+		return ChunkRange(cast(ivec3)(coord - viewRadius),
 			ivec3(size, size, size));
 	}
 
@@ -288,10 +288,10 @@ struct ChunkMan
 	{
 		import std.conv : to;
 
-		ChunkCoord chunkPos = ChunkCoord(
-			to!short(to!int(cameraPos.x) / CHUNK_SIZE),
-			to!short(to!int(cameraPos.y) / CHUNK_SIZE),
-			to!short(to!int(cameraPos.z) / CHUNK_SIZE));
+		ivec3 chunkPos = ivec3(
+			to!int(cameraPos.x) / CHUNK_SIZE,
+			to!int(cameraPos.y) / CHUNK_SIZE,
+			to!int(cameraPos.z) / CHUNK_SIZE);
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;
@@ -325,7 +325,7 @@ struct ChunkMan
 		}
 
 		// load chunks
-		// ChunkCoord[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
+		// ivec3[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
 		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
 		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
 		{
@@ -338,15 +338,15 @@ struct ChunkMan
 	void addChunk(Chunk* emptyChunk)
 	{
 		assert(emptyChunk);
-		chunks[emptyChunk.coord.asLong] = emptyChunk;
-		ChunkCoord coord = emptyChunk.coord;
+		chunks[emptyChunk.coord] = emptyChunk;
+		ivec3 coord = emptyChunk.coord;
 
 		void attachAdjacent(ubyte side)()
 		{
 			byte[3] offset = sideOffsets[side];
-			ChunkCoord otherCoord = ChunkCoord(cast(short)(coord.x + offset[0]),
-												cast(short)(coord.y + offset[1]),
-												cast(short)(coord.z + offset[2]));
+			ivec3 otherCoord = ivec3(cast(int)(coord.x + offset[0]),
+												cast(int)(coord.y + offset[1]),
+												cast(int)(coord.z + offset[2]));
 			Chunk* other = getChunk(otherCoord);
 			assert(other);
 
@@ -423,22 +423,22 @@ struct ChunkMan
 		detachAdjacent!(4)();
 		detachAdjacent!(5)();
 
-		chunks.remove(chunk.coord.asLong);
+		chunks.remove(chunk.coord);
 		if (chunk.mesh) chunk.mesh.free();
 		delete chunk.mesh;
 		version(Disk_Storage)
 		{
 			if (isChunkInWorldBounds(chunk.coord))
 			{
-				storeWorker.nextWorker.send(chunk.coord.asivec3, cast(shared)chunk.data, true);
+				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.data, true);
 			}
 		}
 		delete chunk;
 	}
 
-	void loadChunk(ChunkCoord coord)
+	void loadChunk(ivec3 coord)
 	{
-		if (auto chunk = coord.asLong in chunks) 
+		if (auto chunk = coord in chunks) 
 		{
 			if ((*chunk).isMarkedForDeletion)
 				removeFromRemoveQueue(*chunk);
@@ -453,7 +453,7 @@ struct ChunkMan
 		++numLoadChunkTasks;
 
 		version(Disk_Storage)
-			storeWorker.nextWorker.send(coord.asivec3, genWorkers.nextWorker);
+			storeWorker.nextWorker.send(coord, genWorkers.nextWorker);
 		else
 			genWorkers.nextWorker.send(chunk.coord);
 	}
@@ -462,15 +462,15 @@ struct ChunkMan
 
 	void loadRegion(ChunkRange region)
 	{
-		foreach(short x; region.coord.x..cast(short)(region.coord.x + region.size.x))
-		foreach(short y; region.coord.y..cast(short)(region.coord.y + region.size.y))
-		foreach(short z; region.coord.z..cast(short)(region.coord.z + region.size.z))
+		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
+		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
+		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
 		{
-			loadChunk(ChunkCoord(x, y, z));
+			loadChunk(ivec3(x, y, z));
 		}
 	}
 
-	bool isChunkInWorldBounds(ChunkCoord coord)
+	bool isChunkInWorldBounds(ivec3 coord)
 	{
 		static if (BOUND_WORLD)
 		{

@@ -199,7 +199,7 @@ class VoxelApplication : Application!GlfwWindow
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
-		ivec3 chunkPos = chunkMan.observerPosition.asivec3;
+		ivec3 chunkPos = chunkMan.observerPosition;
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
@@ -251,8 +251,8 @@ class VoxelApplication : Application!GlfwWindow
 		foreach(Chunk* c; chunkMan.visibleChunks)
 		{
 			// Frustum culling
-			svec4 svecMin = c.coord.vector * CHUNK_SIZE;
-			vec3 vecMin = vec3(svecMin.x, svecMin.y, svecMin.z);
+			ivec3 ivecMin = c.coord * CHUNK_SIZE;
+			vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
 			vec3 vecMax = vecMin + CHUNK_SIZE;
 
 			import dlib.geometry.frustum, dlib.geometry.aabb;
@@ -335,7 +335,7 @@ class VoxelApplication : Application!GlfwWindow
 
 			//	chunkMan
 			//	.regionStorage
-			//	.getChunkStoreInfo(chunkMan.observerPosition.asivec3)
+			//	.getChunkStoreInfo(chunkMan.observerPosition)
 			//	.writeln("\n");
 			//	break;
 			case KeyCode.KEY_M:

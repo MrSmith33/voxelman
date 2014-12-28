@@ -71,8 +71,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 						try
 						{
 							ChunkData cd = readChunk(chunkPos);
-							ChunkGenResult* genResult = new ChunkGenResult(cd,
-								ChunkCoord(cast(short)chunkPos.x, cast(short)chunkPos.y, cast(short)chunkPos.z));
+							ChunkGenResult* genResult = new ChunkGenResult(cd, chunkPos);
 							auto result = cast(immutable(ChunkGenResult)*)genResult;
 							mainTid.send(result);
 						}
@@ -83,7 +82,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 					}
 					else
 					{
-						genWorker.send(ChunkCoord(cast(short)chunkPos.x, cast(short)chunkPos.y, cast(short)chunkPos.z));
+						genWorker.send(chunkPos);
 					}
 				},
 				(ivec3 chunkPos, shared ChunkData chunkData, bool deleteData) {

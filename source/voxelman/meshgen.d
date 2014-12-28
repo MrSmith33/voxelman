@@ -21,7 +21,7 @@ import voxelman.chunkman;
 struct MeshGenResult
 {
 	ubyte[] meshData;
-	ChunkCoord coord;
+	ivec3 coord;
 }
 
 void meshWorkerThread(Tid mainTid, shared(ChunkMan)* cman)
