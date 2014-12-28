@@ -300,7 +300,7 @@ struct Chunk
 	{
 		foreach(a; adjacent)
 		{
-			if (!a.isLoaded) return false;
+			if (a is null || !a.isLoaded) return false;
 		}
 
 		return true;
@@ -324,7 +324,7 @@ struct Chunk
 	bool isAnyAdjacentUsed() @property
 	{
 		foreach(a; adjacent)
-			if (a != Chunk.unknownChunk && a.isUsed) return true;
+			if (a !is null && a.isUsed) return true;
 		return false;
 	}
 
@@ -350,14 +350,4 @@ struct Chunk
 	// In deletion queue.
 	Chunk* next;
 	Chunk* prev;
-
-	// Null chunk.
-	static Chunk* unknownChunk;
-	static Chunk* initChunk; // To compare with unknownChunk. If differs, there is an error in the code.
-}
-
-static this()
-{
-	Chunk.unknownChunk = new Chunk(ivec3(0, 0, 0));
-	Chunk.initChunk = new Chunk(ivec3(0, 0, 0));
 }

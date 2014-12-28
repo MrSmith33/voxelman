@@ -58,7 +58,7 @@ in
 	assert(cman);
 	foreach(a; adjacent)
 	{
-		assert(a != Chunk.unknownChunk);
+		assert(a !is null);
 		assert(!a.hasWriter);
 		assert(a.isLoaded);
 	}

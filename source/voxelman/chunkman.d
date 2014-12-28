@@ -112,7 +112,7 @@ struct ChunkMan
 		//writefln("Chunk data received in main thread");
 
 		Chunk* chunk = getChunk(data.coord);
-		assert(chunk != Chunk.unknownChunk);
+		assert(chunk !is null);
 
 		chunk.hasWriter = false;
 		chunk.isLoaded = true;
@@ -136,7 +136,7 @@ struct ChunkMan
 		if (chunk.isVisible)
 			tryMeshChunk(chunk);
 		foreach(a; chunk.adjacent)
-			if (a != Chunk.unknownChunk) tryMeshChunk(a);
+			if (a !is null) tryMeshChunk(a);
 	}
 
 	void tryMeshChunk(Chunk* chunk)
@@ -145,7 +145,7 @@ struct ChunkMan
 		{
 			++chunk.numReaders;
 			foreach(a; chunk.adjacent)
-				if (a != Chunk.unknownChunk) ++a.numReaders;
+				if (a !is null) ++a.numReaders;
 
 			chunk.isMeshing = true;
 			++numMeshChunkTasks;
@@ -157,14 +157,14 @@ struct ChunkMan
 	{
 		Chunk* chunk = getChunk(data.coord);
 
-		assert(chunk != Chunk.unknownChunk);
+		assert(chunk !is null);
 
 		chunk.isMeshing = false;
 
 		// Allow chunk to be written or deleted.
 		--chunk.numReaders;
 		foreach(a; chunk.adjacent)
-				if (a != Chunk.unknownChunk) --a.numReaders;
+				if (a !is null) --a.numReaders;
 		--numMeshChunkTasks;
 
 		// Chunk is already in delete queue
@@ -207,7 +207,7 @@ struct ChunkMan
 									chunk.coord.y + offset[1],
 									chunk.coord.z + offset[2]);
 			Chunk* c = getChunk(otherCoord);
-			writef("%s", c==Chunk.unknownChunk ? "unknownChunk" : "a");
+			writef("%s", c is null ? "null" : "a");
 		}
 
 		foreach(s; Side.min..Side.max)
@@ -217,9 +217,6 @@ struct ChunkMan
 
 	void updateChunks()
 	{
-		// See if anything breaks
-		assert(*Chunk.unknownChunk == *Chunk.initChunk);
-
 		processRemoveQueue();
 	}
 
@@ -229,7 +226,7 @@ struct ChunkMan
 
 		while(chunk)
 		{
-			assert(chunk != Chunk.unknownChunk);
+			assert(chunk !is null);
 			//printList(chunk);
 
 			if (!chunk.isUsed)
@@ -265,7 +262,7 @@ struct ChunkMan
 	Chunk* getChunk(ivec3 coord)
 	{
 		Chunk** chunk = coord in chunks;
-		if (chunk is null) return Chunk.unknownChunk;
+		if (chunk is null) return null;
 		return *chunk;
 	}
 
@@ -348,9 +345,8 @@ struct ChunkMan
 												cast(int)(coord.y + offset[1]),
 												cast(int)(coord.z + offset[2]));
 			Chunk* other = getChunk(otherCoord);
-			assert(other);
 
-			if (other != Chunk.unknownChunk) 
+			if (other !is null) 
 				other.adjacent[oppSide[side]] = emptyChunk;
 			emptyChunk.adjacent[side] = other;
 		}
@@ -367,7 +363,7 @@ struct ChunkMan
 	void addToRemoveQueue(Chunk* chunk)
 	{
 		assert(chunk);
-		assert(chunk != Chunk.unknownChunk);
+		assert(chunk !is null);
 
 		// already queued
 		if (chunk.next != null && chunk.prev != null) return;
@@ -381,7 +377,7 @@ struct ChunkMan
 	void removeFromRemoveQueue(Chunk* chunk)
 	{
 		assert(chunk);
-		assert(chunk != Chunk.unknownChunk);
+		assert(chunk !is null);
 
 		if (chunk.prev)
 			chunk.prev.next = chunk.next;
@@ -399,7 +395,7 @@ struct ChunkMan
 	void removeChunk(Chunk* chunk)
 	{
 		assert(chunk);
-		assert(chunk != Chunk.unknownChunk);
+		assert(chunk !is null);
 
 		assert(!chunk.isUsed);
 		//assert(!chunk.isAnyAdjacentUsed);
@@ -408,9 +404,9 @@ struct ChunkMan
 
 		void detachAdjacent(ubyte side)()
 		{
-			if (chunk.adjacent[side] != Chunk.unknownChunk)
+			if (chunk.adjacent[side] !is null)
 			{
-				chunk.adjacent[side].adjacent[oppSide[side]] = Chunk.unknownChunk;
+				chunk.adjacent[side].adjacent[oppSide[side]] = null;
 			}
 			chunk.adjacent[side] = null;
 		}
