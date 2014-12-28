@@ -17,17 +17,12 @@ import voxelman.blockman;
 import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
+import voxelman.config;
 import voxelman.meshgen;
 import voxelman.storageworker;
 import voxelman.workergroup;
 
 version = Disk_Storage;
-
-enum string SAVE_DIR = "save";
-enum NUM_WORKERS = 4;
-enum VIEW_RADIUS = 8;
-enum WORLD_SIZE = 12; // chunks
-enum BOUND_WORLD = false;
 
 
 ///

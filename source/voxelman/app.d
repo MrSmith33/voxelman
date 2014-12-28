@@ -22,10 +22,10 @@ import voxelman.camera;
 
 import voxelman.chunk;
 import voxelman.chunkman;
+import voxelman.config;
+
 
 __gshared ChunkMan chunkMan;
-
-enum startPos = vec3(0, 100, 0);
 
 //version = manualGC;
 version(manualGC) import core.memory;

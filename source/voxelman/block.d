@@ -5,8 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.block;
 
+import voxelman.config;
 
-alias BlockType = ubyte;
 
 struct Block
 {

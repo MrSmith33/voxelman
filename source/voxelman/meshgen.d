@@ -16,6 +16,7 @@ import core.exception : Throwable;
 import voxelman.block;
 import voxelman.chunk;
 import voxelman.chunkman;
+import voxelman.config;
 
 
 struct MeshGenResult

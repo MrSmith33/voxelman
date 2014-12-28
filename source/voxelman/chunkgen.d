@@ -16,6 +16,7 @@ import anchovy.utils.noise.simplex;
 
 import voxelman.block;
 import voxelman.chunk;
+import voxelman.config;
 
 
 alias Generator = Generator2d;

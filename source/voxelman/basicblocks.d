@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.basicblocks;
 
 import voxelman.block;
+import voxelman.config;
 
 
 immutable Block unknownBlock = Block(0, "", [0,0,0], false,
