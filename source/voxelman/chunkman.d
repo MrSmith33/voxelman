@@ -13,6 +13,7 @@ import core.thread : thread_joinAll;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.block;
+import voxelman.blockman;
 import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
@@ -46,7 +47,7 @@ struct ChunkMan
 	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
 	uint viewRadius = VIEW_RADIUS;
 	
-	IBlock[] blockTypes;
+	BlockMan blockMan;
 
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(meshWorkerThread) meshWorkers;
@@ -54,10 +55,10 @@ struct ChunkMan
 
 	void init()
 	{
-		loadBlockTypes();
+		blockMan.loadBlockTypes();
 
 		genWorkers.startWorkers(NUM_WORKERS, thisTid);
-		meshWorkers.startWorkers(NUM_WORKERS, thisTid, cast(shared)&this);
+		meshWorkers.startWorkers(NUM_WORKERS, thisTid, blockMan.blocks);
 		version(Disk_Storage)
 			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
 	}
@@ -129,7 +130,7 @@ struct ChunkMan
 		chunk.isVisible = true;
 		if (data.chunkData.uniform)
 		{
-			chunk.isVisible = blockTypes[data.chunkData.uniformType].isVisible;
+			chunk.isVisible = blockMan.blocks[data.chunkData.uniformType].isVisible;
 		}
 		chunk.data = data.chunkData;
 
@@ -243,15 +244,6 @@ struct ChunkMan
 				chunk = chunk.next;
 			}
 		}
-	}
-
-	void loadBlockTypes()
-	{
-		blockTypes ~= new UnknownBlock(0);
-		blockTypes ~= new AirBlock(1);
-		blockTypes ~= new GrassBlock(2);
-		blockTypes ~= new DirtBlock(3);
-		blockTypes ~= new StoneBlock(4);
 	}
 
 	Chunk* createEmptyChunk(ivec3 coord)

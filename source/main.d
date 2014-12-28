@@ -6,10 +6,6 @@ Authors: Andrey Penechko.
 
 module main;
 
-import std.stdio;
-
-import anchovy.graphics.windows.glfwwindow;
-
 import voxelman.app;
 
 version(linux)
