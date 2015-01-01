@@ -64,6 +64,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 		while (isRunningLocal)
 		{
 			receive(
+				// read
 				(ivec3 chunkPos, Tid genWorker) {
 					if (!atomicLoad(*isRunning)) return;
 					if (regionStorage.isChunkOnDisk(chunkPos))
@@ -85,6 +86,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 						genWorker.send(chunkPos);
 					}
 				},
+				// write
 				(ivec3 chunkPos, shared ChunkData chunkData, bool deleteData) {
 					writeChunk(chunkPos, cast(ChunkData)chunkData);
 

@@ -11,7 +11,7 @@ abstract class Event
 private alias EventHandler = void delegate(Event event);
 
 /// Event 
-class EventDispatcherModule : IModule, IEventDispatcherModule
+class EventDispatcherModule : IModule
 {
 	override string name() @property { return "EventDispatcherModule"; }
 	override string semver() @property { return "1.0.0"; }

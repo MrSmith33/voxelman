@@ -87,6 +87,7 @@ struct ChunkMan
 			storeWorker.stopWorkersWhenDone();
 
 		thread_joinAll();
+
 	}
 
 	void update()
@@ -113,14 +114,10 @@ struct ChunkMan
 		chunk.hasWriter = false;
 		chunk.isLoaded = true;
 
+		assert(!chunk.isUsed);
+
 		++totalLoadedChunks;
 		--numLoadChunkTasks;
-
-		if (chunk.isMarkedForDeletion)
-		{
-			delete data;
-			return;
-		}
 
 		chunk.isVisible = true;
 		if (data.chunkData.uniform)
@@ -128,6 +125,11 @@ struct ChunkMan
 			chunk.isVisible = blockMan.blocks[data.chunkData.uniformType].isVisible;
 		}
 		chunk.data = data.chunkData;
+
+		if (chunk.isMarkedForDeletion)
+		{
+			return;
+		}
 
 		if (chunk.isVisible)
 			tryMeshChunk(chunk);
