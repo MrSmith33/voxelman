@@ -33,6 +33,7 @@ version(manualGC) import core.memory;
 class VoxelApplication : Application!GlfwWindow
 {
 	uvec3 viewSize;
+	ulong chunksVisible;
 	ulong chunksRendered;
 	ulong vertsRendered;
 	ulong trisRendered;
@@ -41,8 +42,8 @@ class VoxelApplication : Application!GlfwWindow
 	GLuint modelLoc, viewLoc, projectionLoc;
 
 	FpsController fpsController;
-	FpsController secondFpsController;
 	bool mouseLocked;
+	bool isCullingEnabled = true;
 	bool autoMove;
 	bool doUpdateObserverPosition = true;
 
@@ -91,7 +92,6 @@ class VoxelApplication : Application!GlfwWindow
 		fpsController.move(startPos);
 		fpsController.camera.sensivity = 0.4;
 		fpsController.camera.updateProjection();
-		secondFpsController.camera.updateProjection();
 
 		fpsController.camera.aspect = cast(float)window.size.x/window.size.y;
 		fpsController.camera.updateProjection();
@@ -180,7 +180,11 @@ class VoxelApplication : Application!GlfwWindow
 		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
 
 		lines[ 0]["text"] = format("FPS: %s", fpsHelper.fps).to!dstring;
-		lines[ 1]["text"] = format("Chunks rendered %s", chunksRendered).to!dstring;
+		lines[ 1]["text"] = format("Chunks visible/rendered %s/%s %.0f%%",
+			chunksVisible, chunksRendered,
+			chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0)
+			.to!dstring;
+		chunksVisible = 0;
 		chunksRendered = 0;
 		
 		ulong chunksLoaded = chunkMan.totalLoadedChunks;
@@ -244,30 +248,34 @@ class VoxelApplication : Application!GlfwWindow
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
 			cast(const float*)fpsController.camera.perspective.arrayof);
 
-		Matrix4f vp = secondFpsController.camera.perspective * secondFpsController.cameraToClipMatrix;
-		secondFpsController.camera.updateFrustum(vp);
+		import dlib.geometry.aabb;
+		import dlib.geometry.frustum;
+		Matrix4f vp = fpsController.camera.perspective * fpsController.cameraToClipMatrix;
+		Frustum frustum;
+		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
 		foreach(Chunk* c; chunkMan.visibleChunks)
 		{
-			// Frustum culling
-			ivec3 ivecMin = c.coord * CHUNK_SIZE;
-			vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
-			vec3 vecMax = vecMin + CHUNK_SIZE;
+			++chunksVisible;
 
-			import dlib.geometry.frustum, dlib.geometry.aabb;
-			Frustum frustum;
-			frustum.fromMVP(vp);
-			if (frustum.intersectsAABB(boxFromMinMaxPoints(vecMin, vecMax))) continue;
-
-			auto test = secondFpsController.camera.frustumAABBIntersect(vecMin, vecMax);
-			if (test == IntersectionResult.outside) continue;
+			if (isCullingEnabled)
+			{
+				// Frustum culling
+				ivec3 ivecMin = c.coord * CHUNK_SIZE;
+				vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
+				vec3 vecMax = vecMin + CHUNK_SIZE;
+				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
+				auto intersects = frustum.intersectsAABB(aabb);
+				if (!intersects) continue;
+			}
 
 			modelMatrix = translationMatrix!float(c.mesh.position);
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 			
 			c.mesh.bind;
 			c.mesh.render;
+
 			++chunksRendered;
 			vertsRendered += c.mesh.numVertexes;
 			trisRendered += c.mesh.numTris;
@@ -342,7 +350,7 @@ class VoxelApplication : Application!GlfwWindow
 
 				break;
 			case KeyCode.KEY_U: doUpdateObserverPosition = !doUpdateObserverPosition; break;
-			case KeyCode.KEY_C: secondFpsController = fpsController; break;
+			case KeyCode.KEY_C: isCullingEnabled = !isCullingEnabled; break;
 			case KeyCode.KEY_R: resetCamera(); break;
 			default: break;
 		}
@@ -351,8 +359,9 @@ class VoxelApplication : Application!GlfwWindow
 	void resetCamera()
 	{
 		fpsController.camera.position=vec3(0,0,0);
+		fpsController.camera.target=vec3(0,0,1);
 		fpsController.angleHor = 0;
-		fpsController.angleVert = 0;		
+		fpsController.angleVert = 0;
 		fpsController.update();
 	}
 

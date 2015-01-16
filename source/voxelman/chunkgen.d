@@ -19,9 +19,11 @@ import voxelman.chunk;
 import voxelman.config;
 
 
-alias Generator = Generator2d;
-//alias Generator = Generator2d3d;
+//alias Generator = Generator2d;
+alias Generator = Generator2d3d;
 //alias Generator = TestGeneratorSmallCubes;
+//alias Generator = TestGeneratorSmallCubes2;
+//alias Generator = TestGeneratorSmallCubes3;
 
 struct ChunkGenResult
 {
@@ -153,6 +155,34 @@ struct TestGeneratorSmallCubes
 	BlockType generateBlock(int x, int y, int z)
 	{
 		if (x % 2 == 0 && y % 2 == 0 && z % 2 == 0) return 2;
+		else return 1;
+	}
+}
+
+struct TestGeneratorSmallCubes2
+{
+	ivec3 chunkOffset;
+	void genPerChunkData(){}
+
+	BlockType generateBlock(int x, int y, int z)
+	{
+		if (x % 4 == 0 && y % 4 == 0 && z % 4 == 0) return 2;
+		else return 1;
+	}
+}
+
+struct TestGeneratorSmallCubes3
+{
+	enum cubesSizes = 4;
+	enum cubeOffsets = 16;
+	ivec3 chunkOffset;
+	void genPerChunkData(){}
+
+	BlockType generateBlock(int x, int y, int z)
+	{
+		if (x % cubeOffsets < cubesSizes &&
+			y % cubeOffsets < cubesSizes &&
+			z % cubeOffsets < cubesSizes) return 2;
 		else return 1;
 	}
 }

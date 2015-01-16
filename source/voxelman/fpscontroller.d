@@ -73,7 +73,6 @@ struct FpsController
 		calcVectors();
 
 		cameraToClipMatrix = rotation * proj;
-		camera.updateFrustum(cameraToClipMatrix);
 		isUpdated = true;
 	}
 
@@ -85,25 +84,22 @@ struct FpsController
 	
 	void printVectors()
 	{
-		writefln("camera\nposition\t%s\ttarget\t%s\tup\t%s\tright\t%s",
-			camera.position, camera.target, camera.up, right);
+		writefln("camera\nposition\t%s\ttarget\t%s\tup\t%s\tcamera.right\t%s",
+			camera.position, camera.target, camera.up, camera.right);
 	}
 		
 	private void calcVectors()
 	{
-		camera.target	= vec3(0,0,1);
+		camera.target	= vec3(0,0,-1);
 		camera.up		= vec3(0,1,0);
-		right			= vec3(-1,0,0);
 		
 		camera.target = rotationQuat.rotate(camera.target);
 		camera.target.normalize();
-
-		camera.target.y = 0;
 		
 		rotationQuat.rotate(camera.up);
 		camera.up.normalize();
 		
-		right = cross(camera.up, camera.target);
+		camera.right = cross(camera.up, camera.target);
 	}
 	
 	Camera camera;
@@ -118,7 +114,6 @@ struct FpsController
 	Quaternionf rotationQuat;
 	Quaternionf rotationQuatHor;
 	Quaternionf rotationQuatVert;
-	vec3 right	= vec3(1,0,0);	//for strafe
 	
 	bool isUpdated = false;
 }
