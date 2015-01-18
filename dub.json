@@ -7,14 +7,28 @@
 
 	"dependencies" : {
 		"cbor-d" : ">=0.3.0",
-		"anchovy" : {"version" : "~master"}
+		"anchovy" : {"version" : "~master"},
+        "derelict-enet": "==1.3.10"
 	},
-
-	"targetName" : "voxelman",
 	
 	"sourcePaths" : [ "source" ],
-	"mainSourceFile": "source/main.d",
 	"targetPath" : "bin",
 	"workingDirectory" : "bin",
-	"targetType" : "executable"
+
+	"configurations": [
+        {
+            "name" : "client",
+            "targetName" : "client",
+            "targetType" : "executable",
+            "excludedSourceFiles" : ["source/voxelman/server/*", "source/servermain.d"],
+            "mainSourceFile" : "source/clientmain.d"
+        },
+        {
+            "name": "server",
+            "targetName" : "server",
+            "targetType": "executable",
+            "excludedSourceFiles" : ["source/voxelman/client/*", "source/clientmain.d"],
+            "mainSourceFile" : "source/servermain.d"
+        }
+    ]
 }

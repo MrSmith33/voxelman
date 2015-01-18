@@ -4,16 +4,17 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.fpscontroller;
+module voxelman.utils.fpscontroller;
 
 import std.stdio;
+
 import dlib.math.matrix;
 import dlib.math.affine;
 import dlib.math.vector;
 import dlib.math.quaternion;
 import dlib.math.utils;
 
-import voxelman.camera;
+import voxelman.utils.camera;
 
 struct FpsController
 {

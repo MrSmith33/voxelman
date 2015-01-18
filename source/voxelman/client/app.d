@@ -4,7 +4,7 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.app;
+module voxelman.client.app;
 
 import std.stdio : writeln;
 import std.string : format;
@@ -17,12 +17,11 @@ import anchovy.gui;
 import anchovy.gui.application.application;
 import anchovy.gui.databinding.list;
 
-import voxelman.fpscontroller;
-import voxelman.camera;
-
+import voxelman.config;
 import voxelman.chunk;
 import voxelman.chunkman;
-import voxelman.config;
+import voxelman.utils.fpscontroller;
+import voxelman.utils.camera;
 
 
 __gshared ChunkMan chunkMan;
@@ -30,7 +29,7 @@ __gshared ChunkMan chunkMan;
 //version = manualGC;
 version(manualGC) import core.memory;
 
-class VoxelApplication : Application!GlfwWindow
+class ClientApp : Application!GlfwWindow
 {
 	uvec3 viewSize;
 	ulong chunksVisible;

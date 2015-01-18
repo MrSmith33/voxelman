@@ -1,4 +1,4 @@
-module voxelman.rlecompression;
+module voxelman.utils.rlecompression;
 
 import std.stdio;
 import std.range : put;

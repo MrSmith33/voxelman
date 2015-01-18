@@ -4,7 +4,9 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.camera;
+module voxelman.utils.camera;
+
+import std.math;
 
 import dlib.math.vector;
 import dlib.math.matrix;
@@ -12,8 +14,8 @@ import dlib.math.affine;
 import dlib.math.utils;
 import dlib.geometry.plane;
 import dlib.geometry.frustum;
+
 import voxelman.config;
-import std.math;
 
 enum IntersectionResult
 {

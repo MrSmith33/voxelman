@@ -13,7 +13,7 @@ import voxelman.block;
 import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.regionstorage;
-import voxelman.rlecompression;
+import voxelman.utils.rlecompression;
 
 private ubyte[4096*16] compressBuffer;
 private ubyte[4096*16] buffer;

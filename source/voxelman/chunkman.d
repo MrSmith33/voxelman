@@ -20,7 +20,7 @@ import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;
 import voxelman.storageworker;
-import voxelman.workergroup;
+import voxelman.utils.workergroup;
 
 version = Disk_Storage;
 
