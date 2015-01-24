@@ -16,21 +16,22 @@ class ModuleManager : IModuleManager
 		modules[moduleInstance.name] = moduleInstance;
 	}
 
-	void loadModules()
-	{
-		foreach(IModule m; modules)
-		{
-			m.load();
-			writefln("Loaded module %s %s", m.name, m.semver);
-		}
-	}
-
 	void initModules()
 	{
 		foreach(IModule m; modules)
 		{
+			m.preInit();
+			writefln("PreInited module %s %s", m.name, m.semver);
+		}
+		foreach(IModule m; modules)
+		{
 			m.init(this);
 			writefln("Inited module %s %s", m.name, m.semver);
+		}
+		foreach(IModule m; modules)
+		{
+			m.postInit();
+			writefln("PostInited module %s %s", m.name, m.semver);
 		}
 	}
 

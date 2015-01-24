@@ -49,8 +49,8 @@ abstract class BaseServer(Client) : Connection
 
 	/// ditto
 	void sendTo(R, P)(R clients, auto ref const(P) packet, ubyte channel = 0)
-		if ((isInputRange!R && is(ElementType!R : ClientId)) ||
-			is(R : ClientId) &&
+		if (((isInputRange!R && is(ElementType!R : ClientId)) ||
+			is(R : ClientId)) &&
 			is(P == struct))
 	{
 		sendTo(clients, createPacket(packet), channel);

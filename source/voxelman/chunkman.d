@@ -250,9 +250,7 @@ struct ChunkMan
 
 	Chunk* getChunk(ivec3 coord)
 	{
-		Chunk** chunk = coord in chunks;
-		if (chunk is null) return null;
-		return *chunk;
+		return chunks.get(coord, null);
 	}
 
 	@property auto visibleChunks()

@@ -8,21 +8,15 @@ module voxelman.modules.guimodule;
 
 import modular;
 
-import modular.modules.mainloopmodule;
-
-class GuiModule : IModule, IUpdatableModule
+class GuiModule : IModule
 {
 	override string name() @property { return "GuiModule"; }
 	override string semver() @property { return "1.0.0"; }
-	override void load()
-	{
-	}
+	override void preInit() { }
 
-	override void init(IModuleManager moduleman)
-	{
-		mainmod = moduleman.getModule!MainLoopModule(this);
-		mainmod.registerUpdatableModule(this);
-	}
+	override void init(IModuleManager moduleman) { }
+
+	override void postInit() { }
 
 	void update(double delta)
 	{
@@ -35,5 +29,5 @@ class GuiModule : IModule, IUpdatableModule
 	}
 
 private:
-	MainLoopModule mainmod;
+	
 }

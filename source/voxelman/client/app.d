@@ -15,7 +15,9 @@ import dlib.math.affine;
 import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui;
 import anchovy.gui.application.application;
-import anchovy.gui.databinding.list;
+
+import modular;
+import modular.modulemanager;
 
 import voxelman.config;
 import voxelman.chunk;
@@ -23,14 +25,38 @@ import voxelman.chunkman;
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
 
+import voxelman.modules.eventdispatchermodule;
+
+class GameStopEvent : GameEvent {}
+
+class UpdateEvent : GameEvent {
+	this(double dt)
+	{
+		deltaTime = dt;
+	}
+	double deltaTime;
+}
+class PreUpdateEvent : UpdateEvent {
+	this(double dt) {
+		super(dt);
+	}
+}
+class PostUpdateEvent : UpdateEvent {
+	this(double dt) {
+		super(dt);
+	}
+}
 
 __gshared ChunkMan chunkMan;
 
 //version = manualGC;
 version(manualGC) import core.memory;
 
-class ClientApp : Application!GlfwWindow
+alias BaseApplication = Application!GlfwWindow;
+
+class ClientApp : BaseApplication, IModule
 {
+private:
 	uvec3 viewSize;
 	ulong chunksVisible;
 	ulong chunksRendered;
@@ -47,6 +73,17 @@ class ClientApp : Application!GlfwWindow
 	bool doUpdateObserverPosition = true;
 
 	Widget debugInfo;
+
+	ModuleManager moduleman = new ModuleManager;
+	EventDispatcherModule evdispatcher = new EventDispatcherModule;
+
+public:
+	// IModule stuff
+	override string name() @property { return "ClientApp"; }
+	override string semver() @property { return "1.0.0"; }
+	override void preInit() { }
+	override void init(IModuleManager moduleman) { }
+	override void postInit() { }
 
 	this(uvec2 windowSize, string caption)
 	{
@@ -72,14 +109,62 @@ class ClientApp : Application!GlfwWindow
 		});
 	}
 
+	alias init = BaseApplication.init;
+
+	override void init(in string[] args)
+	{
+		super.init(args);
+	}
+
+	override void run(in string[] args)
+	{
+		import std.datetime : TickDuration, Clock, usecs;
+		import core.thread : Thread;
+
+		version(manualGC) GC.disable;
+
+		moduleman.registerModule(this);
+		moduleman.registerModule(evdispatcher);
+
+		init(args);
+		load(args);
+
+		writeln("Loading modules");
+		moduleman.initModules();
+		writeln;
+
+
+		TickDuration lastTime = Clock.currAppTick;
+		TickDuration newTime = TickDuration.from!"seconds"(0);
+
+		while(isRunning)
+		{
+			newTime = Clock.currAppTick;
+			double delta = (newTime - lastTime).usecs / 1_000_000.0;
+			lastTime = newTime;
+
+			update(delta);
+			draw();
+
+			version(manualGC) GC.collect();
+
+			// time used in frame
+			delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
+			fpsHelper.sleepAfterFrame(delta);
+		}
+
+		evdispatcher.postEvent(new GameStopEvent);
+		unload();
+
+		window.releaseWindow;
+	}
+
 	override void load(in string[] args)
 	{
 		writeln("---------------------- System info ----------------------");
 		foreach(item; getHardwareInfo())
 			writeln(item);
 		writeln("---------------------------------------------------------\n");
-
-		version(manualGC) GC.disable;
 
 		fpsHelper.limitFps = false;
 
@@ -160,9 +245,10 @@ class ClientApp : Application!GlfwWindow
 	ulong lastFrameLoadedChunks = 0;
 	override void update(double dt)
 	{
-		stdout.flush;
-		fpsHelper.update(dt);
+		evdispatcher.postEvent(new PreUpdateEvent(dt));
+		window.processEvents();
 
+		fpsHelper.update(dt);
 		printDebug();
 		timerManager.updateTimers(window.elapsedTime);
 		context.update(dt);
@@ -171,6 +257,8 @@ class ClientApp : Application!GlfwWindow
 		chunkMan.update();
 		if (doUpdateObserverPosition)
 			chunkMan.updateObserverPosition(fpsController.camera.position);
+		evdispatcher.postEvent(new UpdateEvent(dt));
+		evdispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
 	void printDebug()
@@ -234,7 +322,6 @@ class ClientApp : Application!GlfwWindow
 		context.eventDispatcher.draw();
 
 		window.swapBuffers();
-		version(manualGC) GC.collect();
 	}
 
 	void drawScene()

@@ -32,12 +32,12 @@ void loadEnet()
 	}
 }
 
-// Stores info about connected peer. Used in server
+// Client id type. Used in server to identify clients.
 alias ClientId = size_t;
 
 /// Packet handler.
 /// Returns true if data was valid and false otherwise.
-alias PacketHandler = void delegate(ubyte[] packetData, ClientId peer);
+alias PacketHandler = void delegate(ubyte[] packetData, ClientId clientId);
 
 struct PacketInfo
 {
@@ -54,6 +54,12 @@ struct ConnectionSettings
 	size_t numChannels;
 	uint incomingBandwidth;
 	uint outgoingBandwidth;
+}
+
+// packetData must contain data with packet id stripped off.
+P unpackPacket(P)(ubyte[] packetData)
+{
+	return decodeCborSingleDup!P(packetData);
 }
 
 abstract class Connection
@@ -141,12 +147,6 @@ abstract class Connection
 		size += encodeCbor(bufferTemp[size..$], packet);
 
 		return bufferTemp[0..size];
-	}
-
-	// packetData must contain data with packet id stripped off.
-	P unpackPacket(P)(ubyte[] packetData)
-	{
-		return decodeCborSingleDup!P(packetData);
 	}
 
 	void printPacketMap()

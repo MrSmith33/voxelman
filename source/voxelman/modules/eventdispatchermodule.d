@@ -1,34 +1,34 @@
-module modular.modules.eventdispatchermodule;
+module voxelman.modules.eventdispatchermodule;
 
 import modular;
 
 // Basic event
-abstract class Event
+abstract class GameEvent
 {
 	bool continuePropagation = true;
 }
 
-private alias EventHandler = void delegate(Event event);
+private alias EventHandler = void delegate(GameEvent event);
 
-/// Event 
 class EventDispatcherModule : IModule
 {
 	override string name() @property { return "EventDispatcherModule"; }
 	override string semver() @property { return "1.0.0"; }
-	override void load() { }
+	override void preInit() { }
 	override void init(IModuleManager moduleman) {}
+	override void postInit() { }
 
-	void subscribeToEvent(E : Event)(void delegate(E event) handler)
+	void subscribeToEvent(E : GameEvent)(void delegate(E event) handler)
 	{
 		_eventHandlers[typeid(E)] ~= cast(EventHandler)handler;
 	}
 
-	void postEvent(E : Event)(E event)
+	void postEvent(E : GameEvent)(E event)
 	{
 		auto handlers = typeid(E) in _eventHandlers;
 		if (!handlers) return;
 
-		Event e = cast(Event)event;
+		GameEvent e = cast(GameEvent)event;
 		foreach(handler; *handlers)
 		{
 			handler(e);
