@@ -17,7 +17,7 @@ import netlib.connection : ClientId, ConnectionSettings, loadEnet, unpackPacket;
 import voxelman.packets : registerPackets, MessagePacket;
 import voxelman.modules.eventdispatchermodule;
 import voxelman.server.server : Server;
-import voxelman.server.events : CommandEvent, scoped;
+import voxelman.server.events : CommandEvent;
 
 class ServerApp : IModule
 {
