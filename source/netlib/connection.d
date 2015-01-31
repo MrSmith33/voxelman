@@ -10,6 +10,12 @@ import std.stdio;
 
 import derelict.enet.enet;
 import cbor;
+public import derelict.enet.enet : ENetPeer;
+
+
+// Client id type. Used in server to identify clients.
+alias ClientId = size_t;
+
 
 void loadEnet()
 {
@@ -31,9 +37,6 @@ void loadEnet()
 			ENET_VERSION_GET_PATCH(ever));
 	}
 }
-
-// Client id type. Used in server to identify clients.
-alias ClientId = size_t;
 
 /// Packet handler.
 /// Returns true if data was valid and false otherwise.

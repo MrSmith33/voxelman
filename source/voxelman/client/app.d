@@ -21,43 +21,24 @@ import modular.modulemanager;
 
 import voxelman.config;
 import voxelman.chunk;
-import voxelman.chunkman;
+import voxelman.events;
+//import voxelman.chunkman;
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
 
 import voxelman.modules.eventdispatchermodule;
+import voxelman.modules.graphicsmodule;
+import voxelman.client.clientmodule;
 
-class GameStopEvent : GameEvent {}
-
-class UpdateEvent : GameEvent {
-	this(double dt)
-	{
-		deltaTime = dt;
-	}
-	double deltaTime;
-}
-class PreUpdateEvent : UpdateEvent {
-	this(double dt) {
-		super(dt);
-	}
-}
-class PostUpdateEvent : UpdateEvent {
-	this(double dt) {
-		super(dt);
-	}
-}
-
-__gshared ChunkMan chunkMan;
 
 //version = manualGC;
 version(manualGC) import core.memory;
 
 alias BaseApplication = Application!GlfwWindow;
 
-class ClientApp : BaseApplication, IModule
+final class ClientApp : BaseApplication
 {
 private:
-	uvec3 viewSize;
 	ulong chunksVisible;
 	ulong chunksRendered;
 	ulong vertsRendered;
@@ -65,29 +46,23 @@ private:
 
 	ShaderProgram chunkShader;
 	GLuint modelLoc, viewLoc, projectionLoc;
-
-	FpsController fpsController;
+	
 	bool mouseLocked;
 	bool isCullingEnabled = true;
 	bool autoMove;
-	bool doUpdateObserverPosition = true;
-
+	
 	Widget debugInfo;
 
 	ModuleManager moduleman = new ModuleManager;
 	EventDispatcherModule evdispatcher = new EventDispatcherModule;
+	ClientModule clientModule = new ClientModule;
+	GraphicsModule graphics = new GraphicsModule;
 
 public:
-	// IModule stuff
-	override string name() @property { return "ClientApp"; }
-	override string semver() @property { return "1.0.0"; }
-	override void preInit() { }
-	override void init(IModuleManager moduleman) { }
-	override void postInit() { }
-
 	this(uvec2 windowSize, string caption)
 	{
 		super(windowSize, caption);
+		graphics.windowSize = windowSize;
 	}
 
 	void addHideHandler(string frameId)
@@ -123,8 +98,9 @@ public:
 
 		version(manualGC) GC.disable;
 
-		moduleman.registerModule(this);
+		moduleman.registerModule(clientModule);
 		moduleman.registerModule(evdispatcher);
+		moduleman.registerModule(graphics);
 
 		init(args);
 		load(args);
@@ -173,13 +149,6 @@ public:
 		clearColor = Color(115,200,169);
 		renderer.setClearColor(clearColor);
 
-		fpsController.move(startPos);
-		fpsController.camera.sensivity = 0.4;
-		fpsController.camera.updateProjection();
-
-		fpsController.camera.aspect = cast(float)window.size.x/window.size.y;
-		fpsController.camera.updateProjection();
-
 		// Setup shaders
 
 		string vShader = cast(string)read("perspective.vert");
@@ -200,9 +169,12 @@ public:
 			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
 			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective	
 
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE, cast(const float*)fpsController.cameraMatrix);
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, cast(const float*)fpsController.camera.perspective.arrayof);
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
+				cast(const float*)Matrix4f.identity.arrayof);
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
+				cast(const float*)graphics.fpsController.cameraMatrix);
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
+				cast(const float*)graphics.fpsController.camera.perspective.arrayof);
 		chunkShader.unbind;
 
 		// Bind events
@@ -230,16 +202,11 @@ public:
 		foreach(i; 0..12) context.createWidget("label", debugInfo);
 
 		writeln("\n----------------------------- Load end -----------------------------\n");
-
-		// ----------------------------- init chunks ---------------------------
-
-		chunkMan.init();
-		chunkMan.updateObserverPosition(fpsController.camera.position);
 	}
 
 	override void unload()
 	{
-		chunkMan.stop();
+		clientModule.unload();
 	}
 
 	ulong lastFrameLoadedChunks = 0;
@@ -254,9 +221,7 @@ public:
 		context.update(dt);
 
 		updateController(dt);
-		chunkMan.update();
-		if (doUpdateObserverPosition)
-			chunkMan.updateObserverPosition(fpsController.camera.position);
+		
 		evdispatcher.postEvent(new UpdateEvent(dt));
 		evdispatcher.postEvent(new PostUpdateEvent(dt));
 	}
@@ -274,7 +239,7 @@ public:
 		chunksVisible = 0;
 		chunksRendered = 0;
 		
-		ulong chunksLoaded = chunkMan.totalLoadedChunks;
+		ulong chunksLoaded = clientModule.chunkMan.totalLoadedChunks;
 		lines[ 2]["text"] = format("Chunks per frame loaded: %s",
 			chunksLoaded - lastFrameLoadedChunks).to!dstring;
 		lines[ 3]["text"] = format("Chunks total loaded: %s",
@@ -286,33 +251,34 @@ public:
 		lines[ 5]["text"] = format("Triangles %s", trisRendered).to!dstring;
 		trisRendered = 0;
 
-		vec3 pos = fpsController.camera.position;
+		vec3 pos = graphics.fpsController.camera.position;
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
-		ivec3 chunkPos = chunkMan.observerPosition;
+		ivec3 chunkPos = clientModule.chunkMan.observerPosition;
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
 			chunkPos, regionPos, localChunkCoords).to!dstring;
 
-		vec3 target = fpsController.camera.target;
+		vec3 target = graphics.fpsController.camera.target;
 		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
 			target.x, target.y, target.z).to!dstring;
-		lines[ 9]["text"] = format("Chunks to remove: %s", chunkMan.numChunksToRemove).to!dstring;
-		lines[ 10]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
-		lines[ 11]["text"] = format("Chunks to mesh: %s", chunkMan.numMeshChunkTasks).to!dstring;
+		lines[ 9]["text"] = format("Chunks to remove: %s", clientModule.chunkMan.numChunksToRemove).to!dstring;
+		lines[ 10]["text"] = format("Chunks to load: %s", clientModule.chunkMan.numLoadChunkTasks).to!dstring;
+		lines[ 11]["text"] = format("Chunks to mesh: %s", clientModule.chunkMan.numMeshChunkTasks).to!dstring;
 	}
 
 	void windowResized(uvec2 newSize)
 	{
-		fpsController.camera.aspect = cast(float)newSize.x/newSize.y;
-		fpsController.camera.updateProjection();
+		graphics.windowSize = newSize;
+		graphics.fpsController.camera.aspect = cast(float)graphics.windowSize.x/graphics.windowSize.y;
+		graphics.fpsController.camera.updateProjection();
 	}
 
 	override void draw()
 	{
-		guiRenderer.setClientArea(Rect(0, 0, window.size.x, window.size.y));
+		guiRenderer.setClientArea(Rect(0, 0, graphics.windowSize.x, graphics.windowSize.y));
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		renderer.disableAlphaBlending();
@@ -330,18 +296,18 @@ public:
 		
 		chunkShader.bind;
 		glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
-			fpsController.cameraMatrix);
+			graphics.fpsController.cameraMatrix);
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
-			cast(const float*)fpsController.camera.perspective.arrayof);
+			cast(const float*)graphics.fpsController.camera.perspective.arrayof);
 
 		import dlib.geometry.aabb;
 		import dlib.geometry.frustum;
-		Matrix4f vp = fpsController.camera.perspective * fpsController.cameraToClipMatrix;
+		Matrix4f vp = graphics.fpsController.camera.perspective * graphics.fpsController.cameraToClipMatrix;
 		Frustum frustum;
 		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
-		foreach(Chunk* c; chunkMan.visibleChunks)
+		foreach(Chunk* c; clientModule.chunkMan.visibleChunks)
 		{
 			++chunksVisible;
 
@@ -371,8 +337,8 @@ public:
 		glDisable(GL_DEPTH_TEST);
 		
 		renderer.setColor(Color(0,0,0,1));
-		renderer.drawRect(Rect(window.size.x/2-7, window.size.y/2-1, 14, 2));
-		renderer.drawRect(Rect(window.size.x/2-1, window.size.y/2-7, 2, 14));
+		renderer.drawRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
+		renderer.drawRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
 	}
 
 	void updateController(double dt)
@@ -380,14 +346,14 @@ public:
 		if(mouseLocked)
 		{
 			ivec2 mousePos = window.mousePosition;
-			mousePos -= cast(ivec2)(window.size) / 2;
+			mousePos -= cast(ivec2)(graphics.windowSize) / 2;
 
 			if(mousePos.x !=0 || mousePos.y !=0)
 			{
-				fpsController.rotateHor(mousePos.x);
-				fpsController.rotateVert(mousePos.y);
+				graphics.fpsController.rotateHor(mousePos.x);
+				graphics.fpsController.rotateVert(mousePos.y);
 			}
-			window.mousePosition = cast(ivec2)(window.size) / 2;
+			window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 
 			uint cameraSpeed = 30;
 			vec3 posDelta = vec3(0,0,0);
@@ -405,14 +371,14 @@ public:
 			if (posDelta != vec3(0))
 			{
 				posDelta *= cameraSpeed * dt;
-				fpsController.moveAxis(posDelta);
+				graphics.fpsController.moveAxis(posDelta);
 			}
 		}
 		// TODO: remove after bug is found
 		else if (autoMove)
 		{
 			// Automoving
-			fpsController.moveAxis(vec3(0,0,20)*dt);
+			graphics.fpsController.moveAxis(vec3(0,0,20)*dt);
 		}
 	}
 
@@ -422,9 +388,9 @@ public:
 		{
 			case KeyCode.KEY_Q: mouseLocked = !mouseLocked;
 				if (mouseLocked)
-					window.mousePosition = cast(ivec2)(window.size) / 2;
+					window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 				break;
-			case KeyCode.KEY_P: fpsController.printVectors; break;
+			case KeyCode.KEY_P: graphics.fpsController.printVectors; break;
 			//case KeyCode.KEY_I:
 
 			//	chunkMan
@@ -433,22 +399,13 @@ public:
 			//	.writeln("\n");
 			//	break;
 			case KeyCode.KEY_M:
-
 				break;
-			case KeyCode.KEY_U: doUpdateObserverPosition = !doUpdateObserverPosition; break;
+			case KeyCode.KEY_U: 
+				clientModule.doUpdateObserverPosition = !clientModule.doUpdateObserverPosition; break;
 			case KeyCode.KEY_C: isCullingEnabled = !isCullingEnabled; break;
-			case KeyCode.KEY_R: resetCamera(); break;
+			case KeyCode.KEY_R: graphics.resetCamera(); break;
 			default: break;
 		}
-	}
-
-	void resetCamera()
-	{
-		fpsController.camera.position=vec3(0,0,0);
-		fpsController.camera.target=vec3(0,0,1);
-		fpsController.angleHor = 0;
-		fpsController.angleVert = 0;
-		fpsController.update();
 	}
 
 	override void closePressed()

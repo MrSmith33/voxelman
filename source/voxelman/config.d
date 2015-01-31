@@ -20,4 +20,5 @@ enum VIEW_RADIUS = 8;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 
-enum startPos = vec3(0, 100, 0);
+enum START_POS = vec3(0, 100, 0);
+enum CAMERA_SENSIVITY = 0.4;

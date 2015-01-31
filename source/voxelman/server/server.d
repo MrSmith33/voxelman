@@ -12,12 +12,7 @@ import netlib.baseserver;
 import voxelman.packets;
 import voxelman.modules.eventdispatchermodule;
 import voxelman.server.events;
-
-struct ClientInfo
-{
-	string name;
-	ENetPeer* peer;
-}
+import voxelman.server.clientinfo;
 
 class Server : BaseServer!ClientInfo
 {
