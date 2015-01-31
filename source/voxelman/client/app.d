@@ -36,13 +36,50 @@ version(manualGC) import core.memory;
 
 alias BaseApplication = Application!GlfwWindow;
 
-final class ClientApp : BaseApplication
+struct AppStatistics
 {
-private:
+	// counters. They are resetted every frame.
 	ulong chunksVisible;
 	ulong chunksRendered;
 	ulong vertsRendered;
 	ulong trisRendered;
+
+	ulong totalLoadedChunks;
+	ulong lastFrameLoadedChunks;
+	double fps;
+
+	void resetCounters()
+	{
+		chunksVisible = 0;
+		chunksRendered = 0;
+		vertsRendered = 0;
+		trisRendered = 0;
+	}
+
+	string[] getFormattedOutput()
+	{
+		import std.string : format;
+
+		string[] result;
+		result ~= format("FPS: %s", fps);
+		result ~= format("Chunks visible/rendered %s/%s %.0f%%",
+			chunksVisible, chunksRendered,
+			chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
+		result ~= format("Chunks per frame loaded: %s",
+			totalLoadedChunks - lastFrameLoadedChunks);
+		result ~= format("Chunks total loaded: %s",
+			totalLoadedChunks);
+		result ~= format("Vertexes %s", vertsRendered);
+		result ~= format("Triangles %s", trisRendered);
+
+		return result;
+	}
+}
+
+final class ClientApp : BaseApplication
+{
+private:
+	AppStatistics stats;
 
 	bool mouseLocked;
 	bool isCullingEnabled = true;
@@ -142,14 +179,10 @@ public:
 		fpsHelper.limitFps = false;
 
 		// Setup rendering
-
 		clearColor = Color(115,200,169);
 		renderer.setClearColor(clearColor);
 
-		
-
 		// Bind events
-
 		aggregator.window.windowResized.connect(&windowResized);
 		aggregator.window.keyReleased.connect(&keyReleased);
 
@@ -187,7 +220,9 @@ public:
 		window.processEvents();
 
 		fpsHelper.update(dt);
+		updateStats();
 		printDebug();
+		stats.resetCounters();
 		timerManager.updateTimers(window.elapsedTime);
 		context.update(dt);
 
@@ -197,30 +232,27 @@ public:
 		evdispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
+	void updateStats()
+	{
+		stats.fps = fpsHelper.fps;
+		stats.totalLoadedChunks = clientModule.chunkMan.totalLoadedChunks;
+	}
+
 	void printDebug()
 	{
 		// Print debug info
 		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
+		string[] statStrings = stats.getFormattedOutput();
 
-		lines[ 0]["text"] = format("FPS: %s", fpsHelper.fps).to!dstring;
-		lines[ 1]["text"] = format("Chunks visible/rendered %s/%s %.0f%%",
-			chunksVisible, chunksRendered,
-			chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0)
-			.to!dstring;
-		chunksVisible = 0;
-		chunksRendered = 0;
-		
-		ulong chunksLoaded = clientModule.chunkMan.totalLoadedChunks;
-		lines[ 2]["text"] = format("Chunks per frame loaded: %s",
-			chunksLoaded - lastFrameLoadedChunks).to!dstring;
-		lines[ 3]["text"] = format("Chunks total loaded: %s",
-			chunksLoaded).to!dstring;
-		lastFrameLoadedChunks = chunksLoaded;
+		lines[ 0]["text"] = statStrings[0].to!dstring;
+		lines[ 1]["text"] = statStrings[1].to!dstring;
 
-		lines[ 4]["text"] = format("Vertexes %s", vertsRendered).to!dstring;
-		vertsRendered = 0;
-		lines[ 5]["text"] = format("Triangles %s", trisRendered).to!dstring;
-		trisRendered = 0;
+		lines[ 2]["text"] = statStrings[2].to!dstring;
+		lines[ 3]["text"] = statStrings[3].to!dstring;
+		stats.lastFrameLoadedChunks = stats.totalLoadedChunks;
+
+		lines[ 4]["text"] = statStrings[4].to!dstring;
+		lines[ 5]["text"] = statStrings[5].to!dstring;
 
 		vec3 pos = graphics.fpsController.camera.position;
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
@@ -280,7 +312,7 @@ public:
 		Matrix4f modelMatrix;
 		foreach(Chunk* c; clientModule.chunkMan.visibleChunks)
 		{
-			++chunksVisible;
+			++stats.chunksVisible;
 
 			if (isCullingEnabled)
 			{
@@ -299,9 +331,9 @@ public:
 			c.mesh.bind;
 			c.mesh.render;
 
-			++chunksRendered;
-			vertsRendered += c.mesh.numVertexes;
-			trisRendered += c.mesh.numTris;
+			++stats.chunksRendered;
+			stats.vertsRendered += c.mesh.numVertexes;
+			stats.trisRendered += c.mesh.numTris;
 		}
 		graphics.chunkShader.unbind;
 

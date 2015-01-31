@@ -13,7 +13,7 @@ private alias EventHandler = void delegate(GameEvent event);
 class EventDispatcherModule : IModule
 {
 	override string name() @property { return "EventDispatcherModule"; }
-	override string semver() @property { return "1.0.0"; }
+	override string semver() @property { return "0.3.0"; }
 	override void preInit() { }
 	override void init(IModuleManager moduleman) {}
 	override void postInit() { }
