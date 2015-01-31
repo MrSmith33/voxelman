@@ -44,9 +44,6 @@ private:
 	ulong vertsRendered;
 	ulong trisRendered;
 
-	ShaderProgram chunkShader;
-	GLuint modelLoc, viewLoc, projectionLoc;
-	
 	bool mouseLocked;
 	bool isCullingEnabled = true;
 	bool autoMove;
@@ -149,33 +146,7 @@ public:
 		clearColor = Color(115,200,169);
 		renderer.setClearColor(clearColor);
 
-		// Setup shaders
-
-		string vShader = cast(string)read("perspective.vert");
-		string fShader = cast(string)read("colored.frag");
-		chunkShader = new ShaderProgram(vShader, fShader);
-
-		if(!chunkShader.compile())
-		{
-			writeln(chunkShader.errorLog);
-		}
-		else
-		{
-			writeln("Shaders compiled successfully");
-		}
-
-		chunkShader.bind;
-			modelLoc = glGetUniformLocation( chunkShader.program, "model" );//model transformation
-			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
-			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective	
-
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
-				cast(const float*)Matrix4f.identity.arrayof);
-			glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
-				cast(const float*)graphics.fpsController.cameraMatrix);
-			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
-				cast(const float*)graphics.fpsController.camera.perspective.arrayof);
-		chunkShader.unbind;
+		
 
 		// Bind events
 
@@ -294,10 +265,10 @@ public:
 	{
 		glEnable(GL_DEPTH_TEST);
 		
-		chunkShader.bind;
-		glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
+		graphics.chunkShader.bind;
+		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.fpsController.cameraMatrix);
-		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
+		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
 			cast(const float*)graphics.fpsController.camera.perspective.arrayof);
 
 		import dlib.geometry.aabb;
@@ -323,7 +294,7 @@ public:
 			}
 
 			modelMatrix = translationMatrix!float(c.mesh.position);
-			glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
+			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 			
 			c.mesh.bind;
 			c.mesh.render;
@@ -332,7 +303,7 @@ public:
 			vertsRendered += c.mesh.numVertexes;
 			trisRendered += c.mesh.numTris;
 		}
-		chunkShader.unbind;
+		graphics.chunkShader.unbind;
 
 		glDisable(GL_DEPTH_TEST);
 		

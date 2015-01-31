@@ -6,7 +6,10 @@ Authors: Andrey Penechko.
 
 module voxelman.modules.graphicsmodule;
 
+import anchovy.gui;
 import dlib.math.vector : uvec2;
+import dlib.math.matrix;
+
 import modular;
 import voxelman.config;
 import voxelman.utils.fpscontroller;
@@ -23,6 +26,34 @@ final class GraphicsModule : IModule
 
 		fpsController.camera.aspect = cast(float)windowSize.x/windowSize.y;
 		fpsController.camera.updateProjection();
+
+		// Setup shaders
+
+		string vShader = cast(string)read("perspective.vert");
+		string fShader = cast(string)read("colored.frag");
+		chunkShader = new ShaderProgram(vShader, fShader);
+
+		if(!chunkShader.compile())
+		{
+			writeln(chunkShader.errorLog);
+		}
+		else
+		{
+			writeln("Shaders compiled successfully");
+		}
+
+		chunkShader.bind;
+			modelLoc = glGetUniformLocation( chunkShader.program, "model" );//model transformation
+			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
+			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective	
+
+			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
+				cast(const float*)Matrix4f.identity.arrayof);
+			glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
+				cast(const float*)fpsController.cameraMatrix);
+			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
+				cast(const float*)fpsController.camera.perspective.arrayof);
+		chunkShader.unbind;
 	}
 
 	override void init(IModuleManager moduleman) { }
@@ -40,4 +71,7 @@ final class GraphicsModule : IModule
 
 	uvec2 windowSize;
 	FpsController fpsController;
+
+	ShaderProgram chunkShader;
+	GLuint modelLoc, viewLoc, projectionLoc;
 }
