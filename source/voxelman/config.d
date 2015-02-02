@@ -22,3 +22,6 @@ enum BOUND_WORLD = false;
 
 enum START_POS = vec3(0, 100, 0);
 enum CAMERA_SENSIVITY = 0.4;
+
+enum CONNECT_ADDRESS = "127.0.0.1";
+enum CONNECT_PORT = 1234;

@@ -6,9 +6,13 @@ Authors: Andrey Penechko.
 module voxelman.server.clientinfo;
 
 import netlib.connection : ENetPeer;
+import dlib.math.vector : vec3, vec2;
 
 struct ClientInfo
 {
 	string name;
+	vec3 pos;
+	vec2 heading;
+
 	ENetPeer* peer;
 }

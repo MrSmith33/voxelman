@@ -23,7 +23,7 @@ void registerPackets(Connection c)
 	c.registerPacket!ChunkDataPacket;
 	
 	// Client -> Server
-	c.registerPacket!ChunkRequestPacket;
+	c.registerPacket!ClientPositionPacket;
 }
 
 // client request
@@ -57,9 +57,11 @@ struct MessagePacket
 	string msg;
 }
 
-struct ChunkRequestPacket
+// sent by client when position/heading changes.
+struct ClientPositionPacket
 {
-	ivec3 chunkPos;
+	double x, y, z;
+	float angleHor, angleVert;
 }
 
 struct ChunkDataPacket

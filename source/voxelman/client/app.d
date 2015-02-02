@@ -9,9 +9,6 @@ module voxelman.client.app;
 import std.stdio : writeln;
 import std.string : format;
 
-import dlib.math.matrix;
-import dlib.math.affine;
-
 import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui;
 import anchovy.gui.application.application;
@@ -22,7 +19,7 @@ import modular.modulemanager;
 import voxelman.config;
 import voxelman.chunk;
 import voxelman.events;
-//import voxelman.chunkman;
+
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
 
@@ -36,53 +33,12 @@ version(manualGC) import core.memory;
 
 alias BaseApplication = Application!GlfwWindow;
 
-struct AppStatistics
-{
-	// counters. They are resetted every frame.
-	ulong chunksVisible;
-	ulong chunksRendered;
-	ulong vertsRendered;
-	ulong trisRendered;
 
-	ulong totalLoadedChunks;
-	ulong lastFrameLoadedChunks;
-	double fps;
-
-	void resetCounters()
-	{
-		chunksVisible = 0;
-		chunksRendered = 0;
-		vertsRendered = 0;
-		trisRendered = 0;
-	}
-
-	string[] getFormattedOutput()
-	{
-		import std.string : format;
-
-		string[] result;
-		result ~= format("FPS: %s", fps);
-		result ~= format("Chunks visible/rendered %s/%s %.0f%%",
-			chunksVisible, chunksRendered,
-			chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
-		result ~= format("Chunks per frame loaded: %s",
-			totalLoadedChunks - lastFrameLoadedChunks);
-		result ~= format("Chunks total loaded: %s",
-			totalLoadedChunks);
-		result ~= format("Vertexes %s", vertsRendered);
-		result ~= format("Triangles %s", trisRendered);
-
-		return result;
-	}
-}
 
 final class ClientApp : BaseApplication
 {
 private:
-	AppStatistics stats;
-
 	bool mouseLocked;
-	bool isCullingEnabled = true;
 	bool autoMove;
 	
 	Widget debugInfo;
@@ -221,35 +177,37 @@ public:
 
 		fpsHelper.update(dt);
 		updateStats();
-		printDebug();
-		stats.resetCounters();
+		
 		timerManager.updateTimers(window.elapsedTime);
 		context.update(dt);
-
 		updateController(dt);
 		
 		evdispatcher.postEvent(new UpdateEvent(dt));
+
+		printDebug();
+		clientModule.stats.resetCounters();
+
 		evdispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
 	void updateStats()
 	{
-		stats.fps = fpsHelper.fps;
-		stats.totalLoadedChunks = clientModule.chunkMan.totalLoadedChunks;
+		clientModule.stats.fps = fpsHelper.fps;
+		clientModule.stats.totalLoadedChunks = clientModule.chunkMan.totalLoadedChunks;
 	}
 
 	void printDebug()
 	{
 		// Print debug info
 		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
-		string[] statStrings = stats.getFormattedOutput();
+		string[] statStrings = clientModule.stats.getFormattedOutput();
 
 		lines[ 0]["text"] = statStrings[0].to!dstring;
 		lines[ 1]["text"] = statStrings[1].to!dstring;
 
 		lines[ 2]["text"] = statStrings[2].to!dstring;
 		lines[ 3]["text"] = statStrings[3].to!dstring;
-		stats.lastFrameLoadedChunks = stats.totalLoadedChunks;
+		clientModule.stats.lastFrameLoadedChunks = clientModule.stats.totalLoadedChunks;
 
 		lines[ 4]["text"] = statStrings[4].to!dstring;
 		lines[ 5]["text"] = statStrings[5].to!dstring;
@@ -268,7 +226,7 @@ public:
 		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
 			target.x, target.y, target.z).to!dstring;
 		lines[ 9]["text"] = format("Chunks to remove: %s", clientModule.chunkMan.numChunksToRemove).to!dstring;
-		lines[ 10]["text"] = format("Chunks to load: %s", clientModule.chunkMan.numLoadChunkTasks).to!dstring;
+		//lines[ 10]["text"] = format("Chunks to load: %s", clientModule.chunkMan.numLoadChunkTasks).to!dstring;
 		lines[ 11]["text"] = format("Chunks to mesh: %s", clientModule.chunkMan.numMeshChunkTasks).to!dstring;
 	}
 
@@ -285,63 +243,14 @@ public:
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 		renderer.disableAlphaBlending();
-		drawScene();
+		evdispatcher.postEvent(new Draw1Event(renderer));
 		renderer.enableAlphaBlending();
+
+		evdispatcher.postEvent(new Draw2Event(renderer));
 
 		context.eventDispatcher.draw();
 
 		window.swapBuffers();
-	}
-
-	void drawScene()
-	{
-		glEnable(GL_DEPTH_TEST);
-		
-		graphics.chunkShader.bind;
-		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
-			graphics.fpsController.cameraMatrix);
-		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
-			cast(const float*)graphics.fpsController.camera.perspective.arrayof);
-
-		import dlib.geometry.aabb;
-		import dlib.geometry.frustum;
-		Matrix4f vp = graphics.fpsController.camera.perspective * graphics.fpsController.cameraToClipMatrix;
-		Frustum frustum;
-		frustum.fromMVP(vp);
-
-		Matrix4f modelMatrix;
-		foreach(Chunk* c; clientModule.chunkMan.visibleChunks)
-		{
-			++stats.chunksVisible;
-
-			if (isCullingEnabled)
-			{
-				// Frustum culling
-				ivec3 ivecMin = c.coord * CHUNK_SIZE;
-				vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
-				vec3 vecMax = vecMin + CHUNK_SIZE;
-				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
-				auto intersects = frustum.intersectsAABB(aabb);
-				if (!intersects) continue;
-			}
-
-			modelMatrix = translationMatrix!float(c.mesh.position);
-			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
-			
-			c.mesh.bind;
-			c.mesh.render;
-
-			++stats.chunksRendered;
-			stats.vertsRendered += c.mesh.numVertexes;
-			stats.trisRendered += c.mesh.numTris;
-		}
-		graphics.chunkShader.unbind;
-
-		glDisable(GL_DEPTH_TEST);
-		
-		renderer.setColor(Color(0,0,0,1));
-		renderer.drawRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
-		renderer.drawRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
 	}
 
 	void updateController(double dt)
@@ -405,7 +314,7 @@ public:
 				break;
 			case KeyCode.KEY_U: 
 				clientModule.doUpdateObserverPosition = !clientModule.doUpdateObserverPosition; break;
-			case KeyCode.KEY_C: isCullingEnabled = !isCullingEnabled; break;
+			case KeyCode.KEY_C: clientModule.isCullingEnabled = !clientModule.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;
 			default: break;
 		}

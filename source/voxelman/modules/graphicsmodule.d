@@ -11,9 +11,25 @@ import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
 import modular;
+import voxelman.modules.eventdispatchermodule : GameEvent;
 import voxelman.config;
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
+
+class Draw1Event : GameEvent {
+	this(IRenderer renderer)
+	{
+		this.renderer = renderer;
+	}
+	IRenderer renderer;
+}
+class Draw2Event : GameEvent {
+	this(IRenderer renderer)
+	{
+		this.renderer = renderer;
+	}
+	IRenderer renderer;
+}
 
 final class GraphicsModule : IModule
 {

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2014 Andrey Penechko.
 License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.chunkman;
+module voxelman.client.chunkman;
 
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
@@ -15,14 +15,10 @@ import dlib.math.vector : vec3, ivec3;
 import voxelman.block;
 import voxelman.blockman;
 import voxelman.chunk;
-import voxelman.chunkgen;
 import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;
-import voxelman.storageworker;
 import voxelman.utils.workergroup;
-
-version = Disk_Storage;
 
 
 ///
@@ -34,7 +30,6 @@ struct ChunkMan
 	size_t numChunksToRemove;
 	
 	// Stats
-	size_t numLoadChunkTasks;
 	size_t numMeshChunkTasks;
 	size_t totalLoadedChunks;
 
@@ -44,50 +39,30 @@ struct ChunkMan
 	
 	BlockMan blockMan;
 
-	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(meshWorkerThread) meshWorkers;
-	WorkerGroup!(storageWorkerThread) storeWorker;
 
 	void init()
 	{
 		blockMan.loadBlockTypes();
 
-		genWorkers.startWorkers(NUM_WORKERS, thisTid);
 		meshWorkers.startWorkers(NUM_WORKERS, thisTid, blockMan.blocks);
-		version(Disk_Storage)
-			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
 	}
 
 	void stop()
 	{
-		writefln("saving chunks %s", chunks.length);
+		writefln("unloading chunks");
 
 		foreach(chunk; chunks.byValue)
 			addToRemoveQueue(chunk);
 
-		size_t toBeDone = chunks.length;
-		uint donePercentsPrev;
-
 		while(chunks.length > 0)
 		{
 			update();
-
-			auto donePercents = cast(float)(toBeDone - chunks.length) / toBeDone * 100;
-			if (donePercents >= donePercentsPrev + 10)
-			{
-				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
-				writefln("saved %s%%", donePercentsPrev);
-			}
 		}
 
 		meshWorkers.stopWorkers();
-		genWorkers.stopWorkers();
-
-		version(Disk_Storage)
-			storeWorker.stopWorkersWhenDone();
 
 		thread_joinAll();
-
 	}
 
 	void update()
@@ -96,7 +71,6 @@ struct ChunkMan
 		while (message)
 		{
 			message = receiveTimeout(0.msecs,
-				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);},
 				(immutable(MeshGenResult)* data){onMeshLoaded(cast(MeshGenResult*)data);}
 				);
 		}
@@ -104,11 +78,11 @@ struct ChunkMan
 		updateChunks();
 	}
 
-	void onChunkLoaded(ChunkGenResult* data)
+	void onChunkLoaded(ivec3 chunkPos, ChunkData chunkData)
 	{
 		//writefln("Chunk data received in main thread");
 
-		Chunk* chunk = getChunk(data.coord);
+		Chunk* chunk = getChunk(chunkPos);
 		assert(chunk !is null);
 
 		chunk.hasWriter = false;
@@ -117,17 +91,17 @@ struct ChunkMan
 		assert(!chunk.isUsed);
 
 		++totalLoadedChunks;
-		--numLoadChunkTasks;
 
 		chunk.isVisible = true;
-		if (data.chunkData.uniform)
+		if (chunkData.uniform)
 		{
-			chunk.isVisible = blockMan.blocks[data.chunkData.uniformType].isVisible;
+			chunk.isVisible = blockMan.blocks[chunkData.uniformType].isVisible;
 		}
-		chunk.data = data.chunkData;
+		chunk.data = chunkData;
 
 		if (chunk.isMarkedForDeletion)
 		{
+			delete chunkData.typeData;
 			return;
 		}
 
@@ -257,8 +231,8 @@ struct ChunkMan
 	{
 		import std.algorithm : filter;
 		return chunks
-		.byValue
-		.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
+			.byValue
+			.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
 
 	ChunkRange calcChunkRange(ivec3 coord)
@@ -314,6 +288,28 @@ struct ChunkMan
 		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
 		{
 			loadChunk(chunkCoord);
+		}
+	}
+
+	void loadChunk(ivec3 coord)
+	{
+		if (auto chunk = coord in chunks) 
+		{
+			if ((*chunk).isMarkedForDeletion)
+				removeFromRemoveQueue(*chunk);
+			return;
+		}
+		Chunk* chunk = createEmptyChunk(coord);
+		addChunk(chunk);
+	}
+
+	void loadRegion(ChunkRange region)
+	{
+		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
+		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
+		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
+		{
+			loadChunk(ivec3(x, y, z));
 		}
 	}
 
@@ -385,9 +381,6 @@ struct ChunkMan
 		assert(chunk !is null);
 
 		assert(!chunk.isUsed);
-		//assert(!chunk.isAnyAdjacentUsed);
-
-		//writefln("remove chunk at %s", chunk.coord);
 
 		void detachAdjacent(ubyte side)()
 		{
@@ -407,59 +400,9 @@ struct ChunkMan
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord);
-		if (chunk.mesh) chunk.mesh.free();
+		if (chunk.mesh)
+			chunk.mesh.free();
 		delete chunk.mesh;
-		version(Disk_Storage)
-		{
-			if (isChunkInWorldBounds(chunk.coord))
-			{
-				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.data, true);
-			}
-		}
 		delete chunk;
-	}
-
-	void loadChunk(ivec3 coord)
-	{
-		if (auto chunk = coord in chunks) 
-		{
-			if ((*chunk).isMarkedForDeletion)
-				removeFromRemoveQueue(*chunk);
-			return;
-		}
-		Chunk* chunk = createEmptyChunk(coord);
-		addChunk(chunk);
-
-		if (!isChunkInWorldBounds(coord)) return;
-
-		chunk.hasWriter = true;
-		++numLoadChunkTasks;
-
-		version(Disk_Storage)
-			storeWorker.nextWorker.send(coord, genWorkers.nextWorker);
-		else
-			genWorkers.nextWorker.send(chunk.coord);
-	}
-
-	void loadRegion(ChunkRange region)
-	{
-		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
-		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
-		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
-		{
-			loadChunk(ivec3(x, y, z));
-		}
-	}
-
-	bool isChunkInWorldBounds(ivec3 coord)
-	{
-		static if (BOUND_WORLD)
-		{
-			if(coord.x<0 || coord.y<0 || coord.z<0 || coord.x>=WORLD_SIZE ||
-				coord.y>=WORLD_SIZE || coord.z>=WORLD_SIZE)
-				return false;
-		}
-
-		return true;
 	}
 }

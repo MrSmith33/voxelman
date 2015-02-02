@@ -54,16 +54,15 @@ public:
 	override void onDisconnect(ref ENetEvent event)
 	{
 		ClientId clientId = cast(ClientId)event.peer.data;
-		
-		clientStorage.removeClient(clientId);
-
-		sendToAll(ClientLoggedOutPacket(clientId));
-
-		// Reset client's information
-		event.peer.data = null;
 
 		auto _event = new ClientDisconnectedEvent(clientId);
 		evDispatcher.postEvent(_event);
+		
+		// Reset client's information
+		event.peer.data = null;
+		clientStorage.removeClient(clientId);
+
+		sendToAll(ClientLoggedOutPacket(clientId));
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
@@ -77,5 +76,10 @@ public:
 
 		auto _event = new ClientLoggedInEvent(clientId);
 		evDispatcher.postEvent(_event);
+	}
+
+	void handleClientPosition(ubyte[] packetData, ClientId clientId)
+	{
+
 	}
 }
