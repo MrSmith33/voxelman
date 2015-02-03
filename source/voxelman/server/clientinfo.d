@@ -7,12 +7,16 @@ module voxelman.server.clientinfo;
 
 import netlib.connection : ENetPeer;
 import dlib.math.vector : vec3, vec2;
+import voxelman.chunk : ChunkRange;
 
 struct ClientInfo
 {
 	string name;
 	vec3 pos;
 	vec2 heading;
+	size_t viewRadius;
+	ChunkRange visibleRegion;
 
 	ENetPeer* peer;
+	bool loggedIn;
 }

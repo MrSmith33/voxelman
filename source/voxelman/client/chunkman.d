@@ -264,11 +264,7 @@ struct ChunkMan
 		auto oldRegion = visibleRegion;
 		visibleRegion = newRegion;
 
-		bool cond = oldRegion.size.x == 0 &&
-			oldRegion.size.y == 0 &&
-			oldRegion.size.z == 0;
-
-		if (cond)
+		if (oldRegion.empty)
 		{
 			loadRegion(newRegion);
 			return;

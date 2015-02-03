@@ -64,6 +64,12 @@ struct ClientPositionPacket
 	float angleHor, angleVert;
 }
 
+// sent by client after receiving SessionInfoPacket
+struct ViewRadiusPacket
+{
+	size_t viewRadius;
+}
+
 struct ChunkDataPacket
 {
 	ivec3 chunkPos;

@@ -61,12 +61,22 @@ struct ChunkRange
 		return size.x * size.y * size.z;
 	}
 
+	bool empty() @property
+	{
+		return size.x == 0 && size.y == 0 && size.z == 0;
+	}
+
 	bool contains(ivec3 otherCoord)
 	{
 		if (otherCoord.x < coord.x || otherCoord.x >= coord.x + size.x) return false;
 		if (otherCoord.y < coord.y || otherCoord.y >= coord.y + size.y) return false;
 		if (otherCoord.z < coord.z || otherCoord.z >= coord.z + size.z) return false;
 		return true;
+	}
+
+	bool opEquals()(auto ref const ChunkRange other) const
+	{
+		return coord == other.coord && size == other.size;
 	}
 
 	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;

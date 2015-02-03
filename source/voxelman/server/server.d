@@ -11,18 +11,28 @@ import netlib.baseserver;
 
 import voxelman.packets;
 import voxelman.modules.eventdispatchermodule;
-import voxelman.server.events;
+import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
+import voxelman.server.events;
 
-class Server : BaseServer!ClientInfo
+final class Server : BaseServer!ClientInfo
 {
 private:
 	EventDispatcherModule evDispatcher;
+	ChunkMan chunkMan;
 
 public:
 	this(EventDispatcherModule evDispatcher)
 	{
 		this.evDispatcher = evDispatcher;
+		chunkMan = ChunkMan(this);
+	}
+
+	override void update(uint msecs)
+	{
+		super.update(msecs);
+
+		chunkMan.update();
 	}
 
 	string[ClientId] clientNames()
@@ -70,6 +80,7 @@ public:
 		LoginPacket packet = unpackPacket!LoginPacket(packetData);
 		
 		clientStorage[clientId].name = packet.clientName;
+		clientStorage[clientId].loggedIn = true;
 		
 		sendTo(clientId, SessionInfoPacket(clientId, clientNames));
 		sendToAllExcept(clientId, ClientLoggedInPacket(clientId, packet.clientName));

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2014 Andrey Penechko.
 License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.chunkman;
+module voxelman.server.chunkman;
 
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
@@ -12,6 +12,8 @@ import core.thread : thread_joinAll;
 
 import dlib.math.vector : vec3, ivec3;
 
+import netlib;
+
 import voxelman.block;
 import voxelman.blockman;
 import voxelman.chunk;
@@ -19,33 +21,58 @@ import voxelman.chunkgen;
 import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;
+import voxelman.server.clientinfo;
+import voxelman.server.server;
 import voxelman.storageworker;
 import voxelman.utils.workergroup;
 
 version = Disk_Storage;
 
 
+struct ChunkObserverList
+{
+	ClientId[] observers;
+
+	bool empty() @property
+	{
+		return observers.length == 0;
+	}
+
+	void add(ClientId clientId)
+	{
+		observers ~= clientId;
+	}
+
+	void remove(ClientId clientId)
+	{
+		import std.algorithm : remove, SwapStrategy;
+		observers = remove!((a) => a == clientId, SwapStrategy.unstable)(observers);
+	}
+}
+
 ///
 struct ChunkMan
 {
+	@disable this();
+	this(Server server)
+	{
+		this.server = server;
+	}
+
+	Server server;
 	Chunk*[ivec3] chunks;
+	ChunkObserverList[ivec3] chunkObservers;
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
 	
 	// Stats
 	size_t numLoadChunkTasks;
-	size_t numMeshChunkTasks;
 	size_t totalLoadedChunks;
-
-	ChunkRange visibleRegion;
-	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
-	uint viewRadius = VIEW_RADIUS;
 	
 	BlockMan blockMan;
 
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
-	WorkerGroup!(meshWorkerThread) meshWorkers;
 	WorkerGroup!(storageWorkerThread) storeWorker;
 
 	void init()
@@ -53,7 +80,6 @@ struct ChunkMan
 		blockMan.loadBlockTypes();
 
 		genWorkers.startWorkers(NUM_WORKERS, thisTid);
-		meshWorkers.startWorkers(NUM_WORKERS, thisTid, blockMan.blocks);
 		version(Disk_Storage)
 			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
 	}
@@ -80,7 +106,6 @@ struct ChunkMan
 			}
 		}
 
-		meshWorkers.stopWorkers();
 		genWorkers.stopWorkers();
 
 		version(Disk_Storage)
@@ -96,12 +121,88 @@ struct ChunkMan
 		while (message)
 		{
 			message = receiveTimeout(0.msecs,
-				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);},
-				(immutable(MeshGenResult)* data){onMeshLoaded(cast(MeshGenResult*)data);}
+				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);}
 				);
 		}
 
 		updateChunks();
+	}
+
+	void updateObserverPosition(ChunkRange oldRegion, vec3 cameraPos, size_t viewRadius, ClientId clientId)
+	{
+		import std.conv : to;
+
+		ivec3 chunkPos = ivec3(
+			to!int(cameraPos.x) / CHUNK_SIZE,
+			to!int(cameraPos.y) / CHUNK_SIZE,
+			to!int(cameraPos.z) / CHUNK_SIZE);
+
+		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
+		if (oldRegion == newRegion) return;
+		
+		onClientVisibleRegionChanged(oldRegion, newRegion, clientId);
+		server.clientStorage[clientId].visibleRegion = newRegion;
+	}
+
+	ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
+	{
+		auto size = viewRadius*2 + 1;
+		return ChunkRange(cast(ivec3)(coord - viewRadius),
+			ivec3(size, size, size));
+	}
+
+	void onClientVisibleRegionChanged(ChunkRange oldRegion, ChunkRange newRegion, ClientId clientId)
+	{
+		if (oldRegion.empty)
+		{
+			observeRegion(newRegion, clientId);
+			return;
+		}
+
+		auto chunksToRemove = oldRegion.chunksNotIn(newRegion);
+
+		// remove chunks
+		foreach(chunkCoord; chunksToRemove)
+		{
+			removeChunkObserver(chunkCoord, clientId);
+		}
+
+		// load chunks
+		// ivec3[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
+		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
+		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
+		{
+			addChunkObserver(chunkCoord, clientId);
+		}
+	}
+
+	void observeRegion(ChunkRange region, ClientId clientId)
+	{
+		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
+		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
+		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
+		{
+			addChunkObserver(ivec3(x, y, z), clientId);
+		}
+	}
+
+	void addChunkObserver(ivec3 coord, ClientId clientId)
+	{
+		if (!isChunkInWorldBounds(coord)) return;
+		bool alreadyLoaded = loadChunk(coord);
+		chunkObservers[coord].add(clientId);
+		if (alreadyLoaded)
+		{
+			// send to client
+		}
+	}
+
+	void removeChunkObserver(ivec3 coord, ClientId clientId)
+	{
+		if (!isChunkInWorldBounds(coord)) return;
+		chunkObservers[coord].remove(clientId);
+		if (chunkObservers[coord].empty)
+			addToRemoveQueue(getChunk(coord));
 	}
 
 	void onChunkLoaded(ChunkGenResult* data)
@@ -131,59 +232,12 @@ struct ChunkMan
 			return;
 		}
 
-		if (chunk.isVisible)
-			tryMeshChunk(chunk);
-		foreach(a; chunk.adjacent)
-			if (a !is null) tryMeshChunk(a);
+		// Send data to observers
 	}
 
-	void tryMeshChunk(Chunk* chunk)
+	void sendChunkToObservers(ivec3 coord, )
 	{
-		if (chunk.needsMesh && chunk.canBeMeshed)
-		{
-			++chunk.numReaders;
-			foreach(a; chunk.adjacent)
-				if (a !is null) ++a.numReaders;
 
-			chunk.isMeshing = true;
-			++numMeshChunkTasks;
-			meshWorkers.nextWorker.send(cast(shared(Chunk)*)chunk);
-		}
-	}
-
-	void onMeshLoaded(MeshGenResult* data)
-	{
-		Chunk* chunk = getChunk(data.coord);
-
-		assert(chunk !is null);
-
-		chunk.isMeshing = false;
-
-		// Allow chunk to be written or deleted.
-		--chunk.numReaders;
-		foreach(a; chunk.adjacent)
-				if (a !is null) --a.numReaders;
-		--numMeshChunkTasks;
-
-		// Chunk is already in delete queue
-		if (!visibleRegion.contains(data.coord))
-		{
-			delete data.meshData;
-			delete data;
-			return;
-		}
-
-		// Attach mesh
-		if (chunk.mesh is null) chunk.mesh = new ChunkMesh();
-		chunk.mesh.data = data.meshData;
-		
-		ivec3 coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
-		chunk.mesh.isDataDirty = true;
-		chunk.isVisible = chunk.mesh.data.length > 0;
-		chunk.hasMesh = true;
-
-		//writefln("Chunk mesh generated at %s", chunk.coord);
 	}
 
 	void printList(Chunk* head)
@@ -253,72 +307,13 @@ struct ChunkMan
 		return chunks.get(coord, null);
 	}
 
-	@property auto visibleChunks()
-	{
-		import std.algorithm : filter;
-		return chunks
-		.byValue
-		.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
-	}
-
-	ChunkRange calcChunkRange(ivec3 coord)
-	{
-		auto size = viewRadius*2 + 1;
-		return ChunkRange(cast(ivec3)(coord - viewRadius),
-			ivec3(size, size, size));
-	}
-
-	void updateObserverPosition(vec3 cameraPos)
-	{
-		import std.conv : to;
-
-		ivec3 chunkPos = ivec3(
-			to!int(cameraPos.x) / CHUNK_SIZE,
-			to!int(cameraPos.y) / CHUNK_SIZE,
-			to!int(cameraPos.z) / CHUNK_SIZE);
-
-		if (chunkPos == observerPosition) return;
-		observerPosition = chunkPos;
-		
-		ChunkRange newRegion = calcChunkRange(chunkPos);
-		
-		updateVisibleRegion(newRegion);
-	}
-
-	void updateVisibleRegion(ChunkRange newRegion)
-	{
-		auto oldRegion = visibleRegion;
-		visibleRegion = newRegion;
-
-		if (oldRegion.empty)
-		{
-			loadRegion(newRegion);
-			return;
-		}
-
-		auto chunksToRemove = oldRegion.chunksNotIn(newRegion);
-
-		// remove chunks
-		foreach(chunkCoord; chunksToRemove)
-		{
-			addToRemoveQueue(getChunk(chunkCoord));
-		}
-
-		// load chunks
-		// ivec3[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
-		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
-		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
-		{
-			loadChunk(chunkCoord);
-		}
-	}
-
 	// Add already created chunk to storage
 	// Sets up all adjacent
 	void addChunk(Chunk* emptyChunk)
 	{
 		assert(emptyChunk);
 		chunks[emptyChunk.coord] = emptyChunk;
+		chunkObservers[emptyChunk.coord] = ChunkObserverList();
 		ivec3 coord = emptyChunk.coord;
 
 		void attachAdjacent(ubyte side)()
@@ -381,9 +376,7 @@ struct ChunkMan
 		assert(chunk !is null);
 
 		assert(!chunk.isUsed);
-		//assert(!chunk.isAnyAdjacentUsed);
-
-		//writefln("remove chunk at %s", chunk.coord);
+		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
 
 		void detachAdjacent(ubyte side)()
 		{
@@ -403,6 +396,8 @@ struct ChunkMan
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord);
+		chunkObservers.remove(chunk.coord);
+
 		if (chunk.mesh) chunk.mesh.free();
 		delete chunk.mesh;
 		version(Disk_Storage)
@@ -412,21 +407,27 @@ struct ChunkMan
 				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.data, true);
 			}
 		}
+		else
+		{
+			delete chunk.data.typeData;
+			delete chunk.data;
+		}
 		delete chunk;
 	}
 
-	void loadChunk(ivec3 coord)
+	// returns true if chunk is already loaded.
+	bool loadChunk(ivec3 coord)
 	{
-		if (auto chunk = coord in chunks) 
+		if (auto chunk = coord in chunks)
 		{
 			if ((*chunk).isMarkedForDeletion)
 				removeFromRemoveQueue(*chunk);
-			return;
+			return (**chunk).isLoaded;
 		}
 		Chunk* chunk = createEmptyChunk(coord);
 		addChunk(chunk);
 
-		if (!isChunkInWorldBounds(coord)) return;
+		if (!isChunkInWorldBounds(coord)) return false;
 
 		chunk.hasWriter = true;
 		++numLoadChunkTasks;
@@ -435,16 +436,8 @@ struct ChunkMan
 			storeWorker.nextWorker.send(coord, genWorkers.nextWorker);
 		else
 			genWorkers.nextWorker.send(chunk.coord);
-	}
 
-	void loadRegion(ChunkRange region)
-	{
-		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
-		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
-		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
-		{
-			loadChunk(ivec3(x, y, z));
-		}
+		return false;
 	}
 
 	bool isChunkInWorldBounds(ivec3 coord)
