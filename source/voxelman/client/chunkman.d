@@ -80,10 +80,14 @@ struct ChunkMan
 
 	void onChunkLoaded(ivec3 chunkPos, ChunkData chunkData)
 	{
-		//writefln("Chunk data received in main thread");
-
 		Chunk* chunk = getChunk(chunkPos);
-		assert(chunk !is null);
+
+		// We can receive data for chunk that is already deleted.
+		if (chunk is null)
+		{
+			delete chunkData.typeData;
+			return;
+		}
 
 		chunk.hasWriter = false;
 		chunk.isLoaded = true;

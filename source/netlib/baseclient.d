@@ -35,7 +35,7 @@ abstract class BaseClient : Connection
 		}
 	}
 
-	void disconnnect()
+	void disconnect()
 	{
 		enet_peer_disconnect(server, 0);
 	}

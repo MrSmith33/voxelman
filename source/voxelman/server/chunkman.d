@@ -22,7 +22,8 @@ import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;
 import voxelman.server.clientinfo;
-import voxelman.server.server;
+import voxelman.server.servermodule;
+import voxelman.packets;
 import voxelman.storageworker;
 import voxelman.utils.workergroup;
 
@@ -32,6 +33,11 @@ version = Disk_Storage;
 struct ChunkObserverList
 {
 	ClientId[] observers;
+
+	ClientId[] opIndex()
+	{
+		return observers;
+	}
 
 	bool empty() @property
 	{
@@ -50,16 +56,24 @@ struct ChunkObserverList
 	}
 }
 
+ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
+{
+	auto size = viewRadius*2 + 1;
+	return ChunkRange(cast(ivec3)(coord - viewRadius),
+		ivec3(size, size, size));
+}
+
 ///
 struct ChunkMan
 {
 	@disable this();
-	this(Server server)
+	this(ServerConnection connection)
 	{
-		this.server = server;
+		assert(connection);
+		this.connection = connection;
 	}
 
-	Server server;
+	ServerConnection connection;
 	Chunk*[ivec3] chunks;
 	ChunkObserverList[ivec3] chunkObservers;
 
@@ -69,6 +83,7 @@ struct ChunkMan
 	// Stats
 	size_t numLoadChunkTasks;
 	size_t totalLoadedChunks;
+	size_t totalObservedChunks;
 	
 	BlockMan blockMan;
 
@@ -128,33 +143,32 @@ struct ChunkMan
 		updateChunks();
 	}
 
-	void updateObserverPosition(ChunkRange oldRegion, vec3 cameraPos, size_t viewRadius, ClientId clientId)
+	void updateObserverPosition(ClientId clientId)
 	{
 		import std.conv : to;
+
+		ClientInfo* clientInfo = connection.clientStorage[clientId];
+		assert(clientInfo, "clientStorage[clientId] is null");
+		ChunkRange oldRegion = clientInfo.visibleRegion;
+		vec3 cameraPos = clientInfo.pos;
+		size_t viewRadius = clientInfo.viewRadius;
 
 		ivec3 chunkPos = ivec3(
 			to!int(cameraPos.x) / CHUNK_SIZE,
 			to!int(cameraPos.y) / CHUNK_SIZE,
 			to!int(cameraPos.z) / CHUNK_SIZE);
-
 		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
 		if (oldRegion == newRegion) return;
 		
 		onClientVisibleRegionChanged(oldRegion, newRegion, clientId);
-		server.clientStorage[clientId].visibleRegion = newRegion;
-	}
-
-	ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
-	{
-		auto size = viewRadius*2 + 1;
-		return ChunkRange(cast(ivec3)(coord - viewRadius),
-			ivec3(size, size, size));
+		connection.clientStorage[clientId].visibleRegion = newRegion;
 	}
 
 	void onClientVisibleRegionChanged(ChunkRange oldRegion, ChunkRange newRegion, ClientId clientId)
 	{
 		if (oldRegion.empty)
 		{
+			writefln("observe region");
 			observeRegion(newRegion, clientId);
 			return;
 		}
@@ -193,8 +207,9 @@ struct ChunkMan
 		chunkObservers[coord].add(clientId);
 		if (alreadyLoaded)
 		{
-			// send to client
+			sendChunkToObservers(coord);
 		}
+		++totalObservedChunks;
 	}
 
 	void removeChunkObserver(ivec3 coord, ClientId clientId)
@@ -203,6 +218,7 @@ struct ChunkMan
 		chunkObservers[coord].remove(clientId);
 		if (chunkObservers[coord].empty)
 			addToRemoveQueue(getChunk(coord));
+		--totalObservedChunks;
 	}
 
 	void onChunkLoaded(ChunkGenResult* data)
@@ -233,11 +249,13 @@ struct ChunkMan
 		}
 
 		// Send data to observers
+		sendChunkToObservers(data.coord);
 	}
 
-	void sendChunkToObservers(ivec3 coord, )
+	void sendChunkToObservers(ivec3 coord)
 	{
-
+		connection.sendTo(chunkObservers[coord][],
+			ChunkDataPacket(coord, chunks[coord].data));
 	}
 
 	void printList(Chunk* head)

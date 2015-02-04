@@ -61,6 +61,13 @@ struct FpsController
 		isUpdated = false;
 	}
 
+	void setRotation(float angleHor, float angleVert)
+	{
+		this.angleHor = angleHor;
+		this.angleVert = angleVert;
+		isUpdated = false;
+	}
+
 	void update()
 	{
 		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(angleHor));

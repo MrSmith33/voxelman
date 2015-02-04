@@ -16,7 +16,7 @@ enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
 enum string SAVE_DIR = "save";
 enum NUM_WORKERS = 4;
-enum VIEW_RADIUS = 8;
+enum VIEW_RADIUS = 6;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 

@@ -80,8 +80,8 @@ abstract class Connection
 
 	ubyte[] buffer = new ubyte[1024*1024];
 
-	void delegate() connectHandler;
-	void delegate() disconnectHandler;
+	void delegate(ref ENetEvent) connectHandler;
+	void delegate(ref ENetEvent) disconnectHandler;
 
 	void start(ConnectionSettings settings)
 	{
@@ -195,15 +195,16 @@ abstract class Connection
 
 	void onConnect(ref ENetEvent event)
 	{
-		if (connectHandler) connectHandler();
+		if (connectHandler) connectHandler(event);
 	}
 
 	void onPacketReceived(ref ENetEvent event)
 	{
+		ubyte[] packetData = event.packet.data[0..event.packet.dataLength];
+		auto fullPacketData = packetData;
+
 		try
 		{
-			ubyte[] packetData = event.packet.data[0..event.packet.dataLength];
-			auto fullPacketData = packetData;
 			// decodes and pops ulong from range.
 			size_t packetId = cast(size_t)decodeCborSingle!ulong(packetData);
 
@@ -212,11 +213,12 @@ abstract class Connection
 		catch(CborException e)
 		{
 			writeln(e);
+			writefln("packet:%s data %(%x%)", event.packet.dataLength, fullPacketData);
 		}
 	}
 
 	void onDisconnect(ref ENetEvent event)
 	{
-		if (disconnectHandler) disconnectHandler();
+		if (disconnectHandler) disconnectHandler(event);
 	}
 }

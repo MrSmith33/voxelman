@@ -13,6 +13,7 @@ void registerPackets(Connection c)
 {
 	// Common
 	c.registerPacket!MessagePacket;
+	c.registerPacket!ClientPositionPacket;
 	
 	// Server -> Client
 	c.registerPacket!LoginPacket;
@@ -23,7 +24,7 @@ void registerPackets(Connection c)
 	c.registerPacket!ChunkDataPacket;
 	
 	// Client -> Server
-	c.registerPacket!ClientPositionPacket;
+	c.registerPacket!ViewRadiusPacket;
 }
 
 // client request
@@ -61,7 +62,7 @@ struct MessagePacket
 struct ClientPositionPacket
 {
 	double x, y, z;
-	float angleHor, angleVert;
+	float angleHor = 0, angleVert = 0;
 }
 
 // sent by client after receiving SessionInfoPacket
