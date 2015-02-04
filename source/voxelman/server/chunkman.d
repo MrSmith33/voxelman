@@ -143,6 +143,15 @@ struct ChunkMan
 		updateChunks();
 	}
 
+	void removeObserver(ClientId clientId)
+	{
+		auto region = connection.clientStorage[clientId].visibleRegion;
+		foreach(chunkCoord; region.chunkCoords)
+		{
+			removeChunkObserver(chunkCoord, clientId);
+		}
+	}
+
 	void updateObserverPosition(ClientId clientId)
 	{
 		import std.conv : to;

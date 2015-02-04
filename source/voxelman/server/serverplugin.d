@@ -152,6 +152,8 @@ public:
 		writefln("%s %s disconnected", clientId,
 			connection.clientStorage[clientId].name);
 
+		chunkMan.removeObserver(clientId);
+
 		evDispatcher.postEvent(new ClientDisconnectedEvent(clientId));
 		
 		// Reset client's information
@@ -159,6 +161,8 @@ public:
 		connection.clientStorage.removeClient(clientId);
 
 		connection.sendToAll(ClientLoggedOutPacket(clientId));
+		
+		writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
@@ -211,6 +215,7 @@ public:
 			clientInfo.pos = vec3(cast(float)packet.x, cast(float)packet.y, cast(float)packet.z);
 			clientInfo.heading = vec2(packet.angleHor, packet.angleVert);
 			chunkMan.updateObserverPosition(clientId);
+			writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
 		}
 	}
 

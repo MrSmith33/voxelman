@@ -84,7 +84,7 @@ struct ChunkRange
 	import std.array : array;
 
 	// generates all chunk coordinates that are contained inside chunk range.
-	auto chunkCoords()
+	auto chunkCoords() @property
 	{
 		return cartesianProduct(
 			iota(coord.x, coord.x + size.x),

@@ -6,7 +6,7 @@
 	"license" : "BSL-1.0",
 
 	"dependencies" : {
-		"cbor-d" : ">=0.3.0",
+		"cbor-d" : ">=0.3.2",
 		"anchovy" : {"version" : "~master"},
         "derelict-enet": "==1.3.10"
 	},
