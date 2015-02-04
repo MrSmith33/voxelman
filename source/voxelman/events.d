@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.events;
 
-import voxelman.modules.eventdispatchermodule : GameEvent;
+import voxelman.plugins.eventdispatcherplugin : GameEvent;
 
 
 class GameStopEvent : GameEvent {}

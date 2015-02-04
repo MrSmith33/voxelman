@@ -4,14 +4,14 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.modules.graphicsmodule;
+module voxelman.plugins.graphicsplugin;
 
 import anchovy.gui;
 import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
-import modular;
-import voxelman.modules.eventdispatchermodule : GameEvent;
+import plugin;
+import voxelman.plugins.eventdispatcherplugin : GameEvent;
 import voxelman.config;
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
@@ -31,9 +31,9 @@ class Draw2Event : GameEvent {
 	IRenderer renderer;
 }
 
-final class GraphicsModule : IModule
+final class GraphicsPlugin : IPlugin
 {
-	override string name() @property { return "GraphicsModule"; }
+	override string name() @property { return "GraphicsPlugin"; }
 	override string semver() @property { return "0.3.0"; }
 	override void preInit()
 	{
@@ -72,7 +72,7 @@ final class GraphicsModule : IModule
 		chunkShader.unbind;
 	}
 
-	override void init(IModuleManager moduleman) { }
+	override void init(IPluginManager pluginman) { }
 
 	override void postInit() { }
 

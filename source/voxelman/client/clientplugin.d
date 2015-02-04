@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015 Andrey Penechko.
 License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.client.clientmodule;
+module voxelman.client.clientplugin;
 
 import anchovy.gui;
 import dlib.math.vector : uvec2;
@@ -11,12 +11,12 @@ import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
 import derelict.enet.enet : ENetEvent;
 
-import modular;
+import plugin;
 import netlib.connection;
 import netlib.baseclient;
 
-import voxelman.modules.eventdispatchermodule;
-import voxelman.modules.graphicsmodule;
+import voxelman.plugins.eventdispatcherplugin;
+import voxelman.plugins.graphicsplugin;
 
 import voxelman.events;
 import voxelman.config;
@@ -29,7 +29,7 @@ import voxelman.client.events;
 
 final class ClientConnection : BaseClient{}
 
-final class ClientModule : IModule
+final class ClientPlugin : IPlugin
 {
 	AppStatistics stats;
 
@@ -37,8 +37,8 @@ final class ClientModule : IModule
 	ChunkMan chunkMan;
 	ClientConnection connection;
 	
-	EventDispatcherModule evDispatcher;
-	GraphicsModule graphics;
+	EventDispatcherPlugin evDispatcher;
+	GraphicsPlugin graphics;
 	
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
@@ -57,8 +57,8 @@ final class ClientModule : IModule
 	}
 
 
-	// IModule stuff
-	override string name() @property { return "ClientModule"; }
+	// IPlugin stuff
+	override string name() @property { return "ClientPlugin"; }
 	override string semver() @property { return "0.3.0"; }
 	override void preInit()
 	{
@@ -81,10 +81,10 @@ final class ClientModule : IModule
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 	}
 	
-	override void init(IModuleManager moduleman)
+	override void init(IPluginManager pluginman)
 	{
-		evDispatcher = moduleman.getModule!EventDispatcherModule(this);
-		graphics = moduleman.getModule!GraphicsModule(this);
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		graphics = pluginman.getPlugin!GraphicsPlugin(this);
 		evDispatcher.subscribeToEvent(&update);
 		evDispatcher.subscribeToEvent(&drawScene);
 	}

@@ -1,6 +1,6 @@
-module voxelman.modules.eventdispatchermodule;
+module voxelman.plugins.eventdispatcherplugin;
 
-import modular;
+import plugin;
 
 // Basic event
 abstract class GameEvent
@@ -10,12 +10,12 @@ abstract class GameEvent
 
 private alias EventHandler = void delegate(GameEvent event);
 
-class EventDispatcherModule : IModule
+class EventDispatcherPlugin : IPlugin
 {
-	override string name() @property { return "EventDispatcherModule"; }
+	override string name() @property { return "EventDispatcherPlugin"; }
 	override string semver() @property { return "0.3.0"; }
 	override void preInit() { }
-	override void init(IModuleManager moduleman) {}
+	override void init(IPluginManager pluginman) {}
 	override void postInit() { }
 
 	void subscribeToEvent(E : GameEvent)(void delegate(E event) handler)

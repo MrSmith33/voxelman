@@ -4,17 +4,17 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.modules.guimodule;
+module voxelman.plugins.guiplugin;
 
-import modular;
+import plugin;
 
-class GuiModule : IModule
+class GuiPlugin : IPlugin
 {
-	override string name() @property { return "GuiModule"; }
+	override string name() @property { return "GuiPlugin"; }
 	override string semver() @property { return "1.0.0"; }
 	override void preInit() { }
 
-	override void init(IModuleManager moduleman) { }
+	override void init(IPluginManager pluginman) { }
 
 	override void postInit() { }
 

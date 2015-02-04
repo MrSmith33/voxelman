@@ -22,7 +22,7 @@ import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;
 import voxelman.server.clientinfo;
-import voxelman.server.servermodule;
+import voxelman.server.serverplugin;
 import voxelman.packets;
 import voxelman.storageworker;
 import voxelman.utils.workergroup;

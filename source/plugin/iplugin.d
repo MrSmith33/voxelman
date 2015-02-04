@@ -1,18 +1,18 @@
-module modular.imodule;
+module plugin.iplugin;
 
-import modular;
+import plugin;
 
-/// Basic module interface.
-interface IModule
+/// Basic plugin interface.
+interface IPlugin
 {
-	// i.e. "Test Module"
+	// i.e. "Test Plugin"
 	string name() @property;
 	// valid semver version string. i.e. 0.1.0-rc.1
 	string semver() @property;
 	// load/create needed resources
 	void preInit();
-	// get references to other modules
-	void init(IModuleManager moduleman);
+	// get references to other plugins
+	void init(IPluginManager pluginman);
 	// called after init. Do something with data retrieved at previous stage.
 	void postInit();
 }

@@ -13,8 +13,8 @@ import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui;
 import anchovy.gui.application.application;
 
-import modular;
-import modular.modulemanager;
+import plugin;
+import plugin.pluginmanager;
 
 import voxelman.config;
 import voxelman.chunk;
@@ -23,9 +23,9 @@ import voxelman.events;
 import voxelman.utils.fpscontroller;
 import voxelman.utils.camera;
 
-import voxelman.modules.eventdispatchermodule;
-import voxelman.modules.graphicsmodule;
-import voxelman.client.clientmodule;
+import voxelman.plugins.eventdispatcherplugin;
+import voxelman.plugins.graphicsplugin;
+import voxelman.client.clientplugin;
 
 
 //version = manualGC;
@@ -43,10 +43,10 @@ private:
 	
 	Widget debugInfo;
 
-	ModuleManager moduleman = new ModuleManager;
-	EventDispatcherModule evdispatcher = new EventDispatcherModule;
-	ClientModule clientModule = new ClientModule;
-	GraphicsModule graphics = new GraphicsModule;
+	PluginManager pluginman = new PluginManager;
+	EventDispatcherPlugin evdispatcher = new EventDispatcherPlugin;
+	ClientPlugin clientPlugin = new ClientPlugin;
+	GraphicsPlugin graphics = new GraphicsPlugin;
 
 public:
 	this(uvec2 windowSize, string caption)
@@ -88,15 +88,15 @@ public:
 
 		version(manualGC) GC.disable;
 
-		moduleman.registerModule(clientModule);
-		moduleman.registerModule(evdispatcher);
-		moduleman.registerModule(graphics);
+		pluginman.registerPlugin(clientPlugin);
+		pluginman.registerPlugin(evdispatcher);
+		pluginman.registerPlugin(graphics);
 
 		init(args);
 		load(args);
 
-		writeln("Loading modules");
-		moduleman.initModules();
+		writeln("Loading plugins");
+		pluginman.initPlugins();
 		writeln;
 
 
@@ -166,7 +166,7 @@ public:
 
 	override void unload()
 	{
-		clientModule.unload();
+		clientPlugin.unload();
 	}
 
 	ulong lastFrameLoadedChunks = 0;
@@ -185,29 +185,29 @@ public:
 		evdispatcher.postEvent(new UpdateEvent(dt));
 
 		printDebug();
-		clientModule.stats.resetCounters();
+		clientPlugin.stats.resetCounters();
 
 		evdispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
 	void updateStats()
 	{
-		clientModule.stats.fps = fpsHelper.fps;
-		clientModule.stats.totalLoadedChunks = clientModule.chunkMan.totalLoadedChunks;
+		clientPlugin.stats.fps = fpsHelper.fps;
+		clientPlugin.stats.totalLoadedChunks = clientPlugin.chunkMan.totalLoadedChunks;
 	}
 
 	void printDebug()
 	{
 		// Print debug info
 		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
-		string[] statStrings = clientModule.stats.getFormattedOutput();
+		string[] statStrings = clientPlugin.stats.getFormattedOutput();
 
 		lines[ 0]["text"] = statStrings[0].to!dstring;
 		lines[ 1]["text"] = statStrings[1].to!dstring;
 
 		lines[ 2]["text"] = statStrings[2].to!dstring;
 		lines[ 3]["text"] = statStrings[3].to!dstring;
-		clientModule.stats.lastFrameLoadedChunks = clientModule.stats.totalLoadedChunks;
+		clientPlugin.stats.lastFrameLoadedChunks = clientPlugin.stats.totalLoadedChunks;
 
 		lines[ 4]["text"] = statStrings[4].to!dstring;
 		lines[ 5]["text"] = statStrings[5].to!dstring;
@@ -216,7 +216,7 @@ public:
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
-		ivec3 chunkPos = clientModule.chunkMan.observerPosition;
+		ivec3 chunkPos = clientPlugin.chunkMan.observerPosition;
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
@@ -225,9 +225,9 @@ public:
 		vec3 target = graphics.fpsController.camera.target;
 		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
 			target.x, target.y, target.z).to!dstring;
-		lines[ 9]["text"] = format("Chunks to remove: %s", clientModule.chunkMan.numChunksToRemove).to!dstring;
-		//lines[ 10]["text"] = format("Chunks to load: %s", clientModule.chunkMan.numLoadChunkTasks).to!dstring;
-		lines[ 11]["text"] = format("Chunks to mesh: %s", clientModule.chunkMan.numMeshChunkTasks).to!dstring;
+		lines[ 9]["text"] = format("Chunks to remove: %s", clientPlugin.chunkMan.numChunksToRemove).to!dstring;
+		//lines[ 10]["text"] = format("Chunks to load: %s", clientPlugin.chunkMan.numLoadChunkTasks).to!dstring;
+		lines[ 11]["text"] = format("Chunks to mesh: %s", clientPlugin.chunkMan.numMeshChunkTasks).to!dstring;
 	}
 
 	void windowResized(uvec2 newSize)
@@ -313,8 +313,8 @@ public:
 			case KeyCode.KEY_M:
 				break;
 			case KeyCode.KEY_U: 
-				clientModule.doUpdateObserverPosition = !clientModule.doUpdateObserverPosition; break;
-			case KeyCode.KEY_C: clientModule.isCullingEnabled = !clientModule.isCullingEnabled; break;
+				clientPlugin.doUpdateObserverPosition = !clientPlugin.doUpdateObserverPosition; break;
+			case KeyCode.KEY_C: clientPlugin.isCullingEnabled = !clientPlugin.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;
 			default: break;
 		}

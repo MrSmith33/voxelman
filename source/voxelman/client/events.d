@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.client.events;
 
 import netlib.connection : ClientId;
-import voxelman.modules.eventdispatchermodule : GameEvent;
+import voxelman.plugins.eventdispatcherplugin : GameEvent;
 
 class ClientLoggedInEvent : GameEvent
 {

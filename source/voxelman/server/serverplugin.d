@@ -4,38 +4,38 @@ License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.server.servermodule;
+module voxelman.server.serverplugin;
 
 import std.stdio : writeln;
 
 import derelict.enet.enet;
 
-import modular;
-import modular.modulemanager;
+import plugin;
+import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseserver;
 
 import voxelman.packets;
 import voxelman.config;
-import voxelman.modules.eventdispatchermodule;
+import voxelman.plugins.eventdispatcherplugin;
 import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
 
 final class ServerConnection : BaseServer!ClientInfo{}
 
-class ServerModule : IModule
+class ServerPlugin : IPlugin
 {
 private:
-	ModuleManager moduleman = new ModuleManager;
-	EventDispatcherModule evDispatcher = new EventDispatcherModule;
+	PluginManager pluginman = new PluginManager;
+	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	bool isStopping;
 
 public:
 	ServerConnection connection;
 	ChunkMan chunkMan;
-	// IModule stuff
-	override string name() @property { return "ServerModule"; }
+	// IPlugin stuff
+	override string name() @property { return "ServerPlugin"; }
 	override string semver() @property { return "0.3.0"; }
 
 	override void preInit()
@@ -54,7 +54,7 @@ public:
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
 	}
 
-	override void init(IModuleManager moduleman)
+	override void init(IPluginManager pluginman)
 	{
 		evDispatcher.subscribeToEvent(&handleCommand);
 	}
@@ -71,10 +71,10 @@ public:
 
 	void run(string[] args)
 	{
-		moduleman.registerModule(this);
-		moduleman.registerModule(evDispatcher);
+		pluginman.registerPlugin(this);
+		pluginman.registerPlugin(evDispatcher);
 
-		moduleman.initModules();
+		pluginman.initPlugins();
 		writeln;
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};

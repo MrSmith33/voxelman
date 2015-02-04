@@ -1,10 +1,10 @@
 module voxelman.servermain;
 
-import voxelman.server.servermodule;
+import voxelman.server.serverplugin;
 
 void main(string[] args)
 {
-	auto serverModule = new ServerModule;
+	auto serverPlugin = new ServerPlugin;
 
-	serverModule.run(args);
+	serverPlugin.run(args);
 }
