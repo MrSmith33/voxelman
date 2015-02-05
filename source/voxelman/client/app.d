@@ -45,7 +45,7 @@ private:
 
 	PluginManager pluginman = new PluginManager;
 	EventDispatcherPlugin evdispatcher = new EventDispatcherPlugin;
-	ClientPlugin clientPlugin = new ClientPlugin;
+	ClientPlugin clientPlugin;
 	GraphicsPlugin graphics = new GraphicsPlugin;
 
 public:
@@ -53,6 +53,7 @@ public:
 	{
 		super(windowSize, caption);
 		graphics.windowSize = windowSize;
+		clientPlugin = new ClientPlugin(window);
 	}
 
 	void addHideHandler(string frameId)

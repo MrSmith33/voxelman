@@ -50,6 +50,26 @@ ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
 	return chunkWorldPos;
 }
 
+ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
+{
+	auto size = viewRadius*2 + 1;
+	return ChunkRange(cast(ivec3)(coord - viewRadius),
+		ivec3(size, size, size));
+}
+
+ivec3 cameraToChunkPos(vec3 cameraPos)
+{
+	import std.conv : to;
+	import std.math : isNaN;
+	import voxelman.utils.math : nansToZero;
+
+	nansToZero(cameraPos);
+	return ivec3(
+		cast(int)cameraPos.x / CHUNK_SIZE,
+		cast(int)cameraPos.y / CHUNK_SIZE,
+		cast(int)cameraPos.z / CHUNK_SIZE,);
+}
+
 // 3d slice of chunks
 struct ChunkRange
 {

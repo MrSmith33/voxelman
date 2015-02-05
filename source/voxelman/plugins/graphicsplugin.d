@@ -80,8 +80,7 @@ final class GraphicsPlugin : IPlugin
 	{
 		fpsController.camera.position=vec3(0,0,0);
 		fpsController.camera.target=vec3(0,0,1);
-		fpsController.angleHor = 0;
-		fpsController.angleVert = 0;
+		fpsController.heading = vec2(0, 0);
 		fpsController.update();
 	}
 

@@ -248,12 +248,7 @@ struct ChunkMan
 
 	void updateObserverPosition(vec3 cameraPos)
 	{
-		import std.conv : to;
-
-		ivec3 chunkPos = ivec3(
-			to!int(cameraPos.x) / CHUNK_SIZE,
-			to!int(cameraPos.y) / CHUNK_SIZE,
-			to!int(cameraPos.z) / CHUNK_SIZE);
+		ivec3 chunkPos = cameraToChunkPos(cameraPos);
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;

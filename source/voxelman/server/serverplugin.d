@@ -83,7 +83,7 @@ public:
 		// Main loop
 		while (connection.isRunning)
 		{
-			connection.update(100);
+			connection.update(50);
 			chunkMan.update();			
 		}
 
@@ -131,10 +131,12 @@ public:
 		connection.sendTo(clientId, MessagePacket(from, message));
 	}
 
-	void spawnClient(ClientId clientId)
+	void spawnClient(vec3 pos, vec2 heading, ClientId clientId)
 	{
-		connection.sendTo(clientId, ClientPositionPacket(0,0,0));
-
+		ClientInfo* info = connection.clientStorage[clientId];
+		info.pos = pos;
+		info.heading = heading;
+		connection.sendTo(clientId, ClientPositionPacket(pos, heading));
 	}
 
 	void onConnect(ref ENetEvent event)
@@ -161,8 +163,8 @@ public:
 		connection.clientStorage.removeClient(clientId);
 
 		connection.sendToAll(ClientLoggedOutPacket(clientId));
-		
-		writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
+
+		//writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
@@ -171,8 +173,7 @@ public:
 		ClientInfo* info = connection.clientStorage[clientId];
 		info.name = packet.clientName;
 		info.isLoggedIn = true;
-		info.pos = START_POS;
-		connection.sendTo(clientId, ClientPositionPacket(info.pos.x, info.pos.y, info.pos.z));
+		spawnClient(info.pos, info.heading, clientId);
 
 		writefln("%s %s logged in", clientId,
 			connection.clientStorage[clientId].name);
@@ -212,10 +213,10 @@ public:
 			//writefln("Received ClientPositionPacket(%s, %s, %s)",
 			//	packet.x, packet.y, packet.z);
 
-			clientInfo.pos = vec3(cast(float)packet.x, cast(float)packet.y, cast(float)packet.z);
-			clientInfo.heading = vec2(packet.angleHor, packet.angleVert);
+			clientInfo.pos = packet.pos;
+			clientInfo.heading = packet.heading;
 			chunkMan.updateObserverPosition(clientId);
-			writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
+			//writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
 		}
 	}
 

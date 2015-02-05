@@ -56,12 +56,6 @@ struct ChunkObserverList
 	}
 }
 
-ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
-{
-	auto size = viewRadius*2 + 1;
-	return ChunkRange(cast(ivec3)(coord - viewRadius),
-		ivec3(size, size, size));
-}
 
 ///
 struct ChunkMan
@@ -154,18 +148,13 @@ struct ChunkMan
 
 	void updateObserverPosition(ClientId clientId)
 	{
-		import std.conv : to;
-
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		assert(clientInfo, "clientStorage[clientId] is null");
 		ChunkRange oldRegion = clientInfo.visibleRegion;
 		vec3 cameraPos = clientInfo.pos;
 		size_t viewRadius = clientInfo.viewRadius;
 
-		ivec3 chunkPos = ivec3(
-			to!int(cameraPos.x) / CHUNK_SIZE,
-			to!int(cameraPos.y) / CHUNK_SIZE,
-			to!int(cameraPos.z) / CHUNK_SIZE);
+		ivec3 chunkPos = cameraToChunkPos(cameraPos);
 		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
 		if (oldRegion == newRegion) return;
 		

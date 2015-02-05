@@ -13,9 +13,10 @@ import std.variant : Variant;
 import core.atomic : atomicLoad;
 import core.exception : Throwable;
 
+import dlib.math.vector : ivec3;
+
 import voxelman.block;
 import voxelman.chunk;
-import voxelman.chunkman;
 import voxelman.config;
 
 

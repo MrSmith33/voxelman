@@ -49,34 +49,33 @@ struct FpsController
 	
 	void rotateHor(float angle)
 	{
-		angleHor += angle * camera.sensivity;
-		angleHor %= 360;
+		heading.x += angle * camera.sensivity;
+		heading.x %= 360;
 		isUpdated = false;
 	}
 	
 	void rotateVert(float angle)
 	{
-		angleVert += angle * camera.sensivity;
-		angleVert = clamp!float(angleVert, ANGLE_VERT_MIN, ANGLE_VERT_MAX);
+		heading.y += angle * camera.sensivity;
+		heading.y = clamp!float(heading.y, ANGLE_VERT_MIN, ANGLE_VERT_MAX);
 		isUpdated = false;
 	}
 
-	void setRotation(float angleHor, float angleVert)
+	void setHeading(vec2 heading)
 	{
-		this.angleHor = angleHor;
-		this.angleVert = angleVert;
+		this.heading = heading;
 		isUpdated = false;
 	}
 
 	void update()
 	{
-		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(angleHor));
-		rotationQuatVert = rotation!float(Vector3f(1,0,0), degtorad!float(angleVert));
+		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(heading.x));
+		rotationQuatVert = rotation!float(Vector3f(1,0,0), degtorad!float(heading.y));
 		
 		rotationQuat = rotationQuatVert * rotationQuatHor;
 		rotationQuat.normalize();
 
-		Matrix4f rotation = rotationQuat.toMatrix4x4;//fromEuler!float(vec3(degtorad!float(-angleVert), degtorad!float(-angleHor), 0));
+		Matrix4f rotation = rotationQuat.toMatrix4x4;//fromEuler!float(vec3(degtorad!float(-heading.y), degtorad!float(-angleHor), 0));
 		Matrix4f proj = translationMatrix(-camera.position);
 		calcVectors();
 
@@ -112,8 +111,7 @@ struct FpsController
 	
 	Camera camera;
 
-	float angleHor = 0;				//yaw
-	float angleVert = 0;				//pitch
+	vec2 heading = vec2(0, 0); // yaw, pitch
 	
 	enum ANGLE_VERT_MIN = -90.0f;	//minimum pitch
 	enum ANGLE_VERT_MAX =  90.0f;	//maximal pitch

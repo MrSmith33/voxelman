@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.packets;
 
 import netlib.connection;
-import dlib.math.vector : ivec3;
+import dlib.math.vector;
 import voxelman.chunk : ChunkData;
 
 void registerPackets(Connection c)
@@ -61,8 +61,8 @@ struct MessagePacket
 // sent by client when position/heading changes.
 struct ClientPositionPacket
 {
-	double x, y, z;
-	float angleHor = 0, angleVert = 0;
+	vec3 pos = vec3(0, 0, 0);
+	vec2 heading = vec2(0, 0);
 }
 
 // sent by client after receiving SessionInfoPacket

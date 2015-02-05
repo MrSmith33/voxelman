@@ -14,7 +14,7 @@ struct ClientInfo
 {
 	string name;
 	vec3 pos;
-	vec2 heading;
+	vec2 heading = vec2(0, 0);
 	size_t viewRadius = VIEW_RADIUS;
 	ChunkRange visibleRegion;
 

@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.client.clientplugin;
 
 import anchovy.gui;
+import anchovy.core.interfaces.iwindow;
 import dlib.math.vector : uvec2;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
@@ -37,6 +38,7 @@ final class ClientPlugin : IPlugin
 	ChunkMan chunkMan;
 	ClientConnection connection;
 	
+	IWindow window;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	
@@ -49,11 +51,17 @@ final class ClientPlugin : IPlugin
 	string[ClientId] clientNames;
 
 	double sendPositionTimer = 0;
-	enum sendPositionInterval = 1;
+	enum sendPositionInterval = 0.1;
+	ivec3 prevChunkPos;
 
 	string clientName(ClientId clientId)
 	{
 		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
+	}
+
+	this(IWindow window)
+	{
+		this.window = window;
 	}
 
 
@@ -115,15 +123,22 @@ final class ClientPlugin : IPlugin
 		if (doUpdateObserverPosition)
 			chunkMan.updateObserverPosition(graphics.fpsController.camera.position);
 
+		ivec3 chunkPos = cameraToChunkPos(graphics.fpsController.camera.position);
 		if (isSpawned)
 		{
 			sendPositionTimer += event.deltaTime;
-			if (sendPositionTimer > sendPositionInterval)
+			if (sendPositionTimer > sendPositionInterval ||
+				chunkPos != prevChunkPos)
 			{
 				sendPosition();
-				sendPositionTimer -= sendPositionInterval;
+				if (sendPositionTimer < sendPositionInterval)
+					sendPositionTimer = 0;
+				else
+					sendPositionTimer -= sendPositionInterval;
 			}
 		}
+
+		prevChunkPos = chunkPos;
 
 		if (connection.isRunning)
 			connection.update(0);
@@ -131,9 +146,9 @@ final class ClientPlugin : IPlugin
 
 	void sendPosition()
 	{
-		vec3 pos = graphics.fpsController.camera.position;
-		connection.send(ClientPositionPacket(pos.x, pos.y, pos.z,
-			graphics.fpsController.angleHor, graphics.fpsController.angleVert));
+		connection.send(ClientPositionPacket(
+			graphics.fpsController.camera.position,
+			graphics.fpsController.heading));
 	}
 
 	void drawScene(Draw1Event event)
@@ -242,13 +257,18 @@ final class ClientPlugin : IPlugin
 
 	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)
 	{
-		auto packet = unpackPacket!ClientPositionPacket(packetData);
-		writefln("Received ClientPositionPacket(%s, %s, %s)",
-			packet.x, packet.y, packet.z);
+		import voxelman.utils.math : nansToZero;
 
-		graphics.fpsController.camera.position =
-			vec3(cast(float)packet.x, cast(float)packet.y, cast(float)packet.z);
-		graphics.fpsController.setRotation(packet.angleHor, packet.angleVert);
+		auto packet = unpackPacket!ClientPositionPacket(packetData);
+		writefln("Received ClientPositionPacket(%s, %s)",
+			packet.pos, packet.heading);
+
+		nansToZero(packet.pos);
+		graphics.fpsController.camera.position = packet.pos;
+		
+		nansToZero(packet.heading);
+		writeln(packet.heading);
+		graphics.fpsController.setHeading(packet.heading);
 
 		isSpawned = true;
 	}
