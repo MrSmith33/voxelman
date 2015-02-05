@@ -79,12 +79,13 @@ public:
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
 		connection.start(settings, ENET_HOST_ANY, CONNECT_PORT);
+		enet_host_compress_with_range_coder(connection.host);
 
 		// Main loop
 		while (connection.isRunning)
 		{
 			connection.update(50);
-			chunkMan.update();			
+			chunkMan.update();
 		}
 
 		connection.stop();
@@ -154,7 +155,7 @@ public:
 		writefln("%s %s disconnected", clientId,
 			connection.clientStorage[clientId].name);
 
-		chunkMan.removeObserver(clientId);
+		chunkMan.removeRegionObserver(clientId);
 
 		evDispatcher.postEvent(new ClientDisconnectedEvent(clientId));
 		
@@ -164,7 +165,7 @@ public:
 
 		connection.sendToAll(ClientLoggedOutPacket(clientId));
 
-		//writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
+		writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)

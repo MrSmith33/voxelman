@@ -10,7 +10,7 @@ import anchovy.core.interfaces.iwindow;
 import dlib.math.vector : uvec2;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
-import derelict.enet.enet : ENetEvent;
+import derelict.enet.enet;
 
 import plugin;
 import netlib.connection;
@@ -108,6 +108,7 @@ final class ClientPlugin : IPlugin
 		ConnectionSettings settings = {null, 1, 2, 0, 0};
 	
 		connection.start(settings);
+		enet_host_compress_with_range_coder(connection.host);
 		connection.connect(CONNECT_ADDRESS, CONNECT_PORT);
 	}
 

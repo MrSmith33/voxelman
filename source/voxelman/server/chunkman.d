@@ -7,7 +7,7 @@ module voxelman.server.chunkman;
 
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
-import std.stdio : writef, writeln, writefln;
+import std.stdio : writef, writeln, writefln, write;
 import core.thread : thread_joinAll;
 
 import dlib.math.vector : vec3, ivec3;
@@ -25,6 +25,7 @@ import voxelman.server.clientinfo;
 import voxelman.server.serverplugin;
 import voxelman.packets;
 import voxelman.storageworker;
+import voxelman.utils.queue : Queue;
 import voxelman.utils.workergroup;
 
 version = Disk_Storage;
@@ -83,6 +84,9 @@ struct ChunkMan
 
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(storageWorkerThread) storeWorker;
+	size_t chunksEnqueued;
+	size_t maxChunksToEnqueue = 100;
+	Queue!ivec3 loadQueue;
 
 	void init()
 	{
@@ -131,13 +135,49 @@ struct ChunkMan
 		{
 			message = receiveTimeout(0.msecs,
 				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);}
-				);
+			);
 		}
 
+		updateLoadQueue();
 		updateChunks();
 	}
 
-	void removeObserver(ClientId clientId)
+	void updateLoadQueue()
+	{
+		//if (chunksEnqueued == 0 && loadQueue.length > 0)
+		//{
+		//	write("chunksEnqueued is empty loadQueue.length %s", loadQueue.length);
+		//	maxChunksToEnqueue += 10;
+		//	writefln(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
+		//}
+
+		while(!loadQueue.empty && chunksEnqueued < maxChunksToEnqueue)
+		{
+			ivec3 chunkCoord = loadQueue.front;
+			loadQueue.popFront();
+
+			Chunk* chunk = getChunk(chunkCoord);
+			assert(chunk !is null);
+
+			if (chunk.isMarkedForDeletion)
+			{
+				chunk.hasWriter = false;
+				continue;
+			}
+
+			version(Disk_Storage)
+			{
+				storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
+			}
+			else
+			{
+				genWorkers.nextWorker.send(chunkCoord);
+			}
+			++chunksEnqueued;
+		}
+	}
+
+	void removeRegionObserver(ClientId clientId)
 	{
 		auto region = connection.clientStorage[clientId].visibleRegion;
 		foreach(chunkCoord; region.chunkCoords)
@@ -233,6 +273,7 @@ struct ChunkMan
 
 		++totalLoadedChunks;
 		--numLoadChunkTasks;
+		--chunksEnqueued;
 
 		chunk.isVisible = true;
 		if (data.chunkData.uniform)
@@ -432,26 +473,23 @@ struct ChunkMan
 	}
 
 	// returns true if chunk is already loaded.
-	bool loadChunk(ivec3 coord)
+	bool loadChunk(ivec3 chunkCoord)
 	{
-		if (auto chunk = coord in chunks)
+		if (auto chunk = chunkCoord in chunks)
 		{
 			if ((*chunk).isMarkedForDeletion)
 				removeFromRemoveQueue(*chunk);
 			return (**chunk).isLoaded;
 		}
-		Chunk* chunk = createEmptyChunk(coord);
+
+		if (!isChunkInWorldBounds(chunkCoord)) return false;
+
+		Chunk* chunk = createEmptyChunk(chunkCoord);
 		addChunk(chunk);
-
-		if (!isChunkInWorldBounds(coord)) return false;
-
 		chunk.hasWriter = true;
 		++numLoadChunkTasks;
 
-		version(Disk_Storage)
-			storeWorker.nextWorker.send(coord, genWorkers.nextWorker);
-		else
-			genWorkers.nextWorker.send(chunk.coord);
+		loadQueue.put(chunkCoord);
 
 		return false;
 	}

@@ -92,7 +92,7 @@ struct ChunkMan
 		chunk.hasWriter = false;
 		chunk.isLoaded = true;
 
-		assert(!chunk.isUsed);
+		//assert(!chunk.isUsed);
 
 		++totalLoadedChunks;
 

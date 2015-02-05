@@ -13,7 +13,7 @@ import voxelman.config;
 struct ClientInfo
 {
 	string name;
-	vec3 pos;
+	vec3 pos = START_POS;
 	vec2 heading = vec2(0, 0);
 	size_t viewRadius = VIEW_RADIUS;
 	ChunkRange visibleRegion;
