@@ -108,7 +108,8 @@ final class ClientPlugin : IPlugin
 		ConnectionSettings settings = {null, 1, 2, 0, 0};
 	
 		connection.start(settings);
-		enet_host_compress_with_range_coder(connection.host);
+		static if (ENABLE_RLE_PACKET_COMPRESSION)
+			enet_host_compress_with_range_coder(connection.host);
 		connection.connect(CONNECT_ADDRESS, CONNECT_PORT);
 	}
 
