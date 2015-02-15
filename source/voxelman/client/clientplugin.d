@@ -269,7 +269,6 @@ final class ClientPlugin : IPlugin
 		graphics.fpsController.camera.position = packet.pos;
 		
 		nansToZero(packet.heading);
-		writeln(packet.heading);
 		graphics.fpsController.setHeading(packet.heading);
 
 		isSpawned = true;

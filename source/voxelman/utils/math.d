@@ -18,3 +18,8 @@ void nansToZero(T, int size)(ref Vector!(T, size) vector)
 		item = isNaN(item) ? 0 : item;
 	}
 }
+
+ivec3 toivec3(vec3 vec)
+{
+	return ivec3(cast(int)vec.x, cast(int)vec.y, cast(int)vec.z);
+}

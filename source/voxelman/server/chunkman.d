@@ -206,8 +206,9 @@ struct ChunkMan
 	{
 		if (oldRegion.empty)
 		{
-			writefln("observe region");
-			observeRegion(newRegion, clientId);
+			//writefln("observe region");
+			//observeRegion(newRegion, clientId);
+			observeChunks(newRegion.chunkCoords, clientId);
 			return;
 		}
 
@@ -220,21 +221,24 @@ struct ChunkMan
 		}
 
 		// load chunks
-		// ivec3[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
-		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
-		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
-		{
-			addChunkObserver(chunkCoord, clientId);
-		}
+		observeChunks(newRegion.chunksNotIn(oldRegion), clientId);
 	}
 
-	void observeRegion(ChunkRange region, ClientId clientId)
+	void observeChunks(R)(R chunkCoords, ClientId clientId)
 	{
-		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
-		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
-		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
+		import std.range : array;
+		import std.algorithm : sort;
+		import voxelman.utils.math : toivec3;
+
+		ClientInfo* clientInfo = connection.clientStorage[clientId];
+		ivec3 observerPos = toivec3(clientInfo.pos);
+
+		ivec3[] chunksToLoad = chunkCoords.array;
+		sort!((a, b) => a.euclidDistSqr(observerPos) < b.euclidDistSqr(observerPos))(chunksToLoad);
+
+		foreach(chunkCoord; chunksToLoad)
 		{
-			addChunkObserver(ivec3(x, y, z), clientId);
+			addChunkObserver(chunkCoord, clientId);
 		}
 	}
 

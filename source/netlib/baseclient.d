@@ -26,7 +26,7 @@ abstract class BaseClient : Connection
 		serverAddress.port = port;
 
 		server = enet_host_connect(host, &serverAddress, 2, 42);
-		enet_peer_timeout(server, 0, 0, 5000);
+		//enet_peer_timeout(server, 0, 0, 5000);
 
 		if (server is null)
 		{

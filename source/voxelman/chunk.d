@@ -30,6 +30,13 @@ double euclidDist(ivec3 coord, ivec3 other)
 			(other.z > coord.z ? other.z - coord.z : coord.z - other.z)^^2);
 }
 
+size_t euclidDistSqr(ivec3 coord, ivec3 other)
+{
+	return (other.x > coord.x ? other.x - coord.x : coord.x - other.x)^^2 +
+		(other.y > coord.y ? other.y - coord.y : coord.y - other.y)^^2 +
+		(other.z > coord.z ? other.z - coord.z : coord.z - other.z)^^2;
+}
+
 ivec3 calcRegionPos(ivec3 chunkWorldPos)
 {
 	import std.math : floor;
