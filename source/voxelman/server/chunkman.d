@@ -192,7 +192,7 @@ struct ChunkMan
 		assert(clientInfo, "clientStorage[clientId] is null");
 		ChunkRange oldRegion = clientInfo.visibleRegion;
 		vec3 cameraPos = clientInfo.pos;
-		size_t viewRadius = clientInfo.viewRadius;
+		int viewRadius = clientInfo.viewRadius;
 
 		ivec3 chunkPos = cameraToChunkPos(cameraPos);
 		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);

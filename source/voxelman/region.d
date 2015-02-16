@@ -226,9 +226,9 @@ struct Region
 
 		//writefln("first %s num %s", firstFreeSector, numFreeSectors);
 		// Use free sectors found in a file.
-		writeChunkData(firstFreeSector, chunkData);
+		writeChunkData(cast(uint)firstFreeSector, chunkData);
 
-		setChunkOffset(chunkCoord, firstFreeSector, cast(ubyte)sectorsNeeded);
+		setChunkOffset(chunkCoord, cast(uint)firstFreeSector, cast(ubyte)sectorsNeeded);
 		foreach(i; firstFreeSector..firstFreeSector + sectorsNeeded)
 			sectors[i] = false;
 

@@ -57,9 +57,9 @@ ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
 	return chunkWorldPos;
 }
 
-ChunkRange calcChunkRange(ivec3 coord, size_t viewRadius)
+ChunkRange calcChunkRange(ivec3 coord, int viewRadius)
 {
-	auto size = viewRadius*2 + 1;
+	int size = viewRadius*2 + 1;
 	return ChunkRange(cast(ivec3)(coord - viewRadius),
 		ivec3(size, size, size));
 }

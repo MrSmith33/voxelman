@@ -7,7 +7,6 @@
 *.png
 *.zip
 .DS_Store
-lib/
 obj/
 deps/
 bin/
