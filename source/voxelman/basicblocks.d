@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.basicblocks;
@@ -79,35 +79,35 @@ private immutable ubyte[18 * 6] faces =
 	0, 0, 0, // triangle 2 : begin
 	1, 1, 0,
 	0, 1, 0, // triangle 2 : end
- 
+
 	1, 0, 1, // south
 	0, 0, 1,
 	0, 1, 1,
 	1, 0, 1,
 	0, 1, 1,
 	1, 1, 1,
- 
+
 	1, 0, 0, // east
 	1, 0, 1,
 	1, 1, 1,
 	1, 0, 0,
 	1, 1, 1,
 	1, 1, 0,
- 
+
 	0, 0, 1, // west
 	0, 0, 0,
 	0, 1, 0,
 	0, 0, 1,
 	0, 1, 0,
 	0, 1, 1,
- 
+
 	1, 1, 1, // top
 	0, 1, 1,
 	0, 1, 0,
 	1, 1, 1,
 	0, 1, 0,
 	1, 1, 0,
- 
+
 	0, 0, 1, // bottom
 	1, 0, 1,
 	1, 0, 0,

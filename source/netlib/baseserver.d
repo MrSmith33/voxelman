@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -17,7 +17,7 @@ import netlib.clientstorage;
 abstract class BaseServer(Client) : Connection
 {
 	ClientStorage!Client clientStorage;
-	
+
 	void start(ConnectionSettings settings, uint host, ushort port)
 	{
 		ENetAddress address;

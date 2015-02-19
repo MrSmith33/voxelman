@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -16,7 +16,7 @@ import derelict.opengl3.gl3;
 struct Attribute
 {
 	uint location;
-	uint elementNum;///number of 
+	uint elementNum;///number of
 	uint elementType;///GL_FLOAT etc
 	uint elementSize;///in bytes
 	uint offset;///offset from the begining of buffer
@@ -26,7 +26,7 @@ struct Attribute
 
 
 class ChunkMesh
-{	
+{
 	vec3 position;
 	ubyte[] data;
 	bool isDataDirty = false;
@@ -72,19 +72,19 @@ class ChunkMesh
 		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, VERTEX_SIZE, cast(void*)(VERTEX_SIZE / 2));
 		glBindBuffer(GL_ARRAY_BUFFER,0);
 	}
-	
+
 	void load()
 	{
 		glBindVertexArray(vao);
 		loadBuffer();
 		glBindVertexArray(0);
 	}
-	
+
 	void bind()
 	{
 		glBindVertexArray(vao);
 	}
-		
+
 	void render()
 	{
 		if (isDataDirty)
@@ -97,5 +97,5 @@ class ChunkMesh
 
 	ulong numVertexes() {return data.length/VERTEX_SIZE;}
 	ulong numTris() {return data.length/(VERTEX_SIZE*3);}
-	
+
 }

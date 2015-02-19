@@ -1,6 +1,6 @@
 /**
 Copyright: Copyright (c) 2015 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -61,7 +61,7 @@ final class GraphicsPlugin : IPlugin
 		chunkShader.bind;
 			modelLoc = glGetUniformLocation( chunkShader.program, "model" );//model transformation
 			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
-			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective	
+			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective
 
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
 				cast(const float*)Matrix4f.identity.arrayof);

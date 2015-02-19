@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -24,7 +24,7 @@ struct FpsController
 		camera.position += vec;
 		isUpdated = false;
 	}
-	
+
 	void moveAxis(vec3 vec)
 	{
 		if (isUpdated == false) update();
@@ -43,17 +43,17 @@ struct FpsController
 		horTarget = rotationQuatHor.rotate(horTarget);
 		horTarget.normalize();
 		camera.position += horTarget * vec.z * vec3(1,1,-1);
-		
+
 		isUpdated = false;
 	}
-	
+
 	void rotateHor(float angle)
 	{
 		heading.x += angle * camera.sensivity;
 		heading.x %= 360;
 		isUpdated = false;
 	}
-	
+
 	void rotateVert(float angle)
 	{
 		heading.y += angle * camera.sensivity;
@@ -71,7 +71,7 @@ struct FpsController
 	{
 		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(heading.x));
 		rotationQuatVert = rotation!float(Vector3f(1,0,0), degtorad!float(heading.y));
-		
+
 		rotationQuat = rotationQuatVert * rotationQuatHor;
 		rotationQuat.normalize();
 
@@ -88,38 +88,38 @@ struct FpsController
 		if(!isUpdated) update();
 		return &(cameraToClipMatrix.arrayof[0]);
 	}
-	
+
 	void printVectors()
 	{
 		writefln("camera\nposition\t%s\ttarget\t%s\tup\t%s\tcamera.right\t%s",
 			camera.position, camera.target, camera.up, camera.right);
 	}
-		
+
 	private void calcVectors()
 	{
 		camera.target	= vec3(0,0,-1);
 		camera.up		= vec3(0,1,0);
-		
+
 		camera.target = rotationQuat.rotate(camera.target);
 		camera.target.normalize();
-		
+
 		rotationQuat.rotate(camera.up);
 		camera.up.normalize();
-		
+
 		camera.right = cross(camera.up, camera.target);
 	}
-	
+
 	Camera camera;
 
 	vec2 heading = vec2(0, 0); // yaw, pitch
-	
+
 	enum ANGLE_VERT_MIN = -90.0f;	//minimum pitch
 	enum ANGLE_VERT_MAX =  90.0f;	//maximal pitch
-	
+
 	Matrix4f cameraToClipMatrix;
 	Quaternionf rotationQuat;
 	Quaternionf rotationQuatHor;
 	Quaternionf rotationQuatVert;
-	
+
 	bool isUpdated = false;
 }

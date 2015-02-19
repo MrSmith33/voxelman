@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.block;
@@ -19,7 +19,7 @@ struct Block
 	{
 		return getMesh(this, bx, by, bz, sides, sidesnum);
 	}
-	
+
 	bool function (Side side) isSideTransparent;
 	ubyte[] function(const Block block,
 		ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum) getMesh;
@@ -29,10 +29,10 @@ enum Side : ubyte
 {
 	north	= 0,
 	south	= 1,
-	
+
 	east	= 2,
 	west	= 3,
-	
+
 	top		= 4,
 	bottom	= 5,
 }

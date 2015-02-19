@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.storageworker;
@@ -35,7 +35,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 
 			ChunkData compressedData = data;
 			compressedData.typeData = rleEncode(data.typeData, compressBuffer);
-			
+
 			try
 			{
 				size_t encodedSize = encodeCborArray(buffer[], compressedData);

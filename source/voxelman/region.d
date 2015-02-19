@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.region;
@@ -57,14 +57,14 @@ struct ChunkStoreInfo
 
 /**
 	A storage for REGION_SIZE^3 offsets on a disk.
-	
+
 	Format:
 	Header consists of REGION_SIZE^3 records of 4 bytes.
 	record = position << 8 | (size & 0xFF)
 	where position is the number of first sector and size is the total number
 	of sectors that are used by a chunk.
 	Header is followed by sectors each of size SECTOR_SIZE. 4096
-	
+
 	Region files are named like x_y_z.region.
 */
 struct Region
@@ -167,7 +167,7 @@ struct Region
 		auto sectorNumber = offsets[index] >> 8;
 		auto numSectors = offsets[index] & 0xFF;
 
-		import std.math : ceil;		
+		import std.math : ceil;
 		auto sectorsNeeded = cast(size_t)ceil(
 			cast(float)(chunkData.length + CHUNK_HEADER_SIZE) / SECTOR_SIZE);
 
@@ -219,7 +219,7 @@ struct Region
 				firstFreeSector = sectors.length;
 				numFreeSectors = 0;
 			}
-			
+
 			// But if we have free sectors at the end, lets use them.
 			sectors.length = sectors.length + sectorsNeeded - numFreeSectors;
 		}
@@ -251,7 +251,7 @@ struct Region
 		{
 			//writeln("write header");
 			file.open(regionFilename, "wb+");
-			
+
 			// Lets write chunk offset table.
 			foreach(_; 0..(REGION_SIZE_CUBE*uint.sizeof) / SECTOR_SIZE)
 				file.rawWrite(emptySector);
@@ -271,7 +271,7 @@ struct Region
 		version(LittleEndian)
 		foreach(ref uint item; offsets)
 			item = bigEndianToNative!uint(*cast(ubyte[4]*)&item);
-		
+
 		sectors.length = cast(size_t)(file.size / SECTOR_SIZE);
 		// Mark all data sectors as free.
 		foreach(i; NUM_HEADER_SECTORS..sectors.length)

@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.client.chunkman;
@@ -28,7 +28,7 @@ struct ChunkMan
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
-	
+
 	// Stats
 	size_t numMeshChunkTasks;
 	size_t totalLoadedChunks;
@@ -36,7 +36,7 @@ struct ChunkMan
 	ChunkRange visibleRegion;
 	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
 	uint viewRadius = VIEW_RADIUS;
-	
+
 	BlockMan blockMan;
 
 	WorkerGroup!(meshWorkerThread) meshWorkers;
@@ -154,7 +154,7 @@ struct ChunkMan
 		// Attach mesh
 		if (chunk.mesh is null) chunk.mesh = new ChunkMesh();
 		chunk.mesh.data = data.meshData;
-		
+
 		ivec3 coord = chunk.coord;
 		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
 		chunk.mesh.isDataDirty = true;
@@ -252,9 +252,9 @@ struct ChunkMan
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;
-		
+
 		ChunkRange newRegion = calcChunkRange(chunkPos);
-		
+
 		updateVisibleRegion(newRegion);
 	}
 
@@ -288,7 +288,7 @@ struct ChunkMan
 
 	void loadChunk(ivec3 coord)
 	{
-		if (auto chunk = coord in chunks) 
+		if (auto chunk = coord in chunks)
 		{
 			if ((*chunk).isMarkedForDeletion)
 				removeFromRemoveQueue(*chunk);
@@ -324,7 +324,7 @@ struct ChunkMan
 												cast(int)(coord.z + offset[2]));
 			Chunk* other = getChunk(otherCoord);
 
-			if (other !is null) 
+			if (other !is null)
 				other.adjacent[oppSide[side]] = emptyChunk;
 			emptyChunk.adjacent[side] = other;
 		}
@@ -345,7 +345,7 @@ struct ChunkMan
 
 		// already queued
 		if (chunk.next != null && chunk.prev != null) return;
-		
+
 		chunk.next = chunksToRemoveQueue;
 		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
 		chunksToRemoveQueue = chunk;

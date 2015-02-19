@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -20,7 +20,7 @@ class GuiPlugin : IPlugin
 
 	void update(double delta)
 	{
-		
+
 	}
 
 	void addTemplate(string temlateName)
@@ -29,5 +29,5 @@ class GuiPlugin : IPlugin
 	}
 
 private:
-	
+
 }

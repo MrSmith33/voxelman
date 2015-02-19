@@ -1,6 +1,6 @@
 /**
 Copyright: Copyright (c) 2015 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -107,7 +107,7 @@ public:
 	{
 		import std.algorithm : splitter;
 		import std.string : format;
-		
+
 		if (event.command.length <= 1)
 		{
 			sendMessageTo(event.clientId, "Invalid command");
@@ -159,7 +159,7 @@ public:
 		chunkMan.removeRegionObserver(clientId);
 
 		evDispatcher.postEvent(new ClientDisconnectedEvent(clientId));
-		
+
 		// Reset client's information
 		event.peer.data = null;
 		connection.clientStorage.removeClient(clientId);
@@ -192,17 +192,17 @@ public:
 		import std.string : strip;
 
 		auto packet = unpackPacket!MessagePacket(packetData);
-			
+
 		packet.clientId = clientId;
 		string strippedMsg = packet.msg.strip;
-		
+
 		if (strippedMsg.startsWith("/"))
 		{
 			auto commandEvent = new CommandEvent(clientId, strippedMsg);
 			evDispatcher.postEvent(commandEvent);
 			return;
 		}
-		
+
 		connection.sendToAll(packet);
 	}
 

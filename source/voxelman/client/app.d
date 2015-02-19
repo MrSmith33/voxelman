@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
@@ -40,7 +40,7 @@ final class ClientApp : BaseApplication
 private:
 	bool mouseLocked;
 	bool autoMove;
-	
+
 	Widget debugInfo;
 
 	PluginManager pluginman = new PluginManager;
@@ -178,11 +178,11 @@ public:
 
 		fpsHelper.update(dt);
 		updateStats();
-		
+
 		timerManager.updateTimers(window.elapsedTime);
 		context.update(dt);
 		updateController(dt);
-		
+
 		evdispatcher.postEvent(new UpdateEvent(dt));
 
 		printDebug();
@@ -313,7 +313,7 @@ public:
 			//	break;
 			case KeyCode.KEY_M:
 				break;
-			case KeyCode.KEY_U: 
+			case KeyCode.KEY_U:
 				clientPlugin.doUpdateObserverPosition = !clientPlugin.doUpdateObserverPosition; break;
 			case KeyCode.KEY_C: clientPlugin.isCullingEnabled = !clientPlugin.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;

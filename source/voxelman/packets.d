@@ -1,6 +1,6 @@
 /**
 Copyright: Copyright (c) 2015 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.packets;
@@ -14,7 +14,7 @@ void registerPackets(Connection c)
 	// Common
 	c.registerPacket!MessagePacket;
 	c.registerPacket!ClientPositionPacket;
-	
+
 	// Server -> Client
 	c.registerPacket!LoginPacket;
 	c.registerPacket!SessionInfoPacket;
@@ -22,7 +22,7 @@ void registerPackets(Connection c)
 	c.registerPacket!ClientLoggedOutPacket;
 
 	c.registerPacket!ChunkDataPacket;
-	
+
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
 }

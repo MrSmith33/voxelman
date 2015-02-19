@@ -1,6 +1,6 @@
 /**
 Copyright: Copyright (c) 2015 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.client.clientplugin;
@@ -37,11 +37,11 @@ final class ClientPlugin : IPlugin
 	// Game stuff
 	ChunkMan chunkMan;
 	ClientConnection connection;
-	
+
 	IWindow window;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
-	
+
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
 	bool isSpawned = false;
@@ -88,7 +88,7 @@ final class ClientPlugin : IPlugin
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 	}
-	
+
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
@@ -106,7 +106,7 @@ final class ClientPlugin : IPlugin
 	void connect()
 	{
 		ConnectionSettings settings = {null, 1, 2, 0, 0};
-	
+
 		connection.start(settings);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
@@ -156,7 +156,7 @@ final class ClientPlugin : IPlugin
 	void drawScene(Draw1Event event)
 	{
 		glEnable(GL_DEPTH_TEST);
-		
+
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.fpsController.cameraMatrix);
@@ -187,7 +187,7 @@ final class ClientPlugin : IPlugin
 
 			modelMatrix = translationMatrix!float(c.mesh.position);
 			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
-			
+
 			c.mesh.bind;
 			c.mesh.render;
 
@@ -198,7 +198,7 @@ final class ClientPlugin : IPlugin
 		graphics.chunkShader.unbind;
 
 		glDisable(GL_DEPTH_TEST);
-		
+
 		event.renderer.setColor(Color(0,0,0,1));
 		event.renderer.drawRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
 		event.renderer.drawRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
@@ -217,7 +217,7 @@ final class ClientPlugin : IPlugin
 
 		// Reset server's information
 		event.peer.data = null;
-		
+
 		connection.isRunning = false;
 		evDispatcher.postEvent(new ThisClientDisconnectedEvent);
 	}
@@ -267,13 +267,13 @@ final class ClientPlugin : IPlugin
 
 		nansToZero(packet.pos);
 		graphics.fpsController.camera.position = packet.pos;
-		
+
 		nansToZero(packet.heading);
 		graphics.fpsController.setHeading(packet.heading);
 
 		isSpawned = true;
 	}
-	
+
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!ChunkDataPacket(packetData);

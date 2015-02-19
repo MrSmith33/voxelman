@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.regionstorage;
@@ -50,7 +50,7 @@ struct RegionStorage
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
-		
+
 		if (!isRegionOnDisk(regionPos))
 			return false;
 
@@ -61,7 +61,7 @@ struct RegionStorage
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
-		
+
 		if (!isRegionOnDisk(regionPos))
 		{
 			return ChunkStoreInfo(false, localChunkCoords, chunkPos,
@@ -109,7 +109,7 @@ struct RegionStorage
 
 		string filename = regionFilename(regionPos).idup;
 		assert(isValidPath(filename));
-		
+
 		Region* region = new Region(filename);
 		regions[regionPos] = region;
 		return region;

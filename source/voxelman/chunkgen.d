@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.chunkgen;
@@ -65,10 +65,10 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 
 	Generator generator = Generator(coord * CHUNK_SIZE);
 	generator.genPerChunkData();
-	
+
 	cd.typeData[0] = generator.generateBlock(0, 0, 0);
 	BlockType type = cd.typeData[0];
-	
+
 	int bx, by, bz;
 	foreach(i; 1..CHUNK_SIZE_CUBE)
 	{

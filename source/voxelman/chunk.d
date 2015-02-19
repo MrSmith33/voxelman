@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.chunk;
@@ -128,11 +128,11 @@ struct ChunkRange
 	auto chunksNotIn(ChunkRange other)
 	{
 		import std.algorithm : filter;
-		
+
 		auto intersection = rangeIntersection(this, other);
 		ChunkRange[] ranges;
 
-		if (intersection.size == ivec3(0,0,0)) 
+		if (intersection.size == ivec3(0,0,0))
 			ranges = [this];
 		else
 			ranges = octoSlice(intersection)[]

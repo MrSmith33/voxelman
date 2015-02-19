@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.server.chunkman;
@@ -74,12 +74,12 @@ struct ChunkMan
 
 	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
 	size_t numChunksToRemove;
-	
+
 	// Stats
 	size_t numLoadChunkTasks;
 	size_t totalLoadedChunks;
 	size_t totalObservedChunks;
-	
+
 	BlockMan blockMan;
 
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
@@ -197,7 +197,7 @@ struct ChunkMan
 		ivec3 chunkPos = cameraToChunkPos(cameraPos);
 		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
 		if (oldRegion == newRegion) return;
-		
+
 		onClientVisibleRegionChanged(oldRegion, newRegion, clientId);
 		connection.clientStorage[clientId].visibleRegion = newRegion;
 	}
@@ -385,7 +385,7 @@ struct ChunkMan
 												cast(int)(coord.z + offset[2]));
 			Chunk* other = getChunk(otherCoord);
 
-			if (other !is null) 
+			if (other !is null)
 				other.adjacent[oppSide[side]] = emptyChunk;
 			emptyChunk.adjacent[side] = other;
 		}
@@ -406,7 +406,7 @@ struct ChunkMan
 
 		// already queued
 		if (chunk.next != null && chunk.prev != null) return;
-		
+
 		chunk.next = chunksToRemoveQueue;
 		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
 		chunksToRemoveQueue = chunk;

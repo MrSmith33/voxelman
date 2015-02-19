@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.config;
@@ -14,7 +14,7 @@ enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
-enum string SAVE_DIR = "save";
+enum string SAVE_DIR = "../saves/world/chunks";
 enum NUM_WORKERS = 4;
 enum VIEW_RADIUS = 6;
 enum WORLD_SIZE = 12; // chunks

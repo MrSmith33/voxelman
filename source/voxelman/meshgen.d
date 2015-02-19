@@ -1,6 +1,6 @@
 /**
-Copyright: Copyright (c) 2013-2014 Andrey Penechko.
-License: a$(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 module voxelman.meshgen;
@@ -73,7 +73,7 @@ body
 	{
 		return blocks[id].isVisible;
 	}
-	
+
 	bool getTransparency(int tx, int ty, int tz, Side side)
 	{
 		ubyte x = cast(ubyte)tx;
@@ -99,10 +99,10 @@ body
 			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isSideTransparent(side);
 		else if(tz == CHUNK_SIZE) // south
 			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
-		
+
 		return blocks[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
 	}
-	
+
 	// Bit flags of sides to render
 	ubyte sides = 0;
 	// Num of sides to render
@@ -119,18 +119,18 @@ body
 			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
 			sidenum = 0;
-			
+
 			foreach(ubyte side; 0..6)
 			{
 				offset = sideOffsets[cast(Side)side];
-				
+
 				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], cast(Side)oppSide[side]))
-				{	
+				{
 					sides |= 2^^(side);
 					++sidenum;
 				}
 			}
-			
+
 			appender ~= blocks[chunk.data.uniformType]
 							.mesh(bx, by, bz, sides, sidenum);
 		} // foreach
@@ -139,24 +139,24 @@ body
 	foreach (uint index, ref ubyte val; chunk.data.typeData)
 	{
 		if (isVisibleBlock(val))
-		{	
+		{
 			bx = index & CHUNK_SIZE_BITS;
 			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
 			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
 			sidenum = 0;
-			
+
 			foreach(ubyte side; 0..6)
 			{
 				offset = sideOffsets[cast(Side)side];
-				
+
 				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], cast(Side)oppSide[side]))
 				{
 					sides |= 2^^(side);
 					++sidenum;
 				}
 			}
-			
+
 			appender ~= blocks[val].mesh(bx, by, bz, sides, sidenum);
 		} // if(val != 0)
 	} // foreach
