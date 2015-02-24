@@ -5,6 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.clientplugin;
 
+import core.thread : thread_joinAll;
+
 import anchovy.gui;
 import anchovy.core.interfaces.iwindow;
 import dlib.math.vector : uvec2;
@@ -87,6 +89,7 @@ final class ClientPlugin : IPlugin
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
+		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -117,13 +120,18 @@ final class ClientPlugin : IPlugin
 	{
 		connection.disconnect();
 		chunkMan.stop();
+		thread_joinAll();
 	}
 
 	void update(UpdateEvent event)
 	{
-		chunkMan.update();
 		if (doUpdateObserverPosition)
 			chunkMan.updateObserverPosition(graphics.fpsController.camera.position);
+
+		if (connection.isRunning)
+			connection.update(0);
+
+		chunkMan.update();
 
 		ivec3 chunkPos = cameraToChunkPos(graphics.fpsController.camera.position);
 		if (isSpawned)
@@ -142,8 +150,6 @@ final class ClientPlugin : IPlugin
 
 		prevChunkPos = chunkPos;
 
-		if (connection.isRunning)
-			connection.update(0);
 	}
 
 	void sendPosition()
@@ -279,5 +285,11 @@ final class ClientPlugin : IPlugin
 		auto packet = unpackPacket!ChunkDataPacket(packetData);
 		//writefln("Received ChunkDataPacket(%s)", packet.chunkPos);
 		chunkMan.onChunkLoaded(packet.chunkPos, packet.chunkData);
+	}
+
+	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!MultiblockChangePacket(packetData);
+		chunkMan.onChunkChanged(packet.chunkPos, packet.blockChanges);
 	}
 }

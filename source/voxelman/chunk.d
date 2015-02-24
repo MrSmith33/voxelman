@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.chunk;
 
+import std.array : uninitializedArray;
 import std.string : format;
 
 import dlib.math.vector;
@@ -287,35 +288,158 @@ unittest
 		ChunkRange(ivec3(0,0,0), ivec3(2,2,1)));
 }
 
+/// Container for chunk updates
+/// If blockChanges is null uses newChunkData
+struct ChunkChange
+{
+	BlockChange[] blockChanges;
+	ChunkData newChunkData;
+}
+
+// container of single block change.
+// position is chunk local [0; CHUNK_SIZE-1];
+struct BlockChange
+{
+	// index of block in chunk data
+	ushort index;
+
+	BlockType blockType;
+}
+
+ushort[2] areaOfImpact(BlockChange[] changes)
+{
+	ushort start;
+	ushort end;
+
+	foreach(change; changes)
+	{
+		if (change.index < start)
+			start = change.index;
+		if (change.index > end)
+			end = change.index;
+	}
+
+	return cast(ushort[2])[start, end+1];
+}
+
+enum StorageType
+{
+	uniform,
+	rle,
+	array,
+}
+
 // Chunk data
 struct ChunkData
 {
 	/// null if uniform is true, or contains chunk data otherwise
 	BlockType[] typeData;
+
 	/// type of common block
 	BlockType uniformType = 0; // Unknown block
+
 	/// is chunk filled with block of the same type
 	bool uniform = true;
 
+	void convertToArray()
+	{
+		if (uniform)
+		{
+			typeData = uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
+			typeData[] = uniformType;
+			uniform = false;
+		}
+	}
+
+	void convertToUniform(BlockType _uniformType)
+	{
+		uniform = true;
+		uniformType = _uniformType;
+		deleteTypeData();
+	}
+
+	void deleteTypeData()
+	{
+		typeData = null;
+	}
+
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
 	{
+		return getBlockType(cx + cy * CHUNK_SIZE_SQR + cz * CHUNK_SIZE);
+	}
+
+	BlockType getBlockType(size_t index)
+	{
 		if (uniform) return uniformType;
-		return typeData[cx + cy * CHUNK_SIZE_SQR + cz * CHUNK_SIZE];
+		return typeData[index];
+	}
+
+	// returns true if data was changed
+	bool setBlockType(ubyte cx, ubyte cy, ubyte cz, BlockType blockType)
+	{
+		return setBlockType(cx + cy * CHUNK_SIZE_SQR + cz * CHUNK_SIZE, blockType);
+	}
+
+	// returns true if data was changed
+	bool setBlockType(size_t index, BlockType blockType)
+	{
+		if (uniform)
+		{
+			if (uniformType != blockType)
+			{
+				convertToArray();
+				typeData[index] = blockType;
+				return true;
+			}
+		}
+		else
+		{
+			if (typeData[index] == blockType)
+				return false;
+
+			typeData[index] = blockType;
+			return true;
+		}
+
+		return false;
+	}
+
+	// returns [first changed index, last changed index + 1]
+	// if they match, then no changes occured
+	// for use on client, when handling MultiblockChangePacket
+	ushort[2] applyChanges(BlockChange[] changes)
+	{
+		ushort start;
+		ushort end;
+
+		foreach(change; changes)
+		{
+			if (setBlockType(change.index, change.blockType))
+			{
+				if (change.index < start)
+					start = change.index;
+				if (change.index > end)
+					end = change.index;
+			}
+		}
+
+		return cast(ushort[2])[start, end+1];
+	}
+
+	// Same as applyChanges, but does only
+	// change application, no area of impact is calculated
+	void applyChangesFast(BlockChange[] changes)
+	{
+		foreach(change; changes)
+		{
+			setBlockType(change.index, change.blockType);
+		}
 	}
 }
 
 // Single chunk
 struct Chunk
 {
-	enum State
-	{
-		notLoaded, // needs loading
-		isLoading, // do nothing while loading
-		isMeshing, // do nothing while meshing
-		ready,     // render
-		//changed,   // needs meshing, render
-	}
-
 	@disable this();
 
 	this(ivec3 coord)
@@ -328,7 +452,7 @@ struct Chunk
 		return data.getBlockType(cx, cy, cz);
 	}
 
-	bool areAllAdjacentLoaded() @property
+	bool allAdjacentLoaded() @property
 	{
 		foreach(a; adjacent)
 		{
@@ -340,7 +464,7 @@ struct Chunk
 
 	bool canBeMeshed() @property
 	{
-		return isLoaded && areAllAdjacentLoaded;
+		return isLoaded && allAdjacentLoaded;
 	}
 
 	bool needsMesh() @property
@@ -353,10 +477,17 @@ struct Chunk
 		return numReaders > 0 || hasWriter;
 	}
 
-	bool isAnyAdjacentUsed() @property
+	bool adjacentUsed() @property
 	{
 		foreach(a; adjacent)
 			if (a !is null && a.isUsed) return true;
+		return false;
+	}
+
+	bool adjacentHasUnappliedChanges() @property
+	{
+		foreach(a; adjacent)
+			if (a !is null && a.hasUnappliedChanges) return true;
 		return false;
 	}
 
@@ -370,10 +501,23 @@ struct Chunk
 	ChunkMesh mesh;
 	Chunk*[6] adjacent;
 
+	// updates
+	ChunkChange change;
+	ubyte[] newMeshData; // used for swapping
+
 	bool isLoaded = false;
 	bool isVisible = false;
 	bool hasMesh = false;
 	bool isMeshing = false;
+
+
+	// If marked, then chunk is awaiting remesh.
+	// Do not add chunk to mesh if already dirty
+	bool isDirty = false;
+
+	// Used when remeshing.
+	// true if chunk is in changedChunks queue and has unapplied changes
+	bool hasUnappliedChanges = false;
 
 	// How many tasks are reading or writing this chunk
 	bool hasWriter = false;

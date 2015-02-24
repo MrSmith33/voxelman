@@ -151,10 +151,12 @@ struct ChunkMan
 		//	writefln(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
 		//}
 
-		while(!loadQueue.empty && chunksEnqueued < maxChunksToEnqueue)
+		auto queue = loadQueue.valueRange;
+
+		while(!queue.empty && chunksEnqueued < maxChunksToEnqueue)
 		{
-			ivec3 chunkCoord = loadQueue.front;
-			loadQueue.popFront();
+			ivec3 chunkCoord = queue.front;
+			queue.popFront();
 
 			Chunk* chunk = getChunk(chunkCoord);
 			assert(chunk !is null);

@@ -7,13 +7,15 @@ module voxelman.packets;
 
 import netlib.connection;
 import dlib.math.vector;
-import voxelman.chunk : ChunkData;
+import voxelman.chunk : BlockChange, ChunkData;
 
 void registerPackets(Connection c)
 {
 	// Common
 	c.registerPacket!MessagePacket;
+
 	c.registerPacket!ClientPositionPacket;
+	c.registerPacket!MultiblockChangePacket;
 
 	// Server -> Client
 	c.registerPacket!LoginPacket;
@@ -75,4 +77,10 @@ struct ChunkDataPacket
 {
 	ivec3 chunkPos;
 	ChunkData chunkData;
+}
+
+struct MultiblockChangePacket
+{
+	ivec3 chunkPos;
+	BlockChange[] blockChanges;
 }

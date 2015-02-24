@@ -228,7 +228,7 @@ public:
 			target.x, target.y, target.z).to!dstring;
 		lines[ 9]["text"] = format("Chunks to remove: %s", clientPlugin.chunkMan.numChunksToRemove).to!dstring;
 		//lines[ 10]["text"] = format("Chunks to load: %s", clientPlugin.chunkMan.numLoadChunkTasks).to!dstring;
-		lines[ 11]["text"] = format("Chunks to mesh: %s", clientPlugin.chunkMan.numMeshChunkTasks).to!dstring;
+		lines[ 11]["text"] = format("Chunks to mesh: %s", clientPlugin.chunkMan.chunkMeshMan.numMeshChunkTasks).to!dstring;
 	}
 
 	void windowResized(uvec2 newSize)

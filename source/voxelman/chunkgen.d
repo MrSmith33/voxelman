@@ -60,8 +60,8 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
 	ChunkData cd;
-	cd.typeData = new BlockType[CHUNK_SIZE_CUBE];
-	cd.uniform = true;
+	cd.convertToArray();
+	bool uniform = true;
 
 	Generator generator = Generator(coord * CHUNK_SIZE);
 	generator.genPerChunkData();
@@ -79,18 +79,14 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 		// Actual block gen
 		cd.typeData[i] = generator.generateBlock(bx, by, bz);
 
-		if(cd.uniform && cd.typeData[i] != type)
+		if(uniform && cd.typeData[i] != type)
 		{
-			cd.uniform = false;
+			uniform = false;
 		}
 	}
 
-	if(cd.uniform)
-	{
-		//delete cd.typeData;
-		cd.typeData = null;
-		cd.uniformType = type;
-	}
+	if(uniform)
+		cd.convertToUniform(type);
 
 	//writefln("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
 

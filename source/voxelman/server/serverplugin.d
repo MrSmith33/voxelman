@@ -51,6 +51,8 @@ public:
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
+		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
 	}
 
@@ -71,6 +73,10 @@ public:
 
 	void run(string[] args)
 	{
+		import std.datetime : TickDuration, Duration, Clock, usecs;
+		import core.thread : Thread;
+		import core.memory;
+
 		pluginman.registerPlugin(this);
 		pluginman.registerPlugin(evDispatcher);
 
@@ -82,14 +88,42 @@ public:
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
 
+		TickDuration lastTime = Clock.currAppTick;
+		TickDuration newTime;
+		Duration frameTime = FRAME_TIME_USECS.usecs;
+
 		// Main loop
 		while (connection.isRunning)
 		{
-			connection.update(50);
+			newTime = Clock.currAppTick;
+			double delta = (newTime - lastTime).usecs / 1_000_000.0;
+			lastTime = newTime;
+
+			connection.update(0);
 			chunkMan.update();
+			update(delta);
+			GC.collect();
+
+			// update time
+			auto updateTime = Clock.currAppTick - newTime;
+			auto sleepTime = frameTime - updateTime;
+			if (sleepTime > Duration.zero)
+				Thread.sleep(sleepTime);
 		}
 
 		connection.stop();
+	}
+
+	double changeTimer;
+	double changeInterval = 0.5;
+	void update(double dt)
+	{
+		changeTimer += dt;
+		if (changeTimer >= changeInterval)
+		{
+			changeTimer -= changeInterval;
+			// test changes
+		}
 	}
 
 	string[ClientId] clientNames()
@@ -226,5 +260,11 @@ public:
 	{
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
 		writefln("Received ViewRadiusPacket(%s)", packet.viewRadius);
+	}
+
+	void handleMultiblockChangePacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!MultiblockChangePacket(packetData);
+
 	}
 }

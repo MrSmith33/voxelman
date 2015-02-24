@@ -5,20 +5,16 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.chunkman;
 
-import std.concurrency : Tid, thisTid, send, receiveTimeout;
-import std.datetime : msecs;
+//import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.stdio : writef, writeln, writefln;
-import core.thread : thread_joinAll;
 
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.block;
 import voxelman.blockman;
 import voxelman.chunk;
-import voxelman.chunkmesh;
 import voxelman.config;
-import voxelman.meshgen;
-import voxelman.utils.workergroup;
+import voxelman.client.chunkmeshman;
 
 
 ///
@@ -30,7 +26,6 @@ struct ChunkMan
 	size_t numChunksToRemove;
 
 	// Stats
-	size_t numMeshChunkTasks;
 	size_t totalLoadedChunks;
 
 	ChunkRange visibleRegion;
@@ -38,14 +33,12 @@ struct ChunkMan
 	uint viewRadius = VIEW_RADIUS;
 
 	BlockMan blockMan;
-
-	WorkerGroup!(meshWorkerThread) meshWorkers;
+	ChunkMeshMan chunkMeshMan;
 
 	void init()
 	{
 		blockMan.loadBlockTypes();
-
-		meshWorkers.startWorkers(NUM_WORKERS, thisTid, blockMan.blocks);
+		chunkMeshMan.init(&this, &blockMan);
 	}
 
 	void stop()
@@ -60,22 +53,13 @@ struct ChunkMan
 			update();
 		}
 
-		meshWorkers.stopWorkers();
-
-		thread_joinAll();
+		chunkMeshMan.stop();
 	}
 
 	void update()
 	{
-		bool message = true;
-		while (message)
-		{
-			message = receiveTimeout(0.msecs,
-				(immutable(MeshGenResult)* data){onMeshLoaded(cast(MeshGenResult*)data);}
-				);
-		}
-
-		updateChunks();
+		chunkMeshMan.update();
+		processRemoveQueue();
 	}
 
 	void onChunkLoaded(ivec3 chunkPos, ChunkData chunkData)
@@ -83,85 +67,24 @@ struct ChunkMan
 		Chunk* chunk = getChunk(chunkPos);
 
 		// We can receive data for chunk that is already deleted.
-		if (chunk is null)
+		if (chunk is null || chunk.isMarkedForDeletion)
 		{
-			delete chunkData.typeData;
+			chunkData.deleteTypeData();
 			return;
 		}
 
-		chunk.hasWriter = false;
-		chunk.isLoaded = true;
-
-		//assert(!chunk.isUsed);
-
-		++totalLoadedChunks;
-
-		chunk.isVisible = true;
-		if (chunkData.uniform)
-		{
-			chunk.isVisible = blockMan.blocks[chunkData.uniformType].isVisible;
-		}
-		chunk.data = chunkData;
-
-		if (chunk.isMarkedForDeletion)
-		{
-			delete chunkData.typeData;
-			return;
-		}
-
-		if (chunk.isVisible)
-			tryMeshChunk(chunk);
-		foreach(a; chunk.adjacent)
-			if (a !is null) tryMeshChunk(a);
+		chunkMeshMan.onChunkLoaded(chunk, chunkData);
 	}
 
-	void tryMeshChunk(Chunk* chunk)
+	void onChunkChanged(ivec3 chunkPos, BlockChange[] changes)
 	{
-		if (chunk.needsMesh && chunk.canBeMeshed)
-		{
-			++chunk.numReaders;
-			foreach(a; chunk.adjacent)
-				if (a !is null) ++a.numReaders;
+		Chunk* chunk = getChunk(chunkPos);
 
-			chunk.isMeshing = true;
-			++numMeshChunkTasks;
-			meshWorkers.nextWorker.send(cast(shared(Chunk)*)chunk);
-		}
-	}
-
-	void onMeshLoaded(MeshGenResult* data)
-	{
-		Chunk* chunk = getChunk(data.coord);
-
-		assert(chunk !is null);
-
-		chunk.isMeshing = false;
-
-		// Allow chunk to be written or deleted.
-		--chunk.numReaders;
-		foreach(a; chunk.adjacent)
-				if (a !is null) --a.numReaders;
-		--numMeshChunkTasks;
-
-		// Chunk is already in delete queue
-		if (!visibleRegion.contains(data.coord))
-		{
-			delete data.meshData;
-			delete data;
+		// We can receive data for chunk that is already deleted.
+		if (chunk is null || chunk.isMarkedForDeletion)
 			return;
-		}
 
-		// Attach mesh
-		if (chunk.mesh is null) chunk.mesh = new ChunkMesh();
-		chunk.mesh.data = data.meshData;
-
-		ivec3 coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
-		chunk.mesh.isDataDirty = true;
-		chunk.isVisible = chunk.mesh.data.length > 0;
-		chunk.hasMesh = true;
-
-		//writefln("Chunk mesh generated at %s", chunk.coord);
+		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
 	void printList(Chunk* head)
@@ -176,6 +99,7 @@ struct ChunkMan
 
 	void printAdjacent(Chunk* chunk)
 	{
+		assert(chunk);
 		void printChunk(Side side)
 		{
 			byte[3] offset = sideOffsets[side];
@@ -189,11 +113,6 @@ struct ChunkMan
 		foreach(s; Side.min..Side.max)
 			printChunk(s);
 		writeln;
-	}
-
-	void updateChunks()
-	{
-		processRemoveQueue();
 	}
 
 	void processRemoveQueue()
@@ -373,8 +292,6 @@ struct ChunkMan
 	void removeChunk(Chunk* chunk)
 	{
 		assert(chunk);
-		assert(chunk !is null);
-
 		assert(!chunk.isUsed);
 
 		void detachAdjacent(ubyte side)()
@@ -395,6 +312,8 @@ struct ChunkMan
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord);
+		chunkMeshMan.onChunkRemoved(chunk);
+
 		if (chunk.mesh)
 			chunk.mesh.free();
 		delete chunk.mesh;

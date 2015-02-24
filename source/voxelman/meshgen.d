@@ -41,6 +41,10 @@ void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
 				{
 					chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
 				},
+				(shared(Chunk)* chunk, ushort[2] changedBlocksRange)
+				{
+					//chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
+				},
 				(Variant v){isRunningLocal = false;}
 			);
 		}
