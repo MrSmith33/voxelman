@@ -85,7 +85,7 @@ struct ChunkMan
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(storageWorkerThread) storeWorker;
 	size_t chunksEnqueued;
-	size_t maxChunksToEnqueue = 100;
+	size_t maxChunksToEnqueue = 400;
 	Queue!ivec3 loadQueue;
 
 	void init()
@@ -125,7 +125,6 @@ struct ChunkMan
 			storeWorker.stopWorkersWhenDone();
 
 		thread_joinAll();
-
 	}
 
 	void update()
@@ -151,32 +150,32 @@ struct ChunkMan
 		//	writefln(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
 		//}
 
-		auto queue = loadQueue.valueRange;
-
-		while(!queue.empty && chunksEnqueued < maxChunksToEnqueue)
-		{
-			ivec3 chunkCoord = queue.front;
-			queue.popFront();
-
-			Chunk* chunk = getChunk(chunkCoord);
-			assert(chunk !is null);
-
-			if (chunk.isMarkedForDeletion)
-			{
-				chunk.hasWriter = false;
-				continue;
-			}
-
-			version(Disk_Storage)
-			{
-				storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
-			}
-			else
-			{
-				genWorkers.nextWorker.send(chunkCoord);
-			}
-			++chunksEnqueued;
-		}
+		//auto queue = loadQueue.valueRange;
+//
+		//while(!queue.empty && chunksEnqueued < maxChunksToEnqueue)
+		//{
+		//	ivec3 chunkCoord = queue.front;
+		//	queue.popFront();
+//
+		//	Chunk* chunk = getChunk(chunkCoord);
+		//	assert(chunk !is null);
+//
+		//	if (chunk.isMarkedForDeletion)
+		//	{
+		//		chunk.hasWriter = false;
+		//		continue;
+		//	}
+//
+		//	version(Disk_Storage)
+		//	{
+		//		storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
+		//	}
+		//	else
+		//	{
+		//		genWorkers.nextWorker.send(chunkCoord);
+		//	}
+		//	++chunksEnqueued;
+		//}
 	}
 
 	void removeRegionObserver(ClientId clientId)
@@ -196,7 +195,7 @@ struct ChunkMan
 		vec3 cameraPos = clientInfo.pos;
 		int viewRadius = clientInfo.viewRadius;
 
-		ivec3 chunkPos = cameraToChunkPos(cameraPos);
+		ivec3 chunkPos = worldToChunkPos(cameraPos);
 		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
 		if (oldRegion == newRegion) return;
 
@@ -247,13 +246,20 @@ struct ChunkMan
 	void addChunkObserver(ivec3 coord, ClientId clientId)
 	{
 		if (!isChunkInWorldBounds(coord)) return;
+
 		bool alreadyLoaded = loadChunk(coord);
+
+		if (chunkObservers[coord].empty)
+		{
+			++totalObservedChunks;
+		}
+
 		chunkObservers[coord].add(clientId);
+
 		if (alreadyLoaded)
 		{
-			sendChunkToObservers(coord);
+			sendChunkTo(coord, clientId);
 		}
-		++totalObservedChunks;
 	}
 
 	void removeChunkObserver(ivec3 coord, ClientId clientId)
@@ -261,8 +267,10 @@ struct ChunkMan
 		if (!isChunkInWorldBounds(coord)) return;
 		chunkObservers[coord].remove(clientId);
 		if (chunkObservers[coord].empty)
+		{
 			addToRemoveQueue(getChunk(coord));
-		--totalObservedChunks;
+			--totalObservedChunks;
+		}
 	}
 
 	void onChunkLoaded(ChunkGenResult* data)
@@ -279,7 +287,7 @@ struct ChunkMan
 
 		++totalLoadedChunks;
 		--numLoadChunkTasks;
-		--chunksEnqueued;
+		//--chunksEnqueued;
 
 		chunk.isVisible = true;
 		if (data.chunkData.uniform)
@@ -299,8 +307,22 @@ struct ChunkMan
 
 	void sendChunkToObservers(ivec3 coord)
 	{
-		connection.sendTo(chunkObservers[coord][],
-			ChunkDataPacket(coord, chunks[coord].data));
+		//writefln("send chunk to all %s %s", coord, chunks[coord].data.typeData.length);
+		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].data));
+	}
+
+	void sendChunkTo(ivec3 coord, ClientId clientId)
+	{
+		//writefln("send chunk to %s %s", coord, chunks[coord].data.typeData.length);
+		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].data));
+	}
+
+	void sendToChunkObservers(P)(ivec3 coord, P packet)
+	{
+		if (auto observerlist = coord in chunkObservers)
+		{
+			connection.sendTo((*observerlist).observers, packet);
+		}
 	}
 
 	void printList(Chunk* head)
@@ -495,7 +517,16 @@ struct ChunkMan
 		chunk.hasWriter = true;
 		++numLoadChunkTasks;
 
-		loadQueue.put(chunkCoord);
+		//loadQueue.put(chunkCoord);
+
+		version(Disk_Storage)
+		{
+			storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
+		}
+		else
+		{
+			genWorkers.nextWorker.send(chunkCoord);
+		}
 
 		return false;
 	}

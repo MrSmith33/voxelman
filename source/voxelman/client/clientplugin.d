@@ -25,6 +25,7 @@ import voxelman.events;
 import voxelman.config;
 import voxelman.chunk;
 import voxelman.packets;
+import voxelman.utils.math;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
@@ -106,6 +107,22 @@ final class ClientPlugin : IPlugin
 		connect();
 	}
 
+	void placeBlock(BlockType blockId)
+	{
+		enum cursorDistance = 3;
+		vec3 editCursorOffset = graphics.fpsController.camera.target * cursorDistance;
+		editCursorOffset.x *= -1;
+		editCursorOffset.y *= -1;
+		vec3 editCursorPos = graphics.fpsController.camera.position + editCursorOffset;
+		ivec3 blockPos = toivec3(editCursorPos);
+		ivec3 chunkPos = worldToChunkPos(editCursorPos);
+		writefln("editCursorPos %s chunkPos %s blockPos %s index %s",
+			editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));
+		connection.send(
+			MultiblockChangePacket(chunkPos,
+				[BlockChange(worldToChunkBlockIndex(editCursorPos), blockId)]));
+	}
+
 	void connect()
 	{
 		ConnectionSettings settings = {null, 1, 2, 0, 0};
@@ -133,7 +150,7 @@ final class ClientPlugin : IPlugin
 
 		chunkMan.update();
 
-		ivec3 chunkPos = cameraToChunkPos(graphics.fpsController.camera.position);
+		ivec3 chunkPos = worldToChunkPos(graphics.fpsController.camera.position);
 		if (isSpawned)
 		{
 			sendPositionTimer += event.deltaTime;
@@ -149,7 +166,6 @@ final class ClientPlugin : IPlugin
 		}
 
 		prevChunkPos = chunkPos;
-
 	}
 
 	void sendPosition()
@@ -283,7 +299,8 @@ final class ClientPlugin : IPlugin
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!ChunkDataPacket(packetData);
-		//writefln("Received ChunkDataPacket(%s)", packet.chunkPos);
+		//writefln("Received %s ChunkDataPacket(%s,%s)", packetData.length,
+		//	packet.chunkPos, packet.chunkData.typeData.length);
 		chunkMan.onChunkLoaded(packet.chunkPos, packet.chunkData);
 	}
 

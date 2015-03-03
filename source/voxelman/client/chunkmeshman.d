@@ -69,10 +69,13 @@ struct ChunkMeshMan
 		// full chunk update
 		if (chunk.isLoaded)
 		{
+			writefln("full chunk change %s", chunk.coord);
 			// if there was previous changes they do not matter anymore
 			chunkChanges[chunk.coord] = ChunkChange(null, chunkData);
 			return;
 		}
+
+		//writefln("chunk loaded %s data %s", chunk.coord, chunkData.typeData);
 
 		chunk.isLoaded = true;
 
@@ -99,12 +102,13 @@ struct ChunkMeshMan
 
 	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
 	{
+		//writefln("partial chunk change %s", chunk.coord);
 		if (auto _changes = chunk.coord in chunkChanges)
 		{
 			if (_changes.blockChanges is null)
 			{
 				// block changes applied on top of full chunk update
-				_changes.newChunkData.applyChanges(changes);
+				_changes.newChunkData.applyChangesFast(changes);
 			}
 			else
 			{
@@ -171,7 +175,7 @@ struct ChunkMeshMan
 			return;
 		}
 
-		writefln("mesh data loaded %s %s", data.coord, data.meshData.length);
+		//writefln("mesh data loaded %s %s", data.coord, data.meshData.length);
 
 		// chunk was remeshed after change.
 		// Mesh will be uploaded for all changed chunks at once in processDirtyChunks.
@@ -243,6 +247,11 @@ struct ChunkMeshMan
 		foreach(queueItem; changedChunks)
 		{
 			Chunk* chunk = queueItem.value;
+			if (chunk is null)
+			{
+				queueItem.remove();
+				continue;
+			}
 			assert(chunk);
 
 			void addAdjacentChunks()
@@ -280,12 +289,32 @@ struct ChunkMeshMan
 						blocksChanged = true;
 					}
 					writefln("applying block changes to %s", chunk.coord);
+					ubyte bx, by, bz;
+					foreach(change; chunk.change.blockChanges)
+					{
+						bx = change.index & CHUNK_SIZE_BITS;
+						by = (change.index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+						bz = (change.index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+						writef("i %s | x %s y %s z %s | wx %s wy %s wz %s | b %s; ",
+							change.index,
+							bx,
+							by,
+							bz,
+							bx + chunk.coord.x * CHUNK_SIZE,
+							by + chunk.coord.y * CHUNK_SIZE,
+							bz + chunk.coord.z * CHUNK_SIZE,
+							change.blockType);
+					}
+					writeln;
 				}
 
 				chunk.change = ChunkChange.init;
 
 				if (chunk.canBeMeshed && chunk.isVisible && blocksChanged)
+				{
+					assert(chunk);
 					chunksToMesh.put(chunk);
+				}
 
 				chunk.hasUnappliedChanges = false;
 
@@ -301,6 +330,11 @@ struct ChunkMeshMan
 		foreach(queueItem; chunksToMesh)
 		{
 			Chunk* chunk = queueItem.value;
+			if (chunk is null)
+			{
+				queueItem.remove();
+				continue;
+			}
 			assert(chunk);
 
 			// chunks adjacent to the modified one may still be in use

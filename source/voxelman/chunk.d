@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.chunk;
 
 import std.array : uninitializedArray;
+import std.math : floor;
 import std.string : format;
 
 import dlib.math.vector;
@@ -26,27 +27,25 @@ size_t manhattanDist(ivec3 coord, ivec3 other)
 double euclidDist(ivec3 coord, ivec3 other)
 {
 	import std.math : sqrt;
-	return sqrt(cast(real)(other.x > coord.x ? other.x - coord.x : coord.x - other.x)^^2 +
-			(other.y > coord.y ? other.y - coord.y : coord.y - other.y)^^2 +
-			(other.z > coord.z ? other.z - coord.z : coord.z - other.z)^^2);
+	return sqrt(cast(real)(coord.x - other.x)^^2 +
+			(coord.y - other.y)^^2 +
+			(coord.z - other.z)^^2);
 }
 
 size_t euclidDistSqr(ivec3 coord, ivec3 other)
 {
-	return (other.x > coord.x ? other.x - coord.x : coord.x - other.x)^^2 +
-		(other.y > coord.y ? other.y - coord.y : coord.y - other.y)^^2 +
-		(other.z > coord.z ? other.z - coord.z : coord.z - other.z)^^2;
+	return (coord.x - other.x)^^2 + (coord.y - other.y)^^2 + (coord.z - other.z)^^2;
 }
 
 ivec3 calcRegionPos(ivec3 chunkWorldPos)
 {
-	import std.math : floor;
 	return ivec3(
-		cast(int)floor(chunkWorldPos.x / cast(float)REGION_SIZE),
-		cast(int)floor(chunkWorldPos.y / cast(float)REGION_SIZE),
-		cast(int)floor(chunkWorldPos.z / cast(float)REGION_SIZE));
+		floor(chunkWorldPos.x / cast(float)REGION_SIZE),
+		floor(chunkWorldPos.y / cast(float)REGION_SIZE),
+		floor(chunkWorldPos.z / cast(float)REGION_SIZE));
 }
 
+// chunk position within region
 ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
 {
 	chunkWorldPos.x %= REGION_SIZE;
@@ -65,17 +64,37 @@ ChunkRange calcChunkRange(ivec3 coord, int viewRadius)
 		ivec3(size, size, size));
 }
 
-ivec3 cameraToChunkPos(vec3 cameraPos)
+ivec3 worldToChunkPos(vec3 worldPos)
 {
-	import std.conv : to;
-	import std.math : isNaN;
 	import voxelman.utils.math : nansToZero;
 
-	nansToZero(cameraPos);
+	nansToZero(worldPos);
 	return ivec3(
-		cast(int)cameraPos.x / CHUNK_SIZE,
-		cast(int)cameraPos.y / CHUNK_SIZE,
-		cast(int)cameraPos.z / CHUNK_SIZE,);
+		floor(worldPos.x / CHUNK_SIZE),
+		floor(worldPos.y / CHUNK_SIZE),
+		floor(worldPos.z / CHUNK_SIZE),);
+}
+
+// converts global position to position in the chunk
+vec3 worldToChunkLocalPos(vec3 worldPos)
+{
+	import voxelman.utils.math : nansToZero;
+
+	nansToZero(worldPos);
+	worldPos.x %= CHUNK_SIZE;
+	worldPos.y %= CHUNK_SIZE;
+	worldPos.z %= CHUNK_SIZE;
+	if (worldPos.x < 0) worldPos.x += CHUNK_SIZE;
+	if (worldPos.y < 0) worldPos.y += CHUNK_SIZE;
+	if (worldPos.z < 0) worldPos.z += CHUNK_SIZE;
+	return worldPos;
+}
+
+ushort worldToChunkBlockIndex(vec3 worldPos)
+{
+	import voxelman.utils.math : toivec3;
+	ivec3 localPos = toivec3(worldToChunkLocalPos(worldPos));
+	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
 }
 
 // 3d slice of chunks
@@ -329,6 +348,12 @@ enum StorageType
 	array,
 }
 
+// returns index of block in chunkData from local block position
+size_t blockIndex(ubyte x, ubyte y, ubyte z)
+{
+	return x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
+}
+
 // Chunk data
 struct ChunkData
 {
@@ -433,6 +458,16 @@ struct ChunkData
 		foreach(change; changes)
 		{
 			setBlockType(change.index, change.blockType);
+		}
+	}
+
+	//
+	void applyChangesChecked(BlockChange[] changes)
+	{
+		foreach(change; changes)
+		{
+			if (change.index <= CHUNK_SIZE_CUBE)
+				setBlockType(change.index, change.blockType);
 		}
 	}
 }

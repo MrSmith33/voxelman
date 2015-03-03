@@ -15,6 +15,7 @@ import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseserver;
 
+import voxelman.chunk;
 import voxelman.packets;
 import voxelman.config;
 import voxelman.plugins.eventdispatcherplugin;
@@ -90,7 +91,7 @@ public:
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime;
-		Duration frameTime = FRAME_TIME_USECS.usecs;
+		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
 
 		// Main loop
 		while (connection.isRunning)
@@ -179,7 +180,7 @@ public:
 	{
 		auto clientId = connection.clientStorage.addClient(event.peer);
 		event.peer.data = cast(void*)clientId;
-		enet_peer_timeout(event.peer, 0, 0, 2000);
+		//enet_peer_timeout(event.peer, 0, 0, 2000);
 		writefln("%s connected", clientId);
 		evDispatcher.postEvent(new ClientConnectedEvent(clientId));
 	}
@@ -265,6 +266,12 @@ public:
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
+		//writefln("Received MultiblockChangePacket(%s)", packet);
 
+		Chunk* chunk = chunkMan.getChunk(packet.chunkPos);
+		if (chunk is null) return;
+
+		chunk.data.applyChangesChecked(packet.blockChanges);
+		chunkMan.sendToChunkObservers(packet.chunkPos, packet);
 	}
 }

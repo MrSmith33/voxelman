@@ -167,7 +167,7 @@ struct ChunkMan
 
 	void updateObserverPosition(vec3 cameraPos)
 	{
-		ivec3 chunkPos = cameraToChunkPos(cameraPos);
+		ivec3 chunkPos = worldToChunkPos(cameraPos);
 
 		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;
@@ -263,8 +263,9 @@ struct ChunkMan
 		assert(chunk !is null);
 
 		// already queued
-		if (chunk.next != null && chunk.prev != null) return;
+		if (chunk.isMarkedForDeletion) return;
 
+		chunk.isLoaded = false;
 		chunk.next = chunksToRemoveQueue;
 		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
 		chunksToRemoveQueue = chunk;

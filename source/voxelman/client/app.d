@@ -142,6 +142,7 @@ public:
 		// Bind events
 		aggregator.window.windowResized.connect(&windowResized);
 		aggregator.window.keyReleased.connect(&keyReleased);
+		aggregator.window.mouseReleased.connect(&mouseReleased);
 
 		// ----------------------------- Creating widgets -----------------------------
 		templateManager.parseFile("voxelman.sdl");
@@ -278,7 +279,7 @@ public:
 			if(window.isKeyPressed(KeyCode.KEY_W)) posDelta.z = 1;
 			else if(window.isKeyPressed(KeyCode.KEY_S)) posDelta.z = -1;
 
-			if(window.isKeyPressed(GLFW_KEY_SPACE)) posDelta.y = 1;
+			if(window.isKeyPressed(KeyCode.KEY_SPACE)) posDelta.y = 1;
 			else if(window.isKeyPressed(GLFW_KEY_LEFT_CONTROL)) posDelta.y = -1;
 
 			if (posDelta != vec3(0))
@@ -318,6 +319,22 @@ public:
 			case KeyCode.KEY_C: clientPlugin.isCullingEnabled = !clientPlugin.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;
 			default: break;
+		}
+	}
+
+	void mouseReleased(uint mouseButton)
+	{
+		if (mouseLocked)
+		switch(mouseButton)
+		{
+			// left button
+			case PointerButton.PB_1:
+				clientPlugin.placeBlock(1);
+				break;
+			case PointerButton.PB_2:
+				clientPlugin.placeBlock(2);
+				break;
+			default:break;
 		}
 	}
 
