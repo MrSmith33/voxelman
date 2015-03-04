@@ -5,9 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.server.chunkman;
 
+import std.experimental.logger;
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
-import std.stdio : writef, writeln, writefln, write;
 import core.thread : thread_joinAll;
 
 import dlib.math.vector : vec3, ivec3;
@@ -99,7 +99,7 @@ struct ChunkMan
 
 	void stop()
 	{
-		writefln("saving chunks %s", chunks.length);
+		infof("saving chunks %s", chunks.length);
 
 		foreach(chunk; chunks.byValue)
 			addToRemoveQueue(chunk);
@@ -115,7 +115,7 @@ struct ChunkMan
 			if (donePercents >= donePercentsPrev + 10)
 			{
 				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
-				writefln("saved %s%%", donePercentsPrev);
+				infof("saved %s%%", donePercentsPrev);
 			}
 		}
 
@@ -145,9 +145,9 @@ struct ChunkMan
 	{
 		//if (chunksEnqueued == 0 && loadQueue.length > 0)
 		//{
-		//	write("chunksEnqueued is empty loadQueue.length %s", loadQueue.length);
+		//	trace("chunksEnqueued is empty loadQueue.length %s", loadQueue.length);
 		//	maxChunksToEnqueue += 10;
-		//	writefln(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
+		//	tracef(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
 		//}
 
 		//auto queue = loadQueue.valueRange;
@@ -207,7 +207,7 @@ struct ChunkMan
 	{
 		if (oldRegion.empty)
 		{
-			//writefln("observe region");
+			//trace("observe region");
 			//observeRegion(newRegion, clientId);
 			observeChunks(newRegion.chunkCoords, clientId);
 			return;
@@ -307,13 +307,13 @@ struct ChunkMan
 
 	void sendChunkToObservers(ivec3 coord)
 	{
-		//writefln("send chunk to all %s %s", coord, chunks[coord].data.typeData.length);
+		//tracef("send chunk to all %s %s", coord, chunks[coord].data.typeData.length);
 		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].data));
 	}
 
 	void sendChunkTo(ivec3 coord, ClientId clientId)
 	{
-		//writefln("send chunk to %s %s", coord, chunks[coord].data.typeData.length);
+		//tracef("send chunk to %s %s", coord, chunks[coord].data.typeData.length);
 		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].data));
 	}
 
@@ -329,10 +329,9 @@ struct ChunkMan
 	{
 		while(head)
 		{
-			writef("%s ", head);
+			tracef("%s ", head);
 			head = head.next;
 		}
-		writeln;
 	}
 
 	void printAdjacent(Chunk* chunk)
@@ -344,12 +343,11 @@ struct ChunkMan
 									chunk.coord.y + offset[1],
 									chunk.coord.z + offset[2]);
 			Chunk* c = getChunk(otherCoord);
-			writef("%s", c is null ? "null" : "a");
+			tracef("%s", c is null ? "null" : "a");
 		}
 
 		foreach(s; Side.min..Side.max)
 			printChunk(s);
-		writeln;
 	}
 
 	void updateChunks()

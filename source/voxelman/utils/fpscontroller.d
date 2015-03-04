@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.utils.fpscontroller;
 
-import std.stdio;
+import std.experimental.logger;
 
 import dlib.math.matrix;
 import dlib.math.affine;
@@ -91,7 +91,7 @@ struct FpsController
 
 	void printVectors()
 	{
-		writefln("camera\nposition\t%s\ttarget\t%s\tup\t%s\tcamera.right\t%s",
+		infof("camera\nposition\t%s\ttarget\t%s\tup\t%s\tcamera.right\t%s",
 			camera.position, camera.target, camera.up, camera.right);
 	}
 

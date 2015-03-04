@@ -5,10 +5,11 @@ Authors: Andrey Penechko.
 */
 module voxelman.region;
 
+import std.experimental.logger;
 import std.bitmanip : BitArray, nativeToBigEndian, bigEndianToNative;
 import std.file : exists;
 import std.path : isValidPath, dirSeparator;
-import std.stdio : writefln, writeln, File, SEEK_END;
+import std.stdio : File, SEEK_END;
 import std.string : format;
 import dlib.math.vector : ivec3;
 
@@ -136,7 +137,7 @@ struct Region
 		// Chunk sector is after EOF.
 		if (sectorNumber + numSectors > sectors.length)
 		{
-			writefln("Invalid sector chunk %s, sector %s, numSectors %s while total sectors %s",
+			errorf("Invalid sector chunk %s, sector %s, numSectors %s while total sectors %s",
 				chunkCoord, sectorNumber, numSectors, sectors.length);
 			return null;
 		}
@@ -145,11 +146,11 @@ struct Region
 		ubyte[4] uintBuffer;
 		file.rawRead(uintBuffer[]);
 		uint dataLength = bigEndianToNative!uint(uintBuffer);
-		//writefln("read data length %s BE %(%02x%)", dataLength, uintBuffer[]);
+		//infof("read data length %s BE %(%02x%)", dataLength, uintBuffer[]);
 
 		if (dataLength > numSectors * SECTOR_SIZE)
 		{
-			writefln("Invalid data length %s, %s > %s * %s",
+			errorf("Invalid data length %s, %s > %s * %s",
 				chunkCoord, dataLength, numSectors, SECTOR_SIZE);
 			return null;
 		}
@@ -173,7 +174,7 @@ struct Region
 
 		if (sectorsNeeded > MAX_CHUNK_SECTORS)
 		{
-			writefln("data length %s is too big", chunkData.length);
+			errorf("data length %s is too big", chunkData.length);
 			return;
 		}
 
@@ -183,7 +184,7 @@ struct Region
 			writeChunkData(sectorNumber, chunkData);
 			return;
 		}
-		//writefln("searching for free sectors");
+		//infof("searching for free sectors");
 
 		// Mark used sectors as free.
 		foreach(i; sectorNumber..sectorNumber + numSectors)
@@ -194,7 +195,7 @@ struct Region
 		// Find a sequence of free sectors of big enough size.
 		foreach(sectorIndex; sectors.bitsSet)
 		{
-			//writefln("index %s", sectorIndex);
+			//infof("index %s", sectorIndex);
 
 			if (numFreeSectors > 0)
 			{
@@ -209,7 +210,7 @@ struct Region
 
 			if (numFreeSectors >= sectorsNeeded) break;
 		}
-		//writefln("first %s num %s", firstFreeSector, numFreeSectors);
+		//infof("first %s num %s", firstFreeSector, numFreeSectors);
 
 		if (numFreeSectors < sectorsNeeded)
 		{
@@ -224,7 +225,7 @@ struct Region
 			sectors.length = sectors.length + sectorsNeeded - numFreeSectors;
 		}
 
-		//writefln("first %s num %s", firstFreeSector, numFreeSectors);
+		//infof("first %s num %s", firstFreeSector, numFreeSectors);
 		// Use free sectors found in a file.
 		writeChunkData(cast(uint)firstFreeSector, chunkData);
 
@@ -249,7 +250,7 @@ struct Region
 
 		if (!exists(regionFilename))
 		{
-			//writeln("write header");
+			//trace("write header");
 			file.open(regionFilename, "wb+");
 
 			// Lets write chunk offset table.
@@ -257,11 +258,11 @@ struct Region
 				file.rawWrite(emptySector);
 
 			sectors.length = NUM_HEADER_SECTORS;
-			//writefln("sectors %b", sectors);
+			//tracef("sectors %b", sectors);
 			return;
 		}
 
-		//writeln("read header");
+		//trace("read header");
 		file.open(regionFilename, "rb+");
 		file.rawRead(offsets[]);
 
@@ -290,13 +291,13 @@ struct Region
 			}
 		}
 
-		//writefln("sectors %b", sectors);
+		//tracef("sectors %b", sectors);
 	}
 
 	private void writeChunkData(uint sectorNumber, in ubyte[] data)
 	{
 		file.seek(sectorNumber * SECTOR_SIZE);
-		//writefln("write data length %s BE %(%02x%), sector %s",
+		//tracef("write data length %s BE %(%02x%), sector %s",
 		//	data.length, nativeToBigEndian(cast(uint)data.length), sectorNumber);
 		file.rawWrite(nativeToBigEndian(cast(uint)data.length));
 		file.rawWrite(data);

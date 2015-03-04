@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.client.chunkman;
 
 //import std.concurrency : Tid, thisTid, send, receiveTimeout;
-import std.stdio : writef, writeln, writefln;
+import std.experimental.logger;
 
 import dlib.math.vector : vec3, ivec3;
 
@@ -43,7 +43,7 @@ struct ChunkMan
 
 	void stop()
 	{
-		writefln("unloading chunks");
+		info("unloading chunks");
 
 		foreach(chunk; chunks.byValue)
 			addToRemoveQueue(chunk);
@@ -91,10 +91,9 @@ struct ChunkMan
 	{
 		while(head)
 		{
-			writef("%s ", head);
+			infof("%s ", head);
 			head = head.next;
 		}
-		writeln;
 	}
 
 	void printAdjacent(Chunk* chunk)
@@ -107,12 +106,11 @@ struct ChunkMan
 									chunk.coord.y + offset[1],
 									chunk.coord.z + offset[2]);
 			Chunk* c = getChunk(otherCoord);
-			writef("%s", c is null ? "null" : "a");
+			tracef("%s", c is null ? "null" : "a");
 		}
 
 		foreach(s; Side.min..Side.max)
 			printChunk(s);
-		writeln;
 	}
 
 	void processRemoveQueue()

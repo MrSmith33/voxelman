@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.plugins.graphicsplugin;
 
+import std.experimental.logger;
 import anchovy.gui;
 import dlib.math.vector : uvec2;
 import dlib.math.matrix;
@@ -51,11 +52,11 @@ final class GraphicsPlugin : IPlugin
 
 		if(!chunkShader.compile())
 		{
-			writeln(chunkShader.errorLog);
+			error(chunkShader.errorLog);
 		}
 		else
 		{
-			writeln("Shaders compiled successfully");
+			info("Shaders compiled successfully");
 		}
 
 		chunkShader.bind;

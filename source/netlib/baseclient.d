@@ -8,8 +8,8 @@ module netlib.baseclient;
 
 import core.thread;
 import std.conv : to;
-import std.stdio : writefln, writeln;
-import std.string : format, toStringz;
+import std.string : toStringz;
+import std.experimental.logger;
 
 import derelict.enet.enet;
 
@@ -30,7 +30,7 @@ abstract class BaseClient : Connection
 
 		if (server is null)
 		{
-			writeln("An error occured while trying to create an ENet server peer");
+			error("An error occured while trying to create an ENet server peer");
 			return;
 		}
 	}

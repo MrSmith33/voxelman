@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module plugin.pluginmanager;
 
-import std.stdio;
+import std.experimental.logger;
 import std.string : format;
 import plugin;
 
@@ -23,20 +23,21 @@ class PluginManager : IPluginManager
 
 	void initPlugins()
 	{
+		infof("Loading plugins");
 		foreach(IPlugin p; plugins)
 		{
 			p.preInit();
-			writefln("PreInited plugin %s %s", p.name, p.semver);
+			infof("PreInited plugin %s %s", p.name, p.semver);
 		}
 		foreach(IPlugin p; plugins)
 		{
 			p.init(this);
-			writefln("Inited plugin %s %s", p.name, p.semver);
+			infof("Inited plugin %s %s", p.name, p.semver);
 		}
 		foreach(IPlugin p; plugins)
 		{
 			p.postInit();
-			writefln("PostInited plugin %s %s", p.name, p.semver);
+			infof("PostInited plugin %s %s", p.name, p.semver);
 		}
 	}
 

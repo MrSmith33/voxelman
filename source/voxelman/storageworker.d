@@ -5,7 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.storageworker;
 
-import std.stdio;
+import std.experimental.logger;
+import std.conv : to;
 
 import cbor;
 
@@ -30,7 +31,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 
 		void writeChunk(ivec3 chunkPos, ChunkData data)
 		{
-			//writef("writing chunk %s ", chunkPos);
+			//infof("writing chunk %s ", chunkPos);
 			if (regionStorage.isChunkOnDisk(chunkPos)) return;
 
 			ChunkData compressedData = data;
@@ -39,25 +40,25 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 			try
 			{
 				size_t encodedSize = encodeCborArray(buffer[], compressedData);
-				//writef("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
+				//infof("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
 				regionStorage.writeChunk(chunkPos, buffer[0..encodedSize]);
 			}
 			catch(Exception e)
 			{
-				writefln("storage error %s", e);
+				errorf("storage error %s", e.to!string);
 			}
 		}
 
 		ChunkData readChunk(ivec3 chunkPos)
 		{
 			assert(regionStorage.isChunkOnDisk(chunkPos));
-			//writef("reading chunk %s ", chunkPos);
+			//infof("reading chunk %s ", chunkPos);
 			auto data = regionStorage.readChunk(chunkPos, buffer[]);
 			ChunkData compressedData = decodeCborSingle!ChunkData(data);
 			ChunkData uncompressedData = compressedData;
 			uncompressedData.typeData = rleDecode(compressedData.typeData, compressBuffer).dup;
 
-			//writefln("size %s compressed %s", uncompressedData.typeData.length, compressedData.typeData.length);
+			//infof("size %s compressed %s", uncompressedData.typeData.length, compressedData.typeData.length);
 			return uncompressedData;
 		}
 
@@ -78,7 +79,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 						}
 						catch(Exception e)
 						{
-							writefln("error %s", e);
+							infof("storage error %s", e.to!string);
 						}
 					}
 					else
@@ -102,7 +103,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 	}
 	catch(Throwable t)
 	{
-		writeln(t, " from storage worker");
+		infof("%s from storage worker", t.to!string);
 		throw t;
 	}
 }

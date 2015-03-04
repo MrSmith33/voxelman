@@ -6,7 +6,8 @@ Authors: Andrey Penechko.
 
 module netlib.connection;
 
-import std.stdio;
+import std.experimental.logger;
+import std.conv : to;
 
 import derelict.enet.enet;
 import cbor;
@@ -25,13 +26,13 @@ void loadEnet()
 
 	if (err != 0)
 	{
-		writefln("Error loading ENet library");
+		error("Error loading ENet library");
 		return;
 	}
 	else
 	{
 		ENetVersion ever = enet_linked_version();
-		writefln("Loaded ENet library v%s.%s.%s",
+		infof("Loaded ENet library v%s.%s.%s",
 			ENET_VERSION_GET_MAJOR(ever),
 			ENET_VERSION_GET_MINOR(ever),
 			ENET_VERSION_GET_PATCH(ever));
@@ -95,7 +96,7 @@ abstract class Connection
 
 		if (host is null)
 		{
-			writeln("An error occured while trying to create an ENet host");
+			error("An error occured while trying to create an ENet host");
 			return;
 		}
 
@@ -156,7 +157,7 @@ abstract class Connection
 	{
 		foreach(i, packetInfo; packetArray)
 		{
-			writefln("% 2s: %s", i, packetInfo.name);
+			infof("% 2s: %s", i, packetInfo.name);
 		}
 	}
 
@@ -212,8 +213,8 @@ abstract class Connection
 		}
 		catch(CborException e)
 		{
-			writeln(e);
-			writefln("packet:%s data %(%x%)", event.packet.dataLength, fullPacketData);
+			error(e.to!string);
+			errorf("packet:%s data %(%x%)", event.packet.dataLength, fullPacketData);
 		}
 	}
 

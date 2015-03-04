@@ -5,9 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.chunkmeshman;
 
+import std.experimental.logger;
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
-import std.stdio : writef, writeln, writefln;
 
 import voxelman.blockman;
 import voxelman.client.chunkman;
@@ -69,13 +69,13 @@ struct ChunkMeshMan
 		// full chunk update
 		if (chunk.isLoaded)
 		{
-			writefln("full chunk change %s", chunk.coord);
+			infof("full chunk change %s", chunk.coord);
 			// if there was previous changes they do not matter anymore
 			chunkChanges[chunk.coord] = ChunkChange(null, chunkData);
 			return;
 		}
 
-		//writefln("chunk loaded %s data %s", chunk.coord, chunkData.typeData);
+		//infof("chunk loaded %s data %s", chunk.coord, chunkData.typeData);
 
 		chunk.isLoaded = true;
 
@@ -102,7 +102,7 @@ struct ChunkMeshMan
 
 	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
 	{
-		//writefln("partial chunk change %s", chunk.coord);
+		//infof("partial chunk change %s", chunk.coord);
 		if (auto _changes = chunk.coord in chunkChanges)
 		{
 			if (_changes.blockChanges is null)
@@ -175,7 +175,7 @@ struct ChunkMeshMan
 			return;
 		}
 
-		//writefln("mesh data loaded %s %s", data.coord, data.meshData.length);
+		//infof("mesh data loaded %s %s", data.coord, data.meshData.length);
 
 		// chunk was remeshed after change.
 		// Mesh will be uploaded for all changed chunks at once in processDirtyChunks.
@@ -203,7 +203,7 @@ struct ChunkMeshMan
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
 
-		//writefln("Chunk mesh generated at %s", chunk.coord);
+		//infof("Chunk mesh generated at %s", chunk.coord);
 	}
 
 	/// Checks if there is any chunks that have changes
@@ -217,7 +217,7 @@ struct ChunkMeshMan
 		if (!queuesEmpty || chunkChanges.length == 0)
 			return;
 
-		writefln("startMeshUpdateCycle");
+		trace("startMeshUpdateCycle");
 
 		foreach(pair; chunkChanges.byKeyValue)
 		{
@@ -275,7 +275,7 @@ struct ChunkMeshMan
 					addAdjacentChunks();
 					blocksChanged = true;
 
-					writefln("applying full update to %s", chunk.coord);
+					infof("applying full update to %s", chunk.coord);
 				}
 				else
 				{
@@ -288,14 +288,14 @@ struct ChunkMeshMan
 						addAdjacentChunks();
 						blocksChanged = true;
 					}
-					writefln("applying block changes to %s", chunk.coord);
+					infof("applying block changes to %s", chunk.coord);
 					ubyte bx, by, bz;
 					foreach(change; chunk.change.blockChanges)
 					{
 						bx = change.index & CHUNK_SIZE_BITS;
 						by = (change.index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
 						bz = (change.index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-						writef("i %s | x %s y %s z %s | wx %s wy %s wz %s | b %s; ",
+						tracef("i %s | x %s y %s z %s | wx %s wy %s wz %s | b %s; ",
 							change.index,
 							bx,
 							by,
@@ -305,7 +305,6 @@ struct ChunkMeshMan
 							bz + chunk.coord.z * CHUNK_SIZE,
 							change.blockType);
 					}
-					writeln;
 				}
 
 				chunk.change = ChunkChange.init;

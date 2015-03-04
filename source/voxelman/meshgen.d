@@ -5,10 +5,10 @@ Authors: Andrey Penechko.
 */
 module voxelman.meshgen;
 
+import std.experimental.logger;
 import std.array : Appender;
 import std.concurrency : Tid, send, receive;
 import std.conv : to;
-import std.stdio : writeln;
 import std.variant : Variant;
 import core.atomic : atomicLoad;
 import core.exception : Throwable;
@@ -39,6 +39,7 @@ void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
 			receive(
 				(shared(Chunk)* chunk)
 				{
+					//infof("worker: mesh chunk %s", chunk.coord);
 					chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
 				},
 				(shared(Chunk)* chunk, ushort[2] changedBlocksRange)
@@ -51,7 +52,7 @@ void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
 	}
 	catch(Throwable t)
 	{
-		writeln(t, " from mesh worker");
+		error(t.to!string, " from mesh worker");
 		throw t;
 	}
 }

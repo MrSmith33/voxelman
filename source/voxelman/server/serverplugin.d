@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.server.serverplugin;
 
-import std.stdio : writeln;
+import std.experimental.logger;
 
 import derelict.enet.enet;
 
@@ -82,7 +82,6 @@ public:
 		pluginman.registerPlugin(evDispatcher);
 
 		pluginman.initPlugins();
-		writeln;
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
 		connection.start(settings, ENET_HOST_ANY, CONNECT_PORT);
@@ -181,14 +180,14 @@ public:
 		auto clientId = connection.clientStorage.addClient(event.peer);
 		event.peer.data = cast(void*)clientId;
 		//enet_peer_timeout(event.peer, 0, 0, 2000);
-		writefln("%s connected", clientId);
+		infof("%s connected", clientId);
 		evDispatcher.postEvent(new ClientConnectedEvent(clientId));
 	}
 
 	void onDisconnect(ref ENetEvent event)
 	{
 		ClientId clientId = cast(ClientId)event.peer.data;
-		writefln("%s %s disconnected", clientId,
+		infof("%s %s disconnected", clientId,
 			connection.clientStorage[clientId].name);
 
 		chunkMan.removeRegionObserver(clientId);
@@ -201,7 +200,7 @@ public:
 
 		connection.sendToAll(ClientLoggedOutPacket(clientId));
 
-		writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
+		infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
@@ -212,7 +211,7 @@ public:
 		info.isLoggedIn = true;
 		spawnClient(info.pos, info.heading, clientId);
 
-		writefln("%s %s logged in", clientId,
+		infof("%s %s logged in", clientId,
 			connection.clientStorage[clientId].name);
 
 		connection.sendTo(clientId, SessionInfoPacket(clientId, clientNames));
@@ -247,26 +246,26 @@ public:
 		if (clientInfo.isLoggedIn)
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
-			//writefln("Received ClientPositionPacket(%s, %s, %s)",
+			//infof("Received ClientPositionPacket(%s, %s, %s)",
 			//	packet.x, packet.y, packet.z);
 
 			clientInfo.pos = packet.pos;
 			clientInfo.heading = packet.heading;
 			chunkMan.updateObserverPosition(clientId);
-			//writefln("totalObservedChunks %s", chunkMan.totalObservedChunks);
+			//infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
 		}
 	}
 
 	void handleViewRadius(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
-		writefln("Received ViewRadiusPacket(%s)", packet.viewRadius);
+		infof("Received ViewRadiusPacket(%s)", packet.viewRadius);
 	}
 
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		//writefln("Received MultiblockChangePacket(%s)", packet);
+		//infof("Received MultiblockChangePacket(%s)", packet);
 
 		Chunk* chunk = chunkMan.getChunk(packet.chunkPos);
 		if (chunk is null) return;

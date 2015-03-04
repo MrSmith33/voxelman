@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.client.app;
 
-import std.stdio : writeln;
+import std.experimental.logger;
 import std.string : format;
 
 import anchovy.graphics.windows.glfwwindow;
@@ -96,10 +96,8 @@ public:
 		init(args);
 		load(args);
 
-		writeln("Loading plugins");
+		info("Loading plugins");
 		pluginman.initPlugins();
-		writeln;
-
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime = TickDuration.from!"seconds"(0);
@@ -128,10 +126,10 @@ public:
 
 	override void load(in string[] args)
 	{
-		writeln("---------------------- System info ----------------------");
+		info("---------------------- System info ----------------------");
 		foreach(item; getHardwareInfo())
-			writeln(item);
-		writeln("---------------------------------------------------------\n");
+			info(item);
+		info("---------------------------------------------------------\n");
 
 		fpsHelper.limitFps = false;
 
@@ -163,7 +161,7 @@ public:
 		debugInfo = context.getWidgetById("debugInfo");
 		foreach(i; 0..12) context.createWidget("label", debugInfo);
 
-		writeln("\n----------------------------- Load end -----------------------------\n");
+		info("\n----------------------------- Load end -----------------------------\n");
 	}
 
 	override void unload()

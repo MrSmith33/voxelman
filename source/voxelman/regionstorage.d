@@ -5,11 +5,12 @@ Authors: Andrey Penechko.
 */
 module voxelman.regionstorage;
 
+import std.experimental.logger;
 import std.array : Appender;
 import std.file : exists, mkdirRecurse;
 import std.format : formattedWrite;
 import std.path : isValidPath, dirSeparator;
-import std.stdio : writef, writeln, writefln, FOPEN_MAX;
+import std.stdio : FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
 import voxelman.chunk;

@@ -5,10 +5,11 @@ Authors: Andrey Penechko.
 */
 module voxelman.chunkgen;
 
+import std.experimental.logger;
 import std.concurrency : Tid, send, receive;
-import std.stdio : writeln, writefln;
 import std.variant : Variant;
 import core.atomic : atomicLoad;
+import std.conv : to;
 import core.exception : Throwable;
 
 import dlib.math.vector : ivec3;
@@ -19,8 +20,8 @@ import voxelman.chunk;
 import voxelman.config;
 
 
-//alias Generator = Generator2d;
-alias Generator = Generator2d3d;
+alias Generator = Generator2d;
+//alias Generator = Generator2d3d;
 //alias Generator = TestGeneratorSmallCubes;
 //alias Generator = TestGeneratorSmallCubes2;
 //alias Generator = TestGeneratorSmallCubes3;
@@ -49,7 +50,7 @@ void chunkGenWorkerThread(Tid mainTid)
 	}
 	catch(Throwable t)
 	{
-		writeln(t, " from gen worker");
+		error(t.to!string, " from gen worker");
 		throw t;
 	}
 }
@@ -88,7 +89,7 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 	if(uniform)
 		cd.convertToUniform(type);
 
-	//writefln("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
+	//infof("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
 
 	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(cd, coord);
 	mainThread.send(result);

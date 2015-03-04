@@ -1,6 +1,5 @@
 module voxelman.utils.rlecompression;
 
-import std.stdio;
 import std.range : put;
 
 ubyte[] rleEncode(in ubyte[] data, ubyte[] outBuffer)

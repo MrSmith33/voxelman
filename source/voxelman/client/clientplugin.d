@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.clientplugin;
 
+import std.experimental.logger;
 import core.thread : thread_joinAll;
 
 import anchovy.gui;
@@ -116,7 +117,7 @@ final class ClientPlugin : IPlugin
 		vec3 editCursorPos = graphics.fpsController.camera.position + editCursorOffset;
 		ivec3 blockPos = toivec3(editCursorPos);
 		ivec3 chunkPos = worldToChunkPos(editCursorPos);
-		writefln("editCursorPos %s chunkPos %s blockPos %s index %s",
+		tracef("editCursorPos %s chunkPos %s blockPos %s index %s",
 			editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));
 		connection.send(
 			MultiblockChangePacket(chunkPos,
@@ -228,14 +229,14 @@ final class ClientPlugin : IPlugin
 
 	void onConnect(ref ENetEvent event)
 	{
-		writefln("Connection to %s:%s established", CONNECT_ADDRESS, CONNECT_PORT);
+		infof("Connection to %s:%s established", CONNECT_ADDRESS, CONNECT_PORT);
 		connection.send(LoginPacket(myName));
 		evDispatcher.postEvent(new ThisClientConnectedEvent);
 	}
 
 	void onDisconnect(ref ENetEvent event)
 	{
-		writefln("disconnected with data %s", event.data);
+		infof("disconnected with data %s", event.data);
 
 		// Reset server's information
 		event.peer.data = null;
@@ -257,14 +258,14 @@ final class ClientPlugin : IPlugin
 	{
 		auto newUser = unpackPacket!ClientLoggedInPacket(packetData);
 		clientNames[newUser.clientId] = newUser.clientName;
-		writefln("%s has connected", newUser.clientName);
+		infof("%s has connected", newUser.clientName);
 		evDispatcher.postEvent(new ClientLoggedInEvent(clientId));
 	}
 
 	void handleUserLoggedOutPacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!ClientLoggedOutPacket(packetData);
-		writefln("%s has disconnected", clientName(packet.clientId));
+		infof("%s has disconnected", clientName(packet.clientId));
 		evDispatcher.postEvent(new ClientLoggedOutEvent(clientId));
 		clientNames.remove(packet.clientId);
 	}
@@ -273,9 +274,9 @@ final class ClientPlugin : IPlugin
 	{
 		auto msg = unpackPacket!MessagePacket(packetData);
 		if (msg.clientId == 0)
-			writefln("%s", msg.msg);
+			infof("%s", msg.msg);
 		else
-			writefln("%s> %s", clientName(msg.clientId), msg.msg);
+			infof("%s> %s", clientName(msg.clientId), msg.msg);
 		evDispatcher.postEvent(new ChatMessageEvent(msg.clientId, msg.msg));
 	}
 
@@ -284,7 +285,7 @@ final class ClientPlugin : IPlugin
 		import voxelman.utils.math : nansToZero;
 
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
-		writefln("Received ClientPositionPacket(%s, %s)",
+		tracef("Received ClientPositionPacket(%s, %s)",
 			packet.pos, packet.heading);
 
 		nansToZero(packet.pos);
@@ -299,7 +300,7 @@ final class ClientPlugin : IPlugin
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!ChunkDataPacket(packetData);
-		//writefln("Received %s ChunkDataPacket(%s,%s)", packetData.length,
+		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.chunkData.typeData.length);
 		chunkMan.onChunkLoaded(packet.chunkPos, packet.chunkData);
 	}

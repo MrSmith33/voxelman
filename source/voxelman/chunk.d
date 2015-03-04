@@ -211,12 +211,12 @@ struct ChunkRange
 		int csizex = size.x-(cx-ox), csizey = size.y-(cy-oy), csizez = size.z-(cz-oz);
 		// origin size
 		int osizex = size.x-csizex, osizey = size.y-csizey, osizez = size.z-csizez;
-		//writefln("cx %s cy %s cz %s", cx, cy, cz);
-		//writefln("csizex %s csizey %s csizez %s", csizex, csizey, csizez);
-		//writefln("ox %s oy %s oz %s", ox, oy, oz);
-		//writefln("osizex %s osizey %s osizez %s", osizex, osizey, osizez);
-		//writefln("sizex %s sizey %s sizez %s", size.x, size.y, size.z);
-		//writefln("Corner %s", corner);
+		//tracef("cx %s cy %s cz %s", cx, cy, cz);
+		//tracef("csizex %s csizey %s csizez %s", csizex, csizey, csizez);
+		//tracef("ox %s oy %s oz %s", ox, oy, oz);
+		//tracef("osizex %s osizey %s osizez %s", osizex, osizey, osizez);
+		//tracef("sizex %s sizey %s sizez %s", size.x, size.y, size.z);
+		//tracef("Corner %s", corner);
 
 		ChunkRange rx0y0z0 = {ivec3(ox,oy,oz), ivec3(osizex, osizey, osizez)};
 		ChunkRange rx0y0z1 = {ivec3(ox,oy,cz), ivec3(osizex, osizey, csizez)};

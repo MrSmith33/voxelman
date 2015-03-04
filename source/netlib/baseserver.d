@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 
 module netlib.baseserver;
 
-import std.stdio;
 import std.range;
 
 import derelict.enet.enet;
