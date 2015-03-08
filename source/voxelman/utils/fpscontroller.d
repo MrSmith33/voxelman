@@ -30,54 +30,50 @@ struct FpsController
 		if (isUpdated == false) update();
 
 		// Strafe
-		vec3 horRight = vec3(1,0,0);
-		horRight = rotationQuatHor.rotate(horRight);
-		horRight.normalize();
-		camera.position += horRight * vec.x * vec3(1,1,-1);
+		vec3 right = rotationQuatHor.rotate(vec3(1,0,0));
+		camera.position += right * vec.x;
 
 		// Move up/down
 		camera.position.y += vec.y;
 
 		// Move forward
-		vec3 horTarget = vec3(0,0,1);
-		horTarget = rotationQuatHor.rotate(horTarget);
-		horTarget.normalize();
-		camera.position += horTarget * vec.z * vec3(1,1,-1);
+		vec3 target = rotationQuatHor.rotate(vec3(0,0,-1));
+		camera.position += target * vec.z;
 
 		isUpdated = false;
 	}
 
-	void rotateHor(float angle)
+	void rotate(vec2 angles)
 	{
-		heading.x += angle * camera.sensivity;
-		heading.x %= 360;
-		isUpdated = false;
-	}
-
-	void rotateVert(float angle)
-	{
-		heading.y += angle * camera.sensivity;
-		heading.y = clamp!float(heading.y, ANGLE_VERT_MIN, ANGLE_VERT_MAX);
+		heading += angles * camera.sensivity;
+		clampHeading();
 		isUpdated = false;
 	}
 
 	void setHeading(vec2 heading)
 	{
 		this.heading = heading;
+		clampHeading();
 		isUpdated = false;
+	}
+
+	void clampHeading()
+	{
+		heading.x %= 360;
+		heading.y = clamp!float(heading.y, ANGLE_VERT_MIN, ANGLE_VERT_MAX);
 	}
 
 	void update()
 	{
-		rotationQuatHor = rotation!float(Vector3f(0,1,0), degtorad!float(heading.x));
-		rotationQuatVert = rotation!float(Vector3f(1,0,0), degtorad!float(heading.y));
+		rotationQuatHor = rotation!float(vec3(0,1,0), degtorad!float(heading.x));
+		rotationQuatVert = rotation!float(vec3(1,0,0), degtorad!float(heading.y));
 
-		rotationQuat = rotationQuatVert * rotationQuatHor;
+		rotationQuat = rotationQuatHor * rotationQuatVert;
 		rotationQuat.normalize();
-
-		Matrix4f rotation = rotationQuat.toMatrix4x4;//fromEuler!float(vec3(degtorad!float(-heading.y), degtorad!float(-angleHor), 0));
-		Matrix4f proj = translationMatrix(-camera.position);
 		calcVectors();
+
+		Matrix4f rotation = rotationQuat.toMatrix4x4.inverse;//fromEuler!float(vec3(degtorad!float(-heading.y), degtorad!float(-angleHor), 0));
+		Matrix4f proj = translationMatrix(-camera.position);
 
 		cameraToClipMatrix = rotation * proj;
 		isUpdated = true;
@@ -91,22 +87,15 @@ struct FpsController
 
 	void printVectors()
 	{
-		infof("camera\nposition\t%s\ttarget\t%s\tup\t%s\tcamera.right\t%s",
+		infof("camera\npos\t%s\ttarget\t%s\tup\t%s\tright\t%s",
 			camera.position, camera.target, camera.up, camera.right);
 	}
 
 	private void calcVectors()
 	{
-		camera.target	= vec3(0,0,-1);
-		camera.up		= vec3(0,1,0);
-
-		camera.target = rotationQuat.rotate(camera.target);
-		camera.target.normalize();
-
-		rotationQuat.rotate(camera.up);
-		camera.up.normalize();
-
-		camera.right = cross(camera.up, camera.target);
+		camera.target = rotationQuat.rotate(vec3(0,0,-1));
+		camera.up = rotationQuat.rotate(vec3(0,1,0));
+		camera.right = rotationQuat.rotate(vec3(1,0,0));
 	}
 
 	Camera camera;

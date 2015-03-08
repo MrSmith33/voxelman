@@ -223,8 +223,9 @@ public:
 			chunkPos, regionPos, localChunkCoords).to!dstring;
 
 		vec3 target = graphics.fpsController.camera.target;
-		lines[ 8]["text"] = format("Target: X %.2f, Y %.2f, Z %.2f",
-			target.x, target.y, target.z).to!dstring;
+		vec2 heading = graphics.fpsController.heading;
+		lines[ 8]["text"] = format("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
+			heading.x, heading.y, target.x, target.y, target.z).to!dstring;
 		lines[ 9]["text"] = format("Chunks to remove: %s", clientPlugin.chunkMan.numChunksToRemove).to!dstring;
 		//lines[ 10]["text"] = format("Chunks to load: %s", clientPlugin.chunkMan.numLoadChunkTasks).to!dstring;
 		lines[ 11]["text"] = format("Chunks to mesh: %s", clientPlugin.chunkMan.chunkMeshMan.numMeshChunkTasks).to!dstring;
@@ -260,10 +261,13 @@ public:
 			ivec2 mousePos = window.mousePosition;
 			mousePos -= cast(ivec2)(graphics.windowSize) / 2;
 
+			// scale, so up and left is positive, as rotation is anti-clockwise
+			// and coordinate system is right-hand and -z if forward
+			mousePos *= -1;
+
 			if(mousePos.x !=0 || mousePos.y !=0)
 			{
-				graphics.fpsController.rotateHor(mousePos.x);
-				graphics.fpsController.rotateVert(mousePos.y);
+				graphics.fpsController.rotate(vec2(mousePos));
 			}
 			window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 
@@ -282,6 +286,7 @@ public:
 
 			if (posDelta != vec3(0))
 			{
+				posDelta.normalize();
 				posDelta *= cameraSpeed * dt;
 				graphics.fpsController.moveAxis(posDelta);
 			}

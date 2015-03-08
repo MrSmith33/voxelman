@@ -18,6 +18,6 @@ void main(string[] args)
 	//f2 = f;
 
 	setupLogger("client.log");
-	auto app = new ClientApp(uvec2(1280, 720), "Voxel engine client test");
+	auto app = new ClientApp(uvec2(1280, 720), "Voxelman client");
 	app.run(args);
 }

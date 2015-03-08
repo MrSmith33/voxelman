@@ -117,7 +117,7 @@ final class ClientPlugin : IPlugin
 		vec3 editCursorPos = graphics.fpsController.camera.position + editCursorOffset;
 		ivec3 blockPos = toivec3(editCursorPos);
 		ivec3 chunkPos = worldToChunkPos(editCursorPos);
-		tracef("editCursorPos %s chunkPos %s blockPos %s index %s",
+		infof("editCursorPos %s chunkPos %s blockPos %s index %s",
 			editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));
 		connection.send(
 			MultiblockChangePacket(chunkPos,
