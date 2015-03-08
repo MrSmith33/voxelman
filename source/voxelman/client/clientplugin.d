@@ -104,17 +104,17 @@ final class ClientPlugin : IPlugin
 
 	override void postInit()
 	{
-		chunkMan.updateObserverPosition(graphics.fpsController.camera.position);
+		chunkMan.updateObserverPosition(graphics.camera.position);
 		connect();
 	}
 
 	void placeBlock(BlockType blockId)
 	{
 		enum cursorDistance = 3;
-		vec3 editCursorOffset = graphics.fpsController.camera.target * cursorDistance;
+		vec3 editCursorOffset = graphics.camera.target * cursorDistance;
 		editCursorOffset.x *= -1;
 		editCursorOffset.y *= -1;
-		vec3 editCursorPos = graphics.fpsController.camera.position + editCursorOffset;
+		vec3 editCursorPos = graphics.camera.position + editCursorOffset;
 		ivec3 blockPos = toivec3(editCursorPos);
 		ivec3 chunkPos = worldToChunkPos(editCursorPos);
 		infof("editCursorPos %s chunkPos %s blockPos %s index %s",
@@ -144,14 +144,14 @@ final class ClientPlugin : IPlugin
 	void update(UpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
-			chunkMan.updateObserverPosition(graphics.fpsController.camera.position);
+			chunkMan.updateObserverPosition(graphics.camera.position);
 
 		if (connection.isRunning)
 			connection.update(0);
 
 		chunkMan.update();
 
-		ivec3 chunkPos = worldToChunkPos(graphics.fpsController.camera.position);
+		ivec3 chunkPos = worldToChunkPos(graphics.camera.position);
 		if (isSpawned)
 		{
 			sendPositionTimer += event.deltaTime;
@@ -172,8 +172,8 @@ final class ClientPlugin : IPlugin
 	void sendPosition()
 	{
 		connection.send(ClientPositionPacket(
-			graphics.fpsController.camera.position,
-			graphics.fpsController.heading));
+			graphics.camera.position,
+			graphics.camera.heading));
 	}
 
 	void drawScene(Draw1Event event)
@@ -182,13 +182,13 @@ final class ClientPlugin : IPlugin
 
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
-			graphics.fpsController.cameraMatrix);
+			graphics.camera.cameraMatrix);
 		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
-			cast(const float*)graphics.fpsController.camera.perspective.arrayof);
+			cast(const float*)graphics.camera.perspective.arrayof);
 
 		import dlib.geometry.aabb;
 		import dlib.geometry.frustum;
-		Matrix4f vp = graphics.fpsController.camera.perspective * graphics.fpsController.cameraToClipMatrix;
+		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
 		Frustum frustum;
 		frustum.fromMVP(vp);
 
@@ -289,10 +289,10 @@ final class ClientPlugin : IPlugin
 			packet.pos, packet.heading);
 
 		nansToZero(packet.pos);
-		graphics.fpsController.camera.position = packet.pos;
+		graphics.camera.position = packet.pos;
 
 		nansToZero(packet.heading);
-		graphics.fpsController.setHeading(packet.heading);
+		graphics.camera.setHeading(packet.heading);
 
 		isSpawned = true;
 	}

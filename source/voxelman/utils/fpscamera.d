@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.utils.fpscontroller;
+module voxelman.utils.fpscamera;
 
 import std.experimental.logger;
 
@@ -14,14 +14,12 @@ import dlib.math.vector;
 import dlib.math.quaternion;
 import dlib.math.utils;
 
-import voxelman.utils.camera;
-
-struct FpsController
+struct FpsCamera
 {
 	void move(Vector3f vec)
 	{
 		if (isUpdated == false) update();
-		camera.position += vec;
+		position += vec;
 		isUpdated = false;
 	}
 
@@ -31,21 +29,21 @@ struct FpsController
 
 		// Strafe
 		vec3 right = rotationQuatHor.rotate(vec3(1,0,0));
-		camera.position += right * vec.x;
+		position += right * vec.x;
 
 		// Move up/down
-		camera.position.y += vec.y;
+		position.y += vec.y;
 
 		// Move forward
 		vec3 target = rotationQuatHor.rotate(vec3(0,0,-1));
-		camera.position += target * vec.z;
+		position += target * vec.z;
 
 		isUpdated = false;
 	}
 
 	void rotate(vec2 angles)
 	{
-		heading += angles * camera.sensivity;
+		heading += angles * sensivity;
 		clampHeading();
 		isUpdated = false;
 	}
@@ -72,10 +70,10 @@ struct FpsController
 		rotationQuat.normalize();
 		calcVectors();
 
-		Matrix4f rotation = rotationQuat.toMatrix4x4.inverse;//fromEuler!float(vec3(degtorad!float(-heading.y), degtorad!float(-angleHor), 0));
-		Matrix4f proj = translationMatrix(-camera.position);
+		Matrix4f rotation = rotationQuat.toMatrix4x4.inverse;
+		Matrix4f translation = translationMatrix(-position);
 
-		cameraToClipMatrix = rotation * proj;
+		cameraToClipMatrix = rotation * translation;
 		isUpdated = true;
 	}
 
@@ -87,25 +85,40 @@ struct FpsController
 
 	void printVectors()
 	{
-		infof("camera\npos\t%s\ttarget\t%s\tup\t%s\tright\t%s",
-			camera.position, camera.target, camera.up, camera.right);
+		infof("camera pos\t%s\ttarget\t%s\tup\t%s\tright\t%s",
+			position, target, up, right);
 	}
 
 	private void calcVectors()
 	{
-		camera.target = rotationQuat.rotate(vec3(0,0,-1));
-		camera.up = rotationQuat.rotate(vec3(0,1,0));
-		camera.right = rotationQuat.rotate(vec3(1,0,0));
+		target = rotationQuat.rotate(vec3(0,0,-1));
+		up = rotationQuat.rotate(vec3(0,1,0));
+		right = rotationQuat.rotate(vec3(1,0,0));
 	}
 
-	Camera camera;
+	Matrix4f perspective()
+	{
+		return perspectiveMatrix(fov, aspect, near, far);
+	}
 
-	vec2 heading = vec2(0, 0); // yaw, pitch
+	float sensivity = 1.0f;
+	float fov = 60; // field of view
+	float aspect = 1; // window width/height
+	float near = 0.01;
+	float far = 2000;
+
+	vec3 position = vec3(0, 0, 0);
+	vec2 heading = vec2(0, 0); // hor, vert
+
+	vec3 target = vec3(0, 0, -1);
+	vec3 up	= vec3(0, 1, 0);
+	vec3 right	= vec3(1, 0, 0);
 
 	enum ANGLE_VERT_MIN = -90.0f;	//minimum pitch
 	enum ANGLE_VERT_MAX =  90.0f;	//maximal pitch
 
 	Matrix4f cameraToClipMatrix;
+
 	Quaternionf rotationQuat;
 	Quaternionf rotationQuatHor;
 	Quaternionf rotationQuatVert;

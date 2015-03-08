@@ -14,8 +14,7 @@ import dlib.math.matrix;
 import plugin;
 import voxelman.plugins.eventdispatcherplugin : GameEvent;
 import voxelman.config;
-import voxelman.utils.fpscontroller;
-import voxelman.utils.camera;
+import voxelman.utils.fpscamera;
 
 class Draw1Event : GameEvent {
 	this(IRenderer renderer)
@@ -38,11 +37,10 @@ final class GraphicsPlugin : IPlugin
 	override string semver() @property { return "0.3.0"; }
 	override void preInit()
 	{
-		fpsController.move(START_POS);
-		fpsController.camera.sensivity = CAMERA_SENSIVITY;
+		camera.move(START_POS);
+		camera.sensivity = CAMERA_SENSIVITY;
 
-		fpsController.camera.aspect = cast(float)windowSize.x/windowSize.y;
-		fpsController.camera.updateProjection();
+		camera.aspect = cast(float)windowSize.x/windowSize.y;
 
 		// Setup shaders
 
@@ -67,9 +65,9 @@ final class GraphicsPlugin : IPlugin
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
 				cast(const float*)Matrix4f.identity.arrayof);
 			glUniformMatrix4fv(viewLoc, 1, GL_FALSE,
-				cast(const float*)fpsController.cameraMatrix);
+				cast(const float*)camera.cameraMatrix);
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
-				cast(const float*)fpsController.camera.perspective.arrayof);
+				cast(const float*)camera.perspective.arrayof);
 		chunkShader.unbind;
 	}
 
@@ -79,14 +77,14 @@ final class GraphicsPlugin : IPlugin
 
 	void resetCamera()
 	{
-		fpsController.camera.position=vec3(0,0,0);
-		fpsController.camera.target=vec3(0,0,1);
-		fpsController.heading = vec2(0, 0);
-		fpsController.update();
+		camera.position=vec3(0,0,0);
+		camera.target=vec3(0,0,1);
+		camera.heading = vec2(0, 0);
+		camera.update();
 	}
 
 	uvec2 windowSize;
-	FpsController fpsController;
+	FpsCamera camera;
 
 	ShaderProgram chunkShader;
 	GLuint modelLoc, viewLoc, projectionLoc;

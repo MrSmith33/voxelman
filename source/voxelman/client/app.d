@@ -20,9 +20,6 @@ import voxelman.config;
 import voxelman.chunk;
 import voxelman.events;
 
-import voxelman.utils.fpscontroller;
-import voxelman.utils.camera;
-
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.client.clientplugin;
@@ -212,7 +209,7 @@ public:
 		lines[ 4]["text"] = statStrings[4].to!dstring;
 		lines[ 5]["text"] = statStrings[5].to!dstring;
 
-		vec3 pos = graphics.fpsController.camera.position;
+		vec3 pos = graphics.camera.position;
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
@@ -222,8 +219,8 @@ public:
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
 			chunkPos, regionPos, localChunkCoords).to!dstring;
 
-		vec3 target = graphics.fpsController.camera.target;
-		vec2 heading = graphics.fpsController.heading;
+		vec3 target = graphics.camera.target;
+		vec2 heading = graphics.camera.heading;
 		lines[ 8]["text"] = format("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
 			heading.x, heading.y, target.x, target.y, target.z).to!dstring;
 		lines[ 9]["text"] = format("Chunks to remove: %s", clientPlugin.chunkMan.numChunksToRemove).to!dstring;
@@ -234,8 +231,7 @@ public:
 	void windowResized(uvec2 newSize)
 	{
 		graphics.windowSize = newSize;
-		graphics.fpsController.camera.aspect = cast(float)graphics.windowSize.x/graphics.windowSize.y;
-		graphics.fpsController.camera.updateProjection();
+		graphics.camera.aspect = cast(float)graphics.windowSize.x/graphics.windowSize.y;
 	}
 
 	override void draw()
@@ -267,7 +263,7 @@ public:
 
 			if(mousePos.x !=0 || mousePos.y !=0)
 			{
-				graphics.fpsController.rotate(vec2(mousePos));
+				graphics.camera.rotate(vec2(mousePos));
 			}
 			window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 
@@ -288,14 +284,14 @@ public:
 			{
 				posDelta.normalize();
 				posDelta *= cameraSpeed * dt;
-				graphics.fpsController.moveAxis(posDelta);
+				graphics.camera.moveAxis(posDelta);
 			}
 		}
 		// TODO: remove after bug is found
 		else if (autoMove)
 		{
 			// Automoving
-			graphics.fpsController.moveAxis(vec3(0,0,20)*dt);
+			graphics.camera.moveAxis(vec3(0,0,20)*dt);
 		}
 	}
 
@@ -307,7 +303,7 @@ public:
 				if (mouseLocked)
 					window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 				break;
-			case KeyCode.KEY_P: graphics.fpsController.printVectors; break;
+			case KeyCode.KEY_P: graphics.camera.printVectors; break;
 			//case KeyCode.KEY_I:
 
 			//	chunkMan
