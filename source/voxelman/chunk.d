@@ -92,8 +92,7 @@ vec3 worldToChunkLocalPos(vec3 worldPos)
 
 ushort worldToChunkBlockIndex(vec3 worldPos)
 {
-	import voxelman.utils.math : toivec3;
-	ivec3 localPos = toivec3(worldToChunkLocalPos(worldPos));
+	ivec3 localPos = ivec3(worldToChunkLocalPos(worldPos));
 	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
 }
 

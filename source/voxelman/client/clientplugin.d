@@ -112,10 +112,8 @@ final class ClientPlugin : IPlugin
 	{
 		enum cursorDistance = 3;
 		vec3 editCursorOffset = graphics.camera.target * cursorDistance;
-		editCursorOffset.x *= -1;
-		editCursorOffset.y *= -1;
 		vec3 editCursorPos = graphics.camera.position + editCursorOffset;
-		ivec3 blockPos = toivec3(editCursorPos);
+		ivec3 blockPos = ivec3(editCursorPos);
 		ivec3 chunkPos = worldToChunkPos(editCursorPos);
 		infof("editCursorPos %s chunkPos %s blockPos %s index %s",
 			editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));

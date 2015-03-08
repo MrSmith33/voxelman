@@ -232,7 +232,7 @@ struct ChunkMan
 		import voxelman.utils.math : toivec3;
 
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
-		ivec3 observerPos = toivec3(clientInfo.pos);
+		ivec3 observerPos = ivec3(clientInfo.pos);
 
 		ivec3[] chunksToLoad = chunkCoords.array;
 		sort!((a, b) => a.euclidDistSqr(observerPos) < b.euclidDistSqr(observerPos))(chunksToLoad);
