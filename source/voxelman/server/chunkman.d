@@ -229,7 +229,6 @@ struct ChunkMan
 	{
 		import std.range : array;
 		import std.algorithm : sort;
-		import voxelman.utils.math : toivec3;
 
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		ivec3 observerPos = ivec3(clientInfo.pos);
