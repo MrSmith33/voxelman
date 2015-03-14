@@ -299,8 +299,8 @@ final class ClientPlugin : IPlugin
 	{
 		auto packet = unpackPacket!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
-		//	packet.chunkPos, packet.chunkData.typeData.length);
-		chunkMan.onChunkLoaded(packet.chunkPos, packet.chunkData);
+		//	packet.chunkPos, packet.blockData.blocks.length);
+		chunkMan.onChunkLoaded(packet.chunkPos, packet.blockData);
 	}
 
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)

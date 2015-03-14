@@ -307,11 +307,11 @@ unittest
 }
 
 /// Container for chunk updates
-/// If blockChanges is null uses newChunkData
+/// If blockChanges is null uses newBlockData
 struct ChunkChange
 {
 	BlockChange[] blockChanges;
-	ChunkData newChunkData;
+	BlockData newBlockData;
 }
 
 // container of single block change.
@@ -347,17 +347,17 @@ enum StorageType
 	array,
 }
 
-// returns index of block in chunkData from local block position
+// returns index of block in blockData from local block position
 size_t blockIndex(ubyte x, ubyte y, ubyte z)
 {
 	return x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
 }
 
 // Chunk data
-struct ChunkData
+struct BlockData
 {
 	/// null if uniform is true, or contains chunk data otherwise
-	BlockType[] typeData;
+	BlockType[] blocks;
 
 	/// type of common block
 	BlockType uniformType = 0; // Unknown block
@@ -369,8 +369,8 @@ struct ChunkData
 	{
 		if (uniform)
 		{
-			typeData = uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
-			typeData[] = uniformType;
+			blocks = uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
+			blocks[] = uniformType;
 			uniform = false;
 		}
 	}
@@ -384,7 +384,7 @@ struct ChunkData
 
 	void deleteTypeData()
 	{
-		typeData = null;
+		blocks = null;
 	}
 
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
@@ -395,7 +395,7 @@ struct ChunkData
 	BlockType getBlockType(size_t index)
 	{
 		if (uniform) return uniformType;
-		return typeData[index];
+		return blocks[index];
 	}
 
 	// returns true if data was changed
@@ -412,16 +412,16 @@ struct ChunkData
 			if (uniformType != blockType)
 			{
 				convertToArray();
-				typeData[index] = blockType;
+				blocks[index] = blockType;
 				return true;
 			}
 		}
 		else
 		{
-			if (typeData[index] == blockType)
+			if (blocks[index] == blockType)
 				return false;
 
-			typeData[index] = blockType;
+			blocks[index] = blockType;
 			return true;
 		}
 
@@ -531,7 +531,7 @@ struct Chunk
 	}
 
 	ivec3 coord;
-	ChunkData data;
+	BlockData data;
 	ChunkMesh mesh;
 	Chunk*[6] adjacent;
 

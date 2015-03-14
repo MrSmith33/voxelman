@@ -158,9 +158,9 @@ struct Region
 		return file.rawRead(outBuffer[0..dataLength]);
 	}
 
-	/// Writes chunk at chunkCoord with data chunkData to disk.
+	/// Writes chunk at chunkCoord with data blockData to disk.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public void writeChunk(ivec3 chunkCoord, in ubyte[] chunkData)
+	public void writeChunk(ivec3 chunkCoord, in ubyte[] blockData)
 	{
 		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 
@@ -170,18 +170,18 @@ struct Region
 
 		import std.math : ceil;
 		auto sectorsNeeded = cast(size_t)ceil(
-			cast(float)(chunkData.length + CHUNK_HEADER_SIZE) / SECTOR_SIZE);
+			cast(float)(blockData.length + CHUNK_HEADER_SIZE) / SECTOR_SIZE);
 
 		if (sectorsNeeded > MAX_CHUNK_SECTORS)
 		{
-			errorf("data length %s is too big", chunkData.length);
+			errorf("data length %s is too big", blockData.length);
 			return;
 		}
 
 		if (sectorNumber != 0 && numSectors == sectorsNeeded)
 		{
 			// Rewrite data in place.
-			writeChunkData(sectorNumber, chunkData);
+			writeChunkData(sectorNumber, blockData);
 			return;
 		}
 		//infof("searching for free sectors");
@@ -227,7 +227,7 @@ struct Region
 
 		//infof("first %s num %s", firstFreeSector, numFreeSectors);
 		// Use free sectors found in a file.
-		writeChunkData(cast(uint)firstFreeSector, chunkData);
+		writeChunkData(cast(uint)firstFreeSector, blockData);
 
 		setChunkOffset(chunkCoord, cast(uint)firstFreeSector, cast(ubyte)sectorsNeeded);
 		foreach(i; firstFreeSector..firstFreeSector + sectorsNeeded)

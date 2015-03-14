@@ -64,24 +64,24 @@ struct ChunkMeshMan
 		processDirtyChunks();
 	}
 
-	void onChunkLoaded(Chunk* chunk, ChunkData chunkData)
+	void onChunkLoaded(Chunk* chunk, BlockData blockData)
 	{
 		// full chunk update
 		if (chunk.isLoaded)
 		{
 			infof("full chunk change %s", chunk.coord);
 			// if there was previous changes they do not matter anymore
-			chunkChanges[chunk.coord] = ChunkChange(null, chunkData);
+			chunkChanges[chunk.coord] = ChunkChange(null, blockData);
 			return;
 		}
 
-		//infof("chunk loaded %s data %s", chunk.coord, chunkData.typeData);
+		//infof("chunk loaded %s data %s", chunk.coord, blockData.blocks);
 
 		chunk.isLoaded = true;
 
 		++chunkMan.totalLoadedChunks;
 
-		setChunkData(chunk, chunkData);
+		setChunkData(chunk, blockData);
 
 		if (chunk.isVisible)
 			tryMeshChunk(chunk);
@@ -90,14 +90,14 @@ struct ChunkMeshMan
 			if (a !is null) tryMeshChunk(a);
 	}
 
-	void setChunkData(Chunk* chunk, ref ChunkData chunkData)
+	void setChunkData(Chunk* chunk, ref BlockData blockData)
 	{
 		chunk.isVisible = true;
-		if (chunkData.uniform)
+		if (blockData.uniform)
 		{
-			chunk.isVisible = blockMan.blocks[chunkData.uniformType].isVisible;
+			chunk.isVisible = blockMan.blocks[blockData.uniformType].isVisible;
 		}
-		chunk.data = chunkData;
+		chunk.data = blockData;
 	}
 
 	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
@@ -108,7 +108,7 @@ struct ChunkMeshMan
 			if (_changes.blockChanges is null)
 			{
 				// block changes applied on top of full chunk update
-				_changes.newChunkData.applyChangesFast(changes);
+				_changes.newBlockData.applyChangesFast(changes);
 			}
 			else
 			{
@@ -270,7 +270,7 @@ struct ChunkMeshMan
 				if (chunk.change.blockChanges is null)
 				{
 					// full chunk update
-					setChunkData(chunk, chunk.change.newChunkData);
+					setChunkData(chunk, chunk.change.newBlockData);
 					// TODO remove mesh if not visible
 					addAdjacentChunks();
 					blocksChanged = true;

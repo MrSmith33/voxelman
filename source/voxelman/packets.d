@@ -7,7 +7,7 @@ module voxelman.packets;
 
 import netlib.connection;
 import dlib.math.vector;
-import voxelman.chunk : BlockChange, ChunkData;
+import voxelman.chunk : BlockChange, BlockData;
 
 void registerPackets(Connection c)
 {
@@ -76,7 +76,7 @@ struct ViewRadiusPacket
 struct ChunkDataPacket
 {
 	ivec3 chunkPos;
-	ChunkData chunkData;
+	BlockData blockData;
 }
 
 struct MultiblockChangePacket

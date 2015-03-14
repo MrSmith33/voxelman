@@ -91,13 +91,13 @@ struct RegionStorage
 		return region.readChunk(localChunkCoords, outBuffer);
 	}
 
-	void writeChunk(ivec3 chunkPos, in ubyte[] chunkData)
+	void writeChunk(ivec3 chunkPos, in ubyte[] blockData)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		region.writeChunk(localChunkCoords, chunkData);
+		region.writeChunk(localChunkCoords, blockData);
 	}
 
 	private Region* loadRegion(ivec3 regionPos)

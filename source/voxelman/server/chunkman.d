@@ -289,11 +289,11 @@ struct ChunkMan
 		//--chunksEnqueued;
 
 		chunk.isVisible = true;
-		if (data.chunkData.uniform)
+		if (data.blockData.uniform)
 		{
-			chunk.isVisible = blockMan.blocks[data.chunkData.uniformType].isVisible;
+			chunk.isVisible = blockMan.blocks[data.blockData.uniformType].isVisible;
 		}
-		chunk.data = data.chunkData;
+		chunk.data = data.blockData;
 
 		if (chunk.isMarkedForDeletion)
 		{
@@ -306,13 +306,13 @@ struct ChunkMan
 
 	void sendChunkToObservers(ivec3 coord)
 	{
-		//tracef("send chunk to all %s %s", coord, chunks[coord].data.typeData.length);
+		//tracef("send chunk to all %s %s", coord, chunks[coord].data.blocks.length);
 		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].data));
 	}
 
 	void sendChunkTo(ivec3 coord, ClientId clientId)
 	{
-		//tracef("send chunk to %s %s", coord, chunks[coord].data.typeData.length);
+		//tracef("send chunk to %s %s", coord, chunks[coord].data.blocks.length);
 		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].data));
 	}
 
@@ -491,7 +491,7 @@ struct ChunkMan
 		}
 		else
 		{
-			delete chunk.data.typeData;
+			delete chunk.data.blocks;
 			delete chunk.data;
 		}
 		delete chunk;

@@ -28,7 +28,7 @@ alias Generator = Generator2d;
 
 struct ChunkGenResult
 {
-	ChunkData chunkData;
+	BlockData blockData;
 	ivec3 coord;
 }
 
@@ -60,15 +60,15 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 {
 	int wx = coord.x, wy = coord.y, wz = coord.z;
 
-	ChunkData cd;
-	cd.convertToArray();
+	BlockData bd;
+	bd.convertToArray();
 	bool uniform = true;
 
 	Generator generator = Generator(coord * CHUNK_SIZE);
 	generator.genPerChunkData();
 
-	cd.typeData[0] = generator.generateBlock(0, 0, 0);
-	BlockType type = cd.typeData[0];
+	bd.blocks[0] = generator.generateBlock(0, 0, 0);
+	BlockType type = bd.blocks[0];
 
 	int bx, by, bz;
 	foreach(i; 1..CHUNK_SIZE_CUBE)
@@ -78,20 +78,20 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 		bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 
 		// Actual block gen
-		cd.typeData[i] = generator.generateBlock(bx, by, bz);
+		bd.blocks[i] = generator.generateBlock(bx, by, bz);
 
-		if(uniform && cd.typeData[i] != type)
+		if(uniform && bd.blocks[i] != type)
 		{
 			uniform = false;
 		}
 	}
 
 	if(uniform)
-		cd.convertToUniform(type);
+		bd.convertToUniform(type);
 
 	//infof("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
 
-	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(cd, coord);
+	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(bd, coord);
 	mainThread.send(result);
 }
 

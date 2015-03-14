@@ -29,18 +29,18 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 		bool isRunningLocal = true;
 		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
 
-		void writeChunk(ivec3 chunkPos, ChunkData data)
+		void writeChunk(ivec3 chunkPos, BlockData data)
 		{
 			//infof("writing chunk %s ", chunkPos);
 			if (regionStorage.isChunkOnDisk(chunkPos)) return;
 
-			ChunkData compressedData = data;
-			compressedData.typeData = rleEncode(data.typeData, compressBuffer);
+			BlockData compressedData = data;
+			compressedData.blocks = rleEncode(data.blocks, compressBuffer);
 
 			try
 			{
 				size_t encodedSize = encodeCborArray(buffer[], compressedData);
-				//infof("size %s compressed %s", data.typeData.length, compressedData.typeData.length);
+				//infof("size %s compressed %s", data.blocks.length, compressedData.blocks.length);
 				regionStorage.writeChunk(chunkPos, buffer[0..encodedSize]);
 			}
 			catch(Exception e)
@@ -49,16 +49,16 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 			}
 		}
 
-		ChunkData readChunk(ivec3 chunkPos)
+		BlockData readChunk(ivec3 chunkPos)
 		{
 			assert(regionStorage.isChunkOnDisk(chunkPos));
 			//infof("reading chunk %s ", chunkPos);
 			auto data = regionStorage.readChunk(chunkPos, buffer[]);
-			ChunkData compressedData = decodeCborSingle!ChunkData(data);
-			ChunkData uncompressedData = compressedData;
-			uncompressedData.typeData = rleDecode(compressedData.typeData, compressBuffer).dup;
+			BlockData compressedData = decodeCborSingle!BlockData(data);
+			BlockData uncompressedData = compressedData;
+			uncompressedData.blocks = rleDecode(compressedData.blocks, compressBuffer).dup;
 
-			//infof("size %s compressed %s", uncompressedData.typeData.length, compressedData.typeData.length);
+			//infof("size %s compressed %s", uncompressedData.blocks.length, compressedData.blocks.length);
 			return uncompressedData;
 		}
 
@@ -72,8 +72,8 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 					{
 						try
 						{
-							ChunkData cd = readChunk(chunkPos);
-							ChunkGenResult* genResult = new ChunkGenResult(cd, chunkPos);
+							BlockData bd = readChunk(chunkPos);
+							ChunkGenResult* genResult = new ChunkGenResult(bd, chunkPos);
 							auto result = cast(immutable(ChunkGenResult)*)genResult;
 							mainTid.send(result);
 						}
@@ -88,11 +88,11 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 					}
 				},
 				// write
-				(ivec3 chunkPos, shared ChunkData chunkData, bool deleteData) {
-					writeChunk(chunkPos, cast(ChunkData)chunkData);
+				(ivec3 chunkPos, shared BlockData blockData, bool deleteData) {
+					writeChunk(chunkPos, cast(BlockData)blockData);
 
 					if (deleteData)
-						delete chunkData.typeData;
+						delete blockData.blocks;
 				},
 				(Variant v) {
 					isRunningLocal = false;

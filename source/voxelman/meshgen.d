@@ -141,7 +141,7 @@ body
 		} // foreach
 	}
 	else
-	foreach (uint index, ref ubyte val; chunk.data.typeData)
+	foreach (uint index, ref ubyte val; chunk.data.blocks)
 	{
 		if (isVisibleBlock(val))
 		{
