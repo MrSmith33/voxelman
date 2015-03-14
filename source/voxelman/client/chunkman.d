@@ -5,7 +5,6 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.chunkman;
 
-//import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.experimental.logger;
 
 import dlib.math.vector : vec3, ivec3;
@@ -13,6 +12,7 @@ import dlib.math.vector : vec3, ivec3;
 import voxelman.block;
 import voxelman.blockman;
 import voxelman.chunk;
+import voxelman.chunkstorage;
 import voxelman.config;
 import voxelman.client.chunkmeshman;
 
@@ -20,10 +20,8 @@ import voxelman.client.chunkmeshman;
 ///
 struct ChunkMan
 {
-	Chunk*[ivec3] chunks;
-
-	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
-	size_t numChunksToRemove;
+	ChunkStorage chunkStorage;
+	alias chunkStorage this;
 
 	// Stats
 	size_t totalLoadedChunks;
@@ -39,18 +37,19 @@ struct ChunkMan
 	{
 		blockMan.loadBlockTypes();
 		chunkMeshMan.init(&this, &blockMan);
+		chunkStorage.onChunkRemoved = &chunkMeshMan.onChunkRemoved;
 	}
 
 	void stop()
 	{
 		info("unloading chunks");
 
-		foreach(chunk; chunks.byValue)
-			addToRemoveQueue(chunk);
+		foreach(chunk; chunkStorage.chunks.byValue)
+			chunkStorage.removeQueue.add(chunk);
 
-		while(chunks.length > 0)
+		while(chunkStorage.chunks.length > 0)
 		{
-			update();
+			chunkStorage.update();
 		}
 
 		chunkMeshMan.stop();
@@ -59,12 +58,12 @@ struct ChunkMan
 	void update()
 	{
 		chunkMeshMan.update();
-		processRemoveQueue();
+		chunkStorage.update();
 	}
 
 	void onChunkLoaded(ivec3 chunkPos, ChunkData chunkData)
 	{
-		Chunk* chunk = getChunk(chunkPos);
+		Chunk* chunk = chunkStorage.getChunk(chunkPos);
 
 		// We can receive data for chunk that is already deleted.
 		if (chunk is null || chunk.isMarkedForDeletion)
@@ -78,7 +77,7 @@ struct ChunkMan
 
 	void onChunkChanged(ivec3 chunkPos, BlockChange[] changes)
 	{
-		Chunk* chunk = getChunk(chunkPos);
+		Chunk* chunk = chunkStorage.getChunk(chunkPos);
 
 		// We can receive data for chunk that is already deleted.
 		if (chunk is null || chunk.isMarkedForDeletion)
@@ -87,71 +86,10 @@ struct ChunkMan
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
-	void printList(Chunk* head)
-	{
-		while(head)
-		{
-			infof("%s ", head);
-			head = head.next;
-		}
-	}
-
-	void printAdjacent(Chunk* chunk)
-	{
-		assert(chunk);
-		void printChunk(Side side)
-		{
-			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(chunk.coord.x + offset[0],
-									chunk.coord.y + offset[1],
-									chunk.coord.z + offset[2]);
-			Chunk* c = getChunk(otherCoord);
-			tracef("%s", c is null ? "null" : "a");
-		}
-
-		foreach(s; Side.min..Side.max)
-			printChunk(s);
-	}
-
-	void processRemoveQueue()
-	{
-		Chunk* chunk = chunksToRemoveQueue;
-
-		while(chunk)
-		{
-			assert(chunk !is null);
-			//printList(chunk);
-
-			if (!chunk.isUsed)
-			{
-				auto toRemove = chunk;
-				chunk = chunk.next;
-
-				removeFromRemoveQueue(toRemove);
-				removeChunk(toRemove);
-			}
-			else
-			{
-				auto c = chunk;
-				chunk = chunk.next;
-			}
-		}
-	}
-
-	Chunk* createEmptyChunk(ivec3 coord)
-	{
-		return new Chunk(coord);
-	}
-
-	Chunk* getChunk(ivec3 coord)
-	{
-		return chunks.get(coord, null);
-	}
-
 	@property auto visibleChunks()
 	{
 		import std.algorithm : filter;
-		return chunks
+		return chunkStorage.chunks
 			.byValue
 			.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
@@ -191,7 +129,7 @@ struct ChunkMan
 		// remove chunks
 		foreach(chunkCoord; chunksToRemove)
 		{
-			addToRemoveQueue(getChunk(chunkCoord));
+			chunkStorage.removeQueue.add(chunkStorage.getChunk(chunkCoord));
 		}
 
 		// load chunks
@@ -199,20 +137,8 @@ struct ChunkMan
 		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
 		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
 		{
-			loadChunk(chunkCoord);
+			chunkStorage.loadChunk(chunkCoord);
 		}
-	}
-
-	void loadChunk(ivec3 coord)
-	{
-		if (auto chunk = coord in chunks)
-		{
-			if ((*chunk).isMarkedForDeletion)
-				removeFromRemoveQueue(*chunk);
-			return;
-		}
-		Chunk* chunk = createEmptyChunk(coord);
-		addChunk(chunk);
 	}
 
 	void loadRegion(ChunkRange region)
@@ -221,101 +147,7 @@ struct ChunkMan
 		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
 		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
 		{
-			loadChunk(ivec3(x, y, z));
+			chunkStorage.loadChunk(ivec3(x, y, z));
 		}
-	}
-
-	// Add already created chunk to storage
-	// Sets up all adjacent
-	void addChunk(Chunk* emptyChunk)
-	{
-		assert(emptyChunk);
-		chunks[emptyChunk.coord] = emptyChunk;
-		ivec3 coord = emptyChunk.coord;
-
-		void attachAdjacent(ubyte side)()
-		{
-			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(cast(int)(coord.x + offset[0]),
-												cast(int)(coord.y + offset[1]),
-												cast(int)(coord.z + offset[2]));
-			Chunk* other = getChunk(otherCoord);
-
-			if (other !is null)
-				other.adjacent[oppSide[side]] = emptyChunk;
-			emptyChunk.adjacent[side] = other;
-		}
-
-		// Attach all adjacent
-		attachAdjacent!(0)();
-		attachAdjacent!(1)();
-		attachAdjacent!(2)();
-		attachAdjacent!(3)();
-		attachAdjacent!(4)();
-		attachAdjacent!(5)();
-	}
-
-	void addToRemoveQueue(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(chunk !is null);
-
-		// already queued
-		if (chunk.isMarkedForDeletion) return;
-
-		chunk.isLoaded = false;
-		chunk.next = chunksToRemoveQueue;
-		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
-		chunksToRemoveQueue = chunk;
-		++numChunksToRemove;
-	}
-
-	void removeFromRemoveQueue(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(chunk !is null);
-
-		if (chunk.prev)
-			chunk.prev.next = chunk.next;
-		else
-			chunksToRemoveQueue = chunk.next;
-
-		if (chunk.next)
-			chunk.next.prev = chunk.prev;
-
-		chunk.next = null;
-		chunk.prev = null;
-		--numChunksToRemove;
-	}
-
-	void removeChunk(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(!chunk.isUsed);
-
-		void detachAdjacent(ubyte side)()
-		{
-			if (chunk.adjacent[side] !is null)
-			{
-				chunk.adjacent[side].adjacent[oppSide[side]] = null;
-			}
-			chunk.adjacent[side] = null;
-		}
-
-		// Detach all adjacent
-		detachAdjacent!(0)();
-		detachAdjacent!(1)();
-		detachAdjacent!(2)();
-		detachAdjacent!(3)();
-		detachAdjacent!(4)();
-		detachAdjacent!(5)();
-
-		chunks.remove(chunk.coord);
-		chunkMeshMan.onChunkRemoved(chunk);
-
-		if (chunk.mesh)
-			chunk.mesh.free();
-		delete chunk.mesh;
-		delete chunk;
 	}
 }
