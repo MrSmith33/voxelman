@@ -16,7 +16,6 @@ import voxelman.block;
 import voxelman.chunkmesh;
 import voxelman.region;
 
-
 size_t manhattanDist(ivec3 coord, ivec3 other)
 {
 	return other.x > coord.x ? other.x - coord.x : coord.x - other.x +

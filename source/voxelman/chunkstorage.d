@@ -78,6 +78,7 @@ struct ChunkStorage
 	Chunk*[ivec3] chunks;
 	ChunkRemoveQueue removeQueue;
 	void delegate(Chunk* chunk) onChunkRemoved;
+	void delegate(Chunk* chunk) onChunkAdded;
 
 
 	Chunk* getChunk(ivec3 coord)
@@ -95,22 +96,24 @@ struct ChunkStorage
 		return new Chunk(coord);
 	}
 
-	void loadChunk(ivec3 coord)
+	bool loadChunk(ivec3 coord)
 	{
-		if (auto chunk = coord in chunks)
+		if (auto chunk = chunks.get(coord, null))
 		{
-			if ((*chunk).isMarkedForDeletion)
-				removeQueue.remove(*chunk);
-			return;
+			if (chunk.isMarkedForDeletion)
+				removeQueue.remove(chunk);
+			return chunk.isLoaded;
 		}
 
 		Chunk* chunk = createEmptyChunk(coord);
 		addChunk(chunk);
+
+		return false;
 	}
 
 	// Add already created chunk to storage
 	// Sets up all adjacent
-	void addChunk(Chunk* emptyChunk)
+	private void addChunk(Chunk* emptyChunk)
 	{
 		assert(emptyChunk);
 		chunks[emptyChunk.coord] = emptyChunk;
@@ -136,6 +139,9 @@ struct ChunkStorage
 		attachAdjacent!(3)();
 		attachAdjacent!(4)();
 		attachAdjacent!(5)();
+
+		if (onChunkAdded)
+			onChunkAdded(emptyChunk);
 	}
 
 	void removeChunk(Chunk* chunk)

@@ -19,6 +19,7 @@ import voxelman.blockman;
 import voxelman.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
+import voxelman.chunkstorage;
 import voxelman.config;
 import voxelman.meshgen;
 import voxelman.server.clientinfo;
@@ -68,12 +69,11 @@ struct ChunkMan
 		this.connection = connection;
 	}
 
-	ServerConnection connection;
-	Chunk*[ivec3] chunks;
-	ChunkObserverList[ivec3] chunkObservers;
+	ChunkStorage chunkStorage;
+	alias chunkStorage this;
 
-	Chunk* chunksToRemoveQueue; // head of slist. Follow 'next' pointer in chunk
-	size_t numChunksToRemove;
+	ServerConnection connection;
+	ChunkObserverList[ivec3] chunkObservers;
 
 	// Stats
 	size_t numLoadChunkTasks;
@@ -95,23 +95,26 @@ struct ChunkMan
 		genWorkers.startWorkers(NUM_WORKERS, thisTid);
 		version(Disk_Storage)
 			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
+
+		chunkStorage.onChunkRemoved = &onChunkRemoved;
+		chunkStorage.onChunkAdded = &onChunkAdded;
 	}
 
 	void stop()
 	{
-		infof("saving chunks %s", chunks.length);
+		infof("saving chunks %s", chunkStorage.chunks.length);
 
-		foreach(chunk; chunks.byValue)
-			addToRemoveQueue(chunk);
+		foreach(chunk; chunkStorage.chunks.byValue)
+			chunkStorage.removeQueue.add(chunk);
 
-		size_t toBeDone = chunks.length;
+		size_t toBeDone = chunkStorage.chunks.length;
 		uint donePercentsPrev;
 
-		while(chunks.length > 0)
+		while(chunkStorage.chunks.length > 0)
 		{
 			update();
 
-			auto donePercents = cast(float)(toBeDone - chunks.length) / toBeDone * 100;
+			auto donePercents = cast(float)(toBeDone - chunkStorage.chunks.length) / toBeDone * 100;
 			if (donePercents >= donePercentsPrev + 10)
 			{
 				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
@@ -137,45 +140,7 @@ struct ChunkMan
 			);
 		}
 
-		updateLoadQueue();
-		updateChunks();
-	}
-
-	void updateLoadQueue()
-	{
-		//if (chunksEnqueued == 0 && loadQueue.length > 0)
-		//{
-		//	trace("chunksEnqueued is empty loadQueue.length %s", loadQueue.length);
-		//	maxChunksToEnqueue += 10;
-		//	tracef(" bumping maxChunksToEnqueue to %s", maxChunksToEnqueue);
-		//}
-
-		//auto queue = loadQueue.valueRange;
-//
-		//while(!queue.empty && chunksEnqueued < maxChunksToEnqueue)
-		//{
-		//	ivec3 chunkCoord = queue.front;
-		//	queue.popFront();
-//
-		//	Chunk* chunk = getChunk(chunkCoord);
-		//	assert(chunk !is null);
-//
-		//	if (chunk.isMarkedForDeletion)
-		//	{
-		//		chunk.hasWriter = false;
-		//		continue;
-		//	}
-//
-		//	version(Disk_Storage)
-		//	{
-		//		storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
-		//	}
-		//	else
-		//	{
-		//		genWorkers.nextWorker.send(chunkCoord);
-		//	}
-		//	++chunksEnqueued;
-		//}
+		chunkStorage.update();
 	}
 
 	void removeRegionObserver(ClientId clientId)
@@ -208,7 +173,6 @@ struct ChunkMan
 		if (oldRegion.empty)
 		{
 			//trace("observe region");
-			//observeRegion(newRegion, clientId);
 			observeChunks(newRegion.chunkCoords, clientId);
 			return;
 		}
@@ -246,7 +210,7 @@ struct ChunkMan
 	{
 		if (!isChunkInWorldBounds(coord)) return;
 
-		bool alreadyLoaded = loadChunk(coord);
+		bool alreadyLoaded = chunkStorage.loadChunk(coord);
 
 		if (chunkObservers[coord].empty)
 		{
@@ -264,10 +228,12 @@ struct ChunkMan
 	void removeChunkObserver(ivec3 coord, ClientId clientId)
 	{
 		if (!isChunkInWorldBounds(coord)) return;
+
 		chunkObservers[coord].remove(clientId);
+
 		if (chunkObservers[coord].empty)
 		{
-			addToRemoveQueue(getChunk(coord));
+			chunkStorage.removeQueue.add(chunkStorage.getChunk(coord));
 			--totalObservedChunks;
 		}
 	}
@@ -276,7 +242,7 @@ struct ChunkMan
 	{
 		//writefln("Chunk data received in main thread");
 
-		Chunk* chunk = getChunk(data.coord);
+		Chunk* chunk = chunkStorage.getChunk(data.coord);
 		assert(chunk !is null);
 
 		chunk.hasWriter = false;
@@ -304,16 +270,55 @@ struct ChunkMan
 		sendChunkToObservers(data.coord);
 	}
 
+	void onChunkAdded(Chunk* chunk)
+	{
+		chunkObservers[chunk.coord] = ChunkObserverList();
+		chunk.hasWriter = true;
+		++numLoadChunkTasks;
+
+		version(Disk_Storage)
+		{
+			storeWorker.nextWorker.send(chunk.coord, genWorkers.nextWorker);
+		}
+		else
+		{
+			genWorkers.nextWorker.send(chunk.coord);
+		}
+	}
+
+	void onChunkRemoved(Chunk* chunk)
+	{
+		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
+		chunkObservers.remove(chunk.coord);
+
+		//loadQueue.put(chunkCoord);
+
+		version(Disk_Storage)
+		{
+			if (isChunkInWorldBounds(chunk.coord))
+			{
+				storeWorker.nextWorker.send(
+					chunk.coord, cast(shared)chunk.snapshot.blockData, true);
+			}
+		}
+		else
+		{
+			delete chunk.snapshot.blockData.blocks;
+		}
+	}
+
 	void sendChunkToObservers(ivec3 coord)
 	{
-		//tracef("send chunk to all %s %s", coord, chunks[coord].snapshot.blockData.blocks.length);
-		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].snapshot.blockData));
+		//tracef("send chunk to all %s %s", coord, chunkStorage.getChunk(coord).snapshot.blockData.blocks.length);
+		sendToChunkObservers(coord,
+			ChunkDataPacket(coord, chunkStorage.getChunk(coord).snapshot.blockData));
 	}
 
 	void sendChunkTo(ivec3 coord, ClientId clientId)
 	{
-		//tracef("send chunk to %s %s", coord, chunks[coord].snapshot.blockData.blocks.length);
-		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].snapshot.blockData));
+		//tracef("send chunk to %s %s", coord, chunkStorage.getChunk(coord).snapshot.blockData.blocks.length);
+		connection.sendTo(clientId,
+			ChunkDataPacket(coord, chunkStorage.getChunk(coord).snapshot.blockData));
 	}
 
 	void sendToChunkObservers(P)(ivec3 coord, P packet)
@@ -322,209 +327,6 @@ struct ChunkMan
 		{
 			connection.sendTo((*observerlist).observers, packet);
 		}
-	}
-
-	void printList(Chunk* head)
-	{
-		while(head)
-		{
-			tracef("%s ", head);
-			head = head.next;
-		}
-	}
-
-	void printAdjacent(Chunk* chunk)
-	{
-		void printChunk(Side side)
-		{
-			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(chunk.coord.x + offset[0],
-									chunk.coord.y + offset[1],
-									chunk.coord.z + offset[2]);
-			Chunk* c = getChunk(otherCoord);
-			tracef("%s", c is null ? "null" : "a");
-		}
-
-		foreach(s; Side.min..Side.max)
-			printChunk(s);
-	}
-
-	void updateChunks()
-	{
-		processRemoveQueue();
-	}
-
-	void processRemoveQueue()
-	{
-		Chunk* chunk = chunksToRemoveQueue;
-
-		while(chunk)
-		{
-			assert(chunk !is null);
-			//printList(chunk);
-
-			if (!chunk.isUsed)
-			{
-				auto toRemove = chunk;
-				chunk = chunk.next;
-
-				removeFromRemoveQueue(toRemove);
-				removeChunk(toRemove);
-			}
-			else
-			{
-				auto c = chunk;
-				chunk = chunk.next;
-			}
-		}
-	}
-
-	Chunk* createEmptyChunk(ivec3 coord)
-	{
-		return new Chunk(coord);
-	}
-
-	Chunk* getChunk(ivec3 coord)
-	{
-		return chunks.get(coord, null);
-	}
-
-	// Add already created chunk to storage
-	// Sets up all adjacent
-	void addChunk(Chunk* emptyChunk)
-	{
-		assert(emptyChunk);
-		chunks[emptyChunk.coord] = emptyChunk;
-		chunkObservers[emptyChunk.coord] = ChunkObserverList();
-		ivec3 coord = emptyChunk.coord;
-
-		void attachAdjacent(ubyte side)()
-		{
-			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(cast(int)(coord.x + offset[0]),
-												cast(int)(coord.y + offset[1]),
-												cast(int)(coord.z + offset[2]));
-			Chunk* other = getChunk(otherCoord);
-
-			if (other !is null)
-				other.adjacent[oppSide[side]] = emptyChunk;
-			emptyChunk.adjacent[side] = other;
-		}
-
-		// Attach all adjacent
-		attachAdjacent!(0)();
-		attachAdjacent!(1)();
-		attachAdjacent!(2)();
-		attachAdjacent!(3)();
-		attachAdjacent!(4)();
-		attachAdjacent!(5)();
-	}
-
-	void addToRemoveQueue(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(chunk !is null);
-
-		// already queued
-		if (chunk.next != null && chunk.prev != null) return;
-
-		chunk.next = chunksToRemoveQueue;
-		if (chunksToRemoveQueue) chunksToRemoveQueue.prev = chunk;
-		chunksToRemoveQueue = chunk;
-		++numChunksToRemove;
-	}
-
-	void removeFromRemoveQueue(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(chunk !is null);
-
-		if (chunk.prev)
-			chunk.prev.next = chunk.next;
-		else
-			chunksToRemoveQueue = chunk.next;
-
-		if (chunk.next)
-			chunk.next.prev = chunk.prev;
-
-		chunk.next = null;
-		chunk.prev = null;
-		--numChunksToRemove;
-	}
-
-	void removeChunk(Chunk* chunk)
-	{
-		assert(chunk);
-		assert(chunk !is null);
-
-		assert(!chunk.isUsed);
-		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
-
-		void detachAdjacent(ubyte side)()
-		{
-			if (chunk.adjacent[side] !is null)
-			{
-				chunk.adjacent[side].adjacent[oppSide[side]] = null;
-			}
-			chunk.adjacent[side] = null;
-		}
-
-		// Detach all adjacent
-		detachAdjacent!(0)();
-		detachAdjacent!(1)();
-		detachAdjacent!(2)();
-		detachAdjacent!(3)();
-		detachAdjacent!(4)();
-		detachAdjacent!(5)();
-
-		chunks.remove(chunk.coord);
-		chunkObservers.remove(chunk.coord);
-
-		if (chunk.mesh) chunk.mesh.free();
-		delete chunk.mesh;
-		version(Disk_Storage)
-		{
-			if (isChunkInWorldBounds(chunk.coord))
-			{
-				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.snapshot.blockData, true);
-			}
-		}
-		else
-		{
-			delete chunk.snapshot.blockData.blocks;
-		}
-		delete chunk;
-	}
-
-	// returns true if chunk is already loaded.
-	bool loadChunk(ivec3 chunkCoord)
-	{
-		if (auto chunk = chunkCoord in chunks)
-		{
-			if ((*chunk).isMarkedForDeletion)
-				removeFromRemoveQueue(*chunk);
-			return (**chunk).isLoaded;
-		}
-
-		if (!isChunkInWorldBounds(chunkCoord)) return false;
-
-		Chunk* chunk = createEmptyChunk(chunkCoord);
-		addChunk(chunk);
-		chunk.hasWriter = true;
-		++numLoadChunkTasks;
-
-		//loadQueue.put(chunkCoord);
-
-		version(Disk_Storage)
-		{
-			storeWorker.nextWorker.send(chunkCoord, genWorkers.nextWorker);
-		}
-		else
-		{
-			genWorkers.nextWorker.send(chunkCoord);
-		}
-
-		return false;
 	}
 
 	bool isChunkInWorldBounds(ivec3 coord)
@@ -537,5 +339,21 @@ struct ChunkMan
 		}
 
 		return true;
+	}
+
+	void printAdjacent(Chunk* chunk)
+	{
+		void printChunk(Side side)
+		{
+			byte[3] offset = sideOffsets[side];
+			ivec3 otherCoord = ivec3(chunk.coord.x + offset[0],
+									chunk.coord.y + offset[1],
+									chunk.coord.z + offset[2]);
+			Chunk* c = chunkStorage.getChunk(otherCoord);
+			tracef("%s", c is null ? "null" : "a");
+		}
+
+		foreach(s; Side.min..Side.max)
+			printChunk(s);
 	}
 }
