@@ -115,7 +115,7 @@ body
 	// Offset to adjacent block
 	byte[3] offset;
 
-	if (chunk.data.uniform)
+	if (chunk.snapshot.blockData.uniform)
 	{
 		foreach (uint index; 0..CHUNK_SIZE_CUBE)
 		{
@@ -136,12 +136,12 @@ body
 				}
 			}
 
-			appender ~= blocks[chunk.data.uniformType]
+			appender ~= blocks[chunk.snapshot.blockData.uniformType]
 							.mesh(bx, by, bz, sides, sidenum);
 		} // foreach
 	}
 	else
-	foreach (uint index, ref ubyte val; chunk.data.blocks)
+	foreach (uint index, ref ubyte val; chunk.snapshot.blockData.blocks)
 	{
 		if (isVisibleBlock(val))
 		{

@@ -270,7 +270,7 @@ public:
 		Chunk* chunk = chunkMan.getChunk(packet.chunkPos);
 		if (chunk is null) return;
 
-		chunk.data.applyChangesChecked(packet.blockChanges);
+		chunk.snapshot.blockData.applyChangesChecked(packet.blockChanges);
 		chunkMan.sendToChunkObservers(packet.chunkPos, packet);
 	}
 }

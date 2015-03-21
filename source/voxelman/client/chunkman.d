@@ -68,7 +68,7 @@ struct ChunkMan
 		// We can receive data for chunk that is already deleted.
 		if (chunk is null || chunk.isMarkedForDeletion)
 		{
-			blockData.deleteTypeData();
+			blockData.deleteBlocks();
 			return;
 		}
 

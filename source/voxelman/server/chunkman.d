@@ -293,7 +293,7 @@ struct ChunkMan
 		{
 			chunk.isVisible = blockMan.blocks[data.blockData.uniformType].isVisible;
 		}
-		chunk.data = data.blockData;
+		chunk.snapshot.blockData = data.blockData;
 
 		if (chunk.isMarkedForDeletion)
 		{
@@ -306,14 +306,14 @@ struct ChunkMan
 
 	void sendChunkToObservers(ivec3 coord)
 	{
-		//tracef("send chunk to all %s %s", coord, chunks[coord].data.blocks.length);
-		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].data));
+		//tracef("send chunk to all %s %s", coord, chunks[coord].snapshot.blockData.blocks.length);
+		sendToChunkObservers(coord, ChunkDataPacket(coord, chunks[coord].snapshot.blockData));
 	}
 
 	void sendChunkTo(ivec3 coord, ClientId clientId)
 	{
-		//tracef("send chunk to %s %s", coord, chunks[coord].data.blocks.length);
-		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].data));
+		//tracef("send chunk to %s %s", coord, chunks[coord].snapshot.blockData.blocks.length);
+		connection.sendTo(clientId, ChunkDataPacket(coord, chunks[coord].snapshot.blockData));
 	}
 
 	void sendToChunkObservers(P)(ivec3 coord, P packet)
@@ -486,13 +486,12 @@ struct ChunkMan
 		{
 			if (isChunkInWorldBounds(chunk.coord))
 			{
-				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.data, true);
+				storeWorker.nextWorker.send(chunk.coord, cast(shared)chunk.snapshot.blockData, true);
 			}
 		}
 		else
 		{
-			delete chunk.data.blocks;
-			delete chunk.data;
+			delete chunk.snapshot.blockData.blocks;
 		}
 		delete chunk;
 	}

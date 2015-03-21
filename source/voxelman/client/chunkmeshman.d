@@ -97,7 +97,7 @@ struct ChunkMeshMan
 		{
 			chunk.isVisible = blockMan.blocks[blockData.uniformType].isVisible;
 		}
-		chunk.data = blockData;
+		chunk.snapshot.blockData = blockData;
 	}
 
 	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
@@ -280,7 +280,10 @@ struct ChunkMeshMan
 				else
 				{
 					// partial update
-					ushort[2] changedBlocksRange = chunk.data.applyChanges(chunk.change.blockChanges);
+					ushort[2] changedBlocksRange = chunk
+						.snapshot
+						.blockData
+						.applyChanges(chunk.change.blockChanges);
 
 					// blocks was changed
 					if (changedBlocksRange[0] != changedBlocksRange[1])

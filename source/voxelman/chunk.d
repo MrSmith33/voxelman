@@ -353,7 +353,30 @@ size_t blockIndex(ubyte x, ubyte y, ubyte z)
 	return x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
 }
 
-// Chunk data
+// stores all used snapshots of the chunk. Current is blocks
+struct BlockDataSnapshot
+{
+	// tick of last modification, 0 when generated
+	size_t timestamp;
+
+	// previous chunk snapshot
+	BlockDataSnapshot* olderSnapshot;
+	BlockDataSnapshot* newerSnapshot;
+
+	// actual data
+	BlockData blockData;
+	alias blockData this;
+
+	// How many tasks are reading or writing this chunk
+	ushort numReaders = 0;
+
+	bool isUsed() @property
+	{
+		return numReaders > 0;
+	}
+}
+
+// Stores blocks of the chunk
 struct BlockData
 {
 	/// null if uniform is true, or contains chunk data otherwise
@@ -379,10 +402,10 @@ struct BlockData
 	{
 		uniform = true;
 		uniformType = _uniformType;
-		deleteTypeData();
+		deleteBlocks();
 	}
 
-	void deleteTypeData()
+	void deleteBlocks()
 	{
 		blocks = null;
 	}
@@ -483,7 +506,7 @@ struct Chunk
 
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
 	{
-		return data.getBlockType(cx, cy, cz);
+		return snapshot.blockData.getBlockType(cx, cy, cz);
 	}
 
 	bool allAdjacentLoaded() @property
@@ -531,7 +554,8 @@ struct Chunk
 	}
 
 	ivec3 coord;
-	BlockData data;
+	//BlockData data;
+	BlockDataSnapshot snapshot;
 	ChunkMesh mesh;
 	Chunk*[6] adjacent;
 
