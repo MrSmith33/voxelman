@@ -13,7 +13,7 @@
 
     "targetPath" : "bin",
     "workingDirectory" : "bin",
-	
+
 	"sourcePaths" : [ "source" ],
 
     "copyFiles-windows-x86" : ["lib/*.dll"],
@@ -24,15 +24,26 @@
             "name" : "client",
             "targetName" : "client",
             "targetType" : "executable",
-            "excludedSourceFiles" : ["source/voxelman/server/*", "source/servermain.d"],
+            "excludedSourceFiles" : [
+            	"source/voxelman/server/*", "source/servermain.d",
+            	"source/voxelman/benchmark/*", "source/benchmain.d"],
             "mainSourceFile" : "source/clientmain.d"
         },
         {
             "name": "server",
             "targetName" : "server",
             "targetType": "executable",
-            "excludedSourceFiles" : ["source/voxelman/client/*", "source/clientmain.d"],
+            "excludedSourceFiles" : [
+            	"source/voxelman/client/*", "source/clientmain.d",
+            	"source/voxelman/benchmark/*", "source/benchmain.d"],
             "mainSourceFile" : "source/servermain.d"
+        },
+        {
+            "name": "benchmark",
+            "targetName" : "benchmark",
+            "targetType": "executable",
+            "excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
+            "mainSourceFile" : "source/benchmain.d"
         }
     ]
 }
