@@ -15,6 +15,7 @@ import std.stdio : FOPEN_MAX;
 import dlib.math.vector : ivec3;
 import voxelman.storage.chunk;
 import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo, chunkIndex;
+import voxelman.storage.utils;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
 

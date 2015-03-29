@@ -25,6 +25,7 @@ import voxelman.plugins.graphicsplugin;
 import voxelman.events;
 import voxelman.config;
 import voxelman.storage.chunk;
+import voxelman.storage.utils;
 import voxelman.packets;
 import voxelman.utils.math;
 
