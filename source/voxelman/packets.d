@@ -7,7 +7,7 @@ module voxelman.packets;
 
 import netlib.connection;
 import dlib.math.vector;
-import voxelman.chunk : BlockChange, BlockData;
+import voxelman.storage.chunk : BlockChange, BlockData;
 
 void registerPackets(Connection c)
 {

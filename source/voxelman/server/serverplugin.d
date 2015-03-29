@@ -15,7 +15,7 @@ import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseserver;
 
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.packets;
 import voxelman.config;
 import voxelman.plugins.eventdispatcherplugin;

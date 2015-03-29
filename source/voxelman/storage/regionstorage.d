@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2014-2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.regionstorage;
+module voxelman.storage.regionstorage;
 
 import std.experimental.logger;
 import std.array : Appender;
@@ -13,8 +13,8 @@ import std.path : isValidPath, dirSeparator;
 import std.stdio : FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
-import voxelman.chunk;
-import voxelman.region : Region, REGION_SIZE, ChunkStoreInfo, chunkIndex;
+import voxelman.storage.chunk;
+import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo, chunkIndex;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
 

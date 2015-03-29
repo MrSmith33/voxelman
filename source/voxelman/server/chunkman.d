@@ -16,16 +16,16 @@ import netlib;
 
 import voxelman.block;
 import voxelman.blockman;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.chunkgen;
 import voxelman.chunkmesh;
-import voxelman.chunkstorage;
+import voxelman.storage.chunkstorage;
 import voxelman.config;
 import voxelman.meshgen;
 import voxelman.server.clientinfo;
 import voxelman.server.serverplugin;
 import voxelman.packets;
-import voxelman.storageworker;
+import voxelman.storage.storageworker;
 import voxelman.utils.queue : Queue;
 import voxelman.utils.workergroup;
 

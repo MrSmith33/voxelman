@@ -7,7 +7,7 @@ module voxelman.server.clientinfo;
 
 import netlib.connection : ENetPeer;
 import dlib.math.vector : vec3, vec2;
-import voxelman.chunk : ChunkRange;
+import voxelman.storage.chunk : ChunkRange;
 import voxelman.config;
 
 struct ClientInfo

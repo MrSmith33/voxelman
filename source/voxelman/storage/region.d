@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2014-2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.region;
+module voxelman.storage.region;
 
 import std.experimental.logger;
 import std.bitmanip : BitArray, nativeToBigEndian, bigEndianToNative;

@@ -11,7 +11,7 @@ import std.datetime : msecs;
 
 import voxelman.blockman;
 import voxelman.client.chunkman;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.chunkmesh;
 import voxelman.config;
 import voxelman.meshgen;

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.chunk;
+module voxelman.storage.chunk;
 
 import std.array : uninitializedArray;
 import std.math : floor;
@@ -14,7 +14,7 @@ import dlib.math.vector;
 import voxelman.config;
 import voxelman.block;
 import voxelman.chunkmesh;
-import voxelman.region;
+import voxelman.storage.region;
 
 size_t manhattanDist(ivec3 coord, ivec3 other)
 {

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2014-2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storageworker;
+module voxelman.storage.storageworker;
 
 import std.experimental.logger;
 import std.conv : to;
@@ -11,9 +11,9 @@ import std.conv : to;
 import cbor;
 
 import voxelman.block;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.chunkgen;
-import voxelman.regionstorage;
+import voxelman.storage.regionstorage;
 import voxelman.utils.rlecompression;
 
 private ubyte[4096*16] compressBuffer;

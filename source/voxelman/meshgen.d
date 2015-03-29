@@ -16,7 +16,7 @@ import core.exception : Throwable;
 import dlib.math.vector : ivec3;
 
 import voxelman.block;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.config;
 
 

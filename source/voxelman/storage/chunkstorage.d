@@ -3,11 +3,11 @@ Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.chunkstorage;
+module voxelman.storage.chunkstorage;
 
 import dlib.math.vector : vec3, ivec3;
 import voxelman.block;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 
 struct ChunkRemoveQueue
 {
@@ -91,7 +91,7 @@ struct ChunkStorage
 		removeQueue.process(&removeChunk);
 	}
 
-	Chunk* createEmptyChunk(ivec3 coord)
+	private Chunk* createEmptyChunk(ivec3 coord)
 	{
 		return new Chunk(coord);
 	}

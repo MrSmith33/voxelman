@@ -17,7 +17,7 @@ import plugin;
 import plugin.pluginmanager;
 
 import voxelman.config;
-import voxelman.chunk;
+import voxelman.storage.chunk;
 import voxelman.events;
 
 import voxelman.plugins.eventdispatcherplugin;
