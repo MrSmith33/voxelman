@@ -13,8 +13,9 @@ import std.path : isValidPath, dirSeparator;
 import std.stdio : FOPEN_MAX;
 
 import dlib.math.vector : ivec3;
+import voxelman.config : TimestampType;
 import voxelman.storage.chunk;
-import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo, chunkIndex;
+import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo, calcChunkIndex;
 import voxelman.storage.utils;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
@@ -59,6 +60,17 @@ struct RegionStorage
 		return loadRegion(regionPos).isChunkOnDisk(localChunkCoords);
 	}
 
+	public TimestampType chunkTimestamp(ivec3 chunkPos)
+	{
+		ivec3 regionPos = calcRegionPos(chunkPos);
+		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+
+		if (!isRegionOnDisk(regionPos))
+			return 0;
+
+		return loadRegion(regionPos).chunkTimestamp(localChunkCoords);
+	}
+
 	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPos)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
@@ -67,7 +79,7 @@ struct RegionStorage
 		if (!isRegionOnDisk(regionPos))
 		{
 			return ChunkStoreInfo(false, localChunkCoords, chunkPos,
-				regionPos, chunkIndex(localChunkCoords));
+				regionPos, calcChunkIndex(localChunkCoords));
 		}
 
 		auto res = loadRegion(regionPos).getChunkStoreInfo(localChunkCoords);
@@ -83,22 +95,22 @@ struct RegionStorage
 		return exists(regionFilename(regionPos));
 	}
 
-	ubyte[] readChunk(ivec3 chunkPos, ubyte[] outBuffer)
+	ubyte[] readChunk(ivec3 chunkPos, ubyte[] outBuffer, out TimestampType timestamp)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		return region.readChunk(localChunkCoords, outBuffer);
+		return region.readChunk(localChunkCoords, outBuffer, timestamp);
 	}
 
-	void writeChunk(ivec3 chunkPos, in ubyte[] blockData)
+	void writeChunk(ivec3 chunkPos, in ubyte[] blockData, TimestampType timestamp)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
 		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		region.writeChunk(localChunkCoords, blockData);
+		region.writeChunk(localChunkCoords, blockData, timestamp);
 	}
 
 	private Region* loadRegion(ivec3 regionPos)

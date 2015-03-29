@@ -8,6 +8,7 @@ module voxelman.config;
 import dlib.math.vector : vec3;
 
 alias BlockType = ubyte;
+alias TimestampType = uint;
 
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;

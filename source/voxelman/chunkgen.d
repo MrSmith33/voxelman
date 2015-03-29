@@ -30,6 +30,7 @@ struct ChunkGenResult
 {
 	BlockData blockData;
 	ivec3 coord;
+	TimestampType timestamp;
 }
 
 void chunkGenWorkerThread(Tid mainTid)

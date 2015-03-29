@@ -13,6 +13,8 @@ import std.stdio : File, SEEK_END;
 import std.string : format;
 import dlib.math.vector : ivec3;
 
+import voxelman.config : TimestampType;
+
 int ceiling_pos (float X) {return (X-cast(int)(X)) > 0 ? cast(int)(X+1) : cast(int)(X);}
 int ceiling_neg (float X) {return (X-cast(int)(X)) < 0 ? cast(int)(X-1) : cast(int)(X);}
 int ceiling (float X) {return ((X) > 0) ? ceiling_pos(X) : ceiling_neg(X);}
@@ -22,7 +24,7 @@ enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
 enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
 enum SECTOR_SIZE = 512;
 
-enum HEADER_SIZE = REGION_SIZE_CUBE * uint.sizeof;
+enum HEADER_SIZE = REGION_SIZE_CUBE * uint.sizeof + REGION_SIZE_CUBE * TimestampType.sizeof;
 enum NUM_HEADER_SECTORS = ceiling(float(HEADER_SIZE) / SECTOR_SIZE);
 enum CHUNK_HEADER_SIZE = uint.sizeof;
 
@@ -43,6 +45,7 @@ struct ChunkStoreInfo
 	// following fields are only valid when isStored == true.
 	size_t sectorNumber;
 	size_t numSectors;
+	size_t timestamp;
 	size_t dataLength;
 	size_t dataByteOffset() @property {return sectorNumber * SECTOR_SIZE;}
 
@@ -72,6 +75,7 @@ struct Region
 {
 	private File file;
 	private uint[REGION_SIZE_CUBE] offsets;
+	private TimestampType[REGION_SIZE_CUBE] timestamps;
 	// true if free, false if occupied.
 	private BitArray sectors;
 
@@ -93,18 +97,26 @@ struct Region
 	public bool isChunkOnDisk(ivec3 chunkCoord)
 	{
 		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
-		auto index = chunkIndex(chunkCoord);
-		return (offsets[index] & 0xFF) != 0;
+		auto chunkIndex = calcChunkIndex(chunkCoord);
+		return (offsets[chunkIndex] & 0xFF) != 0;
+	}
+
+	public TimestampType chunkTimestamp(ivec3 chunkCoord)
+	{
+		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
+		auto chunkIndex = calcChunkIndex(chunkCoord);
+		return timestamps[chunkIndex];
 	}
 
 	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkCoord)
 	{
-		auto index = chunkIndex(chunkCoord);
-		auto sectorNumber = offsets[index] >> 8;
-		auto numSectors = offsets[index] & 0xFF;
+		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto sectorNumber = offsets[chunkIndex] >> 8;
+		auto numSectors = offsets[chunkIndex] & 0xFF;
+		auto timestamp = timestamps[chunkIndex];
 
 		ChunkStoreInfo res = ChunkStoreInfo(true, chunkCoord,
-			ivec3(), ivec3(), index, sectorNumber, numSectors);
+			ivec3(), ivec3(), chunkIndex, sectorNumber, numSectors, timestamp);
 		if (!isChunkOnDisk(chunkCoord))
 		{
 			res.isStored = false;
@@ -125,14 +137,14 @@ struct Region
 	/// Returns: a slice of outBuffer with actual data or null if chunk was not
 	/// stored on disk previously.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public ubyte[] readChunk(ivec3 chunkCoord, ubyte[] outBuffer)
+	public ubyte[] readChunk(ivec3 chunkCoord, ubyte[] outBuffer, out TimestampType timestamp)
 	{
 		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 		if (!isChunkOnDisk(chunkCoord)) return null;
 
-		auto index = chunkIndex(chunkCoord);
-		auto sectorNumber = offsets[index] >> 8;
-		auto numSectors = offsets[index] & 0xFF;
+		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto sectorNumber = offsets[chunkIndex] >> 8;
+		auto numSectors = offsets[chunkIndex] & 0xFF;
 
 		// Chunk sector is after EOF.
 		if (sectorNumber + numSectors > sectors.length)
@@ -155,18 +167,19 @@ struct Region
 			return null;
 		}
 
+		timestamp = timestamps[chunkIndex];
 		return file.rawRead(outBuffer[0..dataLength]);
 	}
 
 	/// Writes chunk at chunkCoord with data blockData to disk.
 	/// Coords are region local. I.e. 0..REGION_SIZE
-	public void writeChunk(ivec3 chunkCoord, in ubyte[] blockData)
+	public void writeChunk(ivec3 chunkCoord, in ubyte[] blockData, TimestampType timestamp)
 	{
 		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
 
-		auto index = chunkIndex(chunkCoord);
-		auto sectorNumber = offsets[index] >> 8;
-		auto numSectors = offsets[index] & 0xFF;
+		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto sectorNumber = offsets[chunkIndex] >> 8;
+		auto numSectors = offsets[chunkIndex] & 0xFF;
 
 		import std.math : ceil;
 		auto sectorsNeeded = cast(size_t)ceil(
@@ -195,7 +208,7 @@ struct Region
 		// Find a sequence of free sectors of big enough size.
 		foreach(sectorIndex; sectors.bitsSet)
 		{
-			//infof("index %s", sectorIndex);
+			//infof("chunkIndex %s", sectorIndex);
 
 			if (numFreeSectors > 0)
 			{
@@ -229,7 +242,9 @@ struct Region
 		// Use free sectors found in a file.
 		writeChunkData(cast(uint)firstFreeSector, blockData);
 
-		setChunkOffset(chunkCoord, cast(uint)firstFreeSector, cast(ubyte)sectorsNeeded);
+		setChunkOffset(chunkIndex, cast(uint)firstFreeSector, cast(ubyte)sectorsNeeded);
+		setChunkTimestamp(chunkIndex, timestamp);
+
 		foreach(i; firstFreeSector..firstFreeSector + sectorsNeeded)
 			sectors[i] = false;
 
@@ -303,13 +318,19 @@ struct Region
 		file.rawWrite(data);
 	}
 
-	private void setChunkOffset(ivec3 chunkCoord, uint position, ubyte size)
+	private void setChunkOffset(size_t chunkIndex, uint position, ubyte size)
 	{
-		auto index = chunkIndex(chunkCoord);
 		uint offset = (position << 8) | size;
-		offsets[index] = offset;
-		file.seek(index * 4);
+		offsets[chunkIndex] = offset;
+		file.seek(chunkIndex * uint.sizeof);
 		file.rawWrite(nativeToBigEndian(offset));
+	}
+
+	private void setChunkTimestamp(size_t chunkIndex, TimestampType timestamp)
+	{
+		timestamps[chunkIndex] = timestamp;
+		file.seek(REGION_SIZE_CUBE * uint.sizeof + chunkIndex * TimestampType.sizeof);
+		file.rawWrite(nativeToBigEndian(timestamp));
 	}
 
 	private void fixPadding()
@@ -325,7 +346,7 @@ struct Region
 	}
 }
 
-size_t chunkIndex(ivec3 chunkCoord)
+size_t calcChunkIndex(ivec3 chunkCoord)
 {
 	return chunkCoord.x + chunkCoord.y * REGION_SIZE + chunkCoord.z * REGION_SIZE_SQR;
 }

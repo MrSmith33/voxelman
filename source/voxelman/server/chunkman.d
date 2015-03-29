@@ -261,6 +261,7 @@ struct ChunkMan
 			chunk.isVisible = blockMan.blocks[data.blockData.uniformType].isVisible;
 		}
 		chunk.snapshot.blockData = data.blockData;
+		chunk.snapshot.timestamp = data.timestamp;
 
 		if (chunk.isMarkedForDeletion)
 		{
@@ -299,7 +300,8 @@ struct ChunkMan
 			if (isChunkInWorldBounds(chunk.coord))
 			{
 				storeWorker.nextWorker.send(
-					chunk.coord, cast(shared)chunk.snapshot.blockData, true);
+					chunk.coord, cast(shared)chunk.snapshot.blockData,
+					chunk.snapshot.timestamp, true);
 			}
 		}
 		else

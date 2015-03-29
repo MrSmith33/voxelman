@@ -62,7 +62,7 @@ enum StorageType
 struct BlockDataSnapshot
 {
 	// tick of last modification, 0 when generated
-	size_t timestamp;
+	TimestampType timestamp;
 
 	// previous chunk snapshot
 	BlockDataSnapshot* olderSnapshot;
