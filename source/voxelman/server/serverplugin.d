@@ -15,13 +15,15 @@ import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseserver;
 
-import voxelman.storage.chunk;
-import voxelman.packets;
 import voxelman.config;
+import voxelman.events;
+import voxelman.packets;
 import voxelman.plugins.eventdispatcherplugin;
+import voxelman.plugins.gametimeplugin;
 import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
+import voxelman.storage.chunk;
 
 final class ServerConnection : BaseServer!ClientInfo{}
 
@@ -30,6 +32,7 @@ class ServerPlugin : IPlugin
 private:
 	PluginManager pluginman = new PluginManager;
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
+	GameTimePlugin gameTime = new GameTimePlugin;
 	bool isStopping;
 
 public:
@@ -37,7 +40,7 @@ public:
 	ChunkMan chunkMan;
 	// IPlugin stuff
 	override string name() @property { return "ServerPlugin"; }
-	override string semver() @property { return "0.3.0"; }
+	override string semver() @property { return "0.4.0"; }
 
 	override void preInit()
 	{
@@ -80,6 +83,7 @@ public:
 
 		pluginman.registerPlugin(this);
 		pluginman.registerPlugin(evDispatcher);
+		pluginman.registerPlugin(gameTime);
 
 		pluginman.initPlugins();
 
@@ -99,9 +103,8 @@ public:
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
-			connection.update(0);
-			chunkMan.update();
 			update(delta);
+
 			GC.collect();
 
 			// update time
@@ -114,16 +117,16 @@ public:
 		connection.stop();
 	}
 
-	double changeTimer;
-	double changeInterval = 0.5;
 	void update(double dt)
 	{
-		changeTimer += dt;
-		if (changeTimer >= changeInterval)
-		{
-			changeTimer -= changeInterval;
-			// test changes
-		}
+		evDispatcher.postEvent(new PreUpdateEvent(dt));
+
+		evDispatcher.postEvent(new UpdateEvent(dt));
+
+		connection.update(0);
+		chunkMan.update();
+
+		evDispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
 	string[ClientId] clientNames()
