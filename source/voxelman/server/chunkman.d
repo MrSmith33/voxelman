@@ -6,31 +6,20 @@ Authors: Andrey Penechko.
 module voxelman.server.chunkman;
 
 import std.experimental.logger;
-import std.concurrency : Tid, thisTid, send, receiveTimeout;
-import std.datetime : msecs;
-import core.thread : thread_joinAll;
 
 import dlib.math.vector : vec3, ivec3;
 
 import netlib;
 
 import voxelman.block;
-import voxelman.blockman;
-import voxelman.storage.chunk;
-import voxelman.chunkgen;
-import voxelman.chunkmesh;
-import voxelman.storage.chunkstorage;
-import voxelman.storage.utils;
 import voxelman.config;
-import voxelman.meshgen;
+import voxelman.packets;
 import voxelman.server.clientinfo;
 import voxelman.server.serverplugin;
-import voxelman.packets;
-import voxelman.storage.storageworker;
-import voxelman.utils.queue : Queue;
-import voxelman.utils.workergroup;
-
-version = Disk_Storage;
+import voxelman.storage.chunk;
+import voxelman.storage.chunkprovider;
+import voxelman.storage.chunkstorage;
+import voxelman.storage.utils;
 
 
 struct ChunkObserverList
@@ -64,85 +53,20 @@ struct ChunkObserverList
 struct ChunkMan
 {
 	@disable this();
-	this(ServerConnection connection)
+	this(ServerConnection connection, ChunkStorage* chunkStorage)
 	{
 		assert(connection);
 		this.connection = connection;
+		assert(chunkStorage);
+		this.chunkStorage = chunkStorage;
 	}
 
-	ChunkStorage chunkStorage;
-	alias chunkStorage this;
+	ChunkStorage* chunkStorage;
 
 	ServerConnection connection;
 	ChunkObserverList[ivec3] chunkObservers;
 
-	// Stats
-	size_t numLoadChunkTasks;
-	size_t totalLoadedChunks;
 	size_t totalObservedChunks;
-
-	BlockMan blockMan;
-
-	WorkerGroup!(chunkGenWorkerThread) genWorkers;
-	WorkerGroup!(storageWorkerThread) storeWorker;
-	size_t chunksEnqueued;
-	size_t maxChunksToEnqueue = 400;
-	Queue!ivec3 loadQueue;
-
-	void init()
-	{
-		blockMan.loadBlockTypes();
-
-		genWorkers.startWorkers(NUM_WORKERS, thisTid);
-		version(Disk_Storage)
-			storeWorker.startWorkers(1, thisTid, SAVE_DIR);
-
-		chunkStorage.onChunkRemoved = &onChunkRemoved;
-		chunkStorage.onChunkAdded = &onChunkAdded;
-	}
-
-	void stop()
-	{
-		infof("saving chunks %s", chunkStorage.chunks.length);
-
-		foreach(chunk; chunkStorage.chunks.byValue)
-			chunkStorage.removeQueue.add(chunk);
-
-		size_t toBeDone = chunkStorage.chunks.length;
-		uint donePercentsPrev;
-
-		while(chunkStorage.chunks.length > 0)
-		{
-			update();
-
-			auto donePercents = cast(float)(toBeDone - chunkStorage.chunks.length) / toBeDone * 100;
-			if (donePercents >= donePercentsPrev + 10)
-			{
-				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
-				infof("saved %s%%", donePercentsPrev);
-			}
-		}
-
-		genWorkers.stopWorkers();
-
-		version(Disk_Storage)
-			storeWorker.stopWorkersWhenDone();
-
-		thread_joinAll();
-	}
-
-	void update()
-	{
-		bool message = true;
-		while (message)
-		{
-			message = receiveTimeout(0.msecs,
-				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);}
-			);
-		}
-
-		chunkStorage.update();
-	}
 
 	void removeRegionObserver(ClientId clientId)
 	{
@@ -188,6 +112,23 @@ struct ChunkMan
 
 		// load chunks
 		observeChunks(newRegion.chunksNotIn(oldRegion), clientId);
+	}
+
+	void onChunkAdded(Chunk* chunk)
+	{
+		chunkObservers[chunk.coord] = ChunkObserverList();
+	}
+
+	void onChunkLoaded(Chunk* chunk)
+	{
+		// Send data to observers
+		sendChunkToObservers(chunk.coord);
+	}
+
+	void onChunkRemoved(Chunk* chunk)
+	{
+		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
+		chunkObservers.remove(chunk.coord);
 	}
 
 	void observeChunks(R)(R chunkCoords, ClientId clientId)
@@ -236,77 +177,6 @@ struct ChunkMan
 		{
 			chunkStorage.removeQueue.add(chunkStorage.getChunk(coord));
 			--totalObservedChunks;
-		}
-	}
-
-	void onChunkLoaded(ChunkGenResult* data)
-	{
-		//writefln("Chunk data received in main thread");
-
-		Chunk* chunk = chunkStorage.getChunk(data.coord);
-		assert(chunk !is null);
-
-		chunk.hasWriter = false;
-		chunk.isLoaded = true;
-
-		assert(!chunk.isUsed);
-
-		++totalLoadedChunks;
-		--numLoadChunkTasks;
-		//--chunksEnqueued;
-
-		chunk.isVisible = true;
-		if (data.blockData.uniform)
-		{
-			chunk.isVisible = blockMan.blocks[data.blockData.uniformType].isVisible;
-		}
-		chunk.snapshot.blockData = data.blockData;
-		chunk.snapshot.timestamp = data.timestamp;
-
-		if (chunk.isMarkedForDeletion)
-		{
-			return;
-		}
-
-		// Send data to observers
-		sendChunkToObservers(data.coord);
-	}
-
-	void onChunkAdded(Chunk* chunk)
-	{
-		chunkObservers[chunk.coord] = ChunkObserverList();
-		chunk.hasWriter = true;
-		++numLoadChunkTasks;
-
-		version(Disk_Storage)
-		{
-			storeWorker.nextWorker.send(chunk.coord, genWorkers.nextWorker);
-		}
-		else
-		{
-			genWorkers.nextWorker.send(chunk.coord);
-		}
-	}
-
-	void onChunkRemoved(Chunk* chunk)
-	{
-		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
-		chunkObservers.remove(chunk.coord);
-
-		//loadQueue.put(chunkCoord);
-
-		version(Disk_Storage)
-		{
-			if (isChunkInWorldBounds(chunk.coord))
-			{
-				storeWorker.nextWorker.send(
-					chunk.coord, cast(shared)chunk.snapshot.blockData,
-					chunk.snapshot.timestamp, true);
-			}
-		}
-		else
-		{
-			delete chunk.snapshot.blockData.blocks;
 		}
 	}
 

@@ -15,7 +15,13 @@ enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
-enum string SAVE_DIR = "../saves/world/chunks";
+// directories
+enum string SAVE_DIR = "../saves";
+enum string WORLD_NAME = "world";
+enum string WORLD_DIR = SAVE_DIR ~ "/" ~ WORLD_NAME;
+enum string WORLD_FILE_NAME = "worldinfo.cbor";
+
+
 enum NUM_WORKERS = 4;
 enum VIEW_RADIUS = 2;
 enum WORLD_SIZE = 12; // chunks

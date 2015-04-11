@@ -15,6 +15,7 @@ import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseserver;
 
+import voxelman.blockman;
 import voxelman.config;
 import voxelman.events;
 import voxelman.packets;
@@ -24,6 +25,10 @@ import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
 import voxelman.storage.chunk;
+import voxelman.storage.chunkprovider;
+import voxelman.storage.chunkstorage;
+import voxelman.storage.world;
+
 
 final class ServerConnection : BaseServer!ClientInfo{}
 
@@ -37,7 +42,13 @@ private:
 
 public:
 	ServerConnection connection;
+
+	// Game data
+	BlockMan blockMan;
 	ChunkMan chunkMan;
+	ChunkProvider chunkProvider;
+	World world;
+
 	// IPlugin stuff
 	override string name() @property { return "ServerPlugin"; }
 	override string semver() @property { return "0.4.0"; }
@@ -46,8 +57,6 @@ public:
 	{
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;
-
-		chunkMan.init();
 
 		registerPackets(connection);
 		//connection.printPacketMap();
@@ -65,14 +74,29 @@ public:
 		evDispatcher.subscribeToEvent(&handleCommand);
 	}
 
-	override void postInit() { }
+	override void postInit()
+	{
+	}
 
 	this()
 	{
 		loadEnet();
 
 		connection = new ServerConnection;
-		chunkMan = ChunkMan(connection);
+		chunkMan = ChunkMan(connection, &world.chunkStorage);
+
+		blockMan.loadBlockTypes();
+		chunkProvider.init(WORLD_DIR, &world.chunkStorage);
+		world.init(WORLD_DIR, &chunkProvider);
+
+		chunkProvider.onChunkLoadedHandlers ~= &blockMan.onChunkLoaded;
+		chunkProvider.onChunkLoadedHandlers ~= &chunkMan.onChunkLoaded;
+
+		world.chunkStorage.onChunkAddedHandlers ~= &chunkMan.onChunkAdded;
+		world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
+		world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
+
+		world.load();
 	}
 
 	void run(string[] args)
@@ -114,7 +138,14 @@ public:
 				Thread.sleep(sleepTime);
 		}
 
+		stop();
+	}
+
+	void stop()
+	{
 		connection.stop();
+		chunkProvider.stop();
+		world.save();
 	}
 
 	void update(double dt)
@@ -124,7 +155,8 @@ public:
 		evDispatcher.postEvent(new UpdateEvent(dt));
 
 		connection.update(0);
-		chunkMan.update();
+		chunkProvider.update();
+		world.update();
 
 		evDispatcher.postEvent(new PostUpdateEvent(dt));
 	}
@@ -270,7 +302,7 @@ public:
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
 		//infof("Received MultiblockChangePacket(%s)", packet);
 
-		Chunk* chunk = chunkMan.getChunk(packet.chunkPos);
+		Chunk* chunk = world.chunkStorage.getChunk(packet.chunkPos);
 		if (chunk is null) return;
 
 		chunk.snapshot.blockData.applyChangesChecked(packet.blockChanges);

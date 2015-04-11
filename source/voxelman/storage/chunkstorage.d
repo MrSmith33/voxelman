@@ -77,9 +77,8 @@ struct ChunkStorage
 {
 	Chunk*[ivec3] chunks;
 	ChunkRemoveQueue removeQueue;
-	void delegate(Chunk* chunk) onChunkRemoved;
-	void delegate(Chunk* chunk) onChunkAdded;
-
+	void delegate(Chunk* chunk)[] onChunkAddedHandlers;
+	void delegate(Chunk* chunk)[] onChunkRemovedHandlers;
 
 	Chunk* getChunk(ivec3 coord)
 	{
@@ -140,8 +139,8 @@ struct ChunkStorage
 		attachAdjacent!(4)();
 		attachAdjacent!(5)();
 
-		if (onChunkAdded)
-			onChunkAdded(emptyChunk);
+		foreach(handler; onChunkAddedHandlers)
+			handler(emptyChunk);
 	}
 
 	void removeChunk(Chunk* chunk)
@@ -167,8 +166,8 @@ struct ChunkStorage
 		detachAdjacent!(5)();
 
 		chunks.remove(chunk.coord);
-		if (onChunkRemoved)
-			onChunkRemoved(chunk);
+		foreach(handler; onChunkRemovedHandlers)
+			handler(chunk);
 
 		if (chunk.mesh)
 			chunk.mesh.free();

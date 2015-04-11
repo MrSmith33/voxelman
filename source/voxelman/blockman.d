@@ -7,6 +7,7 @@ module voxelman.blockman;
 
 import voxelman.block;
 import voxelman.basicblocks;
+import voxelman.storage.chunk;
 
 struct BlockMan
 {
@@ -26,5 +27,13 @@ struct BlockMan
 	immutable(Block*)[] blocks()
 	{
 		return _blocks;
+	}
+
+	void onChunkLoaded(Chunk* chunk)
+	{
+		if (chunk.snapshot.blockData.uniform)
+		{
+			chunk.isVisible = blocks[chunk.snapshot.blockData.uniformType].isVisible;
+		}
 	}
 }

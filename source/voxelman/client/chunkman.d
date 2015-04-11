@@ -37,7 +37,7 @@ struct ChunkMan
 	{
 		blockMan.loadBlockTypes();
 		chunkMeshMan.init(&this, &blockMan);
-		chunkStorage.onChunkRemoved = &chunkMeshMan.onChunkRemoved;
+		chunkStorage.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
 	}
 
 	void stop()

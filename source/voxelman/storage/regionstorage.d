@@ -131,10 +131,7 @@ struct RegionStorage
 
 	private Region* getRegion(ivec3 regionPos)
 	{
-		Region** region = regionPos in regions;
-		if (region is null) return null;
-		assert(*region);
-		return *region;
+		return regions.get(regionPos, null);
 	}
 
 	private const(char[]) regionFilename(ivec3 regionPos)
