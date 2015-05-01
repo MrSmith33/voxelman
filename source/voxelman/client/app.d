@@ -156,10 +156,19 @@ public:
 		setupFrameShowButton("showInfo", "infoFrame");
 		setupFrameShowButton("showSettings", "settingsFrame");
 
+		//Buttons
+		context.getWidgetById("stopServer").addEventHandler(&onStopServer);
+
 		debugInfo = context.getWidgetById("debugInfo");
 		foreach(i; 0..12) context.createWidget("label", debugInfo);
 
 		info("\n----------------------------- Load end -----------------------------\n");
+	}
+
+	bool onStopServer(Widget widget, PointerClickEvent event)
+	{
+		clientPlugin.sendMessage("/stop");
+		return true;
 	}
 
 	override void unload()

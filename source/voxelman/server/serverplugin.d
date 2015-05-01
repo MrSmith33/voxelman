@@ -94,6 +94,7 @@ public:
 		world.chunkStorage.onChunkAddedHandlers ~= &chunkMan.onChunkAdded;
 		world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
 		world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
+		world.chunkStorage.onChunkRemovedHandlers ~= &chunkProvider.onChunkRemoved;
 
 		world.load();
 	}
@@ -310,6 +311,7 @@ public:
 		if (chunk is null) return;
 
 		chunk.snapshot.blockData.applyChangesChecked(packet.blockChanges);
+		chunk.snapshot.timestamp = world.worldInfo.simulationTick;
 		chunkMan.sendToChunkObservers(packet.chunkPos, packet);
 	}
 }

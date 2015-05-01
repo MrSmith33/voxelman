@@ -7,6 +7,7 @@ template:mainLayer {
 			hfill
 			text-button id="showInfo" text="Show info"
 			text-button id="showSettings" text="Show settings"
+			text-button id="stopServer" text="Stop server"
 			label text="[Q] mouse lock"
 		}
 	}
