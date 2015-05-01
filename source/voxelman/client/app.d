@@ -319,6 +319,7 @@ public:
 				clientPlugin.doUpdateObserverPosition = !clientPlugin.doUpdateObserverPosition; break;
 			case KeyCode.KEY_C: clientPlugin.isCullingEnabled = !clientPlugin.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;
+			case KeyCode.KEY_F4: clientPlugin.sendMessage("/stop"); break;
 			default: break;
 		}
 	}

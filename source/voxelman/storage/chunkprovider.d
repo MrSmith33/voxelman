@@ -62,6 +62,7 @@ public:
 		while(chunkStorage.chunks.length > 0)
 		{
 			update();
+			chunkStorage.update();
 
 			auto donePercents = cast(float)(toBeDone - chunkStorage.chunks.length) / toBeDone * 100;
 			if (donePercents >= donePercentsPrev + 10)

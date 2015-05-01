@@ -175,6 +175,11 @@ final class ClientPlugin : IPlugin
 			graphics.camera.heading));
 	}
 
+	void sendMessage(string msg)
+	{
+		connection.send(MessagePacket(0, msg));
+	}
+
 	void drawScene(Draw1Event event)
 	{
 		glEnable(GL_DEPTH_TEST);

@@ -38,7 +38,6 @@ private:
 	PluginManager pluginman = new PluginManager;
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GameTimePlugin gameTime = new GameTimePlugin;
-	bool isStopping;
 
 public:
 	ServerConnection connection;
@@ -138,6 +137,11 @@ public:
 				Thread.sleep(sleepTime);
 		}
 
+		while (connection.clientStorage.length)
+		{
+			connection.update(0);
+		}
+
 		stop();
 	}
 
@@ -190,7 +194,7 @@ public:
 
 		if (commName == "stop")
 		{
-			isStopping = true;
+			connection.isRunning = false;
 			connection.disconnectAll();
 		}
 		else
