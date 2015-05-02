@@ -65,6 +65,7 @@ struct ChunkMan
 
 	ServerConnection connection;
 	ChunkObserverList[ivec3] chunkObservers;
+	BlockChange[][ivec3] chunkChanges;
 
 	size_t totalObservedChunks;
 
@@ -129,6 +130,12 @@ struct ChunkMan
 	{
 		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
 		chunkObservers.remove(chunk.coord);
+	}
+
+	// world change observer method
+	void onChunkModified(Chunk* chunk, BlockChange[] blockChanges)
+	{
+		chunkChanges[chunk.coord] = chunkChanges.get(chunk.coord, null) ~ blockChanges;
 	}
 
 	void observeChunks(R)(R chunkCoords, ClientId clientId)
@@ -228,5 +235,14 @@ struct ChunkMan
 
 		foreach(s; Side.min..Side.max)
 			printChunk(s);
+	}
+
+	/// Sends chunk changes to all observers and clears change buffer
+	void sendChanges()
+	{
+		foreach(pair; chunkChanges.byKeyValue)
+			sendToChunkObservers(pair.key,
+				MultiblockChangePacket(pair.key, pair.value));
+		chunkChanges = null;
 	}
 }

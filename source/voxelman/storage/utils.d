@@ -69,6 +69,14 @@ ivec3 worldToChunkPos(vec3 worldPos)
 		floor(worldPos.z / CHUNK_SIZE),);
 }
 
+ivec3 worldToChunkPos(ivec3 worldPos)
+{
+	return ivec3(
+		floor(cast(float)worldPos.x / CHUNK_SIZE),
+		floor(cast(float)worldPos.y / CHUNK_SIZE),
+		floor(cast(float)worldPos.z / CHUNK_SIZE),);
+}
+
 // converts global position to position in the chunk
 vec3 worldToChunkLocalPos(vec3 worldPos)
 {
@@ -84,7 +92,25 @@ vec3 worldToChunkLocalPos(vec3 worldPos)
 	return worldPos;
 }
 
+ivec3 worldToChunkLocalPos(ivec3 worldPos)
+{
+	worldPos.x %= CHUNK_SIZE;
+	worldPos.y %= CHUNK_SIZE;
+	worldPos.z %= CHUNK_SIZE;
+	if (worldPos.x < 0) worldPos.x += CHUNK_SIZE;
+	if (worldPos.y < 0) worldPos.y += CHUNK_SIZE;
+	if (worldPos.z < 0) worldPos.z += CHUNK_SIZE;
+	return worldPos;
+}
+
+
 ushort worldToChunkBlockIndex(vec3 worldPos)
+{
+	ivec3 localPos = ivec3(worldToChunkLocalPos(worldPos));
+	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
+}
+
+ushort worldToChunkBlockIndex(ivec3 worldPos)
 {
 	ivec3 localPos = ivec3(worldToChunkLocalPos(worldPos));
 	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);

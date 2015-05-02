@@ -118,9 +118,7 @@ final class ClientPlugin : IPlugin
 		ivec3 chunkPos = worldToChunkPos(editCursorPos);
 		//infof("editCursorPos %s chunkPos %s blockPos %s index %s",
 		//	editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));
-		connection.send(
-			MultiblockChangePacket(chunkPos,
-				[BlockChange(worldToChunkBlockIndex(editCursorPos), blockId)]));
+		connection.send(PlaceBlockPacket(blockPos, blockId));
 	}
 
 	void connect()

@@ -15,10 +15,11 @@ import dlib.math.vector;
 import voxelman.config;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
+import voxelman.storage.worldaccess;
 
 struct WorldInfo
 {
-	string name;
+	string name = WORLD_NAME;
 	TimestampType simulationTick;
 	ivec3 spawnPosition;
 	//block mapping
@@ -30,6 +31,7 @@ struct World
 {
 	WorldInfo worldInfo;
 	ChunkStorage chunkStorage;
+	WorldAccess!(typeof(this)) worldAccess;
 
 	string worldDirectory;
 	string worldInfoFilename = WORLD_FILE_NAME;
@@ -42,6 +44,7 @@ struct World
 		assert(isValidPath(worldDir));
 
 		this.chunkProvider = chunkProvider;
+		worldAccess = typeof(worldAccess)(&this);
 		worldDirectory = worldDir;
 		worldInfoFilename = buildPath(worldDir, WORLD_FILE_NAME);
 	}

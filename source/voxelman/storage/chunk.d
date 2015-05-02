@@ -257,6 +257,25 @@ struct Chunk
 		return next || prev;
 	}
 
+	BlockDataSnapshot* getReadableSnapshot(TimestampType timestamp)
+	{
+		if (isLoaded)
+			return &snapshot;
+		else
+			return null;
+	}
+
+	BlockDataSnapshot* getWriteableSnapshot(TimestampType timestamp)
+	{
+		if (isLoaded)
+		{
+			snapshot.timestamp = timestamp;
+			return &snapshot;
+		}
+		else
+			return null;
+	}
+
 	ivec3 coord;
 	//BlockData data;
 	BlockDataSnapshot snapshot;

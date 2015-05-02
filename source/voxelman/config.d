@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.config;
 
-import dlib.math.vector : vec3;
+import dlib.math.vector : vec3, ivec3, ivec4;
 
 alias BlockType = ubyte;
 alias TimestampType = uint;

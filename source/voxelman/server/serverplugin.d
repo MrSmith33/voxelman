@@ -63,7 +63,7 @@ public:
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
-		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
 
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
 	}
@@ -95,6 +95,8 @@ public:
 		world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
 		world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
 		world.chunkStorage.onChunkRemovedHandlers ~= &chunkProvider.onChunkRemoved;
+
+		world.worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkModified;
 
 		world.load();
 	}
@@ -162,6 +164,7 @@ public:
 		connection.update(0);
 		chunkProvider.update();
 		world.update();
+		chunkMan.sendChanges();
 
 		evDispatcher.postEvent(new PostUpdateEvent(dt));
 	}
@@ -302,16 +305,11 @@ public:
 		infof("Received ViewRadiusPacket(%s)", packet.viewRadius);
 	}
 
-	void handleMultiblockChangePacket(ubyte[] packetData, ClientId clientId)
+	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
 	{
-		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		//infof("Received MultiblockChangePacket(%s)", packet);
+		auto packet = unpackPacket!PlaceBlockPacket(packetData);
+		//infof("Received PlaceBlockPacket(%s)", packet);
 
-		Chunk* chunk = world.chunkStorage.getChunk(packet.chunkPos);
-		if (chunk is null) return;
-
-		chunk.snapshot.blockData.applyChangesChecked(packet.blockChanges);
-		chunk.snapshot.timestamp = world.worldInfo.simulationTick;
-		chunkMan.sendToChunkObservers(packet.chunkPos, packet);
+		world.worldAccess.setBlock(packet.blockPos, packet.blockType);
 	}
 }
