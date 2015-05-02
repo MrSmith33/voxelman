@@ -31,7 +31,7 @@ struct World
 {
 	WorldInfo worldInfo;
 	ChunkStorage chunkStorage;
-	WorldAccess!(typeof(this)) worldAccess;
+	WorldAccess worldAccess;
 
 	string worldDirectory;
 	string worldInfoFilename = WORLD_FILE_NAME;
@@ -44,7 +44,8 @@ struct World
 		assert(isValidPath(worldDir));
 
 		this.chunkProvider = chunkProvider;
-		worldAccess = typeof(worldAccess)(&this);
+		worldAccess = WorldAccess(&chunkStorage.getChunk,
+			() => worldInfo.simulationTick);
 		worldDirectory = worldDir;
 		worldInfoFilename = buildPath(worldDir, WORLD_FILE_NAME);
 	}

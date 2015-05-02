@@ -46,7 +46,7 @@ public:
 
 		genWorkers.startWorkers(NUM_WORKERS, thisTid);
 		version(Disk_Storage)
-			storeWorker.startWorkers(1, thisTid, worldDir);
+			storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
 	}
 
 	void stop()

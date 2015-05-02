@@ -9,24 +9,29 @@ import std.experimental.logger;
 import voxelman.config;
 import voxelman.storage.chunk;
 import voxelman.storage.utils;
+import voxelman.storage.world;
 
 /// When modifying world through WorldAccess
 /// changes will automatically proparate to client each tick
-struct WorldAccess(WorldT)
+struct WorldAccess
 {
-	this(WorldT* _world)
+	this(Chunk* delegate(ivec3) chunkGetter,
+		TimestampType delegate() timestampGetter)
 	{
-		world = _world;
+		this.chunkGetter = chunkGetter;
+		assert(chunkGetter);
+		this.timestampGetter = timestampGetter;
+		assert(timestampGetter);
 	}
 	@disable this();
 
 	BlockType getBlock(ivec3 blockPos)
 	{
 		ivec3 chunkPos = worldToChunkPos(blockPos);
-		Chunk* chunk = world.chunkStorage.getChunk(chunkPos);
+		Chunk* chunk = chunkGetter(chunkPos);
 		if (chunk)
 		{
-			BlockDataSnapshot* snapshot = chunk.getReadableSnapshot(currentTimestamp);
+			BlockDataSnapshot* snapshot = chunk.getReadableSnapshot(timestampGetter());
 			if (snapshot)
 			{
 				auto blockIndex = worldToChunkBlockIndex(blockPos);
@@ -40,11 +45,11 @@ struct WorldAccess(WorldT)
 	bool setBlock(ivec3 blockPos, BlockType blockType)
 	{
 		ivec3 chunkPos = worldToChunkPos(blockPos);
-		Chunk* chunk = world.chunkStorage.getChunk(chunkPos);
+		Chunk* chunk = chunkGetter(chunkPos);
 
 		if (chunk)
 		{
-			BlockDataSnapshot* snapshot = chunk.getWriteableSnapshot(currentTimestamp);
+			BlockDataSnapshot* snapshot = chunk.getWriteableSnapshot(timestampGetter());
 
 			// chunk was not loaded yet
 			if (snapshot is null)
@@ -66,10 +71,11 @@ struct WorldAccess(WorldT)
 	//bool loadBlockRange(AABB aabb);
 	TimestampType currentTimestamp() @property
 	{
-		return world.worldInfo.simulationTick;
+		return timestampGetter();
 	}
 
 	void delegate(Chunk*, BlockChange[])[] onChunkModifiedHandlers;
 private:
-	WorldT* world;
+	Chunk* delegate(ivec3) chunkGetter;
+	TimestampType delegate() timestampGetter;
 }
