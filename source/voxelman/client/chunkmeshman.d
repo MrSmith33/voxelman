@@ -203,7 +203,7 @@ struct ChunkMeshMan
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
 
-		//infof("Chunk mesh generated at %s", chunk.coord);
+		//infof("Chunk mesh loaded at %s, length %s", chunk.coord, chunk.mesh.data.length);
 	}
 
 	/// Checks if there is any chunks that have changes
@@ -312,7 +312,8 @@ struct ChunkMeshMan
 
 				chunk.change = ChunkChange.init;
 
-				if (chunk.canBeMeshed && chunk.isVisible && blocksChanged)
+				infof("canBeMeshed %s, blocksChanged %s", chunk.canBeMeshed, blocksChanged);
+				if (chunk.canBeMeshed && blocksChanged)
 				{
 					assert(chunk);
 					chunksToMesh.put(chunk);
