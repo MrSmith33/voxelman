@@ -92,7 +92,7 @@ class ChunkMesh
 			loadBuffer();
 			isDataDirty = false;
 		}
-		glDrawArrays(GL_TRIANGLES, 0, cast(uint)(data.length/VERTEX_SIZE));//data.length/12);
+		glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());//data.length/12);
 	}
 
 	ulong numVertexes() {return data.length/VERTEX_SIZE;}

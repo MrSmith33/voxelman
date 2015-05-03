@@ -71,7 +71,7 @@ ubyte[] makeColoredBlockMesh(const Block block,
 }
 
 // mesh for single block
-private immutable ubyte[18 * 6] faces =
+immutable ubyte[18 * 6] faces =
 [
 	0, 0, 0, // triangle 1 : begin // north
 	1, 0, 0,

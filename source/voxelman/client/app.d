@@ -129,7 +129,7 @@ public:
 			info(item);
 		info("---------------------------------------------------------\n");
 
-		fpsHelper.limitFps = false;
+		fpsHelper.limitFps = true;
 
 		// Setup rendering
 		clearColor = Color(115,200,169);
@@ -278,9 +278,9 @@ public:
 			}
 			window.mousePosition = cast(ivec2)(graphics.windowSize) / 2;
 
-			uint cameraSpeed = 30;
+			uint cameraSpeed = 10;
 			vec3 posDelta = vec3(0,0,0);
-			if(window.isKeyPressed(KeyCode.KEY_LEFT_SHIFT)) cameraSpeed = 80;
+			if(window.isKeyPressed(KeyCode.KEY_LEFT_SHIFT)) cameraSpeed = 60;
 
 			if(window.isKeyPressed(KeyCode.KEY_D)) posDelta.x = 1;
 			else if(window.isKeyPressed(KeyCode.KEY_A)) posDelta.x = -1;

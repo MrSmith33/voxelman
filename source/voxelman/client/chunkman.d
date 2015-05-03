@@ -75,14 +75,8 @@ struct ChunkMan
 		chunkMeshMan.onChunkLoaded(chunk, blockData);
 	}
 
-	void onChunkChanged(ivec3 chunkPos, BlockChange[] changes)
+	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
 	{
-		Chunk* chunk = chunkStorage.getChunk(chunkPos);
-
-		// We can receive data for chunk that is already deleted.
-		if (chunk is null || chunk.isMarkedForDeletion)
-			return;
-
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 

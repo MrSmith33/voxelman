@@ -5,12 +5,14 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.clientplugin;
 
-import std.experimental.logger;
 import core.thread : thread_joinAll;
+import core.time;
+import std.datetime : StopWatch;
+import std.experimental.logger;
 
 import anchovy.gui;
 import anchovy.core.interfaces.iwindow;
-import dlib.math.vector : uvec2;
+import dlib.math.vector;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
@@ -22,16 +24,26 @@ import netlib.baseclient;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 
-import voxelman.events;
 import voxelman.config;
+import voxelman.events;
+import voxelman.packets;
 import voxelman.storage.chunk;
 import voxelman.storage.utils;
-import voxelman.packets;
+import voxelman.storage.worldaccess;
 import voxelman.utils.math;
+import voxelman.utils.trace;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
 import voxelman.client.events;
+
+auto formatDuration(Duration dur)
+{
+	import std.string : format;
+	auto splitted = dur.split();
+	return format("%s.%03s,%03s secs",
+		splitted.seconds, splitted.msecs, splitted.usecs);
+}
 
 final class ClientConnection : BaseClient{}
 
@@ -41,6 +53,8 @@ final class ClientPlugin : IPlugin
 
 	// Game stuff
 	ChunkMan chunkMan;
+	WorldAccess worldAccess;
+
 	ClientConnection connection;
 
 	IWindow window;
@@ -55,6 +69,17 @@ final class ClientPlugin : IPlugin
 	string myName = "client_name";
 	string[ClientId] clientNames;
 
+	// shows AABB of hovered block
+	vec3 cursorPos, cursorSize = vec3(1.02, 1.02, 1.02);
+	vec3 lineStart, lineEnd;
+	bool cursorHit;
+	bool showCursor;
+	BlockType blockType;
+	ivec3 blockPos;
+	vec3 hitPosition;
+	ivec3 hitNormal;
+	Duration cursorTraceTime;
+
 	double sendPositionTimer = 0;
 	enum sendPositionInterval = 0.1;
 	ivec3 prevChunkPos;
@@ -67,6 +92,7 @@ final class ClientPlugin : IPlugin
 	this(IWindow window)
 	{
 		this.window = window;
+		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
 
 
@@ -82,6 +108,7 @@ final class ClientPlugin : IPlugin
 		connection.disconnectHandler = &onDisconnect;
 
 		chunkMan.init();
+		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
 
 		registerPackets(connection);
 		//connection.printPacketMap();
@@ -111,14 +138,28 @@ final class ClientPlugin : IPlugin
 
 	void placeBlock(BlockType blockId)
 	{
-		enum cursorDistance = 3;
-		vec3 editCursorOffset = graphics.camera.target * cursorDistance;
-		vec3 editCursorPos = graphics.camera.position + editCursorOffset;
-		ivec3 blockPos = ivec3(editCursorPos);
-		ivec3 chunkPos = worldToChunkPos(editCursorPos);
-		//infof("editCursorPos %s chunkPos %s blockPos %s index %s",
-		//	editCursorPos, chunkPos, blockPos, worldToChunkBlockIndex(editCursorPos));
-		connection.send(PlaceBlockPacket(blockPos, blockId));
+		if (chunkMan.blockMan.blocks[blockId].isVisible)
+		{
+			blockPos += hitNormal;
+		}
+
+		//infof("hit %s, blockPos %s, blockType %s, hitPosition %s, hitNormal %s time %s",
+		//	cursorHit, blockPos, blockType, hitPosition, hitNormal,
+		//	cursorTraceTime.formatDuration);
+
+		cursorPos = vec3(blockPos) - vec3(0.005, 0.005, 0.005);
+		lineStart = graphics.camera.position;
+		lineEnd = graphics.camera.position + graphics.camera.target * 40;
+
+		if (cursorHit)
+		{
+			showCursor = true;
+			connection.send(PlaceBlockPacket(blockPos, blockId));
+		}
+		else
+		{
+			showCursor = false;
+		}
 	}
 
 	void connect()
@@ -164,6 +205,38 @@ final class ClientPlugin : IPlugin
 		}
 
 		prevChunkPos = chunkPos;
+
+		traceCursor();
+		if (showCursor)
+		{
+			graphics.debugDraw.drawCube(
+				cursorPos, cursorSize, Colors.black, false);
+			graphics.debugDraw.drawLine(lineStart, lineEnd, Colors.black);
+		}
+	}
+
+	void traceCursor()
+	{
+		StopWatch sw;
+		sw.start();
+
+		cursorHit = traceRay(&worldAccess,
+			&chunkMan.blockMan,
+			graphics.camera.position,
+			graphics.camera.target,
+			40.0, // max distance
+			blockType,
+			hitPosition,
+			hitNormal,
+			1e-3);
+
+		blockPos = hitPosition;
+		cursorTraceTime = cast(Duration)sw.peek;
+
+		graphics.debugDraw.drawCube(
+				vec3(blockPos) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
+		graphics.debugDraw.drawCube(
+				vec3(blockPos+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
 	}
 
 	void sendPosition()
@@ -220,13 +293,17 @@ final class ClientPlugin : IPlugin
 			stats.vertsRendered += c.mesh.numVertexes;
 			stats.trisRendered += c.mesh.numTris;
 		}
+
+		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+		graphics.debugDraw.flush();
+
 		graphics.chunkShader.unbind;
 
 		glDisable(GL_DEPTH_TEST);
 
 		event.renderer.setColor(Color(0,0,0,1));
-		event.renderer.drawRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
-		event.renderer.drawRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
+		event.renderer.fillRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
+		event.renderer.fillRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
 	}
 
 	void onConnect(ref ENetEvent event)
@@ -310,6 +387,10 @@ final class ClientPlugin : IPlugin
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		chunkMan.onChunkChanged(packet.chunkPos, packet.blockChanges);
+		Chunk* chunk = chunkMan.chunkStorage.getChunk(packet.chunkPos);
+		// We can receive data for chunk that is already deleted.
+		if (chunk is null || chunk.isMarkedForDeletion)
+			return;
+		chunkMan.onChunkChanged(chunk, packet.blockChanges);
 	}
 }

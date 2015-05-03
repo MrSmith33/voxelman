@@ -15,6 +15,7 @@ import plugin;
 import voxelman.plugins.eventdispatcherplugin : GameEvent;
 import voxelman.config;
 import voxelman.utils.fpscamera;
+public import voxelman.utils.debugdraw;
 
 class Draw1Event : GameEvent {
 	this(IRenderer renderer)
@@ -69,6 +70,8 @@ final class GraphicsPlugin : IPlugin
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
 				cast(const float*)camera.perspective.arrayof);
 		chunkShader.unbind;
+
+		debugDraw.init();
 	}
 
 	override void init(IPluginManager pluginman) { }
@@ -85,6 +88,7 @@ final class GraphicsPlugin : IPlugin
 
 	uvec2 windowSize;
 	FpsCamera camera;
+	DebugDraw debugDraw;
 
 	ShaderProgram chunkShader;
 	GLuint modelLoc, viewLoc, projectionLoc;

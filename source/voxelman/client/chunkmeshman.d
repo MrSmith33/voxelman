@@ -198,7 +198,7 @@ struct ChunkMeshMan
 		chunk.mesh.data = meshData;
 
 		ivec3 coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE - 0.5f;
+		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
@@ -312,7 +312,7 @@ struct ChunkMeshMan
 
 				chunk.change = ChunkChange.init;
 
-				infof("canBeMeshed %s, blocksChanged %s", chunk.canBeMeshed, blocksChanged);
+				//infof("canBeMeshed %s, blocksChanged %s", chunk.canBeMeshed, blocksChanged);
 				if (chunk.canBeMeshed && blocksChanged)
 				{
 					assert(chunk);

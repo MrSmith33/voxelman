@@ -20,11 +20,10 @@ bool traceRay(
 	vec3 startingPosition, // starting position
 	vec3 rayDirection, // direction
 	float maxDistance,
-	out ivec3 blockPos, // world space position of block hit
 	out BlockType blockType,
 	out vec3 hitPosition, // resulting position hit
-	out vec3 hitNormal, // normal of hit surface
-	const float EPSILON = 1e-8)
+	out ivec3 hitNormal, // normal of hit surface
+	const float EPSILON = 1e-6)
 {
 	rayDirection.normalize;
 
@@ -54,19 +53,15 @@ bool traceRay(
 		if(blockMan.blocks[block].isVisible)
 		{
 			//Clamp to face on hit
-			hitPosition.x = posFloatDelta.x < EPSILON ? +curPosInt.x : (posFloatDelta.x > 1.0-EPSILON ? curPosInt.x+1.0-EPSILON : curPos.x);
-			hitPosition.y = posFloatDelta.y < EPSILON ? +curPosInt.y : (posFloatDelta.y > 1.0-EPSILON ? curPosInt.y+1.0-EPSILON : curPos.y);
-			hitPosition.z = posFloatDelta.z < EPSILON ? +curPosInt.z : (posFloatDelta.z > 1.0-EPSILON ? curPosInt.z+1.0-EPSILON : curPos.z);
-
-			hitNormal.x = nx;
-			hitNormal.y = ny;
-			hitNormal.z = nz;
+			hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : (posFloatDelta.x > 1.0-EPSILON ? curPosInt.x+1.0-EPSILON : curPos.x);
+			hitPosition.y = posFloatDelta.y < EPSILON ? curPosInt.y : (posFloatDelta.y > 1.0-EPSILON ? curPosInt.y+1.0-EPSILON : curPos.y);
+			hitPosition.z = posFloatDelta.z < EPSILON ? curPosInt.z : (posFloatDelta.z > 1.0-EPSILON ? curPosInt.z+1.0-EPSILON : curPos.z);
 
 			return true;
 		}
 
 		//Check edge cases
-		minStep = +(EPSILON * (1.0 + curProgress));
+		minStep = (EPSILON * (1.0 + curProgress));
 
 		if(curProgress > minStep)
 		{
@@ -76,19 +71,15 @@ bool traceRay(
 
 			if(ex && ey && ez)
 			{
-				block = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y+ny, curPosInt.z)) ||
-					worldAccess.getBlock(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z+nz)) ||
-					worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z+nz));
+				BlockType block1 = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y+ny, curPosInt.z));
+				BlockType block2 = worldAccess.getBlock(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z+nz));
+				BlockType block3 = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z+nz));
 
-				if(blockMan.blocks[block].isVisible)
+				if(blockMan.blocks[block1].isVisible || blockMan.blocks[block2].isVisible || blockMan.blocks[block3].isVisible)
 				{
 					hitPosition.x = nx < 0 ? curPosInt.x-EPSILON : curPosInt.x + 1.0-EPSILON;
 					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
 					hitPosition.z = nz < 0 ? curPosInt.z-EPSILON : curPosInt.z + 1.0-EPSILON;
-
-					hitNormal.x = nx;
-					hitNormal.y = ny;
-					hitNormal.z = nz;
 
 					return true;
 				}
@@ -104,10 +95,6 @@ bool traceRay(
 					hitPosition.y = posFloatDelta.y < EPSILON ? +curPosInt.y : curPos.y;
 					hitPosition.z = posFloatDelta.z < EPSILON ? +curPosInt.z : curPos.z;
 
-					hitNormal.x = nx;
-					hitNormal.y = ny;
-					hitNormal.z = nz;
-
 					return true;
 				}
 			}
@@ -122,10 +109,6 @@ bool traceRay(
 					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
 					hitPosition.z = posFloatDelta.z < EPSILON ? +curPosInt.z : curPos.z;
 
-					hitNormal.x = nx;
-					hitNormal.y = ny;
-					hitNormal.z = nz;
-
 					return true;
 				}
 			}
@@ -139,10 +122,6 @@ bool traceRay(
 					hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : curPos.x;
 					hitPosition.y = posFloatDelta.y < EPSILON ? curPosInt.y : curPos.y;
 					hitPosition.z = nz < 0 ? curPosInt.z-EPSILON : curPosInt.z + 1.0-EPSILON;
-
-					hitNormal.x = nx;
-					hitNormal.y = ny;
-					hitNormal.z = nz;
 
 					return true;
 				}
@@ -240,6 +219,10 @@ bool traceRay(
 		{
 			step = minStep;
 		}
+
+		hitNormal.x = nx;
+		hitNormal.y = ny;
+		hitNormal.z = nz;
 
 		curProgress += step;
 	}
