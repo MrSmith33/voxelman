@@ -93,31 +93,31 @@ struct Region
 	}
 
 	/// Returns true if chunk is presented on disk.
-	/// Coords are region local. I.e. 0..REGION_SIZE
-	public bool isChunkOnDisk(ivec3 chunkCoord)
+	/// Positions are region local. I.e. 0..REGION_SIZE
+	public bool isChunkOnDisk(ivec3 chunkPosition)
 	{
-		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
-		auto chunkIndex = calcChunkIndex(chunkCoord);
+		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
+		auto chunkIndex = calcChunkIndex(chunkPosition);
 		return (offsets[chunkIndex] & 0xFF) != 0;
 	}
 
-	public TimestampType chunkTimestamp(ivec3 chunkCoord)
+	public TimestampType chunkTimestamp(ivec3 chunkPosition)
 	{
-		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
-		auto chunkIndex = calcChunkIndex(chunkCoord);
+		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
+		auto chunkIndex = calcChunkIndex(chunkPosition);
 		return timestamps[chunkIndex];
 	}
 
-	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkCoord)
+	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPosition)
 	{
-		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto chunkIndex = calcChunkIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 		auto timestamp = timestamps[chunkIndex];
 
-		ChunkStoreInfo res = ChunkStoreInfo(true, chunkCoord,
+		ChunkStoreInfo res = ChunkStoreInfo(true, chunkPosition,
 			ivec3(), ivec3(), chunkIndex, sectorNumber, numSectors, timestamp);
-		if (!isChunkOnDisk(chunkCoord))
+		if (!isChunkOnDisk(chunkPosition))
 		{
 			res.isStored = false;
 			return res;
@@ -132,17 +132,17 @@ struct Region
 	}
 
 	/// Reads chunk from a file.
-	/// Chunks coords are region local in range 0..REGION_SIZE.
+	/// Chunks positions are region local in range 0..REGION_SIZE.
 	/// outBuffer should be big enough to store chunk of any size.
 	/// Returns: a slice of outBuffer with actual data or null if chunk was not
 	/// stored on disk previously.
-	/// Coords are region local. I.e. 0..REGION_SIZE
-	public ubyte[] readChunk(ivec3 chunkCoord, ubyte[] outBuffer, out TimestampType timestamp)
+	/// Positions are region local. I.e. 0..REGION_SIZE
+	public ubyte[] readChunk(ivec3 chunkPosition, ubyte[] outBuffer, out TimestampType timestamp)
 	{
-		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
-		if (!isChunkOnDisk(chunkCoord)) return null;
+		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
+		if (!isChunkOnDisk(chunkPosition)) return null;
 
-		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto chunkIndex = calcChunkIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 
@@ -150,7 +150,7 @@ struct Region
 		if (sectorNumber + numSectors > sectors.length)
 		{
 			errorf("Invalid sector chunk %s, sector %s, numSectors %s while total sectors %s",
-				chunkCoord, sectorNumber, numSectors, sectors.length);
+				chunkPosition, sectorNumber, numSectors, sectors.length);
 			return null;
 		}
 
@@ -163,7 +163,7 @@ struct Region
 		if (dataLength > numSectors * SECTOR_SIZE)
 		{
 			errorf("Invalid data length %s, %s > %s * %s",
-				chunkCoord, dataLength, numSectors, SECTOR_SIZE);
+				chunkPosition, dataLength, numSectors, SECTOR_SIZE);
 			return null;
 		}
 
@@ -171,13 +171,13 @@ struct Region
 		return file.rawRead(outBuffer[0..dataLength]);
 	}
 
-	/// Writes chunk at chunkCoord with data blockData to disk.
-	/// Coords are region local. I.e. 0..REGION_SIZE
-	public void writeChunk(ivec3 chunkCoord, in ubyte[] blockData, TimestampType timestamp)
+	/// Writes chunk at chunkPosition with data blockData to disk.
+	/// Positions are region local. I.e. 0..REGION_SIZE
+	public void writeChunk(ivec3 chunkPosition, in ubyte[] blockData, TimestampType timestamp)
 	{
-		assert(isValidCoord(chunkCoord), format("Invalid coord %s", chunkCoord));
+		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
 
-		auto chunkIndex = calcChunkIndex(chunkCoord);
+		auto chunkIndex = calcChunkIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 
@@ -252,11 +252,11 @@ struct Region
 		fixPadding();
 	}
 
-	private bool isValidCoord(ivec3 chunkCoord)
+	private bool isValidPosition(ivec3 chunkPosition)
 	{
-		return !(chunkCoord.x < 0 || chunkCoord.x >= REGION_SIZE ||
-				chunkCoord.y < 0 || chunkCoord.y >= REGION_SIZE ||
-				chunkCoord.z < 0 || chunkCoord.z >= REGION_SIZE);
+		return !(chunkPosition.x < 0 || chunkPosition.x >= REGION_SIZE ||
+				chunkPosition.y < 0 || chunkPosition.y >= REGION_SIZE ||
+				chunkPosition.z < 0 || chunkPosition.z >= REGION_SIZE);
 	}
 
 	private void openFile(string regionFilename)
@@ -346,7 +346,7 @@ struct Region
 	}
 }
 
-size_t calcChunkIndex(ivec3 chunkCoord)
+size_t calcChunkIndex(ivec3 chunkPosition)
 {
-	return chunkCoord.x + chunkCoord.y * REGION_SIZE + chunkCoord.z * REGION_SIZE_SQR;
+	return chunkPosition.x + chunkPosition.y * REGION_SIZE + chunkPosition.z * REGION_SIZE_SQR;
 }

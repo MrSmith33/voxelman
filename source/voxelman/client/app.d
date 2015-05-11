@@ -225,9 +225,9 @@ public:
 
 		ivec3 chunkPos = clientPlugin.chunkMan.observerPosition;
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPosition = calcRegionLocalPos(chunkPos);
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
-			chunkPos, regionPos, localChunkCoords).to!dstring;
+			chunkPos, regionPos, localChunkPosition).to!dstring;
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;

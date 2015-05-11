@@ -36,7 +36,7 @@ bool traceRay(
 
 	vec3 curPos;
 	ivec3 curPosInt;
-	// delta between int and precise coordinate.
+	// delta between int and precise position.
 	vec3 posFloatDelta;
 
 	//Step block-by-block along ray

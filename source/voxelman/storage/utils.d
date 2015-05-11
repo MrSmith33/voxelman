@@ -13,24 +13,24 @@ import dlib.math.vector;
 import voxelman.config;
 import voxelman.storage.region;
 
-size_t manhattanDist(ivec3 coord, ivec3 other)
+size_t manhattanDist(ivec3 position, ivec3 other)
 {
-	return other.x > coord.x ? other.x - coord.x : coord.x - other.x +
-			other.y > coord.y ? other.y - coord.y : coord.y - other.y +
-			other.z > coord.z ? other.z - coord.z : coord.z - other.z;
+	return other.x > position.x ? other.x - position.x : position.x - other.x +
+			other.y > position.y ? other.y - position.y : position.y - other.y +
+			other.z > position.z ? other.z - position.z : position.z - other.z;
 }
 
-double euclidDist(ivec3 coord, ivec3 other)
+double euclidDist(ivec3 position, ivec3 other)
 {
 	import std.math : sqrt;
-	return sqrt(cast(real)(coord.x - other.x)^^2 +
-			(coord.y - other.y)^^2 +
-			(coord.z - other.z)^^2);
+	return sqrt(cast(real)(position.x - other.x)^^2 +
+			(position.y - other.y)^^2 +
+			(position.z - other.z)^^2);
 }
 
-size_t euclidDistSqr(ivec3 coord, ivec3 other)
+size_t euclidDistSqr(ivec3 position, ivec3 other)
 {
-	return (coord.x - other.x)^^2 + (coord.y - other.y)^^2 + (coord.z - other.z)^^2;
+	return (position.x - other.x)^^2 + (position.y - other.y)^^2 + (position.z - other.z)^^2;
 }
 
 ivec3 calcRegionPos(ivec3 chunkWorldPos)
@@ -53,10 +53,10 @@ ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
 	return chunkWorldPos;
 }
 
-ChunkRange calcChunkRange(ivec3 coord, int viewRadius)
+Volume calcVolume(ivec3 position, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
-	return ChunkRange(cast(ivec3)(coord - viewRadius),
+	return Volume(cast(ivec3)(position - viewRadius),
 		ivec3(size, size, size));
 }
 
@@ -118,10 +118,10 @@ ushort worldToChunkBlockIndex(ivec3 worldPos)
 	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
 }
 
-// 3d slice of chunks
-struct ChunkRange
+// 3d grid volume
+struct Volume
 {
-	ivec3 coord;
+	ivec3 position;
 	ivec3 size;
 
 	int volume()
@@ -134,140 +134,52 @@ struct ChunkRange
 		return size.x == 0 && size.y == 0 && size.z == 0;
 	}
 
-	bool contains(ivec3 otherCoord)
+	bool contains(ivec3 otherPosition)
 	{
-		if (otherCoord.x < coord.x || otherCoord.x >= coord.x + size.x) return false;
-		if (otherCoord.y < coord.y || otherCoord.y >= coord.y + size.y) return false;
-		if (otherCoord.z < coord.z || otherCoord.z >= coord.z + size.z) return false;
+		if (otherPosition.x < position.x || otherPosition.x >= position.x + size.x) return false;
+		if (otherPosition.y < position.y || otherPosition.y >= position.y + size.y) return false;
+		if (otherPosition.z < position.z || otherPosition.z >= position.z + size.z) return false;
 		return true;
 	}
 
-	bool opEquals()(auto ref const ChunkRange other) const
+	bool opEquals()(auto ref const Volume other) const
 	{
-		return coord == other.coord && size == other.size;
+		return position == other.position && size == other.size;
 	}
 
 	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;
 	import std.range : iota, walkLength;
 	import std.array : array;
 
-	// generates all chunk coordinates that are contained inside chunk range.
-	auto chunkCoords() @property
+	// generates all positions within volume.
+	auto positions() @property
 	{
 		return cartesianProduct(
-			iota(coord.x, coord.x + size.x),
-			iota(coord.y, coord.y + size.y),
-			iota(coord.z, coord.z + size.z))
+			iota(position.x, position.x + size.x),
+			iota(position.y, position.y + size.y),
+			iota(position.z, position.z + size.z))
 			.map!((a)=>ivec3(a[0], a[1], a[2]));
 	}
 
 	unittest
 	{
-		assert(ChunkRange(ivec3(0,0,0), ivec3(3,3,3)).chunkCoords.walkLength == 27);
-	}
-
-	auto chunksNotIn(ChunkRange other)
-	{
-		import std.algorithm : filter;
-
-		auto intersection = rangeIntersection(this, other);
-		ChunkRange[] ranges;
-
-		if (intersection.size == ivec3(0,0,0))
-			ranges = [this];
-		else
-			ranges = octoSlice(intersection)[]
-				.filter!((a) => a != intersection)
-				.array;
-
-		return ranges
-			.map!((a) => a.chunkCoords)
-			.joiner;
-	}
-
-	unittest
-	{
-		ChunkRange cr = {{0,0,0}, {2,2,2}};
-		ChunkRange other1 = {{1,1,1}, {2,2,2}}; // opposite intersection {1,1,1}
-		ChunkRange other2 = {{2,2,2}, {2,2,2}}; // no intersection
-		ChunkRange other3 = {{0,0,1}, {2,2,2}}; // half intersection
-		ChunkRange other4 = {{0,0,-1}, {2,2,2}}; // half intersection
-
-		ChunkRange half1 = {{0,0,0}, {2,2,1}};
-		ChunkRange half2 = {{0,0,1}, {2,2,1}};
-
-		assert( !cr.chunksNotIn(other1).canFind(ivec3(1,1,1)) );
-		assert( equal(cr.chunksNotIn(other2), cr.chunkCoords) );
-		assert( equal(cr.chunksNotIn(other3), half1.chunkCoords) );
-		assert( equal(cr.chunksNotIn(other4), half2.chunkCoords) );
-	}
-
-	/// Slice range in 8 pieces as octree by corner piece.
-	/// Return all 8 pieces.
-	/// corner piece must be in the corner of this range.
-	ChunkRange[8] octoSlice(ChunkRange corner)
-	{
-		// opposite corner coordinates.
-		int cx, cy, cz;
-
-		if (corner.coord.x == coord.x) // x0
-			cx = (corner.coord.x + corner.size.x);
-		else // x1
-			cx = corner.coord.x;
-
-		if (corner.coord.y == coord.y) // y0
-			cy = (corner.coord.y + corner.size.y);
-		else // y1
-			cy = corner.coord.y;
-
-		if (corner.coord.z == coord.z) // z0
-			cz = (corner.coord.z + corner.size.z);
-		else // z1
-			cz = corner.coord.z;
-
-
-		// origin coordinates
-		int ox = coord.x, oy = coord.y, oz = coord.z;
-		// opposite corner size.
-		int csizex = size.x-(cx-ox), csizey = size.y-(cy-oy), csizez = size.z-(cz-oz);
-		// origin size
-		int osizex = size.x-csizex, osizey = size.y-csizey, osizez = size.z-csizez;
-		//tracef("cx %s cy %s cz %s", cx, cy, cz);
-		//tracef("csizex %s csizey %s csizez %s", csizex, csizey, csizez);
-		//tracef("ox %s oy %s oz %s", ox, oy, oz);
-		//tracef("osizex %s osizey %s osizez %s", osizex, osizey, osizez);
-		//tracef("sizex %s sizey %s sizez %s", size.x, size.y, size.z);
-		//tracef("Corner %s", corner);
-
-		ChunkRange rx0y0z0 = {ivec3(ox,oy,oz), ivec3(osizex, osizey, osizez)};
-		ChunkRange rx0y0z1 = {ivec3(ox,oy,cz), ivec3(osizex, osizey, csizez)};
-		ChunkRange rx0y1z0 = {ivec3(ox,cy,oz), ivec3(osizex, csizey, osizez)};
-		ChunkRange rx0y1z1 = {ivec3(ox,cy,cz), ivec3(osizex, csizey, csizez)};
-
-		ChunkRange rx1y0z0 = {ivec3(cx,oy,oz), ivec3(csizex, osizey, osizez)};
-		ChunkRange rx1y0z1 = {ivec3(cx,oy,cz), ivec3(csizex, osizey, csizez)};
-		ChunkRange rx1y1z0 = {ivec3(cx,cy,oz), ivec3(csizex, csizey, osizez)};
-		ChunkRange rx1y1z1 = {ivec3(cx,cy,cz), ivec3(csizex, csizey, csizez)};
-
-		return [
-		rx0y0z0, rx0y0z1, rx0y1z0, rx0y1z1,
-		rx1y0z0, rx1y0z1, rx1y1z0, rx1y1z1];
+		assert(Volume(ivec3(0,0,0), ivec3(3,3,3)).positions.walkLength == 27);
 	}
 }
 
 struct TrisectResult
 {
-	ChunkRange[] aChunkRanges;
-	ChunkRange intersection;
-	ChunkRange[] bChunkRanges;
+	Volume[] aVolumes;
+	Volume intersection;
+	Volume[] bVolumes;
 	import std.algorithm : map, joiner;
-	auto aChunkCoords() @property
+	auto aPositions() @property
 	{
-		return aChunkRanges.map!(a => a.chunkCoords).joiner;
+		return aVolumes.map!(a => a.positions).joiner;
 	}
-	auto bChunkCoords() @property
+	auto bPositions() @property
 	{
-		return bChunkRanges.map!(a => a.chunkCoords).joiner;
+		return bVolumes.map!(a => a.positions).joiner;
 	}
 }
 
@@ -275,17 +187,17 @@ struct TrisectResult
 // [0] a - b  == a if no intersection
 // [1] a intersects b
 // [2] b - a  == b if no intersection
-TrisectResult trisect(ChunkRange a, ChunkRange b)
+TrisectResult trisect(Volume a, Volume b)
 {
 	// no intersection
 	if (rangeIntersection(a, b).empty)
 	{
-		return TrisectResult([a], ChunkRange(), [b]);
+		return TrisectResult([a], Volume(), [b]);
 	}
 
-	auto xTrisect = trisectAxis(a.coord.x, a.coord.x + a.size.x, b.coord.x, b.coord.x + b.size.x);
-	auto yTrisect = trisectAxis(a.coord.y, a.coord.y + a.size.y, b.coord.y, b.coord.y + b.size.y);
-	auto zTrisect = trisectAxis(a.coord.z, a.coord.z + a.size.z, b.coord.z, b.coord.z + b.size.z);
+	auto xTrisect = trisectAxis(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
+	auto yTrisect = trisectAxis(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
+	auto zTrisect = trisectAxis(a.position.z, a.position.z + a.size.z, b.position.z, b.position.z + b.size.z);
 
 	TrisectResult result;
 
@@ -294,7 +206,7 @@ TrisectResult trisect(ChunkRange a, ChunkRange b)
 	foreach(za; zTrisect.aranges[0..zTrisect.numRangesA].chain(only(zTrisect.irange)))
 	{
 		if (!(xa.isIntersection && ya.isIntersection && za.isIntersection))
-			result.aChunkRanges ~= ChunkRange(ivec3(xa.start, ya.start, za.start),
+			result.aVolumes ~= Volume(ivec3(xa.start, ya.start, za.start),
 				ivec3(xa.length, ya.length, za.length));
 	}
 
@@ -303,11 +215,11 @@ TrisectResult trisect(ChunkRange a, ChunkRange b)
 	foreach(zb; zTrisect.branges[0..zTrisect.numRangesB].chain(only(zTrisect.irange)))
 	{
 		if (!(xb.isIntersection && yb.isIntersection && zb.isIntersection))
-			result.bChunkRanges ~= ChunkRange(ivec3(xb.start, yb.start, zb.start),
+			result.bVolumes ~= Volume(ivec3(xb.start, yb.start, zb.start),
 				ivec3(xb.length, yb.length, zb.length));
 	}
 
-	result.intersection = ChunkRange(
+	result.intersection = Volume(
 		ivec3(xTrisect.irange.start, yTrisect.irange.start, zTrisect.irange.start),
 		ivec3(xTrisect.irange.length, yTrisect.irange.length, zTrisect.irange.length));
 
@@ -397,46 +309,46 @@ TrisectAxisResult trisectAxis(int aStart, int aEnd, int bStart, int bEnd)
 	return res;
 }
 
-ChunkRange rangeIntersection(ChunkRange r1, ChunkRange r2)
+Volume rangeIntersection(Volume a, Volume b)
 {
-	ChunkRange result;
-	if (r1.coord.x < r2.coord.x)
+	Volume result;
+	if (a.position.x < b.position.x)
 	{
-		if (r1.coord.x + r1.size.x < r2.coord.x) return ChunkRange();
-		result.coord.x = r2.coord.x;
-		result.size.x = r1.size.x - (r2.coord.x - r1.coord.x);
+		if (a.position.x + a.size.x < b.position.x) return Volume();
+		result.position.x = b.position.x;
+		result.size.x = a.size.x - (b.position.x - a.position.x);
 	}
 	else
 	{
-		if (r2.coord.x + r2.size.x < r1.coord.x) return ChunkRange();
-		result.coord.x = r1.coord.x;
-		result.size.x = r2.size.x - (r1.coord.x - r2.coord.x);
+		if (b.position.x + b.size.x < a.position.x) return Volume();
+		result.position.x = a.position.x;
+		result.size.x = b.size.x - (a.position.x - b.position.x);
 	}
 
-	if (r1.coord.y < r2.coord.y)
+	if (a.position.y < b.position.y)
 	{
-		if (r1.coord.y + r1.size.y < r2.coord.y) return ChunkRange();
-		result.coord.y = r2.coord.y;
-		result.size.y = r1.size.y - (r2.coord.y - r1.coord.y);
+		if (a.position.y + a.size.y < b.position.y) return Volume();
+		result.position.y = b.position.y;
+		result.size.y = a.size.y - (b.position.y - a.position.y);
 	}
 	else
 	{
-		if (r2.coord.y + r2.size.y < r1.coord.y) return ChunkRange();
-		result.coord.y = r1.coord.y;
-		result.size.y = r2.size.y - (r1.coord.y - r2.coord.y);
+		if (b.position.y + b.size.y < a.position.y) return Volume();
+		result.position.y = a.position.y;
+		result.size.y = b.size.y - (a.position.y - b.position.y);
 	}
 
-	if (r1.coord.z < r2.coord.z)
+	if (a.position.z < b.position.z)
 	{
-		if (r1.coord.z + r1.size.z < r2.coord.z) return ChunkRange();
-		result.coord.z = r2.coord.z;
-		result.size.z = r1.size.z - (r2.coord.z - r1.coord.z);
+		if (a.position.z + a.size.z < b.position.z) return Volume();
+		result.position.z = b.position.z;
+		result.size.z = a.size.z - (b.position.z - a.position.z);
 	}
 	else
 	{
-		if (r2.coord.z + r2.size.z < r1.coord.z) return ChunkRange();
-		result.coord.z = r1.coord.z;
-		result.size.z = r2.size.z - (r1.coord.z - r2.coord.z);
+		if (b.position.z + b.size.z < a.position.z) return Volume();
+		result.position.z = a.position.z;
+		result.size.z = b.size.z - (a.position.z - b.position.z);
 	}
 
 	result.size.x = result.size.x > 0 ? result.size.x : -result.size.x;
@@ -449,25 +361,25 @@ ChunkRange rangeIntersection(ChunkRange r1, ChunkRange r2)
 unittest
 {
 	assert(rangeIntersection(
-		ChunkRange(ivec3(0,0,0), ivec3(2,2,2)),
-		ChunkRange(ivec3(1,1,1), ivec3(2,2,2))) ==
-		ChunkRange(ivec3(1,1,1), ivec3(1,1,1)));
+		Volume(ivec3(0,0,0), ivec3(2,2,2)),
+		Volume(ivec3(1,1,1), ivec3(2,2,2))) ==
+		Volume(ivec3(1,1,1), ivec3(1,1,1)));
 	assert(rangeIntersection(
-		ChunkRange(ivec3(0,0,0), ivec3(2,2,2)),
-		ChunkRange(ivec3(3,3,3), ivec3(4,4,4))) ==
-		ChunkRange(ivec3()));
+		Volume(ivec3(0,0,0), ivec3(2,2,2)),
+		Volume(ivec3(3,3,3), ivec3(4,4,4))) ==
+		Volume(ivec3()));
 	assert(rangeIntersection(
-		ChunkRange(ivec3(1,1,1), ivec3(2,2,2)),
-		ChunkRange(ivec3(0,0,0), ivec3(2,2,2))) ==
-		ChunkRange(ivec3(1,1,1), ivec3(1,1,1)));
+		Volume(ivec3(1,1,1), ivec3(2,2,2)),
+		Volume(ivec3(0,0,0), ivec3(2,2,2))) ==
+		Volume(ivec3(1,1,1), ivec3(1,1,1)));
 	assert(rangeIntersection(
-		ChunkRange(ivec3(1,1,1), ivec3(1,1,1)),
-		ChunkRange(ivec3(1,1,1), ivec3(1,1,1))) ==
-		ChunkRange(ivec3(1,1,1), ivec3(1,1,1)));
+		Volume(ivec3(1,1,1), ivec3(1,1,1)),
+		Volume(ivec3(1,1,1), ivec3(1,1,1))) ==
+		Volume(ivec3(1,1,1), ivec3(1,1,1)));
 	assert(rangeIntersection(
-		ChunkRange(ivec3(0,0,0), ivec3(2,2,2)),
-		ChunkRange(ivec3(0,0,-1), ivec3(2,2,2))) ==
-		ChunkRange(ivec3(0,0,0), ivec3(2,2,1)));
+		Volume(ivec3(0,0,0), ivec3(2,2,2)),
+		Volume(ivec3(0,0,-1), ivec3(2,2,2))) ==
+		Volume(ivec3(0,0,0), ivec3(2,2,1)));
 }
 
 // returns index of block in blockData from local block position

@@ -98,22 +98,22 @@ public:
 
 		version(Disk_Storage)
 		{
-			storeWorker.nextWorker.send(chunk.coord, genWorkers.nextWorker);
+			storeWorker.nextWorker.send(chunk.position, genWorkers.nextWorker);
 		}
 		else
 		{
-			genWorkers.nextWorker.send(chunk.coord);
+			genWorkers.nextWorker.send(chunk.position);
 		}
 	}
 
 	void onChunkRemoved(Chunk* chunk)
 	{
-		//loadQueue.put(chunkCoord);
+		//loadQueue.put(chunkPosition);
 
 		version(Disk_Storage)
 		{
 			storeWorker.nextWorker.send(
-				chunk.coord, cast(shared)chunk.snapshot.blockData,
+				chunk.position, cast(shared)chunk.snapshot.blockData,
 				chunk.snapshot.timestamp, true);
 		}
 		else
@@ -126,7 +126,7 @@ public:
 	{
 		//writefln("Chunk data received in main thread");
 
-		Chunk* chunk = chunkStorage.getChunk(data.coord);
+		Chunk* chunk = chunkStorage.getChunk(data.position);
 		assert(chunk !is null);
 
 		chunk.hasWriter = false;

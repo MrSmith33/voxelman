@@ -69,13 +69,13 @@ struct ChunkMeshMan
 		// full chunk update
 		if (chunk.isLoaded)
 		{
-			infof("full chunk change %s", chunk.coord);
+			infof("full chunk change %s", chunk.position);
 			// if there was previous changes they do not matter anymore
-			chunkChanges[chunk.coord] = ChunkChange(null, blockData);
+			chunkChanges[chunk.position] = ChunkChange(null, blockData);
 			return;
 		}
 
-		//infof("chunk loaded %s data %s", chunk.coord, blockData.blocks);
+		//infof("chunk loaded %s data %s", chunk.position, blockData.blocks);
 
 		chunk.isLoaded = true;
 
@@ -102,8 +102,8 @@ struct ChunkMeshMan
 
 	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
 	{
-		//infof("partial chunk change %s", chunk.coord);
-		if (auto _changes = chunk.coord in chunkChanges)
+		//infof("partial chunk change %s", chunk.position);
+		if (auto _changes = chunk.position in chunkChanges)
 		{
 			if (_changes.blockChanges is null)
 			{
@@ -119,13 +119,13 @@ struct ChunkMeshMan
 		else
 		{
 			// new changes arrived
-			chunkChanges[chunk.coord] = ChunkChange(changes);
+			chunkChanges[chunk.position] = ChunkChange(changes);
 		}
 	}
 
 	void onChunkRemoved(Chunk* chunk)
 	{
-		chunkChanges.remove(chunk.coord);
+		chunkChanges.remove(chunk.position);
 		changedChunks.remove(chunk);
 		chunksToMesh.remove(chunk);
 		dirtyChunks.remove(chunk);
@@ -155,7 +155,7 @@ struct ChunkMeshMan
 
 	void onMeshLoaded(MeshGenResult* data)
 	{
-		Chunk* chunk = chunkMan.getChunk(data.coord);
+		Chunk* chunk = chunkMan.getChunk(data.position);
 		assert(chunk);
 
 		chunk.isMeshing = false;
@@ -175,7 +175,7 @@ struct ChunkMeshMan
 			return;
 		}
 
-		//infof("mesh data loaded %s %s", data.coord, data.meshData.length);
+		//infof("mesh data loaded %s %s", data.position, data.meshData.length);
 
 		// chunk was remeshed after change.
 		// Mesh will be uploaded for all changed chunks at once in processDirtyChunks.
@@ -197,13 +197,13 @@ struct ChunkMeshMan
 			chunk.mesh = new ChunkMesh();
 		chunk.mesh.data = meshData;
 
-		ivec3 coord = chunk.coord;
-		chunk.mesh.position = vec3(coord.x, coord.y, coord.z) * CHUNK_SIZE;
+		ivec3 position = chunk.position;
+		chunk.mesh.position = position * CHUNK_SIZE;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
 
-		//infof("Chunk mesh loaded at %s, length %s", chunk.coord, chunk.mesh.data.length);
+		//infof("Chunk mesh loaded at %s, length %s", chunk.position, chunk.mesh.data.length);
 	}
 
 	/// Checks if there is any chunks that have changes
@@ -275,7 +275,7 @@ struct ChunkMeshMan
 					addAdjacentChunks();
 					blocksChanged = true;
 
-					infof("applying full update to %s", chunk.coord);
+					infof("applying full update to %s", chunk.position);
 				}
 				else
 				{
@@ -291,7 +291,7 @@ struct ChunkMeshMan
 						addAdjacentChunks();
 						blocksChanged = true;
 					}
-					infof("applying block changes to %s", chunk.coord);
+					infof("applying block changes to %s", chunk.position);
 					ubyte bx, by, bz;
 					foreach(change; chunk.change.blockChanges)
 					{
@@ -303,9 +303,9 @@ struct ChunkMeshMan
 							bx,
 							by,
 							bz,
-							bx + chunk.coord.x * CHUNK_SIZE,
-							by + chunk.coord.y * CHUNK_SIZE,
-							bz + chunk.coord.z * CHUNK_SIZE,
+							bx + chunk.position.x * CHUNK_SIZE,
+							by + chunk.position.y * CHUNK_SIZE,
+							bz + chunk.position.z * CHUNK_SIZE,
 							change.blockType);
 					}
 				}

@@ -23,7 +23,7 @@ import voxelman.config;
 struct MeshGenResult
 {
 	ubyte[] meshData;
-	ivec3 coord;
+	ivec3 position;
 }
 
 void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
@@ -39,7 +39,7 @@ void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
 			receive(
 				(shared(Chunk)* chunk)
 				{
-					//infof("worker: mesh chunk %s", chunk.coord);
+					//infof("worker: mesh chunk %s", chunk.position);
 					chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
 				},
 				(shared(Chunk)* chunk, ushort[2] changedBlocksRange)
@@ -166,6 +166,6 @@ body
 	} // foreach
 
 	auto result = cast(immutable(MeshGenResult)*)
-		new MeshGenResult(cast(ubyte[])appender.data, chunk.coord);
+		new MeshGenResult(cast(ubyte[])appender.data, chunk.position);
 	mainThread.send(result);
 }

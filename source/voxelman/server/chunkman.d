@@ -71,10 +71,10 @@ struct ChunkMan
 
 	void removeRegionObserver(ClientId clientId)
 	{
-		auto region = connection.clientStorage[clientId].visibleRegion;
-		foreach(chunkCoord; region.chunkCoords)
+		auto volume = connection.clientStorage[clientId].visibleVolume;
+		foreach(chunkPosition; volume.positions)
 		{
-			removeChunkObserver(chunkCoord, clientId);
+			removeChunkObserver(chunkPosition, clientId);
 		}
 	}
 
@@ -82,33 +82,33 @@ struct ChunkMan
 	{
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		assert(clientInfo, "clientStorage[clientId] is null");
-		ChunkRange oldRegion = clientInfo.visibleRegion;
+		Volume oldVolume = clientInfo.visibleVolume;
 
 		ivec3 chunkPos = worldToChunkPos(clientInfo.pos);
-		ChunkRange newRegion = calcChunkRange(chunkPos, clientInfo.viewRadius);
-		if (oldRegion == newRegion) return;
+		Volume newVolume = calcVolume(chunkPos, clientInfo.viewRadius);
+		if (oldVolume == newVolume) return;
 
-		onClientVisibleRegionChanged(oldRegion, newRegion, clientId);
-		connection.clientStorage[clientId].visibleRegion = newRegion;
+		onClientVisibleVolumeChanged(oldVolume, newVolume, clientId);
+		connection.clientStorage[clientId].visibleVolume = newVolume;
 	}
 
-	void onClientVisibleRegionChanged(ChunkRange oldRegion, ChunkRange newRegion, ClientId clientId)
+	void onClientVisibleVolumeChanged(Volume oldVolume, Volume newVolume, ClientId clientId)
 	{
-		if (oldRegion.empty)
+		if (oldVolume.empty)
 		{
-			//trace("observe region");
-			observeChunks(newRegion.chunkCoords, clientId);
+			//trace("observe volume");
+			observeChunks(newVolume.positions, clientId);
 			return;
 		}
 
-		auto trisectResult = trisect(oldRegion, newRegion);
-		auto chunksToRemove = trisectResult.aChunkCoords;//oldRegion.chunksNotIn(newRegion);
-		auto chunksToLoad = trisectResult.bChunkCoords;
+		auto trisectResult = trisect(oldVolume, newVolume);
+		auto chunksToRemove = trisectResult.aPositions;
+		auto chunksToLoad = trisectResult.bPositions;
 
 		// remove chunks
-		foreach(chunkCoord; chunksToRemove)
+		foreach(chunkPosition; chunksToRemove)
 		{
-			removeChunkObserver(chunkCoord, clientId);
+			removeChunkObserver(chunkPosition, clientId);
 		}
 
 		// load chunks
@@ -117,28 +117,28 @@ struct ChunkMan
 
 	void onChunkAdded(Chunk* chunk)
 	{
-		chunkObservers[chunk.coord] = ChunkObserverList();
+		chunkObservers[chunk.position] = ChunkObserverList();
 	}
 
 	void onChunkLoaded(Chunk* chunk)
 	{
 		// Send data to observers
-		sendChunkToObservers(chunk.coord);
+		sendChunkToObservers(chunk.position);
 	}
 
 	void onChunkRemoved(Chunk* chunk)
 	{
-		assert(chunkObservers.get(chunk.coord, ChunkObserverList.init).empty);
-		chunkObservers.remove(chunk.coord);
+		assert(chunkObservers.get(chunk.position, ChunkObserverList.init).empty);
+		chunkObservers.remove(chunk.position);
 	}
 
 	// world change observer method
 	void onChunkModified(Chunk* chunk, BlockChange[] blockChanges)
 	{
-		chunkChanges[chunk.coord] = chunkChanges.get(chunk.coord, null) ~ blockChanges;
+		chunkChanges[chunk.position] = chunkChanges.get(chunk.position, null) ~ blockChanges;
 	}
 
-	void observeChunks(R)(R chunkCoords, ClientId clientId)
+	void observeChunks(R)(R chunkPositions, ClientId clientId)
 	{
 		import std.range : array;
 		import std.algorithm : sort;
@@ -146,75 +146,75 @@ struct ChunkMan
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		ivec3 observerPos = ivec3(clientInfo.pos);
 
-		ivec3[] chunksToLoad = chunkCoords.array;
+		ivec3[] chunksToLoad = chunkPositions.array;
 		sort!((a, b) => a.euclidDistSqr(observerPos) < b.euclidDistSqr(observerPos))(chunksToLoad);
 
-		foreach(chunkCoord; chunksToLoad)
+		foreach(chunkPosition; chunksToLoad)
 		{
-			addChunkObserver(chunkCoord, clientId);
+			addChunkObserver(chunkPosition, clientId);
 		}
 	}
 
-	void addChunkObserver(ivec3 coord, ClientId clientId)
+	void addChunkObserver(ivec3 position, ClientId clientId)
 	{
-		if (!isChunkInWorldBounds(coord)) return;
+		if (!isChunkInWorldBounds(position)) return;
 
-		bool alreadyLoaded = chunkStorage.loadChunk(coord);
+		bool alreadyLoaded = chunkStorage.loadChunk(position);
 
-		if (chunkObservers[coord].empty)
+		if (chunkObservers[position].empty)
 		{
 			++totalObservedChunks;
 		}
 
-		chunkObservers[coord].add(clientId);
+		chunkObservers[position].add(clientId);
 
 		if (alreadyLoaded)
 		{
-			sendChunkTo(coord, clientId);
+			sendChunkTo(position, clientId);
 		}
 	}
 
-	void removeChunkObserver(ivec3 coord, ClientId clientId)
+	void removeChunkObserver(ivec3 position, ClientId clientId)
 	{
-		if (!isChunkInWorldBounds(coord)) return;
+		if (!isChunkInWorldBounds(position)) return;
 
-		chunkObservers[coord].remove(clientId);
+		chunkObservers[position].remove(clientId);
 
-		if (chunkObservers[coord].empty)
+		if (chunkObservers[position].empty)
 		{
-			chunkStorage.removeQueue.add(chunkStorage.getChunk(coord));
+			chunkStorage.removeQueue.add(chunkStorage.getChunk(position));
 			--totalObservedChunks;
 		}
 	}
 
-	void sendChunkToObservers(ivec3 coord)
+	void sendChunkToObservers(ivec3 position)
 	{
-		//tracef("send chunk to all %s %s", coord, chunkStorage.getChunk(coord).snapshot.blockData.blocks.length);
-		sendToChunkObservers(coord,
-			ChunkDataPacket(coord, chunkStorage.getChunk(coord).snapshot.blockData));
+		//tracef("send chunk to all %s %s", position, chunkStorage.getChunk(position).snapshot.blockData.blocks.length);
+		sendToChunkObservers(position,
+			ChunkDataPacket(position, chunkStorage.getChunk(position).snapshot.blockData));
 	}
 
-	void sendChunkTo(ivec3 coord, ClientId clientId)
+	void sendChunkTo(ivec3 position, ClientId clientId)
 	{
-		//tracef("send chunk to %s %s", coord, chunkStorage.getChunk(coord).snapshot.blockData.blocks.length);
+		//tracef("send chunk to %s %s", position, chunkStorage.getChunk(position).snapshot.blockData.blocks.length);
 		connection.sendTo(clientId,
-			ChunkDataPacket(coord, chunkStorage.getChunk(coord).snapshot.blockData));
+			ChunkDataPacket(position, chunkStorage.getChunk(position).snapshot.blockData));
 	}
 
-	void sendToChunkObservers(P)(ivec3 coord, P packet)
+	void sendToChunkObservers(P)(ivec3 position, P packet)
 	{
-		if (auto observerlist = coord in chunkObservers)
+		if (auto observerlist = position in chunkObservers)
 		{
 			connection.sendTo((*observerlist).observers, packet);
 		}
 	}
 
-	bool isChunkInWorldBounds(ivec3 coord)
+	bool isChunkInWorldBounds(ivec3 position)
 	{
 		static if (BOUND_WORLD)
 		{
-			if(coord.x<0 || coord.y<0 || coord.z<0 || coord.x>=WORLD_SIZE ||
-				coord.y>=WORLD_SIZE || coord.z>=WORLD_SIZE)
+			if(position.x<0 || position.y<0 || position.z<0 || position.x>=WORLD_SIZE ||
+				position.y>=WORLD_SIZE || position.z>=WORLD_SIZE)
 				return false;
 		}
 
@@ -226,10 +226,10 @@ struct ChunkMan
 		void printChunk(Side side)
 		{
 			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(chunk.coord.x + offset[0],
-									chunk.coord.y + offset[1],
-									chunk.coord.z + offset[2]);
-			Chunk* c = chunkStorage.getChunk(otherCoord);
+			ivec3 otherPosition = ivec3(chunk.position.x + offset[0],
+									chunk.position.y + offset[1],
+									chunk.position.z + offset[2]);
+			Chunk* c = chunkStorage.getChunk(otherPosition);
 			tracef("%s", c is null ? "null" : "a");
 		}
 

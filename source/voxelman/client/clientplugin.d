@@ -308,7 +308,7 @@ final class ClientPlugin : IPlugin
 			if (isCullingEnabled)
 			{
 				// Frustum culling
-				ivec3 ivecMin = c.coord * CHUNK_SIZE;
+				ivec3 ivecMin = c.position * CHUNK_SIZE;
 				vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
 				vec3 vecMax = vecMin + CHUNK_SIZE;
 				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);

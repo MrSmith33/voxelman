@@ -29,7 +29,7 @@ alias Generator = Generator2d;
 struct ChunkGenResult
 {
 	BlockData blockData;
-	ivec3 coord;
+	ivec3 position;
 	TimestampType timestamp;
 }
 
@@ -44,7 +44,7 @@ void chunkGenWorkerThread(Tid mainTid)
 		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
-				(ivec3 coord){chunkGenWorker(coord, mainTid);},
+				(ivec3 position){chunkGenWorker(position, mainTid);},
 				(Variant v){isRunningLocal = false;}
 			);
 		}
@@ -57,15 +57,15 @@ void chunkGenWorkerThread(Tid mainTid)
 }
 
 // Gen single chunk
-void chunkGenWorker(ivec3 coord, Tid mainThread)
+void chunkGenWorker(ivec3 position, Tid mainThread)
 {
-	int wx = coord.x, wy = coord.y, wz = coord.z;
+	int wx = position.x, wy = position.y, wz = position.z;
 
 	BlockData bd;
 	bd.convertToArray();
 	bool uniform = true;
 
-	Generator generator = Generator(coord * CHUNK_SIZE);
+	Generator generator = Generator(position * CHUNK_SIZE);
 	generator.genPerChunkData();
 
 	bd.blocks[0] = generator.generateBlock(0, 0, 0);
@@ -90,9 +90,9 @@ void chunkGenWorker(ivec3 coord, Tid mainThread)
 	if(uniform)
 		bd.convertToUniform(type);
 
-	//infof("Chunk generated at %s uniform %s", chunk.coord, chunk.data.uniform);
+	//infof("Chunk generated at %s uniform %s", chunk.position, chunk.data.uniform);
 
-	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(bd, coord);
+	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(bd, position);
 	mainThread.send(result);
 }
 

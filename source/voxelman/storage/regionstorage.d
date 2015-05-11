@@ -52,37 +52,37 @@ struct RegionStorage
 	bool isChunkOnDisk(ivec3 chunkPos)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 			return false;
 
-		return loadRegion(regionPos).isChunkOnDisk(localChunkCoords);
+		return loadRegion(regionPos).isChunkOnDisk(localChunkPositions);
 	}
 
 	public TimestampType chunkTimestamp(ivec3 chunkPos)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 			return 0;
 
-		return loadRegion(regionPos).chunkTimestamp(localChunkCoords);
+		return loadRegion(regionPos).chunkTimestamp(localChunkPositions);
 	}
 
 	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPos)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 		{
-			return ChunkStoreInfo(false, localChunkCoords, chunkPos,
-				regionPos, calcChunkIndex(localChunkCoords));
+			return ChunkStoreInfo(false, localChunkPositions, chunkPos,
+				regionPos, calcChunkIndex(localChunkPositions));
 		}
 
-		auto res = loadRegion(regionPos).getChunkStoreInfo(localChunkCoords);
+		auto res = loadRegion(regionPos).getChunkStoreInfo(localChunkPositions);
 		res.positionInWorld = chunkPos;
 		res.parentRegionPosition = regionPos;
 		return res;
@@ -98,19 +98,19 @@ struct RegionStorage
 	ubyte[] readChunk(ivec3 chunkPos, ubyte[] outBuffer, out TimestampType timestamp)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		return region.readChunk(localChunkCoords, outBuffer, timestamp);
+		return region.readChunk(localChunkPositions, outBuffer, timestamp);
 	}
 
 	void writeChunk(ivec3 chunkPos, in ubyte[] blockData, TimestampType timestamp)
 	{
 		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkCoords = calcRegionLocalPos(chunkPos);
+		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
-		region.writeChunk(localChunkCoords, blockData, timestamp);
+		region.writeChunk(localChunkPositions, blockData, timestamp);
 	}
 
 	private Region* loadRegion(ivec3 regionPos)

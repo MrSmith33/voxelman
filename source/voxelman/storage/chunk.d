@@ -203,9 +203,9 @@ struct Chunk
 {
 	@disable this();
 
-	this(ivec3 coord)
+	this(ivec3 position)
 	{
-		this.coord = coord;
+		this.position = position;
 	}
 
 	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
@@ -276,7 +276,7 @@ struct Chunk
 			return null;
 	}
 
-	ivec3 coord;
+	ivec3 position;
 	//BlockData data;
 	BlockDataSnapshot snapshot;
 	ChunkMesh mesh;

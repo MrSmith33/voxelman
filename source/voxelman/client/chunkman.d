@@ -27,7 +27,7 @@ struct ChunkMan
 	// Stats
 	size_t totalLoadedChunks;
 
-	ChunkRange visibleRegion;
+	Volume visibleVolume;
 	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 
@@ -89,10 +89,10 @@ struct ChunkMan
 			.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
 
-	ChunkRange calcChunkRange(ivec3 coord)
+	Volume calcVolume(ivec3 position)
 	{
 		auto size = viewRadius*2 + 1;
-		return ChunkRange(cast(ivec3)(coord - viewRadius),
+		return Volume(cast(ivec3)(position - viewRadius),
 			ivec3(size, size, size));
 	}
 
@@ -101,43 +101,43 @@ struct ChunkMan
 		ivec3 chunkPos = worldToChunkPos(cameraPos);
 		observerPosition = chunkPos;
 
-		ChunkRange newRegion = calcChunkRange(chunkPos);
-		if (newRegion == visibleRegion) return;
+		Volume newVolume = calcVolume(chunkPos);
+		if (newVolume == visibleVolume) return;
 
-		updateVisibleRegion(newRegion);
+		updateVisibleVolume(newVolume);
 	}
 
-	void updateVisibleRegion(ChunkRange newRegion)
+	void updateVisibleVolume(Volume newVolume)
 	{
-		auto oldRegion = visibleRegion;
-		visibleRegion = newRegion;
+		auto oldVolume = visibleVolume;
+		visibleVolume = newVolume;
 
-		if (oldRegion.empty)
+		if (oldVolume.empty)
 		{
-			loadRegion(newRegion);
+			loadVolume(newVolume);
 			return;
 		}
 
-		auto trisectResult = trisect(oldRegion, newRegion);
-		auto chunksToRemove = trisectResult.aChunkCoords;//oldRegion.chunksNotIn(newRegion);
-		auto chunksToLoad = trisectResult.bChunkCoords;
+		auto trisectResult = trisect(oldVolume, newVolume);
+		auto chunksToRemove = trisectResult.aPositions;
+		auto chunksToLoad = trisectResult.bPositions;
 
 		// remove chunks
-		foreach(chunkCoord; chunksToRemove)
+		foreach(chunkPos; chunksToRemove)
 		{
-			chunkStorage.removeQueue.add(chunkStorage.getChunk(chunkCoord));
+			chunkStorage.removeQueue.add(chunkStorage.getChunk(chunkPos));
 		}
 
 		// load chunks
-		foreach(chunkCoord; chunksToLoad)
+		foreach(chunkPos; chunksToLoad)
 		{
-			chunkStorage.loadChunk(chunkCoord);
+			chunkStorage.loadChunk(chunkPos);
 		}
 	}
 
-	void loadRegion(ChunkRange region)
+	void loadVolume(Volume volume)
 	{
 		import std.algorithm : each;
-		region.chunkCoords.each!(a => chunkStorage.loadChunk(a));
+		volume.positions.each!(pos => chunkStorage.loadChunk(pos));
 	}
 }

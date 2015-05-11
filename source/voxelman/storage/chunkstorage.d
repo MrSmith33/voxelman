@@ -80,9 +80,9 @@ struct ChunkStorage
 	void delegate(Chunk* chunk)[] onChunkAddedHandlers;
 	void delegate(Chunk* chunk)[] onChunkRemovedHandlers;
 
-	Chunk* getChunk(ivec3 coord)
+	Chunk* getChunk(ivec3 position)
 	{
-		return chunks.get(coord, null);
+		return chunks.get(position, null);
 	}
 
 	void update()
@@ -90,21 +90,21 @@ struct ChunkStorage
 		removeQueue.process(&removeChunk);
 	}
 
-	private Chunk* createEmptyChunk(ivec3 coord)
+	private Chunk* createEmptyChunk(ivec3 position)
 	{
-		return new Chunk(coord);
+		return new Chunk(position);
 	}
 
-	bool loadChunk(ivec3 coord)
+	bool loadChunk(ivec3 position)
 	{
-		if (auto chunk = chunks.get(coord, null))
+		if (auto chunk = chunks.get(position, null))
 		{
 			if (chunk.isMarkedForDeletion)
 				removeQueue.remove(chunk);
 			return chunk.isLoaded;
 		}
 
-		Chunk* chunk = createEmptyChunk(coord);
+		Chunk* chunk = createEmptyChunk(position);
 		addChunk(chunk);
 
 		return false;
@@ -115,16 +115,16 @@ struct ChunkStorage
 	private void addChunk(Chunk* emptyChunk)
 	{
 		assert(emptyChunk);
-		chunks[emptyChunk.coord] = emptyChunk;
-		ivec3 coord = emptyChunk.coord;
+		chunks[emptyChunk.position] = emptyChunk;
+		ivec3 position = emptyChunk.position;
 
 		void attachAdjacent(ubyte side)()
 		{
 			byte[3] offset = sideOffsets[side];
-			ivec3 otherCoord = ivec3(cast(int)(coord.x + offset[0]),
-												cast(int)(coord.y + offset[1]),
-												cast(int)(coord.z + offset[2]));
-			Chunk* other = getChunk(otherCoord);
+			ivec3 otherPosition = ivec3(cast(int)(position.x + offset[0]),
+												cast(int)(position.y + offset[1]),
+												cast(int)(position.z + offset[2]));
+			Chunk* other = getChunk(otherPosition);
 
 			if (other !is null)
 				other.adjacent[oppSide[side]] = emptyChunk;
@@ -165,7 +165,7 @@ struct ChunkStorage
 		detachAdjacent!(4)();
 		detachAdjacent!(5)();
 
-		chunks.remove(chunk.coord);
+		chunks.remove(chunk.position);
 		foreach(handler; onChunkRemovedHandlers)
 			handler(chunk);
 

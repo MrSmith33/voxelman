@@ -9,7 +9,7 @@ module voxelman.utils.math;
 public import dlib.math.vector;
 public import dlib.math.utils;
 import std.traits : isFloatingPoint;
-import std.math : isNaN;
+public import std.math : isNaN, floor;
 
 void nansToZero(T, int size)(ref Vector!(T, size) vector)
 	if (isFloatingPoint!T)
