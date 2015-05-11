@@ -27,9 +27,9 @@ import voxelman.server.events;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
+import voxelman.storage.coordinates;
 import voxelman.storage.world;
 import voxelman.utils.math;
-
 
 final class ServerConnection : BaseServer!ClientInfo{}
 
@@ -315,6 +315,6 @@ public:
 		auto packet = unpackPacket!PlaceBlockPacket(packetData);
 		//infof("Received PlaceBlockPacket(%s)", packet);
 
-		world.worldAccess.setBlock(packet.blockPos, packet.blockType);
+		world.worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
 	}
 }

@@ -14,6 +14,7 @@ import std.string : format;
 import dlib.math.vector : ivec3;
 
 import voxelman.config : TimestampType;
+import voxelman.storage.coordinates;
 
 int ceiling_pos (float X) {return (X-cast(int)(X)) > 0 ? cast(int)(X+1) : cast(int)(X);}
 int ceiling_neg (float X) {return (X-cast(int)(X)) < 0 ? cast(int)(X-1) : cast(int)(X);}
@@ -37,10 +38,10 @@ private immutable ubyte[SECTOR_SIZE] emptySector;
 struct ChunkStoreInfo
 {
 	bool isStored;
-	ivec3 positionInRegion;
-	ivec3 positionInWorld;
-	ivec3 parentRegionPosition;
-	size_t headerIndex;
+	ChunkRegionPos positionInRegion;
+	ChunkWorldPos positionInWorld;
+	RegionWorldPos parentRegionPosition;
+	ChunkRegionIndex headerIndex;
 
 	// following fields are only valid when isStored == true.
 	size_t sectorNumber;
@@ -55,7 +56,7 @@ struct ChunkStoreInfo
 			"parent region %s\nheader index %s\n"~
 			"data length %s\nsector number %s\ndata offset %s",
 			positionInRegion, positionInWorld, parentRegionPosition,
-			headerIndex, dataLength, sectorNumber, dataByteOffset);
+			headerIndex.index, dataLength, sectorNumber, dataByteOffset);
 	}
 }
 
@@ -94,29 +95,29 @@ struct Region
 
 	/// Returns true if chunk is presented on disk.
 	/// Positions are region local. I.e. 0..REGION_SIZE
-	public bool isChunkOnDisk(ivec3 chunkPosition)
+	public bool isChunkOnDisk(ChunkRegionPos chunkPosition)
 	{
 		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
-		auto chunkIndex = calcChunkIndex(chunkPosition);
+		auto chunkIndex = ChunkRegionIndex(chunkPosition);
 		return (offsets[chunkIndex] & 0xFF) != 0;
 	}
 
-	public TimestampType chunkTimestamp(ivec3 chunkPosition)
+	public TimestampType chunkTimestamp(ChunkRegionPos chunkPosition)
 	{
 		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
-		auto chunkIndex = calcChunkIndex(chunkPosition);
+		auto chunkIndex = ChunkRegionIndex(chunkPosition);
 		return timestamps[chunkIndex];
 	}
 
-	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPosition)
+	public ChunkStoreInfo getChunkStoreInfo(ChunkRegionPos chunkPosition)
 	{
-		auto chunkIndex = calcChunkIndex(chunkPosition);
+		auto chunkIndex = ChunkRegionIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 		auto timestamp = timestamps[chunkIndex];
 
-		ChunkStoreInfo res = ChunkStoreInfo(true, chunkPosition,
-			ivec3(), ivec3(), chunkIndex, sectorNumber, numSectors, timestamp);
+		ChunkStoreInfo res = ChunkStoreInfo(true, chunkPosition, ChunkWorldPos(),
+			RegionWorldPos(), chunkIndex, sectorNumber, numSectors, timestamp);
 		if (!isChunkOnDisk(chunkPosition))
 		{
 			res.isStored = false;
@@ -137,12 +138,12 @@ struct Region
 	/// Returns: a slice of outBuffer with actual data or null if chunk was not
 	/// stored on disk previously.
 	/// Positions are region local. I.e. 0..REGION_SIZE
-	public ubyte[] readChunk(ivec3 chunkPosition, ubyte[] outBuffer, out TimestampType timestamp)
+	public ubyte[] readChunk(ChunkRegionPos chunkPosition, ubyte[] outBuffer, out TimestampType timestamp)
 	{
 		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
 		if (!isChunkOnDisk(chunkPosition)) return null;
 
-		auto chunkIndex = calcChunkIndex(chunkPosition);
+		auto chunkIndex = ChunkRegionIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 
@@ -151,6 +152,8 @@ struct Region
 		{
 			errorf("Invalid sector chunk %s, sector %s, numSectors %s while total sectors %s",
 				chunkPosition, sectorNumber, numSectors, sectors.length);
+			errorf("Erasing chunk");
+			eraseChunk(chunkIndex);
 			return null;
 		}
 
@@ -164,6 +167,8 @@ struct Region
 		{
 			errorf("Invalid data length %s, %s > %s * %s",
 				chunkPosition, dataLength, numSectors, SECTOR_SIZE);
+			errorf("Erasing chunk");
+			eraseChunk(chunkIndex);
 			return null;
 		}
 
@@ -173,11 +178,11 @@ struct Region
 
 	/// Writes chunk at chunkPosition with data blockData to disk.
 	/// Positions are region local. I.e. 0..REGION_SIZE
-	public void writeChunk(ivec3 chunkPosition, in ubyte[] blockData, TimestampType timestamp)
+	public void writeChunk(ChunkRegionPos chunkPosition, in ubyte[] blockData, TimestampType timestamp)
 	{
 		assert(isValidPosition(chunkPosition), format("Invalid position %s", chunkPosition));
 
-		auto chunkIndex = calcChunkIndex(chunkPosition);
+		auto chunkIndex = ChunkRegionIndex(chunkPosition);
 		auto sectorNumber = offsets[chunkIndex] >> 8;
 		auto numSectors = offsets[chunkIndex] & 0xFF;
 
@@ -252,7 +257,7 @@ struct Region
 		fixPadding();
 	}
 
-	private bool isValidPosition(ivec3 chunkPosition)
+	private bool isValidPosition(ChunkRegionPos chunkPosition)
 	{
 		return !(chunkPosition.x < 0 || chunkPosition.x >= REGION_SIZE ||
 				chunkPosition.y < 0 || chunkPosition.y >= REGION_SIZE ||
@@ -318,7 +323,7 @@ struct Region
 		file.rawWrite(data);
 	}
 
-	private void setChunkOffset(size_t chunkIndex, uint position, ubyte size)
+	private void setChunkOffset(ChunkRegionIndex chunkIndex, uint position, ubyte size)
 	{
 		uint offset = (position << 8) | size;
 		offsets[chunkIndex] = offset;
@@ -326,11 +331,17 @@ struct Region
 		file.rawWrite(nativeToBigEndian(offset));
 	}
 
-	private void setChunkTimestamp(size_t chunkIndex, TimestampType timestamp)
+	private void setChunkTimestamp(ChunkRegionIndex chunkIndex, TimestampType timestamp)
 	{
 		timestamps[chunkIndex] = timestamp;
 		file.seek(REGION_SIZE_CUBE * uint.sizeof + chunkIndex * TimestampType.sizeof);
 		file.rawWrite(nativeToBigEndian(timestamp));
+	}
+
+	private void eraseChunk(ChunkRegionIndex chunkIndex)
+	{
+		setChunkTimestamp(chunkIndex, 0);
+		setChunkOffset(chunkIndex, 0, 0);
 	}
 
 	private void fixPadding()
@@ -344,9 +355,4 @@ struct Region
 				file.rawWrite(emptyByte);
 		}
 	}
-}
-
-size_t calcChunkIndex(ivec3 chunkPosition)
-{
-	return chunkPosition.x + chunkPosition.y * REGION_SIZE + chunkPosition.z * REGION_SIZE_SQR;
 }

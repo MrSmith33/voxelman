@@ -28,6 +28,7 @@ import voxelman.config;
 import voxelman.events;
 import voxelman.packets;
 import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 import voxelman.storage.worldaccess;
 import voxelman.utils.math;
@@ -79,8 +80,7 @@ final class ClientPlugin : IPlugin
 	vec3 lineStart, lineEnd;
 	bool cursorHit;
 	bool showCursor;
-	BlockType blockType;
-	ivec3 blockPos;
+	BlockWorldPos blockPos;
 	vec3 hitPosition;
 	ivec3 hitNormal;
 	Duration cursorTraceTime;
@@ -88,7 +88,7 @@ final class ClientPlugin : IPlugin
 	// Send position interval
 	double sendPositionTimer = 0;
 	enum sendPositionInterval = 0.1;
-	ivec3 prevChunkPos;
+	ChunkWorldPos prevChunkPos;
 
 	string clientName(ClientId clientId)
 	{
@@ -146,21 +146,21 @@ final class ClientPlugin : IPlugin
 	{
 		if (chunkMan.blockMan.blocks[blockId].isVisible)
 		{
-			blockPos += hitNormal;
+			blockPos.vector += hitNormal;
 		}
 
 		//infof("hit %s, blockPos %s, blockType %s, hitPosition %s, hitNormal %s time %s",
 		//	cursorHit, blockPos, blockType, hitPosition, hitNormal,
 		//	cursorTraceTime.formatDuration);
 
-		cursorPos = vec3(blockPos) - vec3(0.005, 0.005, 0.005);
+		cursorPos = vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005);
 		lineStart = graphics.camera.position;
 		lineEnd = graphics.camera.position + graphics.camera.target * 40;
 
 		if (cursorHit)
 		{
 			showCursor = true;
-			connection.send(PlaceBlockPacket(blockPos, blockId));
+			connection.send(PlaceBlockPacket(blockPos.vector, blockId));
 		}
 		else
 		{
@@ -195,7 +195,7 @@ final class ClientPlugin : IPlugin
 
 		chunkMan.update();
 
-		ivec3 chunkPos = worldToChunkPos(graphics.camera.position);
+		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
 		if (isSpawned)
 		{
 			sendPositionTimer += event.deltaTime;
@@ -226,23 +226,29 @@ final class ClientPlugin : IPlugin
 		StopWatch sw;
 		sw.start();
 
-		cursorHit = traceRay(&worldAccess,
-			&chunkMan.blockMan,
+		auto isBlockSolid = (ivec3 blockWorldPos) {
+			return chunkMan
+				.blockMan
+				.blocks[worldAccess.getBlock(BlockWorldPos(blockWorldPos))]
+				.isVisible;
+		};
+
+		cursorHit = traceRay(
+			isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
 			40.0, // max distance
-			blockType,
 			hitPosition,
 			hitNormal,
 			1e-3);
 
-		blockPos = hitPosition;
+		blockPos = BlockWorldPos(hitPosition);
 		cursorTraceTime = cast(Duration)sw.peek;
 
 		graphics.debugDraw.drawCube(
-				vec3(blockPos) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
+				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
 		graphics.debugDraw.drawCube(
-				vec3(blockPos+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
+				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
 	}
 
 	void incViewRadius()
@@ -308,7 +314,7 @@ final class ClientPlugin : IPlugin
 			if (isCullingEnabled)
 			{
 				// Frustum culling
-				ivec3 ivecMin = c.position * CHUNK_SIZE;
+				ivec3 ivecMin = c.position.vector * CHUNK_SIZE;
 				vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
 				vec3 vecMax = vecMin + CHUNK_SIZE;
 				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
@@ -414,13 +420,13 @@ final class ClientPlugin : IPlugin
 		auto packet = unpackPacket!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
-		chunkMan.onChunkLoaded(packet.chunkPos, packet.blockData);
+		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
 	}
 
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		Chunk* chunk = chunkMan.chunkStorage.getChunk(packet.chunkPos);
+		Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(packet.chunkPos));
 		// We can receive data for chunk that is already deleted.
 		if (chunk is null || chunk.isMarkedForDeletion)
 			return;

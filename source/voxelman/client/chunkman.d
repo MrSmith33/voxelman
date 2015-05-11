@@ -16,6 +16,7 @@ import voxelman.client.chunkmeshman;
 import voxelman.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
+import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 
 ///
@@ -28,7 +29,7 @@ struct ChunkMan
 	size_t totalLoadedChunks;
 
 	Volume visibleVolume;
-	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
+	ChunkWorldPos observerPosition;
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 
 	BlockMan blockMan;
@@ -62,7 +63,7 @@ struct ChunkMan
 		chunkStorage.update();
 	}
 
-	void onChunkLoaded(ivec3 chunkPos, BlockData blockData)
+	void onChunkLoaded(ChunkWorldPos chunkPos, BlockData blockData)
 	{
 		Chunk* chunk = chunkStorage.getChunk(chunkPos);
 
@@ -89,16 +90,16 @@ struct ChunkMan
 			.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
 	}
 
-	Volume calcVolume(ivec3 position)
+	Volume calcVolume(ChunkWorldPos position)
 	{
 		auto size = viewRadius*2 + 1;
-		return Volume(cast(ivec3)(position - viewRadius),
+		return Volume(cast(ivec3)(position.vector - viewRadius),
 			ivec3(size, size, size));
 	}
 
 	void updateObserverPosition(vec3 cameraPos)
 	{
-		ivec3 chunkPos = worldToChunkPos(cameraPos);
+		ChunkWorldPos chunkPos = BlockWorldPos(cameraPos);
 		observerPosition = chunkPos;
 
 		Volume newVolume = calcVolume(chunkPos);
@@ -125,19 +126,21 @@ struct ChunkMan
 		// remove chunks
 		foreach(chunkPos; chunksToRemove)
 		{
-			chunkStorage.removeQueue.add(chunkStorage.getChunk(chunkPos));
+			chunkStorage
+				.removeQueue
+				.add(chunkStorage.getChunk(ChunkWorldPos(chunkPos)));
 		}
 
 		// load chunks
 		foreach(chunkPos; chunksToLoad)
 		{
-			chunkStorage.loadChunk(chunkPos);
+			chunkStorage.loadChunk(ChunkWorldPos(chunkPos));
 		}
 	}
 
 	void loadVolume(Volume volume)
 	{
 		import std.algorithm : each;
-		volume.positions.each!(pos => chunkStorage.loadChunk(pos));
+		volume.positions.each!(pos => chunkStorage.loadChunk(ChunkWorldPos(pos)));
 	}
 }

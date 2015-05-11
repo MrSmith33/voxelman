@@ -17,13 +17,14 @@ import dlib.math.vector : ivec3;
 
 import voxelman.block;
 import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.config;
 
 
 struct MeshGenResult
 {
 	ubyte[] meshData;
-	ivec3 position;
+	ChunkWorldPos position;
 }
 
 void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)

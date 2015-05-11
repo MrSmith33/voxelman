@@ -8,6 +8,7 @@ module voxelman.storage.worldaccess;
 import std.experimental.logger;
 import voxelman.config;
 import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 import voxelman.storage.world;
 
@@ -15,7 +16,7 @@ import voxelman.storage.world;
 /// changes will automatically proparate to client each tick
 struct WorldAccess
 {
-	this(Chunk* delegate(ivec3) chunkGetter,
+	this(Chunk* delegate(ChunkWorldPos) chunkGetter,
 		TimestampType delegate() timestampGetter)
 	{
 		this.chunkGetter = chunkGetter;
@@ -25,16 +26,16 @@ struct WorldAccess
 	}
 	@disable this();
 
-	BlockType getBlock(ivec3 blockPos)
+	BlockType getBlock(BlockWorldPos blockPos)
 	{
-		ivec3 chunkPos = worldToChunkPos(blockPos);
+		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
 		Chunk* chunk = chunkGetter(chunkPos);
 		if (chunk)
 		{
 			BlockDataSnapshot* snapshot = chunk.getReadableSnapshot(timestampGetter());
 			if (snapshot)
 			{
-				auto blockIndex = worldToChunkBlockIndex(blockPos);
+				auto blockIndex = BlockChunkIndex(blockPos);
 				return snapshot.blockData.getBlockType(blockIndex);
 			}
 		}
@@ -42,9 +43,9 @@ struct WorldAccess
 		return 0; // unknown block. Indicates that chunk is not loaded.
 	}
 
-	bool setBlock(ivec3 blockPos, BlockType blockType)
+	bool setBlock(BlockWorldPos blockPos, BlockType blockType)
 	{
-		ivec3 chunkPos = worldToChunkPos(blockPos);
+		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
 		Chunk* chunk = chunkGetter(chunkPos);
 
 		if (chunk)
@@ -55,11 +56,11 @@ struct WorldAccess
 			if (snapshot is null)
 				return false;
 
-			auto blockIndex = worldToChunkBlockIndex(blockPos);
+			auto blockIndex = BlockChunkIndex(blockPos);
 			snapshot.blockData.setBlockType(blockIndex, blockType);
 
 			foreach(handler; onChunkModifiedHandlers)
-				handler(chunk, [BlockChange(blockIndex, blockType)]);
+				handler(chunk, [BlockChange(blockIndex.index, blockType)]);
 
 			return true;
 		}
@@ -67,7 +68,7 @@ struct WorldAccess
 			return false;
 	}
 
-	//bool isBlockLoaded(ivec3 blockPos);
+	//bool isBlockLoaded(BlockWorldPos blockPos);
 	//bool loadBlockRange(AABB aabb);
 	TimestampType currentTimestamp() @property
 	{
@@ -76,6 +77,6 @@ struct WorldAccess
 
 	void delegate(Chunk*, BlockChange[])[] onChunkModifiedHandlers;
 private:
-	Chunk* delegate(ivec3) chunkGetter;
+	Chunk* delegate(ChunkWorldPos) chunkGetter;
 	TimestampType delegate() timestampGetter;
 }

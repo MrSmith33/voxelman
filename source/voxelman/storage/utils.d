@@ -33,89 +33,11 @@ size_t euclidDistSqr(ivec3 position, ivec3 other)
 	return (position.x - other.x)^^2 + (position.y - other.y)^^2 + (position.z - other.z)^^2;
 }
 
-ivec3 calcRegionPos(ivec3 chunkWorldPos)
-{
-	return ivec3(
-		floor(chunkWorldPos.x / cast(float)REGION_SIZE),
-		floor(chunkWorldPos.y / cast(float)REGION_SIZE),
-		floor(chunkWorldPos.z / cast(float)REGION_SIZE));
-}
-
-// chunk position within region
-ivec3 calcRegionLocalPos(ivec3 chunkWorldPos)
-{
-	chunkWorldPos.x %= REGION_SIZE;
-	chunkWorldPos.y %= REGION_SIZE;
-	chunkWorldPos.z %= REGION_SIZE;
-	if (chunkWorldPos.x < 0) chunkWorldPos.x += REGION_SIZE;
-	if (chunkWorldPos.y < 0) chunkWorldPos.y += REGION_SIZE;
-	if (chunkWorldPos.z < 0) chunkWorldPos.z += REGION_SIZE;
-	return chunkWorldPos;
-}
-
 Volume calcVolume(ivec3 position, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
 	return Volume(cast(ivec3)(position - viewRadius),
 		ivec3(size, size, size));
-}
-
-ivec3 worldToChunkPos(vec3 worldPos)
-{
-	import voxelman.utils.math : nansToZero;
-
-	nansToZero(worldPos);
-	return ivec3(
-		floor(worldPos.x / CHUNK_SIZE),
-		floor(worldPos.y / CHUNK_SIZE),
-		floor(worldPos.z / CHUNK_SIZE),);
-}
-
-ivec3 worldToChunkPos(ivec3 worldPos)
-{
-	return ivec3(
-		floor(cast(float)worldPos.x / CHUNK_SIZE),
-		floor(cast(float)worldPos.y / CHUNK_SIZE),
-		floor(cast(float)worldPos.z / CHUNK_SIZE),);
-}
-
-// converts global position to position in the chunk
-vec3 worldToChunkLocalPos(vec3 worldPos)
-{
-	import voxelman.utils.math : nansToZero;
-
-	nansToZero(worldPos);
-	worldPos.x %= CHUNK_SIZE;
-	worldPos.y %= CHUNK_SIZE;
-	worldPos.z %= CHUNK_SIZE;
-	if (worldPos.x < 0) worldPos.x += CHUNK_SIZE;
-	if (worldPos.y < 0) worldPos.y += CHUNK_SIZE;
-	if (worldPos.z < 0) worldPos.z += CHUNK_SIZE;
-	return worldPos;
-}
-
-ivec3 worldToChunkLocalPos(ivec3 worldPos)
-{
-	worldPos.x %= CHUNK_SIZE;
-	worldPos.y %= CHUNK_SIZE;
-	worldPos.z %= CHUNK_SIZE;
-	if (worldPos.x < 0) worldPos.x += CHUNK_SIZE;
-	if (worldPos.y < 0) worldPos.y += CHUNK_SIZE;
-	if (worldPos.z < 0) worldPos.z += CHUNK_SIZE;
-	return worldPos;
-}
-
-
-ushort worldToChunkBlockIndex(vec3 worldPos)
-{
-	ivec3 localPos = ivec3(worldToChunkLocalPos(worldPos));
-	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
-}
-
-ushort worldToChunkBlockIndex(ivec3 worldPos)
-{
-	ivec3 localPos = ivec3(worldToChunkLocalPos(worldPos));
-	return cast(ushort)blockIndex(cast(ubyte)localPos.x, cast(ubyte)localPos.y, cast(ubyte)localPos.z);
 }
 
 // 3d grid volume
@@ -380,10 +302,4 @@ unittest
 		Volume(ivec3(0,0,0), ivec3(2,2,2)),
 		Volume(ivec3(0,0,-1), ivec3(2,2,2))) ==
 		Volume(ivec3(0,0,0), ivec3(2,2,1)));
-}
-
-// returns index of block in blockData from local block position
-size_t blockIndex(ubyte x, ubyte y, ubyte z)
-{
-	return x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
 }

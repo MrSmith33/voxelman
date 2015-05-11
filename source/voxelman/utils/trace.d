@@ -15,12 +15,10 @@ import voxelman.storage.worldaccess;
 
 /// Returns true if block was hit
 bool traceRay(
-	WorldAccess* worldAccess, // world access interface
-	BlockMan* blockMan,
+	bool delegate(ivec3) isBlockSolid,
 	vec3 startingPosition, // starting position
 	vec3 rayDirection, // direction
 	float maxDistance,
-	out BlockType blockType,
 	out vec3 hitPosition, // resulting position hit
 	out ivec3 hitNormal, // normal of hit surface
 	const float EPSILON = 1e-6)
@@ -31,8 +29,6 @@ bool traceRay(
 	float curProgress = 0.0;
 	int nx, ny, nz;
 	float ex, ey, ez, step, minStep;
-
-	BlockType block;
 
 	vec3 curPos;
 	ivec3 curPosInt;
@@ -48,9 +44,7 @@ bool traceRay(
 
 		posFloatDelta = curPos - vec3(curPosInt);
 
-		block = worldAccess.getBlock(curPosInt);
-
-		if(blockMan.blocks[block].isVisible)
+		if(isBlockSolid(curPosInt))
 		{
 			//Clamp to face on hit
 			hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : (posFloatDelta.x > 1.0-EPSILON ? curPosInt.x+1.0-EPSILON : curPos.x);
@@ -71,11 +65,11 @@ bool traceRay(
 
 			if(ex && ey && ez)
 			{
-				BlockType block1 = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y+ny, curPosInt.z));
-				BlockType block2 = worldAccess.getBlock(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z+nz));
-				BlockType block3 = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z+nz));
+				bool anySolid = isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y+ny, curPosInt.z)) ||
+								isBlockSolid(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z+nz)) ||
+								isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z+nz));
 
-				if(blockMan.blocks[block1].isVisible || blockMan.blocks[block2].isVisible || blockMan.blocks[block3].isVisible)
+				if(anySolid)
 				{
 					hitPosition.x = nx < 0 ? curPosInt.x-EPSILON : curPosInt.x + 1.0-EPSILON;
 					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
@@ -87,9 +81,7 @@ bool traceRay(
 
 			if(ex && (ey || ez))
 			{
-				block = worldAccess.getBlock(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z));
-
-				if(blockMan.blocks[block].isVisible)
+				if(isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z)))
 				{
 					hitPosition.x = nx < 0 ? curPosInt.x-EPSILON : curPosInt.x + 1.0-EPSILON;
 					hitPosition.y = posFloatDelta.y < EPSILON ? +curPosInt.y : curPos.y;
@@ -101,9 +93,7 @@ bool traceRay(
 
 			if(ey && (ex || ez))
 			{
-				block = worldAccess.getBlock(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z));
-
-				if(blockMan.blocks[block].isVisible)
+				if(isBlockSolid(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z)))
 				{
 					hitPosition.x = posFloatDelta.x < EPSILON ? +curPosInt.x : curPos.x;
 					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
@@ -115,9 +105,7 @@ bool traceRay(
 
 			if(ez && (ex || ey))
 			{
-				block = worldAccess.getBlock(ivec3(curPosInt.x, curPosInt.y, curPosInt.z+nz));
-
-				if(blockMan.blocks[block].isVisible)
+				if(isBlockSolid(ivec3(curPosInt.x, curPosInt.y, curPosInt.z+nz)))
 				{
 					hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : curPos.x;
 					hitPosition.y = posFloatDelta.y < EPSILON ? curPosInt.y : curPos.y;

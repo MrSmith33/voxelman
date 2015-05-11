@@ -16,8 +16,9 @@ import dlib.math.vector : ivec3;
 import anchovy.utils.noise.simplex;
 
 import voxelman.block;
-import voxelman.storage.chunk;
 import voxelman.config;
+import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 
 
 alias Generator = Generator2d;
@@ -29,7 +30,7 @@ alias Generator = Generator2d;
 struct ChunkGenResult
 {
 	BlockData blockData;
-	ivec3 position;
+	ChunkWorldPos position;
 	TimestampType timestamp;
 }
 
@@ -44,7 +45,7 @@ void chunkGenWorkerThread(Tid mainTid)
 		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
-				(ivec3 position){chunkGenWorker(position, mainTid);},
+				(ChunkWorldPos position){chunkGenWorker(position, mainTid);},
 				(Variant v){isRunningLocal = false;}
 			);
 		}
@@ -57,7 +58,7 @@ void chunkGenWorkerThread(Tid mainTid)
 }
 
 // Gen single chunk
-void chunkGenWorker(ivec3 position, Tid mainThread)
+void chunkGenWorker(ChunkWorldPos position, Tid mainThread)
 {
 	int wx = position.x, wy = position.y, wz = position.z;
 
@@ -65,7 +66,7 @@ void chunkGenWorker(ivec3 position, Tid mainThread)
 	bd.convertToArray();
 	bool uniform = true;
 
-	Generator generator = Generator(position * CHUNK_SIZE);
+	Generator generator = Generator(position.vector * CHUNK_SIZE);
 	generator.genPerChunkData();
 
 	bd.blocks[0] = generator.generateBlock(0, 0, 0);

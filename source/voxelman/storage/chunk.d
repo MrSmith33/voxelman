@@ -13,6 +13,7 @@ import dlib.math.vector;
 import voxelman.config;
 import voxelman.block;
 import voxelman.chunkmesh;
+import voxelman.storage.coordinates;
 import voxelman.storage.region;
 import voxelman.storage.utils;
 
@@ -114,25 +115,14 @@ struct BlockData
 		blocks = null;
 	}
 
-	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
-	{
-		return getBlockType(cx + cy * CHUNK_SIZE_SQR + cz * CHUNK_SIZE);
-	}
-
-	BlockType getBlockType(size_t index)
+	BlockType getBlockType(BlockChunkIndex index)
 	{
 		if (uniform) return uniformType;
 		return blocks[index];
 	}
 
 	// returns true if data was changed
-	bool setBlockType(ubyte cx, ubyte cy, ubyte cz, BlockType blockType)
-	{
-		return setBlockType(cx + cy * CHUNK_SIZE_SQR + cz * CHUNK_SIZE, blockType);
-	}
-
-	// returns true if data was changed
-	bool setBlockType(size_t index, BlockType blockType)
+	bool setBlockType(BlockChunkIndex index, BlockType blockType)
 	{
 		if (uniform)
 		{
@@ -165,7 +155,7 @@ struct BlockData
 
 		foreach(change; changes)
 		{
-			if (setBlockType(change.index, change.blockType))
+			if (setBlockType(BlockChunkIndex(change.index), change.blockType))
 			{
 				if (change.index < start)
 					start = change.index;
@@ -183,7 +173,7 @@ struct BlockData
 	{
 		foreach(change; changes)
 		{
-			setBlockType(change.index, change.blockType);
+			setBlockType(BlockChunkIndex(change.index), change.blockType);
 		}
 	}
 
@@ -193,7 +183,7 @@ struct BlockData
 		foreach(change; changes)
 		{
 			if (change.index <= CHUNK_SIZE_CUBE)
-				setBlockType(change.index, change.blockType);
+				setBlockType(BlockChunkIndex(change.index), change.blockType);
 		}
 	}
 }
@@ -203,14 +193,19 @@ struct Chunk
 {
 	@disable this();
 
-	this(ivec3 position)
+	this(ChunkWorldPos position)
 	{
 		this.position = position;
 	}
 
-	BlockType getBlockType(ubyte cx, ubyte cy, ubyte cz)
+	BlockType getBlockType(int x, int y, int z)
 	{
-		return snapshot.blockData.getBlockType(cx, cy, cz);
+		return getBlockType(BlockChunkIndex(x, y, z));
+	}
+
+	BlockType getBlockType(BlockChunkIndex blockChunkIndex)
+	{
+		return snapshot.blockData.getBlockType(blockChunkIndex);
 	}
 
 	bool allAdjacentLoaded() @property
@@ -276,8 +271,7 @@ struct Chunk
 			return null;
 	}
 
-	ivec3 position;
-	//BlockData data;
+	ChunkWorldPos position;
 	BlockDataSnapshot snapshot;
 	ChunkMesh mesh;
 	Chunk*[6] adjacent;

@@ -18,6 +18,7 @@ import plugin.pluginmanager;
 
 import voxelman.config;
 import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 import voxelman.events;
 
@@ -223,9 +224,9 @@ public:
 		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
 			pos.x, pos.y, pos.z).to!dstring;
 
-		ivec3 chunkPos = clientPlugin.chunkMan.observerPosition;
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPosition = calcRegionLocalPos(chunkPos);
+		ChunkWorldPos chunkPos = clientPlugin.chunkMan.observerPosition;
+		auto regionPos = RegionWorldPos(chunkPos);
+		auto localChunkPosition = ChunkRegionPos(chunkPos);
 		lines[ 7]["text"] = format("C: %s R: %s L: %s",
 			chunkPos, regionPos, localChunkPosition).to!dstring;
 

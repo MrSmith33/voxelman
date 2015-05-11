@@ -11,8 +11,9 @@ import std.conv : to;
 import cbor;
 
 import voxelman.block;
-import voxelman.storage.chunk;
 import voxelman.chunkgen;
+import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.storage.regionstorage;
 import voxelman.utils.rlecompression;
 
@@ -29,7 +30,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 		bool isRunningLocal = true;
 		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
 
-		void writeChunk(ivec3 chunkPos, BlockData data, TimestampType timestamp)
+		void writeChunk(ChunkWorldPos chunkPos, BlockData data, TimestampType timestamp)
 		{
 			//infof("writing chunk %s ", chunkPos);
 			if (regionStorage.isChunkOnDisk(chunkPos) &&
@@ -50,12 +51,14 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 			}
 		}
 
-		immutable(ChunkGenResult)* readChunk(ivec3 chunkPos)
+		immutable(ChunkGenResult)* readChunk(ChunkWorldPos chunkPos)
 		{
 			assert(regionStorage.isChunkOnDisk(chunkPos));
 			//infof("reading chunk %s ", chunkPos);
 			TimestampType timestamp;
 			auto data = regionStorage.readChunk(chunkPos, buffer[], timestamp);
+			if (data is null) return null;
+
 			BlockData compressedData = decodeCborSingle!BlockData(data);
 			BlockData uncompressedData = compressedData;
 			uncompressedData.blocks = rleDecode(compressedData.blocks, compressBuffer).dup;
@@ -69,13 +72,19 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 		{
 			receive(
 				// read
-				(ivec3 chunkPos, Tid genWorker) {
+				(ChunkWorldPos chunkPos, Tid genWorker) {
 					if (!atomicLoad(*isRunning)) return;
 					if (regionStorage.isChunkOnDisk(chunkPos))
 					{
 						try
 						{
 							immutable(ChunkGenResult)* result = readChunk(chunkPos);
+							if (result is null)
+							{
+								genWorker.send(chunkPos);
+								return;
+							}
+
 							mainTid.send(result);
 						}
 						catch(Exception e)
@@ -89,7 +98,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 					}
 				},
 				// write
-				(ivec3 chunkPos, shared BlockData blockData,
+				(ChunkWorldPos chunkPos, shared BlockData blockData,
 					TimestampType timestamp, bool deleteData)
 				{
 					writeChunk(chunkPos, cast(BlockData)blockData, timestamp);

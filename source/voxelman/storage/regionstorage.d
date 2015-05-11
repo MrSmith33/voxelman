@@ -15,7 +15,8 @@ import std.stdio : FOPEN_MAX;
 import dlib.math.vector : ivec3;
 import voxelman.config : TimestampType;
 import voxelman.storage.chunk;
-import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo, calcChunkIndex;
+import voxelman.storage.coordinates;
+import voxelman.storage.region : Region, REGION_SIZE, ChunkStoreInfo;
 import voxelman.storage.utils;
 
 enum MAX_CACHED_REGIONS = FOPEN_MAX;
@@ -24,7 +25,7 @@ enum MAX_CACHED_REGIONS = FOPEN_MAX;
 struct RegionStorage
 {
 	private string regionDirectory;
-	private Region*[ivec3] regions;
+	private Region*[RegionWorldPos] regions;
 	private char[] buffer;
 	private Appender!(char[]) appender;
 
@@ -49,10 +50,10 @@ struct RegionStorage
 		regions = null;
 	}
 
-	bool isChunkOnDisk(ivec3 chunkPos)
+	bool isChunkOnDisk(ChunkWorldPos chunkPos)
 	{
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
+		RegionWorldPos regionPos = RegionWorldPos(chunkPos);
+		ChunkRegionPos localChunkPositions = ChunkRegionPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 			return false;
@@ -60,10 +61,10 @@ struct RegionStorage
 		return loadRegion(regionPos).isChunkOnDisk(localChunkPositions);
 	}
 
-	public TimestampType chunkTimestamp(ivec3 chunkPos)
+	public TimestampType chunkTimestamp(ChunkWorldPos chunkPos)
 	{
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
+		RegionWorldPos regionPos = RegionWorldPos(chunkPos);
+		ChunkRegionPos localChunkPositions = ChunkRegionPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 			return 0;
@@ -71,15 +72,15 @@ struct RegionStorage
 		return loadRegion(regionPos).chunkTimestamp(localChunkPositions);
 	}
 
-	public ChunkStoreInfo getChunkStoreInfo(ivec3 chunkPos)
+	public ChunkStoreInfo getChunkStoreInfo(ChunkWorldPos chunkPos)
 	{
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
+		RegionWorldPos regionPos = RegionWorldPos(chunkPos);
+		ChunkRegionPos localChunkPositions = ChunkRegionPos(chunkPos);
 
 		if (!isRegionOnDisk(regionPos))
 		{
 			return ChunkStoreInfo(false, localChunkPositions, chunkPos,
-				regionPos, calcChunkIndex(localChunkPositions));
+				regionPos, ChunkRegionIndex(localChunkPositions));
 		}
 
 		auto res = loadRegion(regionPos).getChunkStoreInfo(localChunkPositions);
@@ -88,32 +89,32 @@ struct RegionStorage
 		return res;
 	}
 
-	bool isRegionOnDisk(ivec3 regionPos)
+	bool isRegionOnDisk(RegionWorldPos regionPos)
 	{
 		if (getRegion(regionPos) !is null)
 			return true;
 		return exists(regionFilename(regionPos));
 	}
 
-	ubyte[] readChunk(ivec3 chunkPos, ubyte[] outBuffer, out TimestampType timestamp)
+	ubyte[] readChunk(ChunkWorldPos chunkPos, ubyte[] outBuffer, out TimestampType timestamp)
 	{
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
+		RegionWorldPos regionPos = RegionWorldPos(chunkPos);
+		ChunkRegionPos localChunkPositions = ChunkRegionPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
 		return region.readChunk(localChunkPositions, outBuffer, timestamp);
 	}
 
-	void writeChunk(ivec3 chunkPos, in ubyte[] blockData, TimestampType timestamp)
+	void writeChunk(ChunkWorldPos chunkPos, in ubyte[] blockData, TimestampType timestamp)
 	{
-		ivec3 regionPos = calcRegionPos(chunkPos);
-		ivec3 localChunkPositions = calcRegionLocalPos(chunkPos);
+		RegionWorldPos regionPos = RegionWorldPos(chunkPos);
+		ChunkRegionPos localChunkPositions = ChunkRegionPos(chunkPos);
 
 		Region* region = loadRegion(regionPos);
 		region.writeChunk(localChunkPositions, blockData, timestamp);
 	}
 
-	private Region* loadRegion(ivec3 regionPos)
+	private Region* loadRegion(RegionWorldPos regionPos)
 	{
 		if (auto region = getRegion(regionPos))
 			return region;
@@ -129,12 +130,12 @@ struct RegionStorage
 		return region;
 	}
 
-	private Region* getRegion(ivec3 regionPos)
+	private Region* getRegion(RegionWorldPos regionPos)
 	{
 		return regions.get(regionPos, null);
 	}
 
-	private const(char[]) regionFilename(ivec3 regionPos)
+	private const(char[]) regionFilename(RegionWorldPos regionPos)
 	{
 		appender.clear();
 		formattedWrite(appender, "%s%s%s_%s_%s.region",

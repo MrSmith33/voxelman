@@ -8,6 +8,7 @@ module voxelman.storage.chunkstorage;
 import dlib.math.vector : vec3, ivec3;
 import voxelman.block;
 import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 
 struct ChunkRemoveQueue
 {
@@ -75,12 +76,12 @@ struct ChunkRemoveQueue
 ///
 struct ChunkStorage
 {
-	Chunk*[ivec3] chunks;
+	Chunk*[ChunkWorldPos] chunks;
 	ChunkRemoveQueue removeQueue;
 	void delegate(Chunk* chunk)[] onChunkAddedHandlers;
 	void delegate(Chunk* chunk)[] onChunkRemovedHandlers;
 
-	Chunk* getChunk(ivec3 position)
+	Chunk* getChunk(ChunkWorldPos position)
 	{
 		return chunks.get(position, null);
 	}
@@ -90,12 +91,12 @@ struct ChunkStorage
 		removeQueue.process(&removeChunk);
 	}
 
-	private Chunk* createEmptyChunk(ivec3 position)
+	private Chunk* createEmptyChunk(ChunkWorldPos position)
 	{
 		return new Chunk(position);
 	}
 
-	bool loadChunk(ivec3 position)
+	bool loadChunk(ChunkWorldPos position)
 	{
 		if (auto chunk = chunks.get(position, null))
 		{
@@ -116,12 +117,12 @@ struct ChunkStorage
 	{
 		assert(emptyChunk);
 		chunks[emptyChunk.position] = emptyChunk;
-		ivec3 position = emptyChunk.position;
+		ChunkWorldPos position = emptyChunk.position;
 
 		void attachAdjacent(ubyte side)()
 		{
 			byte[3] offset = sideOffsets[side];
-			ivec3 otherPosition = ivec3(cast(int)(position.x + offset[0]),
+			ChunkWorldPos otherPosition = ivec3(cast(int)(position.x + offset[0]),
 												cast(int)(position.y + offset[1]),
 												cast(int)(position.z + offset[2]));
 			Chunk* other = getChunk(otherPosition);

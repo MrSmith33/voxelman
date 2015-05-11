@@ -19,6 +19,7 @@ import voxelman.server.serverplugin;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
+import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 
 
@@ -64,8 +65,8 @@ struct ChunkMan
 	ChunkStorage* chunkStorage;
 
 	ServerConnection connection;
-	ChunkObserverList[ivec3] chunkObservers;
-	BlockChange[][ivec3] chunkChanges;
+	ChunkObserverList[ChunkWorldPos] chunkObservers;
+	BlockChange[][ChunkWorldPos] chunkChanges;
 
 	size_t totalObservedChunks;
 
@@ -74,7 +75,7 @@ struct ChunkMan
 		auto volume = connection.clientStorage[clientId].visibleVolume;
 		foreach(chunkPosition; volume.positions)
 		{
-			removeChunkObserver(chunkPosition, clientId);
+			removeChunkObserver(ChunkWorldPos(chunkPosition), clientId);
 		}
 	}
 
@@ -84,8 +85,8 @@ struct ChunkMan
 		assert(clientInfo, "clientStorage[clientId] is null");
 		Volume oldVolume = clientInfo.visibleVolume;
 
-		ivec3 chunkPos = worldToChunkPos(clientInfo.pos);
-		Volume newVolume = calcVolume(chunkPos, clientInfo.viewRadius);
+		ChunkWorldPos chunkPos = BlockWorldPos(clientInfo.pos);
+		Volume newVolume = calcVolume(chunkPos.vector, clientInfo.viewRadius);
 		if (oldVolume == newVolume) return;
 
 		onClientVisibleVolumeChanged(oldVolume, newVolume, clientId);
@@ -108,7 +109,7 @@ struct ChunkMan
 		// remove chunks
 		foreach(chunkPosition; chunksToRemove)
 		{
-			removeChunkObserver(chunkPosition, clientId);
+			removeChunkObserver(ChunkWorldPos(chunkPosition), clientId);
 		}
 
 		// load chunks
@@ -151,11 +152,11 @@ struct ChunkMan
 
 		foreach(chunkPosition; chunksToLoad)
 		{
-			addChunkObserver(chunkPosition, clientId);
+			addChunkObserver(ChunkWorldPos(chunkPosition), clientId);
 		}
 	}
 
-	void addChunkObserver(ivec3 position, ClientId clientId)
+	void addChunkObserver(ChunkWorldPos position, ClientId clientId)
 	{
 		if (!isChunkInWorldBounds(position)) return;
 
@@ -174,7 +175,7 @@ struct ChunkMan
 		}
 	}
 
-	void removeChunkObserver(ivec3 position, ClientId clientId)
+	void removeChunkObserver(ChunkWorldPos position, ClientId clientId)
 	{
 		if (!isChunkInWorldBounds(position)) return;
 
@@ -187,21 +188,21 @@ struct ChunkMan
 		}
 	}
 
-	void sendChunkToObservers(ivec3 position)
+	void sendChunkToObservers(ChunkWorldPos position)
 	{
 		//tracef("send chunk to all %s %s", position, chunkStorage.getChunk(position).snapshot.blockData.blocks.length);
 		sendToChunkObservers(position,
-			ChunkDataPacket(position, chunkStorage.getChunk(position).snapshot.blockData));
+			ChunkDataPacket(position.vector, chunkStorage.getChunk(position).snapshot.blockData));
 	}
 
-	void sendChunkTo(ivec3 position, ClientId clientId)
+	void sendChunkTo(ChunkWorldPos position, ClientId clientId)
 	{
 		//tracef("send chunk to %s %s", position, chunkStorage.getChunk(position).snapshot.blockData.blocks.length);
 		connection.sendTo(clientId,
-			ChunkDataPacket(position, chunkStorage.getChunk(position).snapshot.blockData));
+			ChunkDataPacket(position.vector, chunkStorage.getChunk(position).snapshot.blockData));
 	}
 
-	void sendToChunkObservers(P)(ivec3 position, P packet)
+	void sendToChunkObservers(P)(ChunkWorldPos position, P packet)
 	{
 		if (auto observerlist = position in chunkObservers)
 		{
@@ -209,7 +210,7 @@ struct ChunkMan
 		}
 	}
 
-	bool isChunkInWorldBounds(ivec3 position)
+	bool isChunkInWorldBounds(ChunkWorldPos position)
 	{
 		static if (BOUND_WORLD)
 		{
@@ -229,7 +230,7 @@ struct ChunkMan
 			ivec3 otherPosition = ivec3(chunk.position.x + offset[0],
 									chunk.position.y + offset[1],
 									chunk.position.z + offset[2]);
-			Chunk* c = chunkStorage.getChunk(otherPosition);
+			Chunk* c = chunkStorage.getChunk(ChunkWorldPos(otherPosition));
 			tracef("%s", c is null ? "null" : "a");
 		}
 
@@ -242,7 +243,7 @@ struct ChunkMan
 	{
 		foreach(pair; chunkChanges.byKeyValue)
 			sendToChunkObservers(pair.key,
-				MultiblockChangePacket(pair.key, pair.value));
+				MultiblockChangePacket(pair.key.vector, pair.value));
 		chunkChanges = null;
 	}
 }

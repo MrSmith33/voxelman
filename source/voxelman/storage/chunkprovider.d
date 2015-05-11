@@ -12,10 +12,11 @@ import std.experimental.logger;
 
 import dlib.math.vector;
 
-import voxelman.config;
 import voxelman.chunkgen;
+import voxelman.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
+import voxelman.storage.coordinates;
 import voxelman.storage.storageworker;
 import voxelman.storage.world;
 import voxelman.utils.queue : Queue;
@@ -28,7 +29,7 @@ struct ChunkProvider
 private:
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(storageWorkerThread) storeWorker;
-	Queue!ivec3 loadQueue;
+	Queue!ChunkWorldPos loadQueue;
 	ChunkStorage* chunkStorage;
 
 	size_t chunksEnqueued;

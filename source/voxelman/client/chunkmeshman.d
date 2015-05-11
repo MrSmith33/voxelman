@@ -10,11 +10,12 @@ import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
 
 import voxelman.blockman;
-import voxelman.client.chunkman;
-import voxelman.storage.chunk;
 import voxelman.chunkmesh;
+import voxelman.client.chunkman;
 import voxelman.config;
 import voxelman.meshgen;
+import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
 import voxelman.utils.queue;
 import voxelman.utils.workergroup;
 
@@ -24,7 +25,7 @@ struct ChunkMeshMan
 {
 	WorkerGroup!(meshWorkerThread) meshWorkers;
 
-	ChunkChange[ivec3] chunkChanges;
+	ChunkChange[ChunkWorldPos] chunkChanges;
 
 	Queue!(Chunk*) changedChunks;
 	Queue!(Chunk*) chunksToMesh;
@@ -197,8 +198,8 @@ struct ChunkMeshMan
 			chunk.mesh = new ChunkMesh();
 		chunk.mesh.data = meshData;
 
-		ivec3 position = chunk.position;
-		chunk.mesh.position = position * CHUNK_SIZE;
+		ChunkWorldPos position = chunk.position;
+		chunk.mesh.position = position.vector * CHUNK_SIZE;
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
