@@ -66,7 +66,6 @@ in
 	{
 		assert(a !is null);
 		assert(!a.hasWriter);
-		assert(a.isLoaded);
 	}
 }
 body

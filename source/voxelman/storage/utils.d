@@ -5,7 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.storage.utils;
 
+import std.experimental.logger;
 import std.math : floor;
+import std.range : chain, only;
 import dlib.math.vector;
 
 import voxelman.config;
@@ -251,6 +253,148 @@ struct ChunkRange
 		rx0y0z0, rx0y0z1, rx0y1z0, rx0y1z1,
 		rx1y0z0, rx1y0z1, rx1y1z0, rx1y1z1];
 	}
+}
+
+struct TrisectResult
+{
+	ChunkRange[] aChunkRanges;
+	ChunkRange intersection;
+	ChunkRange[] bChunkRanges;
+	import std.algorithm : map, joiner;
+	auto aChunkCoords() @property
+	{
+		return aChunkRanges.map!(a => a.chunkCoords).joiner;
+	}
+	auto bChunkCoords() @property
+	{
+		return bChunkRanges.map!(a => a.chunkCoords).joiner;
+	}
+}
+
+// Finds intersection between two boxes
+// [0] a - b  == a if no intersection
+// [1] a intersects b
+// [2] b - a  == b if no intersection
+TrisectResult trisect(ChunkRange a, ChunkRange b)
+{
+	// no intersection
+	if (rangeIntersection(a, b).empty)
+	{
+		return TrisectResult([a], ChunkRange(), [b]);
+	}
+
+	auto xTrisect = trisectAxis(a.coord.x, a.coord.x + a.size.x, b.coord.x, b.coord.x + b.size.x);
+	auto yTrisect = trisectAxis(a.coord.y, a.coord.y + a.size.y, b.coord.y, b.coord.y + b.size.y);
+	auto zTrisect = trisectAxis(a.coord.z, a.coord.z + a.size.z, b.coord.z, b.coord.z + b.size.z);
+
+	TrisectResult result;
+
+	foreach(xa; xTrisect.aranges[0..xTrisect.numRangesA].chain(only(xTrisect.irange)))
+	foreach(ya; yTrisect.aranges[0..yTrisect.numRangesA].chain(only(yTrisect.irange)))
+	foreach(za; zTrisect.aranges[0..zTrisect.numRangesA].chain(only(zTrisect.irange)))
+	{
+		if (!(xa.isIntersection && ya.isIntersection && za.isIntersection))
+			result.aChunkRanges ~= ChunkRange(ivec3(xa.start, ya.start, za.start),
+				ivec3(xa.length, ya.length, za.length));
+	}
+
+	foreach(xb; xTrisect.branges[0..xTrisect.numRangesB].chain(only(xTrisect.irange)))
+	foreach(yb; yTrisect.branges[0..yTrisect.numRangesB].chain(only(yTrisect.irange)))
+	foreach(zb; zTrisect.branges[0..zTrisect.numRangesB].chain(only(zTrisect.irange)))
+	{
+		if (!(xb.isIntersection && yb.isIntersection && zb.isIntersection))
+			result.bChunkRanges ~= ChunkRange(ivec3(xb.start, yb.start, zb.start),
+				ivec3(xb.length, yb.length, zb.length));
+	}
+
+	result.intersection = ChunkRange(
+		ivec3(xTrisect.irange.start, yTrisect.irange.start, zTrisect.irange.start),
+		ivec3(xTrisect.irange.length, yTrisect.irange.length, zTrisect.irange.length));
+
+	return result;
+}
+
+struct AxisRange
+{
+	int start;
+	int end;
+	bool isIntersection;
+	int length() @property
+	out (result)
+	{
+		assert(result >= 0);
+	}
+	body
+	{
+		return end - start;
+	}
+}
+
+struct TrisectAxisResult
+{
+	AxisRange[2] aranges;
+	ubyte numRangesA;
+	AxisRange irange;
+	AxisRange[2] branges;
+	ubyte numRangesB;
+}
+
+// a  aStart *----* aEnd
+// b    bStart *----* bEnd
+// does not handle situation when there is no intersection
+TrisectAxisResult trisectAxis(int aStart, int aEnd, int bStart, int bEnd)
+{
+	TrisectAxisResult res;
+
+	if (aStart < bStart)
+	{
+		res.aranges[res.numRangesA++] = AxisRange(aStart, bStart);
+		// bOnlyStart1 = 0
+		// bOnlyEnd1 = 0
+		res.irange.start = bStart;
+	}
+	else if (aStart > bStart)
+	{
+		// aOnlyStart1 = 0
+		// aOnlyEnd1 = 0
+		res.branges[res.numRangesB++] = AxisRange(bStart, aStart);
+		res.irange.start = aStart;
+	}
+	else
+	{
+		// aOnlyStart1 = 0
+		// aOnlyEnd1 = 0
+		// bOnlyStart1 = 0
+		// bOnlyEnd1 = 0
+		res.irange.start = aStart;
+	}
+
+	if (aEnd < bEnd)
+	{
+		res.irange.end = aEnd;
+		// aOnlyStart2 = 0
+		// aOnlyEnd2 = 0
+		res.branges[res.numRangesB++] = AxisRange(aEnd, bEnd);
+	}
+	else if (aEnd > bEnd)
+	{
+		res.irange.end = bEnd;
+		res.aranges[res.numRangesA++] = AxisRange(bEnd, aEnd);
+		// bOnlyStart2 = 0
+		// bOnlyEnd2 = 0
+	}
+	else
+	{
+		res.irange.end = bEnd;
+		// aOnlyStart2 = 0
+		// aOnlyEnd2 = 0
+		// bOnlyStart2 = 0
+		// bOnlyEnd2 = 0
+	}
+
+	res.irange.isIntersection = true;
+
+	return res;
 }
 
 ChunkRange rangeIntersection(ChunkRange r1, ChunkRange r2)

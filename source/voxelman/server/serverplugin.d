@@ -28,6 +28,7 @@ import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.world;
+import voxelman.utils.math;
 
 
 final class ServerConnection : BaseServer!ClientInfo{}
@@ -303,6 +304,10 @@ public:
 	{
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
 		infof("Received ViewRadiusPacket(%s)", packet.viewRadius);
+		ClientInfo* info = connection.clientStorage[clientId];
+		info.viewRadius = clamp(packet.viewRadius,
+			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+		chunkMan.updateObserverPosition(clientId);
 	}
 
 	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)

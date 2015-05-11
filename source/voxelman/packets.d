@@ -70,7 +70,7 @@ struct ClientPositionPacket
 // sent by client after receiving SessionInfoPacket
 struct ViewRadiusPacket
 {
-	size_t viewRadius;
+	int viewRadius;
 }
 
 struct ChunkDataPacket

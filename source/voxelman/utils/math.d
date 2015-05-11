@@ -6,7 +6,8 @@ Authors: Andrey Penechko.
 
 module voxelman.utils.math;
 
-import dlib.math.vector;
+public import dlib.math.vector;
+public import dlib.math.utils;
 import std.traits : isFloatingPoint;
 import std.math : isNaN;
 

@@ -43,11 +43,14 @@ ubyte[] makeNullMesh(const Block block,
 ubyte[] makeColoredBlockMesh(const Block block,
 		ubyte bx, ubyte by, ubyte bz, ubyte sides, ubyte sidesnum)
 {
+	import std.random;
 	static immutable(float)[] shadowMultipliers = [
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 	ubyte[] data;
 	data.reserve(sidesnum * 48);
+
+	float randomTint = uniform(0.92f, 1.0f);
 
 	foreach(ubyte i; 0..6)
 	{
@@ -59,9 +62,9 @@ ubyte[] makeColoredBlockMesh(const Block block,
 				data ~= cast(ubyte)(faces[18*i+v+1] + by);
 				data ~= cast(ubyte)(faces[18*i+v+2] + bz);
 				data ~= 0;
-				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[0]);
-				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[1]);
-				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[2]);
+				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[0] * randomTint);
+				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[1] * randomTint);
+				data ~= cast(ubyte)(shadowMultipliers[i] * block.color[2] * randomTint);
 				data ~= 0;
 			} // for v
 		} // if

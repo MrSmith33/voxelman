@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.client.chunkman;
 
 import std.experimental.logger;
+import std.datetime : StopWatch, Duration;
 
 import dlib.math.vector : vec3, ivec3;
 
@@ -28,7 +29,7 @@ struct ChunkMan
 
 	ChunkRange visibleRegion;
 	ivec3 observerPosition = ivec3(int.max, int.max, int.max);
-	uint viewRadius = VIEW_RADIUS;
+	int viewRadius = DEFAULT_VIEW_RADIUS;
 
 	BlockMan blockMan;
 	ChunkMeshMan chunkMeshMan;
@@ -98,11 +99,10 @@ struct ChunkMan
 	void updateObserverPosition(vec3 cameraPos)
 	{
 		ivec3 chunkPos = worldToChunkPos(cameraPos);
-
-		if (chunkPos == observerPosition) return;
 		observerPosition = chunkPos;
 
 		ChunkRange newRegion = calcChunkRange(chunkPos);
+		if (newRegion == visibleRegion) return;
 
 		updateVisibleRegion(newRegion);
 	}
@@ -118,7 +118,9 @@ struct ChunkMan
 			return;
 		}
 
-		auto chunksToRemove = oldRegion.chunksNotIn(newRegion);
+		auto trisectResult = trisect(oldRegion, newRegion);
+		auto chunksToRemove = trisectResult.aChunkCoords;//oldRegion.chunksNotIn(newRegion);
+		auto chunksToLoad = trisectResult.bChunkCoords;
 
 		// remove chunks
 		foreach(chunkCoord; chunksToRemove)
@@ -127,9 +129,7 @@ struct ChunkMan
 		}
 
 		// load chunks
-		// ivec3[] chunksToLoad = newRegion.chunksNotIn(oldRegion).array;
-		// sort!((a, b) => a.euclidDist(observerPosition) > b.euclidDist(observerPosition))(chunksToLoad);
-		foreach(chunkCoord; newRegion.chunksNotIn(oldRegion))
+		foreach(chunkCoord; chunksToLoad)
 		{
 			chunkStorage.loadChunk(chunkCoord);
 		}
@@ -137,11 +137,7 @@ struct ChunkMan
 
 	void loadRegion(ChunkRange region)
 	{
-		foreach(int x; region.coord.x..(region.coord.x + region.size.x))
-		foreach(int y; region.coord.y..(region.coord.y + region.size.y))
-		foreach(int z; region.coord.z..(region.coord.z + region.size.z))
-		{
-			chunkStorage.loadChunk(ivec3(x, y, z));
-		}
+		import std.algorithm : each;
+		region.chunkCoords.each!(a => chunkStorage.loadChunk(a));
 	}
 }

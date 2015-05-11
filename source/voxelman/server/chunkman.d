@@ -83,11 +83,9 @@ struct ChunkMan
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		assert(clientInfo, "clientStorage[clientId] is null");
 		ChunkRange oldRegion = clientInfo.visibleRegion;
-		vec3 cameraPos = clientInfo.pos;
-		int viewRadius = clientInfo.viewRadius;
 
-		ivec3 chunkPos = worldToChunkPos(cameraPos);
-		ChunkRange newRegion = calcChunkRange(chunkPos, viewRadius);
+		ivec3 chunkPos = worldToChunkPos(clientInfo.pos);
+		ChunkRange newRegion = calcChunkRange(chunkPos, clientInfo.viewRadius);
 		if (oldRegion == newRegion) return;
 
 		onClientVisibleRegionChanged(oldRegion, newRegion, clientId);
@@ -103,7 +101,9 @@ struct ChunkMan
 			return;
 		}
 
-		auto chunksToRemove = oldRegion.chunksNotIn(newRegion);
+		auto trisectResult = trisect(oldRegion, newRegion);
+		auto chunksToRemove = trisectResult.aChunkCoords;//oldRegion.chunksNotIn(newRegion);
+		auto chunksToLoad = trisectResult.bChunkCoords;
 
 		// remove chunks
 		foreach(chunkCoord; chunksToRemove)
@@ -112,7 +112,7 @@ struct ChunkMan
 		}
 
 		// load chunks
-		observeChunks(newRegion.chunksNotIn(oldRegion), clientId);
+		observeChunks(chunksToLoad, clientId);
 	}
 
 	void onChunkAdded(Chunk* chunk)

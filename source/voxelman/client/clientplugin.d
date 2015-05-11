@@ -61,15 +61,20 @@ final class ClientPlugin : IPlugin
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 
+	// Client data
+	// --
+
+	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
 	bool isSpawned = false;
 
+	// Client id stuff
 	ClientId myId;
 	string myName = "client_name";
 	string[ClientId] clientNames;
 
-	// shows AABB of hovered block
+	// Cursor rendering stuff
 	vec3 cursorPos, cursorSize = vec3(1.02, 1.02, 1.02);
 	vec3 lineStart, lineEnd;
 	bool cursorHit;
@@ -80,6 +85,7 @@ final class ClientPlugin : IPlugin
 	ivec3 hitNormal;
 	Duration cursorTraceTime;
 
+	// Send position interval
 	double sendPositionTimer = 0;
 	enum sendPositionInterval = 0.1;
 	ivec3 prevChunkPos;
@@ -237,6 +243,33 @@ final class ClientPlugin : IPlugin
 				vec3(blockPos) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
 		graphics.debugDraw.drawCube(
 				vec3(blockPos+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
+	}
+
+	void incViewRadius()
+	{
+		setViewRadius(getViewRadius() + 1);
+	}
+
+	void decViewRadius()
+	{
+		setViewRadius(getViewRadius() - 1);
+	}
+
+	int getViewRadius()
+	{
+		return chunkMan.viewRadius;
+	}
+
+	void setViewRadius(int newViewRadius)
+	{
+		auto oldViewRadius = chunkMan.viewRadius;
+		chunkMan.viewRadius = clamp(newViewRadius,
+			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+
+		if (oldViewRadius != chunkMan.viewRadius)
+		{
+			connection.send(ViewRadiusPacket(chunkMan.viewRadius));
+		}
 	}
 
 	void sendPosition()

@@ -129,7 +129,7 @@ public:
 			info(item);
 		info("---------------------------------------------------------\n");
 
-		fpsHelper.limitFps = true;
+		fpsHelper.limitFps = false;
 
 		// Setup rendering
 		clearColor = Color(115,200,169);
@@ -329,6 +329,9 @@ public:
 			case KeyCode.KEY_C: clientPlugin.isCullingEnabled = !clientPlugin.isCullingEnabled; break;
 			case KeyCode.KEY_R: graphics.resetCamera(); break;
 			case KeyCode.KEY_F4: clientPlugin.sendMessage("/stop"); break;
+			case KeyCode.KEY_LEFT_BRACKET: clientPlugin.decViewRadius(); break;
+			case KeyCode.KEY_RIGHT_BRACKET: clientPlugin.incViewRadius(); break;
+
 			default: break;
 		}
 	}

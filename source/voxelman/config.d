@@ -8,7 +8,7 @@ module voxelman.config;
 import dlib.math.vector : vec3, ivec3, ivec4;
 
 alias BlockType = ubyte;
-alias TimestampType = uint;
+alias TimestampType = ulong;
 
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
@@ -23,7 +23,9 @@ enum string WORLD_FILE_NAME = "worldinfo.cbor";
 
 
 enum NUM_WORKERS = 4;
-enum VIEW_RADIUS = 2;
+enum DEFAULT_VIEW_RADIUS = 5;
+enum MIN_VIEW_RADIUS = 1;
+enum MAX_VIEW_RADIUS = 12;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 
@@ -35,5 +37,5 @@ enum CONNECT_PORT = 1234;
 
 enum ENABLE_RLE_PACKET_COMPRESSION = true;
 
-enum SERVER_UPDATES_PER_SECOND = 120;
+enum SERVER_UPDATES_PER_SECOND = 240;
 enum size_t SERVER_FRAME_TIME_USECS = 1_000_000 / SERVER_UPDATES_PER_SECOND;

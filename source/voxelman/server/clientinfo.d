@@ -15,7 +15,7 @@ struct ClientInfo
 	string name;
 	vec3 pos = START_POS;
 	vec2 heading = vec2(0, 0);
-	int viewRadius = VIEW_RADIUS;
+	int viewRadius = DEFAULT_VIEW_RADIUS;
 	ChunkRange visibleRegion;
 
 	ENetPeer* peer;
