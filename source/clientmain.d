@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.clientmain;
 
 import voxelman.utils.log;
-import voxelman.client.app;
+import voxelman.client.clientplugin;
 import anchovy.gui;
 
 void main(string[] args)
@@ -18,6 +18,7 @@ void main(string[] args)
 	//f2 = f;
 
 	setupLogger("client.log");
-	auto app = new ClientApp(uvec2(1280, 720), "Voxelman client");
-	app.run(args);
+	auto clientPlugin = new ClientPlugin();
+	clientPlugin.run(args);
+	//auto app = new ClientApp(uvec2(1280, 720), "Voxelman client");
 }

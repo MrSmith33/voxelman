@@ -1,33 +1,161 @@
 /**
-Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
 module voxelman.plugins.guiplugin;
 
+import std.experimental.logger;
+import std.string : format;
+
+import anchovy.core.interfaces.iwindow;
+import anchovy.graphics.windows.glfwwindow;
+import anchovy.gui.application.application;
+import anchovy.gui;
+
+
 import plugin;
 
-class GuiPlugin : IPlugin
+import voxelman.config;
+import voxelman.storage.chunk;
+import voxelman.storage.coordinates;
+import voxelman.storage.utils;
+import voxelman.events;
+
+import voxelman.plugins.eventdispatcherplugin;
+import voxelman.plugins.graphicsplugin;
+
+
+//version = manualGC;
+version(manualGC) import core.memory;
+
+class ClosePressedEvent : GameEvent {}
+
+final class GuiPlugin : IPlugin
 {
-	override string name() @property { return "GuiPlugin"; }
-	override string semver() @property { return "1.0.0"; }
-	override void preInit() { }
-
-	override void init(IPluginManager pluginman) { }
-
-	override void postInit() { }
-
-	void update(double delta)
-	{
-
-	}
-
-	void addTemplate(string temlateName)
-	{
-
-	}
-
 private:
+	EventDispatcherPlugin evDispatcher;
+	GraphicsPlugin graphics;
+	Application!GlfwWindow application;
 
+public:
+
+	IRenderer renderer() @property
+	{
+		return application.renderer;
+	}
+
+	IWindow window() @property
+	{
+		return application.window;
+	}
+
+	GuiContext context() @property
+	{
+		return application.context;
+	}
+
+	ref FpsHelper fpsHelper() @property
+	{
+		return application.fpsHelper;
+	}
+
+	override string name() @property { return "GuiPlugin"; }
+	override string semver() @property { return "0.5.0"; }
+	override void preInit()
+	{
+		application = new Application!GlfwWindow(WINDOW_SIZE, "Voxelman client");
+		application.init([]);
+		appLoad();
+	}
+
+	override void init(IPluginManager pluginman)
+	{
+		graphics = pluginman.getPlugin!GraphicsPlugin(this);
+
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onDraw2Event);
+		evDispatcher.subscribeToEvent(&onGameStopEvent);
+	}
+
+	override void postInit() {}
+
+	void onPreUpdateEvent(PreUpdateEvent event)
+	{
+		window.processEvents();
+		application.update(event.deltaTime);
+	}
+
+	void onDraw2Event(Draw2Event draw2Event)
+	{
+		application.context.eventDispatcher.draw();
+	}
+
+	void onGameStopEvent(GameStopEvent stopEvent)
+	{
+		application.window.releaseWindow;
+	}
+
+	void addHideHandler(string frameId)
+	{
+		auto frame = application.context.getWidgetById(frameId);
+		Widget closeButton = frame["subwidgets"].get!(Widget[string])["close"];
+		closeButton.addEventHandler(delegate bool(Widget widget, PointerClickEvent event){
+			frame["isVisible"] = false;
+			return true;
+		});
+	}
+
+	void setupFrameShowButton(string buttonId, string frameId)
+	{
+		auto frame = application.context.getWidgetById(frameId);
+		application.context.getWidgetById(buttonId).addEventHandler(delegate bool(Widget widget, PointerClickEvent event){
+			frame["isVisible"] = true;
+			return true;
+		});
+	}
+
+	void appLoad()
+	{
+		info("---------------------- System info ----------------------");
+		foreach(item; application.getHardwareInfo())
+			info(item);
+		info("---------------------------------------------------------\n");
+
+		fpsHelper.limitFps = false;
+
+		// Bind events
+		window.windowResized.connect(&windowResized);
+		window.closePressed.connect(&closePressed);
+
+		// ----------------------------- Creating widgets -----------------------------
+		application.templateManager.parseFile("voxelman.sdl");
+
+		auto mainLayer = application.context.createWidget("mainLayer");
+		application.context.addRoot(mainLayer);
+
+		auto frameLayer = application.context.createWidget("frameLayer");
+		application.context.addRoot(frameLayer);
+
+		// Frames
+		addHideHandler("infoFrame");
+		addHideHandler("settingsFrame");
+
+		setupFrameShowButton("showInfo", "infoFrame");
+		setupFrameShowButton("showSettings", "settingsFrame");
+
+		info("\n----------------------------- Load end -----------------------------\n");
+	}
+
+	void windowResized(uvec2 newSize)
+	{
+		graphics.camera.aspect = cast(float)window.size.x/window.size.y;
+	}
+
+	void closePressed()
+	{
+		evDispatcher.postEvent(new ClosePressedEvent);
+	}
 }

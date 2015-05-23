@@ -18,11 +18,13 @@ import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
 
 import plugin;
+import plugin.pluginmanager;
 import netlib.connection;
 import netlib.baseclient;
 
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
+import voxelman.plugins.guiplugin;
 
 import voxelman.config;
 import voxelman.events;
@@ -50,6 +52,13 @@ final class ClientConnection : BaseClient{}
 
 final class ClientPlugin : IPlugin
 {
+private:
+	PluginManager pluginman = new PluginManager;
+	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
+	GraphicsPlugin graphics = new GraphicsPlugin;
+	GuiPlugin guiPlugin = new GuiPlugin;
+
+public:
 	AppStatistics stats;
 
 	// Game stuff
@@ -58,17 +67,18 @@ final class ClientPlugin : IPlugin
 
 	ClientConnection connection;
 
-	IWindow window;
-	EventDispatcherPlugin evDispatcher;
-	GraphicsPlugin graphics;
+	// Debug
+	Widget debugInfo;
 
 	// Client data
-	// --
+	bool isRunning = false;
+	bool isSpawned = false;
+	bool mouseLocked;
+	bool autoMove;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
-	bool isSpawned = false;
 
 	// Client id stuff
 	ClientId myId;
@@ -90,21 +100,9 @@ final class ClientPlugin : IPlugin
 	enum sendPositionInterval = 0.1;
 	ChunkWorldPos prevChunkPos;
 
-	string clientName(ClientId clientId)
-	{
-		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
-	}
-
-	this(IWindow window)
-	{
-		this.window = window;
-		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
-	}
-
-
 	// IPlugin stuff
 	override string name() @property { return "ClientPlugin"; }
-	override string semver() @property { return "0.3.0"; }
+	override string semver() @property { return "0.5.0"; }
 	override void preInit()
 	{
 		loadEnet();
@@ -130,16 +128,113 @@ final class ClientPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		graphics = pluginman.getPlugin!GraphicsPlugin(this);
-		evDispatcher.subscribeToEvent(&update);
+
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
+		evDispatcher.subscribeToEvent(&onClosePressedEvent);
+		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
 
 	override void postInit()
 	{
 		chunkMan.updateObserverPosition(graphics.camera.position);
 		connect();
+		guiPlugin.window.keyReleased.connect(&keyReleased);
+		guiPlugin.window.mouseReleased.connect(&mouseReleased);
+
+		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
+		foreach(i; 0..12) guiPlugin.context.createWidget("label", debugInfo);
+		guiPlugin.context.getWidgetById("stopServer").addEventHandler(&onStopServer);
+	}
+
+	bool onStopServer(Widget widget, PointerClickEvent event)
+	{
+		sendMessage("/stop");
+		return true;
+	}
+
+	void printDebug()
+	{
+		// Print debug info
+		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
+		string[] statStrings = stats.getFormattedOutput();
+
+		lines[ 0]["text"] = statStrings[0].to!dstring;
+		lines[ 1]["text"] = statStrings[1].to!dstring;
+
+		lines[ 2]["text"] = statStrings[2].to!dstring;
+		lines[ 3]["text"] = statStrings[3].to!dstring;
+		stats.lastFrameLoadedChunks = stats.totalLoadedChunks;
+
+		lines[ 4]["text"] = statStrings[4].to!dstring;
+		lines[ 5]["text"] = statStrings[5].to!dstring;
+
+		vec3 pos = graphics.camera.position;
+		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
+			pos.x, pos.y, pos.z).to!dstring;
+
+		ChunkWorldPos chunkPos = chunkMan.observerPosition;
+		auto regionPos = RegionWorldPos(chunkPos);
+		auto localChunkPosition = ChunkRegionPos(chunkPos);
+		lines[ 7]["text"] = format("C: %s R: %s L: %s",
+			chunkPos, regionPos, localChunkPosition).to!dstring;
+
+		vec3 target = graphics.camera.target;
+		vec2 heading = graphics.camera.heading;
+		lines[ 8]["text"] = format("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
+			heading.x, heading.y, target.x, target.y, target.z).to!dstring;
+		lines[ 9]["text"] = format("Chunks to remove: %s",
+			chunkMan.removeQueue.length).to!dstring;
+		//lines[ 10]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
+		lines[ 11]["text"] = format("Chunks to mesh: %s", chunkMan.chunkMeshMan.numMeshChunkTasks).to!dstring;
+	}
+
+	this()
+	{
+		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
+	}
+
+	void run(string[] args)
+	{
+		import std.datetime : TickDuration, Clock, usecs;
+		import core.thread : Thread;
+
+		version(manualGC) GC.disable;
+
+		pluginman.registerPlugin(guiPlugin);
+		pluginman.registerPlugin(graphics);
+		pluginman.registerPlugin(evDispatcher);
+		pluginman.registerPlugin(this);
+
+		info("Loading plugins");
+		pluginman.initPlugins();
+
+		TickDuration lastTime = Clock.currAppTick;
+		TickDuration newTime = TickDuration.from!"seconds"(0);
+
+		isRunning = true;
+		while(isRunning)
+		{
+			newTime = Clock.currAppTick;
+			double delta = (newTime - lastTime).usecs / 1_000_000.0;
+			lastTime = newTime;
+
+			evDispatcher.postEvent(new PreUpdateEvent(delta));
+			evDispatcher.postEvent(new UpdateEvent(delta));
+			evDispatcher.postEvent(new PostUpdateEvent(delta));
+			graphics.draw();
+
+			version(manualGC) GC.collect();
+
+			// time used in frame
+			delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
+			guiPlugin.fpsHelper.sleepAfterFrame(delta);
+		}
+
+		evDispatcher.postEvent(new GameStopEvent);
 	}
 
 	void placeBlock(BlockType blockId)
@@ -178,14 +273,14 @@ final class ClientPlugin : IPlugin
 		connection.connect(CONNECT_ADDRESS, CONNECT_PORT);
 	}
 
-	void unload()
+	void onGameStopEvent(GameStopEvent gameStopEvent)
 	{
 		connection.disconnect();
 		chunkMan.stop();
 		thread_joinAll();
 	}
 
-	void update(UpdateEvent event)
+	void onUpdateEvent(UpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
 			chunkMan.updateObserverPosition(graphics.camera.position);
@@ -213,12 +308,10 @@ final class ClientPlugin : IPlugin
 		prevChunkPos = chunkPos;
 
 		traceCursor();
-		if (showCursor)
-		{
-			graphics.debugDraw.drawCube(
-				cursorPos, cursorSize, Colors.black, false);
-			graphics.debugDraw.drawLine(lineStart, lineEnd, Colors.black);
-		}
+		drawDebugCursor();
+		updateStats();
+		printDebug();
+		stats.resetCounters();
 	}
 
 	void traceCursor()
@@ -249,6 +342,22 @@ final class ClientPlugin : IPlugin
 				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
 		graphics.debugDraw.drawCube(
 				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
+	}
+
+	void drawDebugCursor()
+	{
+		if (showCursor)
+		{
+			graphics.debugDraw.drawCube(
+				cursorPos, cursorSize, Colors.black, false);
+			graphics.debugDraw.drawLine(lineStart, lineEnd, Colors.black);
+		}
+	}
+
+	void updateStats()
+	{
+		stats.fps = guiPlugin.fpsHelper.fps;
+		stats.totalLoadedChunks = chunkMan.totalLoadedChunks;
 	}
 
 	void incViewRadius()
@@ -288,6 +397,101 @@ final class ClientPlugin : IPlugin
 	void sendMessage(string msg)
 	{
 		connection.send(MessagePacket(0, msg));
+	}
+
+	void onClosePressedEvent(ClosePressedEvent event)
+	{
+		isRunning = false;
+	}
+
+	void onPreUpdateEvent(PreUpdateEvent event)
+	{
+		if(mouseLocked)
+		{
+			ivec2 mousePos = guiPlugin.window.mousePosition;
+			mousePos -= cast(ivec2)(guiPlugin.window.size) / 2;
+
+			// scale, so up and left is positive, as rotation is anti-clockwise
+			// and coordinate system is right-hand and -z if forward
+			mousePos *= -1;
+
+			if(mousePos.x !=0 || mousePos.y !=0)
+			{
+				graphics.camera.rotate(vec2(mousePos));
+			}
+			guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
+
+			uint cameraSpeed = 10;
+			vec3 posDelta = vec3(0,0,0);
+			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_LEFT_SHIFT)) cameraSpeed = 60;
+
+			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_D)) posDelta.x = 1;
+			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_A)) posDelta.x = -1;
+
+			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_W)) posDelta.z = 1;
+			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_S)) posDelta.z = -1;
+
+			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_SPACE)) posDelta.y = 1;
+			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_LEFT_CONTROL)) posDelta.y = -1;
+
+			if (posDelta != vec3(0))
+			{
+				posDelta.normalize();
+				posDelta *= cameraSpeed * event.deltaTime;
+				graphics.camera.moveAxis(posDelta);
+			}
+		}
+		// TODO: remove after bug is found
+		else if (autoMove)
+		{
+			// Automoving
+			graphics.camera.moveAxis(vec3(0,0,20)*event.deltaTime);
+		}
+	}
+
+	void keyReleased(uint keyCode)
+	{
+		switch(keyCode)
+		{
+			case KeyCode.KEY_Q: mouseLocked = !mouseLocked;
+				if (mouseLocked)
+					guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
+				break;
+			case KeyCode.KEY_P: graphics.camera.printVectors; break;
+			//case KeyCode.KEY_I:
+
+			//	chunkMan
+			//	.regionStorage
+			//	.getChunkStoreInfo(chunkMan.observerPosition)
+			//	.writeln("\n");
+			//	break;
+			case KeyCode.KEY_M:
+				break;
+			case KeyCode.KEY_U:
+				doUpdateObserverPosition = !doUpdateObserverPosition; break;
+			case KeyCode.KEY_C: isCullingEnabled = !isCullingEnabled; break;
+			case KeyCode.KEY_R: graphics.resetCamera(); break;
+			case KeyCode.KEY_F4: sendMessage("/stop"); break;
+			case KeyCode.KEY_LEFT_BRACKET: decViewRadius(); break;
+			case KeyCode.KEY_RIGHT_BRACKET: incViewRadius(); break;
+
+			default: break;
+		}
+	}
+
+	void mouseReleased(uint mouseButton)
+	{
+		if (mouseLocked)
+		switch(mouseButton)
+		{
+			case PointerButton.PB_1:
+				placeBlock(1);
+				break;
+			case PointerButton.PB_2:
+				placeBlock(2);
+				break;
+			default:break;
+		}
 	}
 
 	void drawScene(Draw1Event event)
@@ -341,8 +545,8 @@ final class ClientPlugin : IPlugin
 		glDisable(GL_DEPTH_TEST);
 
 		event.renderer.setColor(Color(0,0,0,1));
-		event.renderer.fillRect(Rect(graphics.windowSize.x/2-7, graphics.windowSize.y/2-1, 14, 2));
-		event.renderer.fillRect(Rect(graphics.windowSize.x/2-1, graphics.windowSize.y/2-7, 2, 14));
+		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
+		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));
 	}
 
 	void onConnect(ref ENetEvent event)
@@ -431,5 +635,10 @@ final class ClientPlugin : IPlugin
 		if (chunk is null || chunk.isMarkedForDeletion)
 			return;
 		chunkMan.onChunkChanged(chunk, packet.blockChanges);
+	}
+
+	string clientName(ClientId clientId)
+	{
+		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
 	}
 }

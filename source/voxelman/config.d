@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.config;
 
-import dlib.math.vector : vec3, ivec3, ivec4;
+import dlib.math.vector : vec3, ivec3, ivec4, uvec2;
 
 alias BlockType = ubyte;
 alias TimestampType = ulong;
@@ -39,3 +39,5 @@ enum ENABLE_RLE_PACKET_COMPRESSION = true;
 
 enum SERVER_UPDATES_PER_SECOND = 240;
 enum size_t SERVER_FRAME_TIME_USECS = 1_000_000 / SERVER_UPDATES_PER_SECOND;
+
+enum WINDOW_SIZE = uvec2(1280, 720);

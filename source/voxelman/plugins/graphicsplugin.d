@@ -12,10 +12,12 @@ import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
 import plugin;
-import voxelman.plugins.eventdispatcherplugin : GameEvent;
+import voxelman.plugins.eventdispatcherplugin;
+import voxelman.plugins.guiplugin;
 import voxelman.config;
 import voxelman.utils.fpscamera;
 public import voxelman.utils.debugdraw;
+
 
 class Draw1Event : GameEvent {
 	this(IRenderer renderer)
@@ -34,14 +36,23 @@ class Draw2Event : GameEvent {
 
 final class GraphicsPlugin : IPlugin
 {
+	FpsCamera camera;
+	DebugDraw debugDraw;
+
+	ShaderProgram chunkShader;
+	GLuint modelLoc, viewLoc, projectionLoc;
+
+	IRenderer renderer;
+	EventDispatcherPlugin evDispatcher;
+
+	// Variables
+
 	override string name() @property { return "GraphicsPlugin"; }
 	override string semver() @property { return "0.3.0"; }
 	override void preInit()
 	{
 		camera.move(START_POS);
 		camera.sensivity = CAMERA_SENSIVITY;
-
-		camera.aspect = cast(float)windowSize.x/windowSize.y;
 
 		// Setup shaders
 
@@ -74,9 +85,18 @@ final class GraphicsPlugin : IPlugin
 		debugDraw.init();
 	}
 
-	override void init(IPluginManager pluginman) { }
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		auto gui = pluginman.getPlugin!GuiPlugin(this);
+		renderer = gui.renderer;
+	}
 
-	override void postInit() { }
+	override void postInit()
+	{
+		renderer.setClearColor(Color(115,200,169));
+		camera.aspect = cast(float)renderer.windowSize.x/renderer.windowSize.y;
+	}
 
 	void resetCamera()
 	{
@@ -86,10 +106,17 @@ final class GraphicsPlugin : IPlugin
 		camera.update();
 	}
 
-	uvec2 windowSize;
-	FpsCamera camera;
-	DebugDraw debugDraw;
+	void draw()
+	{
+		glScissor(0, 0, renderer.windowSize.x, renderer.windowSize.y);
+		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-	ShaderProgram chunkShader;
-	GLuint modelLoc, viewLoc, projectionLoc;
+		evDispatcher.postEvent(new Draw1Event(renderer));
+
+		renderer.enableAlphaBlending();
+		evDispatcher.postEvent(new Draw2Event(renderer));
+		renderer.disableAlphaBlending();
+
+		renderer.flush();
+	}
 }
