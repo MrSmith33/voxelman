@@ -9,10 +9,6 @@ module voxelman.utils.trace;
 import std.math : floor;
 import dlib.math.vector;
 
-import voxelman.blockman;
-import voxelman.config;
-import voxelman.storage.worldaccess;
-
 /// Returns true if block was hit
 bool traceRay(
 	bool delegate(ivec3) isBlockSolid,

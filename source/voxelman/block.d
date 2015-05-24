@@ -47,3 +47,23 @@ immutable byte[3][6] sideOffsets = [
 	[ 0, 1, 0],
 	[ 0,-1, 0],
 ];
+
+Side sideFromNormal(ivec3 normal)
+{
+	if (normal.x == 1)
+		return Side.east;
+	else if (normal.x == -1)
+		return Side.west;
+
+	if (normal.y == 1)
+		return Side.top;
+	else if (normal.y == -1)
+		return Side.bottom;
+
+	if (normal.z == 1)
+		return Side.south;
+	else if (normal.z == -1)
+		return Side.north;
+
+	return Side.north;
+}

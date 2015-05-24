@@ -35,6 +35,7 @@ import voxelman.storage.utils;
 import voxelman.storage.worldaccess;
 import voxelman.utils.math;
 import voxelman.utils.trace;
+import voxelman.utils.trace2;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
@@ -94,6 +95,9 @@ public:
 	vec3 hitPosition;
 	ivec3 hitNormal;
 	Duration cursorTraceTime;
+	Batch debugBatch;
+	Batch traceBatch;
+	Batch hitBatch;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -234,6 +238,13 @@ public:
 			guiPlugin.fpsHelper.sleepAfterFrame(delta);
 		}
 
+		connection.disconnect();
+
+		while (connection.isRunning)
+		{
+			connection.update(0);
+		}
+
 		evDispatcher.postEvent(new GameStopEvent);
 	}
 
@@ -244,9 +255,9 @@ public:
 			blockPos.vector += hitNormal;
 		}
 
-		//infof("hit %s, blockPos %s, blockType %s, hitPosition %s, hitNormal %s time %s",
-		//	cursorHit, blockPos, blockType, hitPosition, hitNormal,
-		//	cursorTraceTime.formatDuration);
+		infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
+			cursorHit, blockPos, hitPosition, hitNormal,
+			cursorTraceTime.formatDuration);
 
 		cursorPos = vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005);
 		lineStart = graphics.camera.position;
@@ -254,6 +265,9 @@ public:
 
 		if (cursorHit)
 		{
+			hitBatch = traceBatch;
+			traceBatch = Batch();
+
 			showCursor = true;
 			connection.send(PlaceBlockPacket(blockPos.vector, blockId));
 		}
@@ -275,7 +289,6 @@ public:
 
 	void onGameStopEvent(GameStopEvent gameStopEvent)
 	{
-		connection.disconnect();
 		chunkMan.stop();
 		thread_joinAll();
 	}
@@ -307,7 +320,7 @@ public:
 
 		prevChunkPos = chunkPos;
 
-		traceCursor();
+		traceCursor2();
 		drawDebugCursor();
 		updateStats();
 		printDebug();
@@ -337,21 +350,47 @@ public:
 
 		blockPos = BlockWorldPos(hitPosition);
 		cursorTraceTime = cast(Duration)sw.peek;
+	}
 
-		graphics.debugDraw.drawCube(
-				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
-		graphics.debugDraw.drawCube(
-				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
+	void traceCursor2()
+	{
+		StopWatch sw;
+		sw.start();
+
+		auto isBlockSolid = (ivec3 blockWorldPos) {
+			return chunkMan
+				.blockMan
+				.blocks[worldAccess.getBlock(BlockWorldPos(blockWorldPos))]
+				.isVisible;
+		};
+
+		traceBatch.reset();
+
+		cursorHit = traceRay2!true(
+			isBlockSolid,
+			graphics.camera.position,
+			graphics.camera.target,
+			80.0, // max distance
+			hitPosition,
+			hitNormal,
+			traceBatch);
+
+		blockPos = BlockWorldPos(hitPosition);
+		cursorTraceTime = cast(Duration)sw.peek;
 	}
 
 	void drawDebugCursor()
 	{
 		if (showCursor)
 		{
-			graphics.debugDraw.drawCube(
-				cursorPos, cursorSize, Colors.black, false);
-			graphics.debugDraw.drawLine(lineStart, lineEnd, Colors.black);
+			traceBatch.putCube(cursorPos, cursorSize, Colors.black, false);
+			traceBatch.putLine(lineStart, lineEnd, Colors.black);
 		}
+
+		debugBatch.putCube(
+				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
+		debugBatch.putCube(
+				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
 	}
 
 	void updateStats()
@@ -538,7 +577,10 @@ public:
 		}
 
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-		graphics.debugDraw.flush();
+
+		graphics.debugDraw.draw(debugBatch);
+		graphics.debugDraw.draw(hitBatch);
+		debugBatch.reset();
 
 		graphics.chunkShader.unbind;
 
