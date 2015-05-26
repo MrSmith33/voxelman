@@ -1,6 +1,7 @@
 module voxelman.plugins.eventdispatcherplugin;
 
 import plugin;
+import voxelman.config;
 
 // Basic event
 abstract class GameEvent
@@ -14,9 +15,6 @@ class EventDispatcherPlugin : IPlugin
 {
 	override string name() @property { return "EventDispatcherPlugin"; }
 	override string semver() @property { return "0.3.0"; }
-	override void preInit() { }
-	override void init(IPluginManager pluginman) {}
-	override void postInit() { }
 
 	void subscribeToEvent(E : GameEvent)(void delegate(E event) handler)
 	{

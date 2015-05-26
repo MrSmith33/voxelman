@@ -44,15 +44,21 @@ final class GraphicsPlugin : IPlugin
 
 	IRenderer renderer;
 	EventDispatcherPlugin evDispatcher;
+	ConfigOption cameraSensivity;
 
-	// Variables
 
 	override string name() @property { return "GraphicsPlugin"; }
 	override string semver() @property { return "0.3.0"; }
+
+	override void loadConfig(Config config)
+	{
+		cameraSensivity = config.registerOption!float("camera_sensivity", 0.4);
+	}
+
 	override void preInit()
 	{
 		camera.move(START_POS);
-		camera.sensivity = CAMERA_SENSIVITY;
+		camera.sensivity = cameraSensivity.get!float;
 
 		// Setup shaders
 

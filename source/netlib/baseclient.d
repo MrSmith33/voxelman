@@ -35,6 +35,11 @@ abstract class BaseClient : Connection
 		}
 	}
 
+	bool isConnected() @property
+	{
+		return host.connectedPeers > 0;
+	}
+
 	void disconnect()
 	{
 		enet_peer_disconnect(server, 0);

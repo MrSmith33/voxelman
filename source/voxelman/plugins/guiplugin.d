@@ -27,9 +27,6 @@ import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 
 
-//version = manualGC;
-version(manualGC) import core.memory;
-
 class ClosePressedEvent : GameEvent {}
 
 final class GuiPlugin : IPlugin
@@ -38,6 +35,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	Application!GlfwWindow application;
+	ConfigOption resolution;
 
 public:
 
@@ -63,9 +61,15 @@ public:
 
 	override string name() @property { return "GuiPlugin"; }
 	override string semver() @property { return "0.5.0"; }
+
+	override void loadConfig(Config config)
+	{
+		resolution = config.registerOption!(uint[])("resolution", [1280, 720]);
+	}
+
 	override void preInit()
 	{
-		application = new Application!GlfwWindow(WINDOW_SIZE, "Voxelman client");
+		application = new Application!GlfwWindow(uvec2(resolution.get!(uint[])), "Voxelman client");
 		application.init([]);
 		appLoad();
 	}
@@ -79,8 +83,6 @@ public:
 		evDispatcher.subscribeToEvent(&onDraw2Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
-
-	override void postInit() {}
 
 	void onPreUpdateEvent(PreUpdateEvent event)
 	{

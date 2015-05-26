@@ -9,6 +9,7 @@ module plugin.pluginmanager;
 import std.experimental.logger;
 import std.string : format;
 import plugin;
+import voxelman.config;
 
 /// Simple implementation of IPluginManager
 class PluginManager : IPluginManager
@@ -21,23 +22,29 @@ class PluginManager : IPluginManager
 		plugins[pluginInstance.name] = pluginInstance;
 	}
 
+	void loadConfig(Config config)
+	{
+		foreach(IPlugin p; plugins)
+		{
+			p.loadConfig(config);
+		}
+	}
+
 	void initPlugins()
 	{
 		infof("Loading plugins");
 		foreach(IPlugin p; plugins)
 		{
 			p.preInit();
-			infof("PreInited plugin %s %s", p.name, p.semver);
 		}
 		foreach(IPlugin p; plugins)
 		{
 			p.init(this);
-			infof("Inited plugin %s %s", p.name, p.semver);
 		}
 		foreach(IPlugin p; plugins)
 		{
 			p.postInit();
-			infof("PostInited plugin %s %s", p.name, p.semver);
+			infof("Loaded %s %s", p.name, p.semver);
 		}
 	}
 

@@ -11,11 +11,13 @@ import dlib.math.vector;
 import voxelman.utils.debugdraw;
 import voxelman.block : sideFromNormal;
 
+enum bool drawDebug = false;
+
 // Implementation of algorithm found at
 // http://playtechs.blogspot.co.uk/2007/03/raytracing-on-grid.html
 
 /// Returns true if block was hit
-bool traceRay(bool drawDebug)(
+bool traceRay(
 	bool delegate(ivec3) isBlockSolid,
 	vec3 startingPosition, // starting position
 	vec3 rayDirection, // direction

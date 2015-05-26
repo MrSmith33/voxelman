@@ -220,6 +220,7 @@ abstract class Connection
 
 	void onDisconnect(ref ENetEvent event)
 	{
+		isRunning = false;
 		if (disconnectHandler) disconnectHandler(event);
 	}
 }

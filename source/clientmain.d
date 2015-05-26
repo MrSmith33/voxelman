@@ -17,7 +17,7 @@ void main(string[] args)
 	//Frustum f2;
 	//f2 = f;
 
-	setupLogger("client.log");
+	setupLogger("../logs/client.log");
 	auto clientPlugin = new ClientPlugin();
 	clientPlugin.run(args);
 	//auto app = new ClientApp(uvec2(1280, 720), "Voxelman client");

@@ -10,7 +10,7 @@ import voxelman.server.serverplugin;
 
 void main(string[] args)
 {
-	setupLogger("server.log");
+	setupLogger("../logs/server.log");
 	auto serverPlugin = new ServerPlugin;
 	serverPlugin.run(args);
 }

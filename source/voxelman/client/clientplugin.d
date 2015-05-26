@@ -34,11 +34,14 @@ import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 import voxelman.storage.worldaccess;
 import voxelman.utils.math;
-import voxelman.utils.trace;
+import voxelman.utils.trace : traceRay;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
 import voxelman.client.events;
+
+//version = manualGC;
+version(manualGC) import core.memory;
 
 auto formatDuration(Duration dur)
 {
@@ -57,6 +60,7 @@ private:
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GraphicsPlugin graphics = new GraphicsPlugin;
 	GuiPlugin guiPlugin = new GuiPlugin;
+	Config config;
 
 public:
 	AppStatistics stats;
@@ -75,6 +79,8 @@ public:
 	bool isSpawned = false;
 	bool mouseLocked;
 	bool autoMove;
+	ConfigOption serverIp;
+	ConfigOption serverPort;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -106,6 +112,13 @@ public:
 	// IPlugin stuff
 	override string name() @property { return "ClientPlugin"; }
 	override string semver() @property { return "0.5.0"; }
+
+	override void loadConfig(Config config)
+	{
+		serverIp = config.registerOption!string("ip", "127.0.0.1");
+		serverPort = config.registerOption!ushort("port", 1234);
+	}
+
 	override void preInit()
 	{
 		loadEnet();
@@ -197,6 +210,7 @@ public:
 
 	this()
 	{
+		config = new Config(CLIENT_CONFIG_FILE_NAME);
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
 
@@ -212,7 +226,8 @@ public:
 		pluginman.registerPlugin(evDispatcher);
 		pluginman.registerPlugin(this);
 
-		info("Loading plugins");
+		pluginman.loadConfig(config);
+		config.load();
 		pluginman.initPlugins();
 
 		TickDuration lastTime = Clock.currAppTick;
@@ -239,7 +254,7 @@ public:
 
 		connection.disconnect();
 
-		while (connection.isRunning)
+		while (connection.isRunning && connection.isConnected)
 		{
 			connection.update(0);
 		}
@@ -254,9 +269,9 @@ public:
 			blockPos.vector += hitNormal;
 		}
 
-		infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
-			cursorHit, blockPos, hitPosition, hitNormal,
-			cursorTraceTime.formatDuration);
+		//infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
+		//	cursorHit, blockPos, hitPosition, hitNormal,
+		//	cursorTraceTime.formatDuration);
 
 		cursorPos = vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005);
 		lineStart = graphics.camera.position;
@@ -283,7 +298,7 @@ public:
 		connection.start(settings);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
-		connection.connect(CONNECT_ADDRESS, CONNECT_PORT);
+		connection.connect(serverIp.get!string, serverPort.get!ushort);
 	}
 
 	void onGameStopEvent(GameStopEvent gameStopEvent)
@@ -340,7 +355,7 @@ public:
 
 		traceBatch.reset();
 
-		cursorHit = traceRay!true(
+		cursorHit = traceRay(
 			isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
@@ -555,7 +570,7 @@ public:
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
 
 		graphics.debugDraw.draw(debugBatch);
-		graphics.debugDraw.draw(hitBatch);
+		//graphics.debugDraw.draw(hitBatch);
 		debugBatch.reset();
 
 		graphics.chunkShader.unbind;
@@ -569,7 +584,7 @@ public:
 
 	void onConnect(ref ENetEvent event)
 	{
-		infof("Connection to %s:%s established", CONNECT_ADDRESS, CONNECT_PORT);
+		infof("Connection to %s:%s established", serverIp.get!string, serverPort.get!ushort);
 		connection.send(LoginPacket(myName));
 		evDispatcher.postEvent(new ThisClientConnectedEvent);
 	}
@@ -581,7 +596,6 @@ public:
 		// Reset server's information
 		event.peer.data = null;
 
-		connection.isRunning = false;
 		evDispatcher.postEvent(new ThisClientDisconnectedEvent);
 	}
 

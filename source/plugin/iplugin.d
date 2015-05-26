@@ -7,18 +7,21 @@ Authors: Andrey Penechko.
 module plugin.iplugin;
 
 import plugin;
+import voxelman.config;
 
 /// Basic plugin interface.
-interface IPlugin
+abstract class IPlugin
 {
 	// i.e. "Test Plugin"
 	string name() @property;
 	// valid semver version string. i.e. 0.1.0-rc.1
 	string semver() @property;
+	// register needed config options. They are loaded before preInit is called.
+	void loadConfig(Config config) {}
 	// load/create needed resources
-	void preInit();
+	void preInit() {}
 	// get references to other plugins
-	void init(IPluginManager pluginman);
+	void init(IPluginManager pluginman) {}
 	// called after init. Do something with data retrieved at previous stage.
-	void postInit();
+	void postInit() {}
 }

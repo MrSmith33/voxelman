@@ -10,7 +10,7 @@ import voxelman.utils.log;
 
 void main(string[] args)
 {
-	setupLogger("bench.log");
+	setupLogger("../logs/bench.log");
 
 	info("benchmarking");
 }
