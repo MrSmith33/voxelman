@@ -35,6 +35,14 @@ enum Colors : Color3ub
 	yellow = Color3ub(255, 255, 0),
 }
 
+
+Color3ub[] colorsArray =
+[
+Colors.black, Colors.white, Colors.red,
+Colors.green, Colors.blue, Colors.cyan,
+Colors.magenta, Colors.yellow
+];
+
 struct Batch
 {
 	ColoredVertex[] triBuffer;

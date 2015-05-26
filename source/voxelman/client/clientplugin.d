@@ -35,7 +35,6 @@ import voxelman.storage.utils;
 import voxelman.storage.worldaccess;
 import voxelman.utils.math;
 import voxelman.utils.trace;
-import voxelman.utils.trace2;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
@@ -320,7 +319,7 @@ public:
 
 		prevChunkPos = chunkPos;
 
-		traceCursor2();
+		traceCursor();
 		drawDebugCursor();
 		updateStats();
 		printDebug();
@@ -339,34 +338,9 @@ public:
 				.isVisible;
 		};
 
-		cursorHit = traceRay(
-			isBlockSolid,
-			graphics.camera.position,
-			graphics.camera.target,
-			40.0, // max distance
-			hitPosition,
-			hitNormal,
-			1e-3);
-
-		blockPos = BlockWorldPos(hitPosition);
-		cursorTraceTime = cast(Duration)sw.peek;
-	}
-
-	void traceCursor2()
-	{
-		StopWatch sw;
-		sw.start();
-
-		auto isBlockSolid = (ivec3 blockWorldPos) {
-			return chunkMan
-				.blockMan
-				.blocks[worldAccess.getBlock(BlockWorldPos(blockWorldPos))]
-				.isVisible;
-		};
-
 		traceBatch.reset();
 
-		cursorHit = traceRay2!true(
+		cursorHit = traceRay!true(
 			isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
@@ -388,9 +362,11 @@ public:
 		}
 
 		debugBatch.putCube(
-				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.red, false);
+				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005),
+				cursorSize, Colors.red, false);
 		debugBatch.putCube(
-				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005), cursorSize, Colors.blue, false);
+				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005),
+				cursorSize, Colors.blue, false);
 	}
 
 	void updateStats()

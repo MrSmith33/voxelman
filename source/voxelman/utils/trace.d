@@ -1,219 +1,173 @@
 /**
-Copyright: Copyright (c) 2014-2015 Andrey Penechko.
+Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
 module voxelman.utils.trace;
 
-import std.math : floor;
+import std.math : floor, abs;
 import dlib.math.vector;
+import voxelman.utils.debugdraw;
+import voxelman.block : sideFromNormal;
+
+// Implementation of algorithm found at
+// http://playtechs.blogspot.co.uk/2007/03/raytracing-on-grid.html
 
 /// Returns true if block was hit
-bool traceRay(
+bool traceRay(bool drawDebug)(
 	bool delegate(ivec3) isBlockSolid,
 	vec3 startingPosition, // starting position
 	vec3 rayDirection, // direction
-	float maxDistance,
+	double maxDistance,
 	out vec3 hitPosition, // resulting position hit
 	out ivec3 hitNormal, // normal of hit surface
-	const float EPSILON = 1e-6)
+	ref Batch batch)
 {
-	rayDirection.normalize;
+	assert(rayDirection != vec3(0,0,0), "Raycast in zero direction!");
 
-	// Current position along the ray. Incremented by step each loop iteration.
-	float curProgress = 0.0;
-	int nx, ny, nz;
-	float ex, ey, ez, step, minStep;
+	rayDirection *= maxDistance;
 
-	vec3 curPos;
-	ivec3 curPosInt;
-	// delta between int and precise position.
-	vec3 posFloatDelta;
+	double x0 = startingPosition.x;
+	double y0 = startingPosition.y;
+	double z0 = startingPosition.z;
+	double x1 = startingPosition.x + rayDirection.x;
+	double y1 = startingPosition.y + rayDirection.y;
+	double z1 = startingPosition.z + rayDirection.z;
 
-	//Step block-by-block along ray
-	while(curProgress <= maxDistance)
+	int x = cast(int)floor(x0);
+	int y = cast(int)floor(y0);
+	int z = cast(int)floor(z0);
+
+	double dt_dx = abs(1.0 / rayDirection.x);
+	double dt_dy = abs(1.0 / rayDirection.y);
+	double dt_dz = abs(1.0 / rayDirection.z);
+
+	int n = 1;
+
+	int inc_x;
+	int inc_y;
+	int inc_z;
+
+	double t_next_x;
+	double t_next_y;
+	double t_next_z;
+
+	if (rayDirection.x > 0)
 	{
-		curPos = startingPosition + curProgress * rayDirection;
+		inc_x = 1;
+		n += cast(int)floor(x1) - x;
+		t_next_x = (floor(x0) + 1 - x0) * dt_dx;
+	}
+	else if (rayDirection.x < 0)
+	{
+		inc_x = -1;
+		n += x - cast(int)floor(x1);
+		t_next_x = (x0 - floor(x0)) * dt_dx;
+	}
+	else
+	{
+		inc_x = 0;
+		t_next_x = dt_dx; // infinity
+	}
 
-		curPosInt = curPos;
+	if (rayDirection.z > 0)
+	{
+		inc_z = 1;
+		n += cast(int)floor(z1) - z;
+		t_next_z = (floor(z0) + 1 - z0) * dt_dz;
+	}
+	else if (rayDirection.z < 0)
+	{
+		inc_z = -1;
+		n += z - cast(int)floor(z1);
+		t_next_z = (z0 - floor(z0)) * dt_dz;
+	}
+	else
+	{
+		inc_z = 0;
+		t_next_z = dt_dz; // infinity
+	}
 
-		posFloatDelta = curPos - vec3(curPosInt);
+	if (rayDirection.y > 0)
+	{
+		inc_y = 1;
+		n += cast(int)floor(y1) - y;
+		t_next_y = (floor(y0) + 1 - y0) * dt_dy;
+	}
+	else if (rayDirection.y < 0)
+	{
+		inc_y = -1;
+		n += y - cast(int)floor(y1);
+		t_next_y = (y0 - floor(y0)) * dt_dy;
+	}
+	else
+	{
+		inc_y = 0;
+		t_next_y = dt_dy; // infinity
+	}
 
-		if(isBlockSolid(curPosInt))
+	double t = 0;
+	static if (drawDebug)
+		vec3 prevPos = startingPosition;
+
+	for (; n > 0; --n)
+	{
+		if (isBlockSolid(ivec3(x, y, z)))
 		{
-			//Clamp to face on hit
-			hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : (posFloatDelta.x > 1.0-EPSILON ? curPosInt.x+1.0-EPSILON : curPos.x);
-			hitPosition.y = posFloatDelta.y < EPSILON ? curPosInt.y : (posFloatDelta.y > 1.0-EPSILON ? curPosInt.y+1.0-EPSILON : curPos.y);
-			hitPosition.z = posFloatDelta.z < EPSILON ? curPosInt.z : (posFloatDelta.z > 1.0-EPSILON ? curPosInt.z+1.0-EPSILON : curPos.z);
-
+			hitPosition = vec3(x, y, z);
 			return true;
 		}
 
-		//Check edge cases
-		minStep = (EPSILON * (1.0 + curProgress));
-
-		if(curProgress > minStep)
+		if (t_next_x < t_next_y)
 		{
-			ex = nx < 0 ? posFloatDelta.x <= minStep : posFloatDelta.x >= 1.0 - minStep;
-			ey = ny < 0 ? posFloatDelta.y <= minStep : posFloatDelta.y >= 1.0 - minStep;
-			ez = nz < 0 ? posFloatDelta.z <= minStep : posFloatDelta.z >= 1.0 - minStep;
-
-			if(ex && ey && ez)
+			if (t_next_x < t_next_z)
 			{
-				bool anySolid = isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y+ny, curPosInt.z)) ||
-								isBlockSolid(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z+nz)) ||
-								isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z+nz));
-
-				if(anySolid)
-				{
-					hitPosition.x = nx < 0 ? curPosInt.x-EPSILON : curPosInt.x + 1.0-EPSILON;
-					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
-					hitPosition.z = nz < 0 ? curPosInt.z-EPSILON : curPosInt.z + 1.0-EPSILON;
-
-					return true;
-				}
+				x += inc_x;
+				t = t_next_x;
+				t_next_x += dt_dx;
+				hitNormal = ivec3(-inc_x, 0, 0);
 			}
-
-			if(ex && (ey || ez))
+			else
 			{
-				if(isBlockSolid(ivec3(curPosInt.x+nx, curPosInt.y, curPosInt.z)))
-				{
-					hitPosition.x = nx < 0 ? curPosInt.x-EPSILON : curPosInt.x + 1.0-EPSILON;
-					hitPosition.y = posFloatDelta.y < EPSILON ? +curPosInt.y : curPos.y;
-					hitPosition.z = posFloatDelta.z < EPSILON ? +curPosInt.z : curPos.z;
-
-					return true;
-				}
+				z += inc_z;
+				t = t_next_z;
+				t_next_z += dt_dz;
+				hitNormal = ivec3(0, 0, -inc_z);
 			}
-
-			if(ey && (ex || ez))
+		}
+		else
+		{
+			if (t_next_y < t_next_z)
 			{
-				if(isBlockSolid(ivec3(curPosInt.x, curPosInt.y+ny, curPosInt.z)))
-				{
-					hitPosition.x = posFloatDelta.x < EPSILON ? +curPosInt.x : curPos.x;
-					hitPosition.y = ny < 0 ? curPosInt.y-EPSILON : curPosInt.y + 1.0-EPSILON;
-					hitPosition.z = posFloatDelta.z < EPSILON ? +curPosInt.z : curPos.z;
-
-					return true;
-				}
+				y += inc_y;
+				t = t_next_y;
+				t_next_y += dt_dy;
+				hitNormal = ivec3(0, -inc_y, 0);
 			}
-
-			if(ez && (ex || ey))
+			else
 			{
-				if(isBlockSolid(ivec3(curPosInt.x, curPosInt.y, curPosInt.z+nz)))
-				{
-					hitPosition.x = posFloatDelta.x < EPSILON ? curPosInt.x : curPos.x;
-					hitPosition.y = posFloatDelta.y < EPSILON ? curPosInt.y : curPos.y;
-					hitPosition.z = nz < 0 ? curPosInt.z-EPSILON : curPosInt.z + 1.0-EPSILON;
-
-					return true;
-				}
+				z += inc_z;
+				t = t_next_z;
+				t_next_z += dt_dz;
+				hitNormal = ivec3(0, 0, -inc_z);
 			}
 		}
 
-		//Walk to next face of cube along ray
-		nx = ny = nz = 0;
-		step = 2.0;
-
-		if(rayDirection.x < -EPSILON)
+		static if (drawDebug)
 		{
-			float s = -posFloatDelta.x/rayDirection.x;
-			nx = 1;
-			step = s;
+			batch.putLine(prevPos, startingPosition + rayDirection*t,
+				colorsArray[sideFromNormal(hitNormal)+2]);
+			prevPos = startingPosition + rayDirection*t;
+
+			batch.putCubeFace(
+				vec3(x, y, z),
+				vec3(1, 1, 1),
+				sideFromNormal(hitNormal),
+				Colors.black,
+				false);
 		}
-
-		if(rayDirection.x > EPSILON)
-		{
-			float s = (1.0-posFloatDelta.x)/rayDirection.x;
-			nx = -1;
-			step = s;
-		}
-
-		if(rayDirection.y < -EPSILON)
-		{
-			float s = -posFloatDelta.y/rayDirection.y;
-
-			if(s < step-minStep)
-			{
-				nx = 0;
-				ny = 1;
-				step = s;
-			}
-			else if(s < step+minStep)
-			{
-				ny = 1;
-			}
-		}
-
-		if(rayDirection.y > EPSILON)
-		{
-			float s = (1.0-posFloatDelta.y)/rayDirection.y;
-
-			if(s < step-minStep)
-			{
-				nx = 0;
-				ny = -1;
-				step = s;
-			}
-			else if(s < step+minStep)
-			{
-				ny = -1;
-			}
-		}
-
-		if(rayDirection.z < -EPSILON)
-		{
-			float s = -posFloatDelta.z/rayDirection.z;
-
-			if(s < step-minStep)
-			{
-				nx = ny = 0;
-				nz = 1;
-				step = s;
-			}
-			else if(s < step+minStep)
-			{
-				nz = 1;
-			}
-		}
-
-		if(rayDirection.z > EPSILON)
-		{
-			float s = (1.0-posFloatDelta.z)/rayDirection.z;
-
-			if(s < step-minStep)
-			{
-				nx = ny = 0;
-				nz = -1;
-				step = s;
-			}
-			else if(s < step+minStep)
-			{
-				nz = -1;
-			}
-		}
-
-		if(step > maxDistance - curProgress)
-		{
-			step = maxDistance - curProgress - minStep;
-		}
-
-		if(step < minStep)
-		{
-			step = minStep;
-		}
-
-		hitNormal.x = nx;
-		hitNormal.y = ny;
-		hitNormal.z = nz;
-
-		curProgress += step;
 	}
-
-	hitPosition = curPos;
-
-	hitNormal = ivec3(0);
 
 	return false;
 }
