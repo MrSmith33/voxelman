@@ -1,0 +1,6 @@
+ip "localhost"
+port 1234
+
+resolution 1280 720
+
+camera_sensivity 0.1
