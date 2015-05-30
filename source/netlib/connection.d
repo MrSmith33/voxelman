@@ -110,7 +110,7 @@ abstract class Connection
 
 	string packetName(size_t packetId)
 	{
-		if (packetId >= packetArray.length) return "!Unknown!";
+		if (packetId >= packetArray.length) return "!UnknownPacket!";
 		return packetArray[packetId].name;
 	}
 
@@ -125,7 +125,7 @@ abstract class Connection
 
 	void registerPacketHandler(P)(PacketHandler handler)
 	{
-		assert(typeid(P) in packetMap);
+		assert(typeid(P) in packetMap, "Packet was not registered");
 		packetMap[typeid(P)].handler = handler;
 	}
 

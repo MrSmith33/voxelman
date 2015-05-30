@@ -12,27 +12,13 @@ import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
 import plugin;
+import voxelman.config;
+import voxelman.events;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.guiplugin;
-import voxelman.config;
 import voxelman.utils.fpscamera;
 public import voxelman.utils.debugdraw;
 
-
-class Draw1Event : GameEvent {
-	this(IRenderer renderer)
-	{
-		this.renderer = renderer;
-	}
-	IRenderer renderer;
-}
-class Draw2Event : GameEvent {
-	this(IRenderer renderer)
-	{
-		this.renderer = renderer;
-	}
-	IRenderer renderer;
-}
 
 final class GraphicsPlugin : IPlugin
 {
@@ -48,7 +34,7 @@ final class GraphicsPlugin : IPlugin
 
 
 	override string name() @property { return "GraphicsPlugin"; }
-	override string semver() @property { return "0.3.0"; }
+	override string semver() @property { return "0.5.0"; }
 
 	override void loadConfig(Config config)
 	{
@@ -94,6 +80,8 @@ final class GraphicsPlugin : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
+
 		auto gui = pluginman.getPlugin!GuiPlugin(this);
 		renderer = gui.renderer;
 	}
@@ -102,6 +90,11 @@ final class GraphicsPlugin : IPlugin
 	{
 		renderer.setClearColor(Color(115,200,169));
 		camera.aspect = cast(float)renderer.windowSize.x/renderer.windowSize.y;
+	}
+
+	void onWindowResizedEvent(WindowResizedEvent event)
+	{
+		camera.aspect = cast(float)event.newSize.x/event.newSize.y;
 	}
 
 	void resetCamera()

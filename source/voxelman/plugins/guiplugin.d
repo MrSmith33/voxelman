@@ -24,7 +24,6 @@ import voxelman.storage.utils;
 import voxelman.events;
 
 import voxelman.plugins.eventdispatcherplugin;
-import voxelman.plugins.graphicsplugin;
 
 
 class ClosePressedEvent : GameEvent {}
@@ -33,7 +32,6 @@ final class GuiPlugin : IPlugin
 {
 private:
 	EventDispatcherPlugin evDispatcher;
-	GraphicsPlugin graphics;
 	Application!GlfwWindow application;
 	ConfigOption resolution;
 
@@ -76,8 +74,6 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
-		graphics = pluginman.getPlugin!GraphicsPlugin(this);
-
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onDraw2Event);
@@ -151,12 +147,12 @@ public:
 		info("\n----------------------------- Load end -----------------------------\n");
 	}
 
-	void windowResized(uvec2 newSize)
+	private void windowResized(uvec2 newSize)
 	{
-		graphics.camera.aspect = cast(float)window.size.x/window.size.y;
+		evDispatcher.postEvent(new WindowResizedEvent(newSize));
 	}
 
-	void closePressed()
+	private void closePressed()
 	{
 		evDispatcher.postEvent(new ClosePressedEvent);
 	}
