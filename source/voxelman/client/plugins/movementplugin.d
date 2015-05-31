@@ -27,6 +27,8 @@ class MovementPlugin : IPlugin
 	GuiPlugin guiPlugin;
 	InputPlugin input;
 
+	bool autoMove;
+
 	// IPlugin stuff
 	override string name() @property { return "MovementPlugin"; }
 	override string semver() @property { return "0.5.0"; }
@@ -87,7 +89,7 @@ class MovementPlugin : IPlugin
 			}
 		}
 		// TODO: remove after bug is found
-		else if (clientPlugin.autoMove)
+		else if (autoMove)
 		{
 			// Automoving
 			graphics.camera.moveAxis(vec3(0,0,20)*event.deltaTime);

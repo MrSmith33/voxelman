@@ -77,7 +77,7 @@ public:
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-		evDispatcher.subscribeToEvent(&onDraw2Event);
+		evDispatcher.subscribeToEvent(&onRender2Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
 
@@ -87,7 +87,7 @@ public:
 		application.update(event.deltaTime);
 	}
 
-	void onDraw2Event(Draw2Event draw2Event)
+	void onRender2Event(Render3Event Render2Event)
 	{
 		application.context.eventDispatcher.draw();
 	}

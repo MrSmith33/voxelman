@@ -28,6 +28,7 @@ import voxelman.plugins.guiplugin;
 import voxelman.plugins.inputplugin;
 import voxelman.client.plugins.editplugin;
 import voxelman.client.plugins.movementplugin;
+import voxelman.client.plugins.worldinteractionplugin;
 
 import voxelman.config;
 import voxelman.events;
@@ -64,6 +65,7 @@ private:
 	GraphicsPlugin graphics = new GraphicsPlugin;
 	GuiPlugin guiPlugin = new GuiPlugin;
 	InputPlugin input = new InputPlugin;
+	WorldInteractionPlugin worldInteraction = new WorldInteractionPlugin;
 	EditPlugin editPlugin = new EditPlugin;
 	MovementPlugin movementPlugin = new MovementPlugin;
 	Config config;
@@ -74,7 +76,6 @@ public:
 	// Game stuff
 	ChunkMan chunkMan;
 	WorldAccess worldAccess;
-
 	ClientConnection connection;
 
 	// Debug
@@ -85,13 +86,8 @@ public:
 	bool isDisconnecting = false;
 	bool isSpawned = false;
 	bool mouseLocked;
-	bool autoMove;
 	ConfigOption serverIp;
 	ConfigOption serverPort;
-
-	bool cursorHit;
-	BlockWorldPos blockPos;
-	ivec3 hitNormal;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -101,16 +97,6 @@ public:
 	ClientId myId;
 	string myName = "client_name";
 	string[ClientId] clientNames;
-
-	// Cursor rendering stuff
-	vec3 cursorPos, cursorSize = vec3(1.02, 1.02, 1.02);
-	vec3 lineStart, lineEnd;
-	bool showCursor;
-	vec3 hitPosition;
-	Duration cursorTraceTime;
-	Batch debugBatch;
-	Batch traceBatch;
-	Batch hitBatch;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -158,6 +144,7 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
+		evDispatcher.subscribeToEvent(&drawOverlay);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
@@ -227,6 +214,18 @@ public:
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
 
+	void registerPlugins()
+	{
+		pluginman.registerPlugin(guiPlugin);
+		pluginman.registerPlugin(graphics);
+		pluginman.registerPlugin(evDispatcher);
+		pluginman.registerPlugin(input);
+		pluginman.registerPlugin(worldInteraction);
+		pluginman.registerPlugin(editPlugin);
+		pluginman.registerPlugin(movementPlugin);
+		pluginman.registerPlugin(this);
+	}
+
 	void run(string[] args)
 	{
 		import std.datetime : TickDuration, Clock, usecs;
@@ -234,14 +233,7 @@ public:
 
 		version(manualGC) GC.disable;
 
-		pluginman.registerPlugin(guiPlugin);
-		pluginman.registerPlugin(graphics);
-		pluginman.registerPlugin(evDispatcher);
-		pluginman.registerPlugin(input);
-		pluginman.registerPlugin(editPlugin);
-		pluginman.registerPlugin(movementPlugin);
-		pluginman.registerPlugin(this);
-
+		registerPlugins();
 		pluginman.loadConfig(config);
 		config.load();
 		pluginman.initPlugins();
@@ -249,7 +241,6 @@ public:
 		info("\nSystem info");
 		foreach(item; guiPlugin.getHardwareInfo())
 			info(item);
-		info("\n");
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime = TickDuration.from!"seconds"(0);
@@ -264,7 +255,7 @@ public:
 			evDispatcher.postEvent(new PreUpdateEvent(delta));
 			evDispatcher.postEvent(new UpdateEvent(delta));
 			evDispatcher.postEvent(new PostUpdateEvent(delta));
-			graphics.draw();
+			evDispatcher.postEvent(new RenderEvent());
 
 			version(manualGC) GC.collect();
 
@@ -282,40 +273,6 @@ public:
 		}
 
 		evDispatcher.postEvent(new GameStopEvent);
-	}
-
-	void placeBlock(BlockType blockId)
-	{
-		if (chunkMan.blockMan.blocks[blockId].isVisible)
-		{
-			blockPos.vector += hitNormal;
-		}
-
-		//infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
-		//	cursorHit, blockPos, hitPosition, hitNormal,
-		//	cursorTraceTime.formatDuration);
-
-		cursorPos = vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005);
-		lineStart = graphics.camera.position;
-		lineEnd = graphics.camera.position + graphics.camera.target * 40;
-
-		if (cursorHit)
-		{
-			hitBatch = traceBatch;
-			traceBatch = Batch();
-
-			showCursor = true;
-			connection.send(PlaceBlockPacket(blockPos.vector, blockId));
-		}
-		else
-		{
-			showCursor = false;
-		}
-	}
-
-	BlockType pickBlock()
-	{
-		return worldAccess.getBlock(blockPos);
 	}
 
 	void connect()
@@ -343,8 +300,6 @@ public:
 		chunkMan.update();
 		sendPosition(event.deltaTime);
 
-		traceCursor();
-		drawDebugCursor();
 		updateStats();
 		printDebug();
 		stats.resetCounters();
@@ -372,49 +327,6 @@ public:
 		}
 
 		prevChunkPos = chunkPos;
-	}
-
-	void traceCursor()
-	{
-		StopWatch sw;
-		sw.start();
-
-		auto isBlockSolid = (ivec3 blockWorldPos) {
-			return chunkMan
-				.blockMan
-				.blocks[worldAccess.getBlock(BlockWorldPos(blockWorldPos))]
-				.isVisible;
-		};
-
-		traceBatch.reset();
-
-		cursorHit = traceRay(
-			isBlockSolid,
-			graphics.camera.position,
-			graphics.camera.target,
-			80.0, // max distance
-			hitPosition,
-			hitNormal,
-			traceBatch);
-
-		blockPos = BlockWorldPos(hitPosition);
-		cursorTraceTime = cast(Duration)sw.peek;
-	}
-
-	void drawDebugCursor()
-	{
-		if (showCursor)
-		{
-			traceBatch.putCube(cursorPos, cursorSize, Colors.black, false);
-			traceBatch.putLine(lineStart, lineEnd, Colors.black);
-		}
-
-		debugBatch.putCube(
-				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005),
-				cursorSize, Colors.red, false);
-		debugBatch.putCube(
-				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005),
-				cursorSize, Colors.blue, false);
 	}
 
 	void updateStats()
@@ -492,10 +404,8 @@ public:
 		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
-	void drawScene(Draw1Event event)
+	void drawScene(Render1Event event)
 	{
-		glEnable(GL_DEPTH_TEST);
-
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
@@ -536,15 +446,11 @@ public:
 		}
 
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-
-		graphics.debugDraw.draw(debugBatch);
-		//graphics.debugDraw.draw(hitBatch);
-		debugBatch.reset();
-
 		graphics.chunkShader.unbind;
+	}
 
-		glDisable(GL_DEPTH_TEST);
-
+	void drawOverlay(Render2Event event)
+	{
 		event.renderer.setColor(Color(0,0,0,1));
 		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
 		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));

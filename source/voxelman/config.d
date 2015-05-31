@@ -31,6 +31,7 @@ enum string WORLD_DIR = SAVE_DIR ~ "/" ~ WORLD_NAME;
 enum string WORLD_FILE_NAME = "worldinfo.cbor";
 
 enum string CLIENT_CONFIG_FILE_NAME = "../config/client.sdl";
+enum string SERVER_CONFIG_FILE_NAME = "../config/server.sdl";
 
 enum NUM_WORKERS = 4;
 enum DEFAULT_VIEW_RADIUS = 5;
@@ -49,10 +50,11 @@ enum SERVER_PORT = 1234;
 
 final class ConfigOption
 {
-	this(Variant value, Variant defaultValue)
+	this(Variant value, Variant defaultValue, bool isSaved)
 	{
 		this.value = value;
 		this.defaultValue = defaultValue;
+		this.isSaved = isSaved;
 	}
 
 	T get(T)()
@@ -65,6 +67,7 @@ final class ConfigOption
 
 	Variant value;
 	Variant defaultValue;
+	bool isSaved;
 }
 
 final class Config
@@ -80,11 +83,17 @@ public:
 		this.filename = filename;
 	}
 
-	ConfigOption registerOption(T)(string optionName, T defaultValue)
+	// Runtime options are not saved. Use them to store global options that need no saving
+	ConfigOption registerOption(T)(string optionName, T defaultValue, bool runtime = false)
 	{
-		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue));
+		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue), runtime);
 		options[optionName] = option;
 		return option;
+	}
+
+	ConfigOption opIndex(string optionName)
+	{
+		return options.get(optionName, null);
 	}
 
 	void load()

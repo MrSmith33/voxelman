@@ -31,14 +31,29 @@ class PostUpdateEvent : UpdateEvent {
 	}
 }
 
-class Draw1Event : GameEvent {
+// Initiate drawing in graphics plugin
+class RenderEvent : GameEvent {
+}
+
+// draw in 3d. With depth test
+class Render1Event : GameEvent {
 	this(IRenderer renderer)
 	{
 		this.renderer = renderer;
 	}
 	IRenderer renderer;
 }
-class Draw2Event : GameEvent {
+
+// draw 2d. without depth test. with alpha
+class Render2Event : GameEvent {
+	this(IRenderer renderer)
+	{
+		this.renderer = renderer;
+	}
+	IRenderer renderer;
+}
+// draw 2d gui. without depth test. with alpha
+class Render3Event : GameEvent {
 	this(IRenderer renderer)
 	{
 		this.renderer = renderer;

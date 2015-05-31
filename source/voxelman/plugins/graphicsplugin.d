@@ -17,19 +17,24 @@ import voxelman.events;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.guiplugin;
 import voxelman.utils.fpscamera;
-public import voxelman.utils.debugdraw;
+public import voxelman.utils.renderutils;
 
 
 final class GraphicsPlugin : IPlugin
 {
+private:
+	uint vao;
+	uint vbo;
+	EventDispatcherPlugin evDispatcher;
+
+public:
 	FpsCamera camera;
-	DebugDraw debugDraw;
+	Batch debugBatch;
 
 	ShaderProgram chunkShader;
 	GLuint modelLoc, viewLoc, projectionLoc;
 
 	IRenderer renderer;
-	EventDispatcherPlugin evDispatcher;
 	ConfigOption cameraSensivity;
 
 
@@ -73,17 +78,19 @@ final class GraphicsPlugin : IPlugin
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
 				cast(const float*)camera.perspective.arrayof);
 		chunkShader.unbind;
-
-		debugDraw.init();
 	}
 
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
+		evDispatcher.subscribeToEvent(&draw);
 
 		auto gui = pluginman.getPlugin!GuiPlugin(this);
 		renderer = gui.renderer;
+
+		glGenVertexArrays(1, &vao);
+		glGenBuffers( 1, &vbo);
 	}
 
 	override void postInit()
@@ -92,7 +99,7 @@ final class GraphicsPlugin : IPlugin
 		camera.aspect = cast(float)renderer.windowSize.x/renderer.windowSize.y;
 	}
 
-	void onWindowResizedEvent(WindowResizedEvent event)
+	private void onWindowResizedEvent(WindowResizedEvent event)
 	{
 		camera.aspect = cast(float)event.newSize.x/event.newSize.y;
 	}
@@ -105,17 +112,55 @@ final class GraphicsPlugin : IPlugin
 		camera.update();
 	}
 
-	void draw()
+	private void draw(RenderEvent event)
 	{
 		glScissor(0, 0, renderer.windowSize.x, renderer.windowSize.y);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		glEnable(GL_DEPTH_TEST);
 
-		evDispatcher.postEvent(new Draw1Event(renderer));
+		evDispatcher.postEvent(new Render1Event(renderer));
+
+		chunkShader.bind;
+		draw(debugBatch);
+		debugBatch.reset();
+		chunkShader.unbind;
+
+		glDisable(GL_DEPTH_TEST);
 
 		renderer.enableAlphaBlending();
-		evDispatcher.postEvent(new Draw2Event(renderer));
+		evDispatcher.postEvent(new Render2Event(renderer));
+		evDispatcher.postEvent(new Render3Event(renderer));
 		renderer.disableAlphaBlending();
 
 		renderer.flush();
+	}
+
+	void draw(Batch batch)
+	{
+		drawBuffer(batch.triBuffer, GL_TRIANGLES);
+		drawBuffer(batch.lineBuffer, GL_LINES);
+		drawBuffer(batch.pointBuffer, GL_POINTS);
+	}
+
+private:
+
+	void drawBuffer(ref ColoredVertex[] buffer, uint mode)
+	{
+		if (buffer.length == 0) return;
+
+		glBindVertexArray(vao);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
+		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		// positions
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, ColoredVertex.sizeof, null);
+		// color
+		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, ColoredVertex.sizeof, cast(void*)(12));
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glDrawArrays(mode, 0, cast(uint)(buffer.length));
+
+		glBindVertexArray(0);
 	}
 }

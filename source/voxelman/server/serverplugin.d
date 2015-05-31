@@ -39,6 +39,7 @@ private:
 	PluginManager pluginman = new PluginManager;
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GameTimePlugin gameTime = new GameTimePlugin;
+	Config config;
 
 public:
 	ServerConnection connection;
@@ -92,6 +93,7 @@ public:
 	{
 		loadEnet();
 
+		config = new Config(SERVER_CONFIG_FILE_NAME);
 		connection = new ServerConnection;
 		chunkMan = ChunkMan(connection, &world.chunkStorage);
 
@@ -122,6 +124,7 @@ public:
 		pluginman.registerPlugin(evDispatcher);
 		pluginman.registerPlugin(gameTime);
 
+		pluginman.loadConfig(config);
 		pluginman.initPlugins();
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};

@@ -10,14 +10,16 @@ import std.experimental.logger;
 
 import plugin;
 import voxelman.config;
-import voxelman.client.clientplugin;
 import voxelman.plugins.inputplugin;
 import voxelman.plugins.eventdispatcherplugin;
+import voxelman.client.clientplugin;
+import voxelman.client.plugins.worldinteractionplugin;
 
 
 class EditPlugin : IPlugin
 {
 	ClientPlugin clientPlugin;
+	WorldInteractionPlugin worldInteraction;
 	InputPlugin input;
 
 	BlockType currentBlock = 4;
@@ -30,6 +32,7 @@ class EditPlugin : IPlugin
 	{
 		clientPlugin = pluginman.getPlugin!ClientPlugin(this);
 		input = pluginman.getPlugin!InputPlugin(this);
+		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin(this);
 	}
 
 	override void postInit()
@@ -42,18 +45,18 @@ class EditPlugin : IPlugin
 	void onMainActionRelease(string key)
 	{
 		if (clientPlugin.mouseLocked)
-			clientPlugin.placeBlock(1);
+			worldInteraction.placeBlock(1);
 	}
 
 	void onSecondaryActionRelease(string key)
 	{
 		if (clientPlugin.mouseLocked)
-			clientPlugin.placeBlock(currentBlock);
+			worldInteraction.placeBlock(currentBlock);
 	}
 
 	void onTertiaryActionRelease(string key)
 	{
 		if (clientPlugin.mouseLocked)
-			currentBlock = clientPlugin.pickBlock();
+			currentBlock = worldInteraction.pickBlock();
 	}
 }

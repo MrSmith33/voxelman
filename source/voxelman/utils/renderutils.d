@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.utils.debugdraw;
+module voxelman.utils.renderutils;
 
 import std.experimental.logger;
 
@@ -98,43 +98,7 @@ void resetBuffer(ref ColoredVertex[] buffer)
 
 struct DebugDraw
 {
-	void init()
-	{
-		glGenVertexArrays(1, &vao);
-		glGenBuffers( 1, &vbo);
-	}
 
-	void draw(Batch batch)
-	{
-		drawBuffer(batch.triBuffer, GL_TRIANGLES);
-		drawBuffer(batch.lineBuffer, GL_LINES);
-		drawBuffer(batch.pointBuffer, GL_POINTS);
-	}
-
-private:
-
-	void drawBuffer(ref ColoredVertex[] buffer, uint mode)
-	{
-		if (buffer.length == 0) return;
-
-		glBindVertexArray(vao);
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		// positions
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, ColoredVertex.sizeof, null);
-		// color
-		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, ColoredVertex.sizeof, cast(void*)(12));
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		glDrawArrays(mode, 0, cast(uint)(buffer.length));
-
-		glBindVertexArray(0);
-	}
-
-	uint vao;
-	uint vbo;
 }
 
 void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(ubyte, 3) color)
