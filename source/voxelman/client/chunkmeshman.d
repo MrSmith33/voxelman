@@ -292,7 +292,7 @@ struct ChunkMeshMan
 						addAdjacentChunks();
 						blocksChanged = true;
 					}
-					infof("applying block changes to %s", chunk.position);
+					//infof("applying block changes to %s", chunk.position);
 					ubyte bx, by, bz;
 					foreach(change; chunk.change.blockChanges)
 					{

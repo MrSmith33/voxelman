@@ -77,6 +77,11 @@ public:
 
 	override void postInit()
 	{
+		//shufflePackets();
+	}
+
+	void shufflePackets()
+	{
 		import std.random;
 		randomShuffle(connection.packetArray[1..$]);
 		foreach (i, packetInfo; connection.packetArray)

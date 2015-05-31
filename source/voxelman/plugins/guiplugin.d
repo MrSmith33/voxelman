@@ -13,6 +13,7 @@ import anchovy.core.interfaces.iwindow;
 import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui.application.application;
 import anchovy.gui;
+public import anchovy.core.input;
 
 
 import plugin;
@@ -115,13 +116,13 @@ public:
 		});
 	}
 
+	string[] getHardwareInfo()
+	{
+		return application.getHardwareInfo();
+	}
+
 	void appLoad()
 	{
-		info("---------------------- System info ----------------------");
-		foreach(item; application.getHardwareInfo())
-			info(item);
-		info("---------------------------------------------------------\n");
-
 		fpsHelper.limitFps = false;
 
 		// Bind events
@@ -143,8 +144,6 @@ public:
 
 		setupFrameShowButton("showInfo", "infoFrame");
 		setupFrameShowButton("showSettings", "settingsFrame");
-
-		info("\n----------------------------- Load end -----------------------------\n");
 	}
 
 	private void windowResized(uvec2 newSize)

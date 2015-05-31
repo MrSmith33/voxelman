@@ -19,6 +19,9 @@ class PluginManager : IPluginManager
 	void registerPlugin(IPlugin pluginInstance)
 	{
 		assert(pluginInstance);
+		assert(pluginInstance.name !in plugins,
+			format("Duplicate plugin registered: name=\"%s\" type=\"%s\"",
+				pluginInstance.name, pluginInstance));
 		plugins[pluginInstance.name] = pluginInstance;
 	}
 
@@ -32,7 +35,7 @@ class PluginManager : IPluginManager
 
 	void initPlugins()
 	{
-		infof("Loading plugins");
+		infof("Loading %s plugins", plugins.length);
 		foreach(IPlugin p; plugins)
 		{
 			p.preInit();
@@ -41,10 +44,13 @@ class PluginManager : IPluginManager
 		{
 			p.init(this);
 		}
+
+		size_t i = 1;
 		foreach(IPlugin p; plugins)
 		{
 			p.postInit();
-			infof("Loaded %s %s", p.name, p.semver);
+			infof("Loaded #%s %s %s", i, p.name, p.semver);
+			++i;
 		}
 	}
 

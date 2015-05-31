@@ -25,6 +25,9 @@ import netlib.baseclient;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.plugins.guiplugin;
+import voxelman.plugins.inputplugin;
+import voxelman.client.plugins.editplugin;
+import voxelman.client.plugins.movementplugin;
 
 import voxelman.config;
 import voxelman.events;
@@ -60,6 +63,9 @@ private:
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GraphicsPlugin graphics = new GraphicsPlugin;
 	GuiPlugin guiPlugin = new GuiPlugin;
+	InputPlugin input = new InputPlugin;
+	EditPlugin editPlugin = new EditPlugin;
+	MovementPlugin movementPlugin = new MovementPlugin;
 	Config config;
 
 public:
@@ -83,6 +89,10 @@ public:
 	ConfigOption serverIp;
 	ConfigOption serverPort;
 
+	bool cursorHit;
+	BlockWorldPos blockPos;
+	ivec3 hitNormal;
+
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
@@ -95,11 +105,8 @@ public:
 	// Cursor rendering stuff
 	vec3 cursorPos, cursorSize = vec3(1.02, 1.02, 1.02);
 	vec3 lineStart, lineEnd;
-	bool cursorHit;
 	bool showCursor;
-	BlockWorldPos blockPos;
 	vec3 hitPosition;
-	ivec3 hitNormal;
 	Duration cursorTraceTime;
 	Batch debugBatch;
 	Batch traceBatch;
@@ -149,7 +156,6 @@ public:
 		graphics = pluginman.getPlugin!GraphicsPlugin(this);
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
-		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
@@ -160,12 +166,17 @@ public:
 	{
 		chunkMan.updateObserverPosition(graphics.camera.position);
 		connect();
-		guiPlugin.window.keyReleased.connect(&keyReleased);
-		guiPlugin.window.mouseReleased.connect(&mouseReleased);
 
 		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
 		foreach(i; 0..12) guiPlugin.context.createWidget("label", debugInfo);
 		guiPlugin.context.getWidgetById("stopServer").addEventHandler(&onStopServer);
+
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
+		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_F4, "key.stopServer", null, &onStopServerKey));
 	}
 
 	bool onStopServer(Widget widget, PointerClickEvent event)
@@ -226,11 +237,19 @@ public:
 		pluginman.registerPlugin(guiPlugin);
 		pluginman.registerPlugin(graphics);
 		pluginman.registerPlugin(evDispatcher);
+		pluginman.registerPlugin(input);
+		pluginman.registerPlugin(editPlugin);
+		pluginman.registerPlugin(movementPlugin);
 		pluginman.registerPlugin(this);
 
 		pluginman.loadConfig(config);
 		config.load();
 		pluginman.initPlugins();
+
+		info("\nSystem info");
+		foreach(item; guiPlugin.getHardwareInfo())
+			info(item);
+		info("\n");
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime = TickDuration.from!"seconds"(0);
@@ -292,6 +311,11 @@ public:
 		{
 			showCursor = false;
 		}
+	}
+
+	BlockType pickBlock()
+	{
+		return worldAccess.getBlock(blockPos);
 	}
 
 	void connect()
@@ -436,94 +460,36 @@ public:
 		isRunning = false;
 	}
 
-	void onPreUpdateEvent(PreUpdateEvent event)
+	void onLockMouse(string)
 	{
-		if(mouseLocked)
-		{
-			ivec2 mousePos = guiPlugin.window.mousePosition;
-			mousePos -= cast(ivec2)(guiPlugin.window.size) / 2;
-
-			// scale, so up and left is positive, as rotation is anti-clockwise
-			// and coordinate system is right-hand and -z if forward
-			mousePos *= -1;
-
-			if(mousePos.x !=0 || mousePos.y !=0)
-			{
-				graphics.camera.rotate(vec2(mousePos));
-			}
-			guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
-
-			uint cameraSpeed = 10;
-			vec3 posDelta = vec3(0,0,0);
-			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_LEFT_SHIFT)) cameraSpeed = 60;
-
-			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_D)) posDelta.x = 1;
-			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_A)) posDelta.x = -1;
-
-			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_W)) posDelta.z = 1;
-			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_S)) posDelta.z = -1;
-
-			if(guiPlugin.window.isKeyPressed(KeyCode.KEY_SPACE)) posDelta.y = 1;
-			else if(guiPlugin.window.isKeyPressed(KeyCode.KEY_LEFT_CONTROL)) posDelta.y = -1;
-
-			if (posDelta != vec3(0))
-			{
-				posDelta.normalize();
-				posDelta *= cameraSpeed * event.deltaTime;
-				graphics.camera.moveAxis(posDelta);
-			}
-		}
-		// TODO: remove after bug is found
-		else if (autoMove)
-		{
-			// Automoving
-			graphics.camera.moveAxis(vec3(0,0,20)*event.deltaTime);
-		}
-	}
-
-	void keyReleased(uint keyCode)
-	{
-		switch(keyCode)
-		{
-			case KeyCode.KEY_Q: mouseLocked = !mouseLocked;
-				if (mouseLocked)
-					guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
-				break;
-			case KeyCode.KEY_P: graphics.camera.printVectors; break;
-			//case KeyCode.KEY_I:
-
-			//	chunkMan
-			//	.regionStorage
-			//	.getChunkStoreInfo(chunkMan.observerPosition)
-			//	.writeln("\n");
-			//	break;
-			case KeyCode.KEY_M:
-				break;
-			case KeyCode.KEY_U:
-				doUpdateObserverPosition = !doUpdateObserverPosition; break;
-			case KeyCode.KEY_C: isCullingEnabled = !isCullingEnabled; break;
-			case KeyCode.KEY_R: graphics.resetCamera(); break;
-			case KeyCode.KEY_F4: sendMessage("/stop"); break;
-			case KeyCode.KEY_LEFT_BRACKET: decViewRadius(); break;
-			case KeyCode.KEY_RIGHT_BRACKET: incViewRadius(); break;
-
-			default: break;
-		}
-	}
-
-	void mouseReleased(uint mouseButton)
-	{
+		mouseLocked = !mouseLocked;
 		if (mouseLocked)
-		switch(mouseButton)
-		{
-			case PointerButton.PB_1:
-				placeBlock(1);
-				break;
-			case PointerButton.PB_2:
-				placeBlock(2);
-				break;
-			default:break;
-		}
+			guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
+	}
+
+	void onIncViewRadius(string)
+	{
+		incViewRadius();
+	}
+
+	void onDecViewRadius(string)
+	{
+		decViewRadius();
+	}
+
+	void onStopServerKey(string)
+	{
+		sendMessage("/stop");
+	}
+
+	void onToggleCulling(string)
+	{
+		isCullingEnabled = !isCullingEnabled;
+	}
+
+	void onTogglePositionUpdate(string)
+	{
+		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
 	void drawScene(Draw1Event event)
@@ -604,9 +570,8 @@ public:
 	{
 		auto packetMap = unpackPacket!PacketMapPacket(packetData);
 
-		info(packetMap.packetNames);
 		connection.setPacketMap(packetMap.packetNames);
-		connection.printPacketMap();
+		//connection.printPacketMap();
 
 		connection.send(LoginPacket(myName));
 		evDispatcher.postEvent(new ThisClientConnectedEvent);

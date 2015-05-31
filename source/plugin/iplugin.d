@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module plugin.iplugin;
 
 import plugin;
-import voxelman.config;
+public import voxelman.config : Config;
 
 /// Basic plugin interface.
 abstract class IPlugin
