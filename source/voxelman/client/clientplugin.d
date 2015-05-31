@@ -76,6 +76,7 @@ public:
 
 	// Client data
 	bool isRunning = false;
+	bool isDisconnecting = false;
 	bool isSpawned = false;
 	bool mouseLocked;
 	bool autoMove;
@@ -133,6 +134,7 @@ public:
 		registerPackets(connection);
 		//connection.printPacketMap();
 
+		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
 		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
 		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
 		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
@@ -252,9 +254,10 @@ public:
 			guiPlugin.fpsHelper.sleepAfterFrame(delta);
 		}
 
+		isDisconnecting = connection.isConnected;
 		connection.disconnect();
 
-		while (connection.isRunning && connection.isConnected)
+		while (isDisconnecting)
 		{
 			connection.update(0);
 		}
@@ -312,19 +315,31 @@ public:
 		if (doUpdateObserverPosition)
 			chunkMan.updateObserverPosition(graphics.camera.position);
 
-		if (connection.isRunning)
-			connection.update(0);
-
+		connection.update(0);
 		chunkMan.update();
+		sendPosition(event.deltaTime);
 
+		traceCursor();
+		drawDebugCursor();
+		updateStats();
+		printDebug();
+		stats.resetCounters();
+	}
+
+	void sendPosition(double dt)
+	{
 		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
+
 		if (isSpawned)
 		{
-			sendPositionTimer += event.deltaTime;
+			sendPositionTimer += dt;
 			if (sendPositionTimer > sendPositionInterval ||
 				chunkPos != prevChunkPos)
 			{
-				sendPosition();
+				connection.send(ClientPositionPacket(
+					graphics.camera.position,
+					graphics.camera.heading));
+
 				if (sendPositionTimer < sendPositionInterval)
 					sendPositionTimer = 0;
 				else
@@ -333,12 +348,6 @@ public:
 		}
 
 		prevChunkPos = chunkPos;
-
-		traceCursor();
-		drawDebugCursor();
-		updateStats();
-		printDebug();
-		stats.resetCounters();
 	}
 
 	void traceCursor()
@@ -415,13 +424,6 @@ public:
 		{
 			connection.send(ViewRadiusPacket(chunkMan.viewRadius));
 		}
-	}
-
-	void sendPosition()
-	{
-		connection.send(ClientPositionPacket(
-			graphics.camera.position,
-			graphics.camera.heading));
 	}
 
 	void sendMessage(string msg)
@@ -585,8 +587,6 @@ public:
 	void onConnect(ref ENetEvent event)
 	{
 		infof("Connection to %s:%s established", serverIp.get!string, serverPort.get!ushort);
-		connection.send(LoginPacket(myName));
-		evDispatcher.postEvent(new ThisClientConnectedEvent);
 	}
 
 	void onDisconnect(ref ENetEvent event)
@@ -597,6 +597,19 @@ public:
 		event.peer.data = null;
 
 		evDispatcher.postEvent(new ThisClientDisconnectedEvent);
+		isDisconnecting = false;
+	}
+
+	void handlePacketMapPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packetMap = unpackPacket!PacketMapPacket(packetData);
+
+		info(packetMap.packetNames);
+		connection.setPacketMap(packetMap.packetNames);
+		connection.printPacketMap();
+
+		connection.send(LoginPacket(myName));
+		evDispatcher.postEvent(new ThisClientConnectedEvent);
 	}
 
 	void handleSessionInfoPacket(ubyte[] packetData, ClientId clientId)

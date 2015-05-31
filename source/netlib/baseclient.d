@@ -55,6 +55,45 @@ abstract class BaseClient : Connection
 	void send(P)(auto ref const(P) packet, ubyte channel = 0)
 		if (is(P == struct))
 	{
+		if (packetId!P >= packetArray.length)
+		{
+			infof("Dropping packet %s: %s", P.stringof, packetId!P);
+			return;
+		}
+
 		send(createPacket(packet), channel);
+	}
+
+	// Set id mapping for packets
+	void setPacketMap(string[] packetNames)
+	{
+		import std.algorithm : countUntil, remove, SwapStrategy;
+
+		PacketInfo*[] newPacketArray;
+		newPacketArray.reserve(packetNames.length);
+
+		static bool pred(PacketInfo* packetInfo, string packetName)
+		{
+			return packetInfo.name == packetName;
+		}
+
+		foreach(i, packetName; packetNames)
+		{
+			ptrdiff_t index = countUntil!pred(packetArray, packetName);
+			size_t newId = newPacketArray.length;
+
+			if (index > -1)
+			{
+				newPacketArray ~= packetArray[index];
+				remove!(SwapStrategy.unstable)(packetArray, index);
+			}
+			else
+			{
+				newPacketArray ~= new PacketInfo(packetName);
+			}
+			newPacketArray[$-1].id = newId;
+		}
+
+		packetArray = newPacketArray;
 	}
 }

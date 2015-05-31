@@ -48,6 +48,7 @@ public:
 	ChunkMan chunkMan;
 	ChunkProvider chunkProvider;
 	World world;
+	bool isRunning = false;
 
 	// IPlugin stuff
 	override string name() @property { return "ServerPlugin"; }
@@ -76,6 +77,10 @@ public:
 
 	override void postInit()
 	{
+		import std.random;
+		randomShuffle(connection.packetArray[1..$]);
+		foreach (i, packetInfo; connection.packetArray)
+			packetInfo.id = i;
 	}
 
 	this()
@@ -115,7 +120,7 @@ public:
 		pluginman.initPlugins();
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
-		connection.start(settings, ENET_HOST_ANY, CONNECT_PORT);
+		connection.start(settings, ENET_HOST_ANY, SERVER_PORT);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
 
@@ -124,7 +129,8 @@ public:
 		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
 
 		// Main loop
-		while (connection.isRunning)
+		isRunning = true;
+		while (isRunning)
 		{
 			newTime = Clock.currAppTick;
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
@@ -199,7 +205,7 @@ public:
 
 		if (commName == "stop")
 		{
-			connection.isRunning = false;
+			isRunning = false;
 			connection.disconnectAll();
 		}
 		else
@@ -226,6 +232,8 @@ public:
 		//enet_peer_timeout(event.peer, 0, 0, 2000);
 		infof("%s connected", clientId);
 		evDispatcher.postEvent(new ClientConnectedEvent(clientId));
+
+		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
 	}
 
 	void onDisconnect(ref ENetEvent event)

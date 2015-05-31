@@ -76,6 +76,7 @@ abstract class Connection
 
 	// Used when handling packet based on its id.
 	PacketInfo*[] packetArray;
+
 	// Used to get packet id when sending packet.
 	PacketInfo*[TypeInfo] packetMap;
 
@@ -153,6 +154,13 @@ abstract class Connection
 		return bufferTemp[0..size];
 	}
 
+	string[] packetNames() @property
+	{
+		import std.algorithm : map;
+		import std.array : array;
+		return packetArray.map!(a => a.name).array;
+	}
+
 	void printPacketMap()
 	{
 		foreach(i, packetInfo; packetArray)
@@ -168,6 +176,7 @@ abstract class Connection
 
 	void stop()
 	{
+		isRunning = false;
 		enet_host_destroy(host);
 	}
 
@@ -220,7 +229,6 @@ abstract class Connection
 
 	void onDisconnect(ref ENetEvent event)
 	{
-		isRunning = false;
 		if (disconnectHandler) disconnectHandler(event);
 	}
 }

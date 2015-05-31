@@ -11,13 +11,16 @@ import voxelman.storage.chunk : BlockChange, BlockData, BlockType;
 
 void registerPackets(Connection c)
 {
+	// Server -> Client
+	c.registerPacket!PacketMapPacket;
+	c.registerPacket!LoginPacket;
+	c.registerPacket!SessionInfoPacket;
+
 	// Common
 	c.registerPacket!MessagePacket;
 	c.registerPacket!ClientPositionPacket;
 
 	// Server -> Client
-	c.registerPacket!LoginPacket;
-	c.registerPacket!SessionInfoPacket;
 	c.registerPacket!ClientLoggedInPacket;
 	c.registerPacket!ClientLoggedOutPacket;
 
@@ -27,6 +30,11 @@ void registerPackets(Connection c)
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
 	c.registerPacket!PlaceBlockPacket;
+}
+
+struct PacketMapPacket
+{
+	string[] packetNames;
 }
 
 // client request
