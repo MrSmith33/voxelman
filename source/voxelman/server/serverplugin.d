@@ -184,6 +184,12 @@ public:
 		evDispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
+	bool isLoggedIn(ClientId clientId)
+	{
+		ClientInfo* clientInfo = connection.clientStorage[clientId];
+		return clientInfo.isLoggedIn;
+	}
+
 	string[ClientId] clientNames()
 	{
 		string[ClientId] names;
@@ -302,15 +308,15 @@ public:
 
 	void handleClientPosition(ubyte[] packetData, ClientId clientId)
 	{
-		ClientInfo* clientInfo = connection.clientStorage[clientId];
-		if (clientInfo.isLoggedIn)
+		if (isLoggedIn(clientId))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
 			//infof("Received ClientPositionPacket(%s, %s, %s)",
 			//	packet.x, packet.y, packet.z);
 
-			clientInfo.pos = packet.pos;
-			clientInfo.heading = packet.heading;
+			ClientInfo* info = connection.clientStorage[clientId];
+			info.pos = packet.pos;
+			info.heading = packet.heading;
 			chunkMan.updateObserverPosition(clientId);
 			//infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
 		}
@@ -323,14 +329,18 @@ public:
 		ClientInfo* info = connection.clientStorage[clientId];
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-		chunkMan.updateObserverPosition(clientId);
+		if (info.isLoggedIn)
+			chunkMan.updateObserverPosition(clientId);
 	}
 
 	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
 	{
-		auto packet = unpackPacket!PlaceBlockPacket(packetData);
-		//infof("Received PlaceBlockPacket(%s)", packet);
+		if (isLoggedIn(clientId))
+		{
+			auto packet = unpackPacket!PlaceBlockPacket(packetData);
+			//infof("Received PlaceBlockPacket(%s)", packet);
 
-		world.worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
+			world.worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
+		}
 	}
 }

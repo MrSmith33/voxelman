@@ -36,6 +36,7 @@ public:
 
 	IRenderer renderer;
 	ConfigOption cameraSensivity;
+	ConfigOption cameraFov;
 
 
 	override string name() @property { return "GraphicsPlugin"; }
@@ -44,12 +45,14 @@ public:
 	override void loadConfig(Config config)
 	{
 		cameraSensivity = config.registerOption!float("camera_sensivity", 0.4);
+		cameraFov = config.registerOption!float("camera_fov", 60.0);
 	}
 
 	override void preInit()
 	{
 		camera.move(START_POS);
 		camera.sensivity = cameraSensivity.get!float;
+		camera.fov = cameraFov.get!float;
 
 		// Setup shaders
 
