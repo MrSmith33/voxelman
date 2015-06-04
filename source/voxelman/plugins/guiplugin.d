@@ -17,6 +17,7 @@ public import anchovy.core.input;
 
 
 import plugin;
+import resource;
 
 import voxelman.config;
 import voxelman.storage.chunk;
@@ -25,6 +26,7 @@ import voxelman.storage.utils;
 import voxelman.events;
 
 import voxelman.plugins.eventdispatcherplugin;
+import voxelman.resourcemanagers.config;
 
 
 class ClosePressedEvent : GameEvent {}
@@ -61,8 +63,9 @@ public:
 	override string name() @property { return "GuiPlugin"; }
 	override string semver() @property { return "0.5.0"; }
 
-	override void loadConfig(Config config)
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		auto config = resmanRegistry.getResourceManager!Config;
 		resolution = config.registerOption!(uint[])("resolution", [1280, 720]);
 	}
 

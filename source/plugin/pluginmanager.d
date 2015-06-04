@@ -9,7 +9,7 @@ module plugin.pluginmanager;
 import std.experimental.logger;
 import std.string : format;
 import plugin;
-import voxelman.config;
+import resource;
 
 /// Simple implementation of IPluginManager
 class PluginManager : IPluginManager
@@ -25,11 +25,11 @@ class PluginManager : IPluginManager
 		plugins[pluginInstance.name] = pluginInstance;
 	}
 
-	void loadConfig(Config config)
+	void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		foreach(IPlugin p; plugins)
 		{
-			p.loadConfig(config);
+			p.registerResources(resmanRegistry);
 		}
 	}
 

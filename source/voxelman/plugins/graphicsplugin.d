@@ -12,10 +12,12 @@ import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
 import plugin;
+import resource;
 import voxelman.config;
 import voxelman.events;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.guiplugin;
+import voxelman.resourcemanagers.config;
 import voxelman.utils.fpscamera;
 public import voxelman.utils.renderutils;
 
@@ -42,8 +44,9 @@ public:
 	override string name() @property { return "GraphicsPlugin"; }
 	override string semver() @property { return "0.5.0"; }
 
-	override void loadConfig(Config config)
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		auto config = resmanRegistry.getResourceManager!Config;
 		cameraSensivity = config.registerOption!float("camera_sensivity", 0.4);
 		cameraFov = config.registerOption!float("camera_fov", 60.0);
 	}

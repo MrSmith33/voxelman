@@ -19,6 +19,9 @@ import derelict.enet.enet;
 
 import plugin;
 import plugin.pluginmanager;
+import resource;
+import resource.resourcemanagerregistry;
+
 import netlib.connection;
 import netlib.baseclient;
 
@@ -29,6 +32,8 @@ import voxelman.plugins.inputplugin;
 import voxelman.client.plugins.editplugin;
 import voxelman.client.plugins.movementplugin;
 import voxelman.client.plugins.worldinteractionplugin;
+import voxelman.resourcemanagers.config;
+import voxelman.resourcemanagers.keybindingsmanager;
 
 import voxelman.config;
 import voxelman.events;
@@ -61,14 +66,20 @@ final class ClientPlugin : IPlugin
 {
 private:
 	PluginManager pluginman = new PluginManager;
+	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
+
+	// Plugins
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GraphicsPlugin graphics = new GraphicsPlugin;
 	GuiPlugin guiPlugin = new GuiPlugin;
 	InputPlugin input = new InputPlugin;
+	MovementPlugin movementPlugin = new MovementPlugin;
 	WorldInteractionPlugin worldInteraction = new WorldInteractionPlugin;
 	EditPlugin editPlugin = new EditPlugin;
-	MovementPlugin movementPlugin = new MovementPlugin;
+
+	// Resource managers
 	Config config;
+	KeyBindingManager keyBindingMan = new KeyBindingManager;
 
 public:
 	AppStatistics stats;
@@ -107,10 +118,17 @@ public:
 	override string name() @property { return "ClientPlugin"; }
 	override string semver() @property { return "0.5.0"; }
 
-	override void loadConfig(Config config)
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		serverIp = config.registerOption!string("ip", "127.0.0.1");
 		serverPort = config.registerOption!ushort("port", 1234);
+
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F4, "key.stopServer", null, &onStopServerKey));
 	}
 
 	override void preInit()
@@ -139,9 +157,6 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
-		graphics = pluginman.getPlugin!GraphicsPlugin(this);
-
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
 		evDispatcher.subscribeToEvent(&drawOverlay);
@@ -157,13 +172,6 @@ public:
 		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
 		foreach(i; 0..12) guiPlugin.context.createWidget("label", debugInfo);
 		guiPlugin.context.getWidgetById("stopServer").addEventHandler(&onStopServer);
-
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_F4, "key.stopServer", null, &onStopServerKey));
 	}
 
 	bool onStopServer(Widget widget, PointerClickEvent event)
@@ -226,6 +234,26 @@ public:
 		pluginman.registerPlugin(this);
 	}
 
+	void registerResourceManagers()
+	{
+		resmanRegistry.registerResourceManager(config);
+		resmanRegistry.registerResourceManager(keyBindingMan);
+	}
+
+	void load()
+	{
+		// register all plugins and managers
+		registerPlugins();
+		registerResourceManagers();
+
+		// Actual loading sequence
+		resmanRegistry.initResourceManagers();
+		pluginman.registerResources(resmanRegistry);
+		resmanRegistry.loadResources();
+		resmanRegistry.postInitResourceManagers();
+		pluginman.initPlugins();
+	}
+
 	void run(string[] args)
 	{
 		import std.datetime : TickDuration, Clock, usecs;
@@ -233,10 +261,7 @@ public:
 
 		version(manualGC) GC.disable;
 
-		registerPlugins();
-		pluginman.loadConfig(config);
-		config.load();
-		pluginman.initPlugins();
+		load();
 
 		info("\nSystem info");
 		foreach(item; guiPlugin.getHardwareInfo())

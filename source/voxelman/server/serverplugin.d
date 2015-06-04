@@ -12,6 +12,9 @@ import derelict.enet.enet;
 
 import plugin;
 import plugin.pluginmanager;
+import resource;
+import resource.resourcemanagerregistry;
+
 import netlib.connection;
 import netlib.baseserver;
 
@@ -21,6 +24,7 @@ import voxelman.events;
 import voxelman.packets;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.gametimeplugin;
+import voxelman.resourcemanagers.config;
 import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
@@ -31,14 +35,18 @@ import voxelman.storage.coordinates;
 import voxelman.storage.world;
 import voxelman.utils.math;
 
+
 final class ServerConnection : BaseServer!ClientInfo{}
 
 class ServerPlugin : IPlugin
 {
 private:
 	PluginManager pluginman = new PluginManager;
+	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
+	// Plugins
 	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
 	GameTimePlugin gameTime = new GameTimePlugin;
+	// Resource managers
 	Config config;
 
 public:
@@ -124,7 +132,13 @@ public:
 		pluginman.registerPlugin(evDispatcher);
 		pluginman.registerPlugin(gameTime);
 
-		pluginman.loadConfig(config);
+		resmanRegistry.registerResourceManager(config);
+
+		// Actual loading sequence
+		resmanRegistry.initResourceManagers();
+		pluginman.registerResources(resmanRegistry);
+		resmanRegistry.loadResources();
+		resmanRegistry.postInitResourceManagers();
 		pluginman.initPlugins();
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};

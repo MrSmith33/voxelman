@@ -14,11 +14,11 @@ interface IPluginManager
 	IPlugin findPlugin(IPlugin requester, string pluginName);
 }
 
-P getPlugin(P)(IPluginManager modman, IPlugin requester, string pluginName = P.stringof)
+P getPlugin(P)(IPluginManager pluginman, IPlugin requester, string pluginName = P.stringof)
 {
 	import std.exception : enforce;
-	IPlugin mod = modman.findPlugin(requester, pluginName);
-	P exactPlugin = cast(P)mod;
+	IPlugin plugin = pluginman.findPlugin(requester, pluginName);
+	P exactPlugin = cast(P)plugin;
 	enforce(exactPlugin);
 	return exactPlugin;
 }

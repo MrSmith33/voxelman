@@ -14,7 +14,7 @@ key.backward "s"
 key.right "d"
 key.up "space"
 key.down "left_control"
-key.fast "right_control"
+key.fast "left_shift"
 
 key.mainAction "mb_left"
 key.secondaryAction "mb_right"

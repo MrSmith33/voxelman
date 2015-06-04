@@ -10,37 +10,24 @@ import std.experimental.logger;
 import dlib.math.vector;
 
 import plugin;
+import resource;
 import voxelman.plugins.guiplugin;
-public import voxelman.plugins.guiplugin : KeyCode, PointerButton;
+import voxelman.resourcemanagers.config;
+import voxelman.resourcemanagers.keybindingsmanager;
 
-
-struct KeyBinding
-{
-	uint keyCode;
-	string keyName;
-	KeyHandler pressHandler;
-	KeyHandler releaseHandler;
-}
-
-alias KeyHandler = void delegate(string key);
 
 final class InputPlugin : IPlugin
 {
 	GuiPlugin guiPlugin;
-
-	KeyBinding*[uint] keyBindingsByCode;
-	KeyBinding*[string] keyBindingsByName;
+	KeyBindingManager keyBindingsMan;
 
 	// IPlugin stuff
 	override string name() @property { return "InputPlugin"; }
 	override string semver() @property { return "0.5.0"; }
 
-	override void loadConfig(Config config)
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-	}
-
-	override void preInit()
-	{
+		keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -56,18 +43,18 @@ final class InputPlugin : IPlugin
 		guiPlugin.window.mouseReleased.connect(&onMouseReleased);
 	}
 
-	void registerKeyBinding(KeyBinding* binding)
-	{
-		assert(binding);
-		keyBindingsByCode[binding.keyCode] = binding;
-		keyBindingsByName[binding.keyName] = binding;
-
-		//infof("Regiseterd key binding %s", *binding);
-	}
+	//void registerKeyBinding(KeyBinding* binding)
+	//{
+	//	assert(binding);
+	//	keyBindingsByCode[binding.keyCode] = binding;
+	//	keyBindingsByName[binding.keyName] = binding;
+	//
+	//	//infof("Regiseterd key binding %s", *binding);
+	//}
 
 	void onKeyPressed(uint keyCode)
 	{
-		if (auto binding = keyCode in keyBindingsByCode)
+		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
 			if (b.pressHandler)
@@ -77,7 +64,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyReleased(uint keyCode)
 	{
-		if (auto binding = keyCode in keyBindingsByCode)
+		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
 			if (b.releaseHandler)
@@ -87,7 +74,7 @@ final class InputPlugin : IPlugin
 
 	void onMousePressed(uint keyCode)
 	{
-		if (auto binding = keyCode in keyBindingsByCode)
+		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
 			if (b.pressHandler)
@@ -97,7 +84,7 @@ final class InputPlugin : IPlugin
 
 	void onMouseReleased(uint keyCode)
 	{
-		if (auto binding = keyCode in keyBindingsByCode)
+		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
 			if (b.releaseHandler)
@@ -107,7 +94,7 @@ final class InputPlugin : IPlugin
 
 	bool isKeyPressed(string keyName)
 	{
-		if (auto binding = keyName in keyBindingsByName)
+		if (auto binding = keyName in keyBindingsMan.keyBindingsByName)
 		{
 			KeyBinding* b = *binding;
 			return guiPlugin.window.isKeyPressed(b.keyCode);

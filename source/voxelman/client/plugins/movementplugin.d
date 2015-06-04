@@ -11,12 +11,15 @@ import std.experimental.logger;
 import dlib.math.vector;
 
 import plugin;
+import resource;
 import voxelman.events;
+
 import voxelman.client.clientplugin;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.plugins.guiplugin;
 import voxelman.plugins.inputplugin;
+import voxelman.resourcemanagers.keybindingsmanager;
 
 
 class MovementPlugin : IPlugin
@@ -33,6 +36,18 @@ class MovementPlugin : IPlugin
 	override string name() @property { return "MovementPlugin"; }
 	override string semver() @property { return "0.5.0"; }
 
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_W, "key.forward"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_A, "key.left"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_S, "key.backward"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_D, "key.right"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
+	}
+
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
@@ -42,13 +57,7 @@ class MovementPlugin : IPlugin
 		graphics = pluginman.getPlugin!GraphicsPlugin(this);
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_W, "key.forward"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_A, "key.left"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_S, "key.backward"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_D, "key.right"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
-		input.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
+
 	}
 
 	void onPreUpdateEvent(PreUpdateEvent event)
