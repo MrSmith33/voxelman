@@ -2,5 +2,27 @@ ip "localhost"
 port 1234
 
 resolution 1280 720
+limit_fps true
+view_distance 4
 
 camera_sensivity 0.1
+camera_fov 60.0
+
+key.forward "w"
+key.left "a"
+key.backward "s"
+key.right "d"
+key.up "space"
+key.down "left_control"
+key.fast "right_control"
+
+key.mainAction "mb_left"
+key.secondaryAction "mb_right"
+key.tertiaryAction "mb_middle"
+
+key.lockMouse "q"
+key.incViewRadius "right_bracket"
+key.decViewRadius "left_bracket"
+key.toggleCulling "c"
+key.togglePosUpdate "u"
+key.stopServer "f4"
