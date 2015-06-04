@@ -19,7 +19,7 @@ import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.plugins.guiplugin;
 import voxelman.plugins.inputplugin;
-import voxelman.resourcemanagers.keybindingsmanager;
+import voxelman.resourcemanagers.keybindingmanager;
 
 
 class MovementPlugin : IPlugin

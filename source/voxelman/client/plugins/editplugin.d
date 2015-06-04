@@ -15,7 +15,7 @@ import voxelman.client.clientplugin;
 import voxelman.client.plugins.worldinteractionplugin;
 
 import voxelman.plugins.eventdispatcherplugin;
-import voxelman.resourcemanagers.keybindingsmanager;
+import voxelman.resourcemanagers.keybindingmanager;
 
 
 class EditPlugin : IPlugin

@@ -13,7 +13,7 @@ import plugin;
 import resource;
 import voxelman.plugins.guiplugin;
 import voxelman.resourcemanagers.config;
-import voxelman.resourcemanagers.keybindingsmanager;
+import voxelman.resourcemanagers.keybindingmanager;
 
 
 final class InputPlugin : IPlugin
