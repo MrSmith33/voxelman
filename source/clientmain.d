@@ -5,6 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.clientmain;
 
+import std.file : mkdirRecurse;
+
 import voxelman.utils.log;
 import voxelman.client.clientplugin;
 import anchovy.gui;
@@ -17,6 +19,7 @@ void main(string[] args)
 	//Frustum f2;
 	//f2 = f;
 
+	mkdirRecurse("../logs");
 	setupLogger("../logs/client.log");
 	auto clientPlugin = new ClientPlugin();
 	clientPlugin.run(args);

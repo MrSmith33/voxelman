@@ -62,12 +62,8 @@ enum StorageType
 // stores all used snapshots of the chunk. Current is blocks
 struct BlockDataSnapshot
 {
-	// tick of last modification, 0 when generated
+	// tick when snapshot was created, 0 when generated
 	TimestampType timestamp;
-
-	// previous chunk snapshot
-	BlockDataSnapshot* olderSnapshot;
-	BlockDataSnapshot* newerSnapshot;
 
 	// actual data
 	BlockData blockData;

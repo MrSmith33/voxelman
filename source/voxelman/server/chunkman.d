@@ -147,10 +147,10 @@ struct ChunkMan
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
 		ivec3 observerPos = ivec3(clientInfo.pos);
 
-		ivec3[] chunksToLoad = chunkPositions.array;
-		sort!((a, b) => a.euclidDistSqr(observerPos) < b.euclidDistSqr(observerPos))(chunksToLoad);
+		ivec3[] chunksToObserve = chunkPositions.array;
+		sort!((a, b) => a.euclidDistSqr(observerPos) < b.euclidDistSqr(observerPos))(chunksToObserve);
 
-		foreach(chunkPosition; chunksToLoad)
+		foreach(chunkPosition; chunksToObserve)
 		{
 			addChunkObserver(ChunkWorldPos(chunkPosition), clientId);
 		}

@@ -5,11 +5,14 @@ Authors: Andrey Penechko.
 */
 module voxelman.servermain;
 
+import std.file : mkdirRecurse;
+
 import voxelman.utils.log;
 import voxelman.server.serverplugin;
 
 void main(string[] args)
 {
+	mkdirRecurse("../logs");
 	setupLogger("../logs/server.log");
 	auto serverPlugin = new ServerPlugin;
 	serverPlugin.run(args);

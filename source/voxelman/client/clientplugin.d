@@ -33,7 +33,7 @@ import voxelman.client.plugins.editplugin;
 import voxelman.client.plugins.movementplugin;
 import voxelman.client.plugins.worldinteractionplugin;
 import voxelman.resourcemanagers.config;
-import voxelman.resourcemanagers.keybindingsmanager;
+import voxelman.resourcemanagers.keybindingmanager;
 
 import voxelman.config;
 import voxelman.events;

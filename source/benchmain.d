@@ -6,11 +6,13 @@ Authors: Andrey Penechko.
 module voxelman.benchmain;
 
 import std.experimental.logger;
+import std.file : mkdirRecurse;
+
 import voxelman.utils.log;
 
 void main(string[] args)
 {
+	mkdirRecurse("../logs");
 	setupLogger("../logs/bench.log");
-
 	info("benchmarking");
 }

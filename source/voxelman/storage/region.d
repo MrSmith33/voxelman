@@ -46,7 +46,7 @@ struct ChunkStoreInfo
 	// following fields are only valid when isStored == true.
 	size_t sectorNumber;
 	size_t numSectors;
-	size_t timestamp;
+	TimestampType timestamp;
 	size_t dataLength;
 	size_t dataByteOffset() @property {return sectorNumber * SECTOR_SIZE;}
 

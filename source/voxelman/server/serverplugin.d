@@ -158,7 +158,10 @@ public:
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
+			evDispatcher.postEvent(new PreUpdateEvent(delta));
+			evDispatcher.postEvent(new UpdateEvent(delta));
 			update(delta);
+			evDispatcher.postEvent(new PostUpdateEvent(delta));
 
 			GC.collect();
 
@@ -186,16 +189,10 @@ public:
 
 	void update(double dt)
 	{
-		evDispatcher.postEvent(new PreUpdateEvent(dt));
-
-		evDispatcher.postEvent(new UpdateEvent(dt));
-
 		connection.update(0);
 		chunkProvider.update();
 		world.update();
 		chunkMan.sendChanges();
-
-		evDispatcher.postEvent(new PostUpdateEvent(dt));
 	}
 
 	bool isLoggedIn(ClientId clientId)
