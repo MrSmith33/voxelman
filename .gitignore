@@ -4,13 +4,14 @@
 *.obj
 *.a
 *.so
+*.log
 *.png
 *.zip
 .DS_Store
-obj/
 deps/
 bin/
 saves/
+stuff/
 .dub/
 *.sublime*
 dub.selections.json
