@@ -96,7 +96,7 @@ public:
 				try
 				{
 					parseValue(optionPair.value, optionPair.key, tags[0].values);
-					infof("%s %s %s", optionPair.key, optionPair.value.value, optionPair.value.defaultValue);
+					//infof("%s %s %s", optionPair.key, optionPair.value.value, optionPair.value.defaultValue);
 				}
 				catch(VariantException e)
 				{

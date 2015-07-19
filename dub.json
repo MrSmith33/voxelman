@@ -7,44 +7,44 @@
 
 	"dependencies" : {
 		"cbor-d" : ">=0.4.1",
-		"anchovy" : {"version" : ">=0.7.1"},
-        "derelict-enet": "==1.3.10",
-        "sdlang-d" : ">=0.8.4"
+		"anchovy" : {"version" : ">=0.8.0"},
+		"derelict-enet": "==1.3.10",
+		"sdlang-d" : ">=0.9.1"
 	},
 
-    "targetPath" : "bin",
-    "workingDirectory" : "bin",
+	"targetPath" : "bin",
+	"workingDirectory" : "bin",
 
 	"sourcePaths" : [ "source" ],
 
-    "copyFiles-windows-x86" : ["lib/*.dll"],
-    "copyFiles-windows-x86_64" : ["lib64/*.dll"],
+	"copyFiles-windows-x86" : ["lib/*.dll"],
+	"copyFiles-windows-x86_64" : ["lib64/*.dll"],
 
 	"configurations": [
-        {
-            "name" : "client",
-            "targetName" : "client",
-            "targetType" : "executable",
-            "excludedSourceFiles" : [
-            	"source/voxelman/server/*", "source/servermain.d",
-            	"source/voxelman/benchmark/*", "source/benchmain.d"],
-            "mainSourceFile" : "source/clientmain.d"
-        },
-        {
-            "name": "server",
-            "targetName" : "server",
-            "targetType": "executable",
-            "excludedSourceFiles" : [
-            	"source/voxelman/client/*", "source/clientmain.d",
-            	"source/voxelman/benchmark/*", "source/benchmain.d"],
-            "mainSourceFile" : "source/servermain.d"
-        },
-        {
-            "name": "benchmark",
-            "targetName" : "benchmark",
-            "targetType": "executable",
-            "excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
-            "mainSourceFile" : "source/benchmain.d"
-        }
-    ]
+		{
+			"name" : "client",
+			"targetName" : "client",
+			"targetType" : "executable",
+			"excludedSourceFiles" : [
+				"source/voxelman/server/*", "source/servermain.d",
+				"source/voxelman/benchmark/*", "source/benchmain.d"],
+			"mainSourceFile" : "source/clientmain.d"
+		},
+		{
+			"name": "server",
+			"targetName" : "server",
+			"targetType": "executable",
+			"excludedSourceFiles" : [
+				"source/voxelman/client/*", "source/clientmain.d",
+				"source/voxelman/benchmark/*", "source/benchmain.d"],
+			"mainSourceFile" : "source/servermain.d"
+		},
+		{
+			"name": "benchmark",
+			"targetName" : "benchmark",
+			"targetType": "executable",
+			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
+			"mainSourceFile" : "source/benchmain.d"
+		}
+	]
 }

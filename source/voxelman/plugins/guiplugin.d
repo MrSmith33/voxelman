@@ -71,8 +71,8 @@ public:
 
 	override void preInit()
 	{
-		application = new Application!GlfwWindow(uvec2(resolution.get!(uint[])), "Voxelman client");
-		application.init([]);
+		application = new Application!GlfwWindow();
+		application.init([], uvec2(resolution.get!(uint[])), "Voxelman client");
 		appLoad();
 	}
 
