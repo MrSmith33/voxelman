@@ -1,0 +1,13 @@
+{
+	"name" : "snapman",
+
+	"authors" : [ "Andrey Penechko" ],
+	"license" : "BSL-1.0",
+
+	"dependencies" : {
+		"voxelman" : {"version" : "~master", "path" : "../../"}
+	},
+
+	"sourcePaths" : [ "./" ],
+	"mainSourceFile" : "main.d"
+}
