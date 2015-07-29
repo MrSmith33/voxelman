@@ -49,6 +49,14 @@ struct HashSet(K) {
     bool opBinaryRight(string op)(auto ref K key) const if(op == "in") {
         return cast(bool)(key in set);
     }
+
+    void clear() {
+    	set = null;
+    }
+
+    auto items() @property {
+    	return set.byKey;
+    }
 }
 
 struct BlockWorldPos {

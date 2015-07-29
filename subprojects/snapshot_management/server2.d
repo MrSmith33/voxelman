@@ -17,7 +17,7 @@ import std.string;
 import storage;
 import server;
 
-
+/*
 struct Server {
 	Timestamp currentTime;
 
@@ -56,3 +56,4 @@ struct Server {
 		storage.update();
 	}
 }
+*/
