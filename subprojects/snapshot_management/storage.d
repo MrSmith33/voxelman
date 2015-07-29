@@ -15,7 +15,6 @@ import voxelman.storage.utils;
 
 
 struct ChunkInMemoryStorage {
-	ChunkFreeList* freeList;
 	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos)[] onChunkSavedHandlers;
 
@@ -23,19 +22,28 @@ struct ChunkInMemoryStorage {
 		ChunkWorldPos cwp;
 		ChunkDataSnapshot snapshot;
 	}
+	private static struct LoadItem {
+		ChunkWorldPos cwp;
+		BlockId[] blockBuffer;
+	}
 	private ChunkDataSnapshot[ChunkWorldPos] snapshots;
-	private Queue!ChunkWorldPos snapshotsToLoad;
+	private Queue!LoadItem snapshotsToLoad;
 	private Queue!SaveItem snapshotsToSave;
 
 	// load one chunk per update
 	void update() {
 		auto toLoad = snapshotsToLoad.valueRange;
 		if (!toLoad.empty) {
-			ChunkWorldPos chunkWorldPos = toLoad.front;
+			LoadItem loadItem = toLoad.front;
 			toLoad.popFront();
-			ChunkDataSnapshot snap = snapshots.get(chunkWorldPos, ChunkDataSnapshot(freeList.allocate()));
+			ChunkDataSnapshot snap = snapshots.get(loadItem.cwp, ChunkDataSnapshot());
+			if (snap.blocks) {
+				loadItem.blockBuffer[] = snap.blocks;
+			}
+			snap.blocks = loadItem.blockBuffer;
+
 			foreach(handler; onChunkLoadedHandlers)
-				handler(chunkWorldPos, snap);
+				handler(loadItem.cwp, snap);
 		}
 
 		auto toSave = snapshotsToSave.valueRange;
@@ -44,7 +52,10 @@ struct ChunkInMemoryStorage {
 			toSave.popFront();
 			ChunkDataSnapshot* snap = saveItem.cwp in snapshots;
 			if (snap) {
-				freeList.deallocate(snap.blocks);
+				snap.blocks[] = saveItem.snapshot.blocks;
+				saveItem.snapshot.blocks = snap.blocks;
+			} else {
+				saveItem.snapshot.blocks = saveItem.snapshot.blocks.dup;
 			}
 			ChunkWorldPos cwp = saveItem.cwp;
 			snapshots[cwp] = saveItem.snapshot;
@@ -55,8 +66,8 @@ struct ChunkInMemoryStorage {
 	}
 
 	// duplicate queries aren't checked.
-	void loadChunk(ChunkWorldPos pos) {
-		snapshotsToLoad.put(pos);
+	void loadChunk(ChunkWorldPos cwp, BlockId[] blockBuffer) {
+		snapshotsToLoad.put(LoadItem(cwp, blockBuffer));
 	}
 
 	void saveChunk(ChunkWorldPos pos, ChunkDataSnapshot snapshot) {
@@ -65,15 +76,11 @@ struct ChunkInMemoryStorage {
 }
 
 // TODO: add delay to snap unload and send message back on snap unload to free mem
-
 struct SnapshotProvider {
-	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onSnapshotLoadedHandlers;
-	void delegate(ChunkWorldPos)[] onSnapshotSavedHandlers;
+	void delegate(ChunkWorldPos, ChunkDataSnapshot) onSnapshotLoadedHandler;
+	void delegate(ChunkWorldPos) onSnapshotSavedHandler;
 
-	private HashSet!ChunkWorldPos loadingSnapshots;
-	private HashSet!ChunkWorldPos unloadingSnapshots;
-	private HashSet!ChunkWorldPos loadedSnapshots;
-	private ChunkInMemoryStorage inMemoryStorage; // replaced with IO thread in real case. Simulates delay of IO
+	private ChunkInMemoryStorage inMemoryStorage; // Simulates delay of IO
 
 	void constructor() {
 		inMemoryStorage.onChunkLoadedHandlers ~= &onSnapshotLoaded;
@@ -84,40 +91,21 @@ struct SnapshotProvider {
 		inMemoryStorage.update();
 	}
 
-	void loadChunk(ChunkWorldPos cwp) {
-		if (cwp in unloadingSnapshots) {
-			unloadingSnapshots.remove(cwp);
-			// if was loading then it will continue
-		} else if (cwp !in loadingSnapshots){
-			loadingSnapshots.put(cwp);
-			// send buffer to IO thread
-			inMemoryStorage.loadChunk(cwp);
-		} else {
-			// is loading already
-			// do nothing
-		}
+	void loadChunk(ChunkWorldPos cwp, BlockId[] outBuffer) {
+		inMemoryStorage.loadChunk(cwp, outBuffer);
 	}
 
 	// called if chunk was loaded before and needs to be saved
 	void saveChunk(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
-		unloadingSnapshots.put(cwp);
-		// can't be loading
-		assert(cwp !in loadingSnapshots);
-		assert(cwp in loadedSnapshots);
-		// send buffer and position to IO thread
 		inMemoryStorage.saveChunk(cwp, snapshot);
-		loadedSnapshots.remove(cwp);
 	}
 
 	private void onSnapshotLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
-		loadedSnapshots.put(cwp);
-		foreach(handler; onSnapshotLoadedHandlers)
-			handler(cwp, snapshot);
+		onSnapshotLoadedHandler(cwp, snapshot);
 	}
 
 	private void onSnapshotSaved(ChunkWorldPos cwp) {
-		foreach(handler; onSnapshotSavedHandlers)
-			handler(cwp);
+		onSnapshotSavedHandler(cwp);
 	}
 }
 
@@ -136,7 +124,7 @@ struct ChunkManager {
 	void delegate(ChunkWorldPos cwp)[] onChunkRemovedHandlers;
 	void delegate(ChunkWorldPos cwp)[] onChunkLoadedHandlers;
 
-	ChunkFreeList* freeList;
+	ChunkFreeList freeList;
 	private SnapshotProvider* snapshotProvider;
 	//private Timestamp[ChunkWorldPos] savedTimestamps;
 	private ChunkDataSnapshot[ChunkWorldPos] snapshots;
@@ -154,7 +142,7 @@ struct ChunkManager {
 		with(ChunkState) final switch(state) {
 			case non_loaded:
 				chunkStates[cwp] = added_loading;
-				snapshotProvider.loadChunk(cwp);
+				snapshotProvider.loadChunk(cwp, freeList.allocate());
 				addChunk(cwp);
 				break;
 			case added_loaded:
