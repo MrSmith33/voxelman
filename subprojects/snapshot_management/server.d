@@ -108,11 +108,12 @@ struct ChunkDataSnapshot {
 
 struct Client {
 	string name;
-	int position;
-	int viewRadius;
-	auto observedChunks() @property { return iota(position - viewRadius, position + viewRadius + 1); }
+	ClientId id;
+	Volume1D viewVolume;
 	void sendChunk(ChunkWorldPos pos, const ubyte[] chunkData){}
-	void sendChanges(ChunkWorldPos pos, const BlockChange[]){}
+	void sendChanges(ChunkWorldPos cwp, BlockChange[] changes){
+		infof("changes #%s %s", cwp, changes);
+	}
 	void delegate(Server* server) sendDataToServer;
 }
 
@@ -164,145 +165,73 @@ struct Set(T) {
 
 struct Server {
 	Timestamp currentTime;
-	ChunkInMemoryStorage storage;
-	ChunkFreeList* freeList;
+	SnapshotProvider snapshotProvider;
+	ChunkManager chunkManager;
+	ChunkObserverManager chunkObserverManager;
+	WorldAccess worldAccess;
 
-	ChunkDataSnapshot[ChunkWorldPos] snapshots;
-	BlockId[][ChunkWorldPos] writeBuffers;
-	//Chunk[ChunkWorldPos] chunks;
-
-	Set!ChunkWorldPos loadingChunks;
-	Set!ChunkWorldPos unloadingChunks;
-
-	BlockChange[][ChunkWorldPos] changes;
-	Client*[][ChunkWorldPos] chunkObservers;
+	Client*[ClientId] clientMap;
 
 	void constructor()
 	{
-		freeList = new ChunkFreeList;
-		storage.freeList = freeList;
-		storage.onChunkLoadedHandlers ~= &onChunkLoaded;
+		snapshotProvider.constructor();
+		chunkManager.constructor(&snapshotProvider);
+		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
+		chunkManager.chunkChangesHandlers ~= &sendChanges;
+		worldAccess.constructor(&chunkManager);
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.changeChunkNumObservers;
 	}
 
-	void preUpdate(Client*[] clients) {
+	void preUpdate() {
 		// Advance time
 		++currentTime;
+		snapshotProvider.update();
 	}
 
-	void postUpdate(Client*[] clients) {
-		// Logic
+	void update() {
+		// logic. modify world, modify observers
+	}
 
-		// Load chunks. onChunkLoaded will be called
-		storage.update();
+	void postUpdate() {
+		chunkManager.postUpdate(currentTime);
 
-		// Send changes to clients
-		foreach(changes; changes.byKeyValue) {
-			foreach(client; chunkObservers.get(changes.key, null)) {
-				client.sendChanges(changes.key, changes.value);
-			}
+		// do regular save
+		// chunkManager.save(currentTime);
+	}
+
+	void save() {
+		chunkManager.save(currentTime);
+	}
+
+	void sendChanges(ChunkWorldPos cwp, BlockChange[] changes) {
+		foreach(clientId; chunkObserverManager.getChunkObservers(cwp)) {
+			clientMap[clientId].sendChanges(cwp, changes);
 		}
-		changes = null;
-
-		// Move new snapshots into old list
-		foreach(snapshot; writeBuffers.byKeyValue) {
-			auto oldData = snapshot.key in snapshots;
-			assert(oldData);
-			freeList.deallocate(oldData.blocks);
-			infof("Old snapshot[%s]: time %s", snapshot.key, currentTime);
-			snapshots[snapshot.key] = ChunkDataSnapshot(snapshot.value, currentTime);
-		}
-		writeBuffers = null;
-
-		// process remove queue
 	}
 
-	void saveWorld() {
-
-	}
-
-	void onChunkLoaded(ChunkWorldPos wpos, ChunkDataSnapshot snap) {
-		assert(wpos !in snapshots, format("Chunk '%s' is already loaded", wpos));
-		infof("LOAD #%s", wpos);
-		snapshots[wpos] = snap;
-		loadingChunks.remove(wpos);
-		foreach(client; chunkObservers.get(wpos, null)) {
-			client.sendChunk(wpos, snap.blocks);
+	void onChunkLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snap) {
+		infof("LOAD #%s", cwp);
+		foreach(clientId; chunkObserverManager.getChunkObservers(cwp)) {
+			clientMap[clientId].sendChunk(cwp, snap.blocks);
 		}
 	}
 
 	void onClientConnected(Client* client) {
 		infof("CONN '%s'", client.name);
-		addObserver(client);
+		clientMap[client.id] = client;
+		chunkObserverManager.addObserver(client.id, client.viewVolume);
 	}
 
 	void onClientDisconnected(Client* client) {
 		infof("DISC '%s'", client.name);
-		removeObserver(client);
-	}
-
-	void addObserver(Client* client) {
-		foreach(int pos; client.observedChunks) {
-			auto wpos = ChunkWorldPos(pos);
-			chunkObservers[wpos] = chunkObservers.get(wpos, null) ~ client;
-			infof(" OBSV #%s by '%s'", pos, client.name);
-			loadChunk(wpos);
-		}
-	}
-
-	void removeObserver(Client* client) {
-		foreach(pos; client.observedChunks) {
-			auto wpos = ChunkWorldPos(pos);
-			auto observers = chunkObservers.get(wpos, null);
-			observers = remove!((a) => a == client, SwapStrategy.unstable)(observers);
-			chunkObservers[wpos] = observers;
-			infof(" UNOB #%s by '%s'", pos, client.name);
-			if (observers.empty)
-				unloadChunk(wpos);
-		}
+		chunkObserverManager.removeObserver(client.id);
 	}
 
 	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
-		auto blockPos = BlockChunkPos(bwp);
-		auto chunkPos = ChunkWorldPos(bwp);
-		BlockId[] blocks = getWSnap(chunkPos);
-		if (blocks is null)
-			return false;
-		infof("  SETB #%s", chunkPos);
-		blocks[blockPos.pos] = blockId;
-		addChange(chunkPos, BlockChange(blockPos, blockId));
-		return true;
+		return worldAccess.setBlock(bwp, blockId);
 	}
 
-	BlockId getBlock(BlockWorldPos blockPos) {
-		return 0;
-	}
-
-	void addChange(ChunkWorldPos cwp, BlockChange blockChange) {
-		changes[cwp] = changes.get(cwp, null) ~ blockChange;
-	}
-
-	void loadChunk(ChunkWorldPos cwp) {
-		if (cwp in snapshots || loadingChunks.contains(cwp))
-			return;
-		loadingChunks.put(cwp);
-		storage.loadChunk(cwp);
-	}
-
-	void unloadChunk(ChunkWorldPos cwp) {
-		storage.saveChunk(cwp, snapshots[cwp]);
-		snapshots.remove(cwp);
-	}
-
-	BlockId[] getWSnap(ChunkWorldPos chunkWorldPos) {
-		auto newSnapshot = writeBuffers.get(chunkWorldPos, null);
-		if (newSnapshot is null) {
-			infof("   SNAP #%s", chunkWorldPos);
-			auto old = chunkWorldPos in snapshots;
-			if (old is null)
-				return null;
-			newSnapshot = freeList.allocate();
-			newSnapshot[] = old.blocks;
-		}
-		return newSnapshot;
+	BlockId getBlock(BlockWorldPos bwp) {
+		return worldAccess.getBlock(bwp);
 	}
 }
