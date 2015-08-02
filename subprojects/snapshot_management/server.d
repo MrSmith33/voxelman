@@ -163,7 +163,7 @@ struct Set(T) {
 	}
 }
 
-struct Server {
+final class Server {
 	Timestamp currentTime;
 	SnapshotProvider snapshotProvider;
 	ChunkManager chunkManager;
@@ -172,14 +172,19 @@ struct Server {
 
 	Client*[ClientId] clientMap;
 
-	void constructor()
+	this()
 	{
-		snapshotProvider.constructor();
-		chunkManager.constructor(&snapshotProvider);
+		snapshotProvider = new SnapshotProvider();
+		chunkManager = new ChunkManager();
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
-		worldAccess.constructor(&chunkManager);
+		chunkManager.loadChunkHandler = &snapshotProvider.loadChunk;
+		chunkManager.saveChunkHandler = &snapshotProvider.saveChunk;
+		snapshotProvider.onSnapshotLoadedHandler = &chunkManager.onSnapshotLoaded;
+		snapshotProvider.onSnapshotSavedHandler = &chunkManager.onSnapshotSaved;
+		chunkObserverManager = new ChunkObserverManager();
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.changeChunkNumObservers;
+		worldAccess = new WorldAccess(&chunkManager);
 	}
 
 	void preUpdate() {

@@ -25,8 +25,7 @@ void main(string[] args)
 {
 	setupLogger("snapman.log");
 
-	Server server;
-	server.constructor();
+	Server server = new Server();
 
 	Client*[NUM_CLIENTS] clients;
 	foreach(i, ref c; clients)

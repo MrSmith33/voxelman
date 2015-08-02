@@ -75,13 +75,13 @@ struct ChunkInMemoryStorage {
 	}
 }
 
-struct SnapshotProvider {
+final class SnapshotProvider {
 	void delegate(ChunkWorldPos, ChunkDataSnapshot) onSnapshotLoadedHandler;
 	void delegate(ChunkWorldPos, ChunkDataSnapshot) onSnapshotSavedHandler;
 
 	private ChunkInMemoryStorage inMemoryStorage; // Simulates delay of IO
 
-	void constructor() {
+	this() {
 		inMemoryStorage.onChunkLoadedHandlers ~= &onSnapshotLoaded;
 		inMemoryStorage.onChunkSavedHandlers ~= &onSnapshotSaved;
 	}
@@ -123,13 +123,14 @@ enum traceStateStr = q{
 		chunkStates.get(cwp, ChunkState.non_loaded));
 };
 
-struct ChunkManager {
+final class ChunkManager {
 	void delegate(ChunkWorldPos)[] onChunkAddedHandlers;
 	void delegate(ChunkWorldPos)[] onChunkRemovedHandlers;
 	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, BlockChange[])[] chunkChangesHandlers;
+	void delegate(ChunkWorldPos cwp, BlockId[] outBuffer) loadChunkHandler;
+	void delegate(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) saveChunkHandler;
 
-	private SnapshotProvider* snapshotProvider;
 	private ChunkFreeList freeList;
 	private ChunkDataSnapshot[ChunkWorldPos] snapshots;
 	private ChunkDataSnapshot[Timestamp][ChunkWorldPos] oldSnapshots;
@@ -137,12 +138,6 @@ struct ChunkManager {
 	private BlockChange[][ChunkWorldPos] chunkChanges;
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
-
-	void constructor(SnapshotProvider* snapshotProvider) {
-		this.snapshotProvider = snapshotProvider;
-		snapshotProvider.onSnapshotLoadedHandler = &onSnapshotLoaded;
-		snapshotProvider.onSnapshotSavedHandler = &onSnapshotSaved;
-	}
 
 	void postUpdate(Timestamp currentTime) {
 		commitSnapshots(currentTime);
@@ -159,7 +154,7 @@ struct ChunkManager {
 					chunkStates[cwp] = added_loaded_saving;
 					auto snap = cwp in snapshots;
 					++snap.numUsers;
-					snapshotProvider.saveChunk(cwp, *snap);
+					saveChunkHandler(cwp, *snap);
 					break;
 				case removed_loading:
 					assert(false, "Save should not occur for not loaded chunks");
@@ -260,7 +255,7 @@ struct ChunkManager {
 		with(ChunkState) final switch(state) {
 			case non_loaded:
 				chunkStates[cwp] = added_loading;
-				snapshotProvider.loadChunk(cwp, freeList.allocate());
+				loadChunkHandler(cwp, freeList.allocate());
 				addChunk(cwp);
 				break;
 			case added_loaded:
@@ -314,7 +309,7 @@ struct ChunkManager {
 				auto snap = cwp in snapshots;
 				if(cwp in modifiedChunks) {
 					chunkStates[cwp] = removed_loaded_saving;
-					snapshotProvider.saveChunk(cwp, *snap);
+					saveChunkHandler(cwp, *snap);
 					++snap.numUsers;
 					modifiedChunks.remove(cwp);
 				} else { // state 0
@@ -357,7 +352,7 @@ struct ChunkManager {
 		chunkChanges = null;
 	}
 
-	private void onSnapshotLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snap) {
+	void onSnapshotLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snap) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
 			case non_loaded:
@@ -383,7 +378,7 @@ struct ChunkManager {
 		mixin(traceStateStr);
 	}
 
-	private void onSnapshotSaved(ChunkWorldPos cwp, ChunkDataSnapshot savedSnap) {
+	void onSnapshotSaved(ChunkWorldPos cwp, ChunkDataSnapshot savedSnap) {
 		auto snap = cwp in snapshots;
 		if (snap && snap.timestamp == savedSnap.timestamp) {
 			auto state = chunkStates.get(cwp, ChunkState.non_loaded);
@@ -511,10 +506,10 @@ struct ChunkManager {
 	}
 }
 
-struct WorldAccess {
+final class WorldAccess {
 	private ChunkManager* chunkManager;
 
-	void constructor(ChunkManager* chunkManager) {
+	this(ChunkManager* chunkManager) {
 		this.chunkManager = chunkManager;
 	}
 
@@ -566,7 +561,7 @@ struct Volume1D {
 }
 
 // Manages lists of observers per chunk
-struct ChunkObserverManager {
+final class ChunkObserverManager {
 	void delegate(ChunkWorldPos, size_t numObservers) changeChunkNumObservers;
 
 	private ChunkObservers[ChunkWorldPos] chunkObservers;
