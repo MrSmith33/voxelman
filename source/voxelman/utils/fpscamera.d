@@ -105,7 +105,7 @@ struct FpsCamera
 	float fov = 60; // field of view
 	float aspect = 1; // window width/height
 	float near = 0.01;
-	float far = 2000;
+	float far = 4000;
 
 	vec3 position = vec3(0, 0, 0);
 	vec2 heading = vec2(0, 0); // hor, vert

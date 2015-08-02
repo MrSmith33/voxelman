@@ -45,6 +45,11 @@
 			"targetType": "executable",
 			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
 			"mainSourceFile" : "source/benchmain.d"
+		},
+		{
+			"name": "lib",
+			"targetType": "library",
+			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d", "source/benchmain.d"]
 		}
 	]
 }

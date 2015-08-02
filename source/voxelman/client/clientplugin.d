@@ -103,6 +103,7 @@ public:
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
+	vec3 updatedCameraPos;
 
 	// Client id stuff
 	ClientId myId;
@@ -158,6 +159,7 @@ public:
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
 		evDispatcher.subscribeToEvent(&drawOverlay);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
@@ -166,6 +168,7 @@ public:
 
 	override void postInit()
 	{
+		updatedCameraPos = graphics.camera.position;
 		chunkMan.updateObserverPosition(graphics.camera.position);
 		connect();
 
@@ -294,7 +297,7 @@ public:
 
 		while (isDisconnecting)
 		{
-			connection.update(0);
+			connection.update();
 		}
 
 		evDispatcher.postEvent(new GameStopEvent);
@@ -319,15 +322,24 @@ public:
 	void onUpdateEvent(UpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
-			chunkMan.updateObserverPosition(graphics.camera.position);
+		{
+			updatedCameraPos = graphics.camera.position;
+		}
+		chunkMan.updateObserverPosition(updatedCameraPos);
 
-		connection.update(0);
+		connection.update();
 		chunkMan.update();
-		sendPosition(event.deltaTime);
+		if (doUpdateObserverPosition)
+			sendPosition(event.deltaTime);
 
 		updateStats();
 		printDebug();
 		stats.resetCounters();
+	}
+
+	void onPostUpdateEvent(PostUpdateEvent event)
+	{
+		connection.flush();
 	}
 
 	void sendPosition(double dt)

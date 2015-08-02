@@ -174,7 +174,7 @@ public:
 
 		while (connection.clientStorage.length)
 		{
-			connection.update(0);
+			connection.update();
 		}
 
 		stop();
@@ -189,10 +189,11 @@ public:
 
 	void update(double dt)
 	{
-		connection.update(0);
+		connection.update();
 		chunkProvider.update();
 		world.update();
 		chunkMan.sendChanges();
+		connection.flush();
 	}
 
 	bool isLoggedIn(ClientId clientId)

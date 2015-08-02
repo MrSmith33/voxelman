@@ -180,26 +180,25 @@ abstract class Connection
 		enet_host_destroy(host);
 	}
 
-	void update(uint msecs)
+	void update()
 	{
 		ENetEvent event;
-		int eventStatus = enet_host_service(host, &event, msecs);
-
-		if (eventStatus == 0) return;
-
-		final switch (event.type)
+		while (enet_host_service(host, &event, 0) > 0)
 		{
-			case ENET_EVENT_TYPE_NONE:
-				break;
-			case ENET_EVENT_TYPE_CONNECT:
-				onConnect(event);
-				break;
-			case ENET_EVENT_TYPE_RECEIVE:
-				onPacketReceived(event);
-				break;
-			case ENET_EVENT_TYPE_DISCONNECT:
-				onDisconnect(event);
-				break;
+			final switch (event.type)
+			{
+				case ENET_EVENT_TYPE_NONE:
+					break;
+				case ENET_EVENT_TYPE_CONNECT:
+					onConnect(event);
+					break;
+				case ENET_EVENT_TYPE_RECEIVE:
+					onPacketReceived(event);
+					break;
+				case ENET_EVENT_TYPE_DISCONNECT:
+					onDisconnect(event);
+					break;
+			}
 		}
 	}
 
