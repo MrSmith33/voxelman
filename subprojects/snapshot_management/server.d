@@ -15,6 +15,7 @@ import std.conv;
 import std.string;
 
 import storage;
+import chunkmanager;
 
 alias Timestamp = uint;
 alias BlockId = ubyte;
