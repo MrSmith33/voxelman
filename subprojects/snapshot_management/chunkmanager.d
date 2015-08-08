@@ -9,6 +9,7 @@ import std.experimental.logger;
 import std.typecons : Nullable;
 import server;
 import voxelman.storage.utils;
+import voxelman.utils.log;
 
 private enum ChunkState {
 	non_loaded,
@@ -20,7 +21,7 @@ private enum ChunkState {
 	added_loaded_saving,
 }
 
-enum traceStateStr = q{
+private enum traceStateStr = q{
 	infof("state #%s %s => %s", cwp, state,
 		chunkStates.get(cwp, ChunkState.non_loaded));
 };
@@ -406,4 +407,145 @@ final class ChunkManager {
 	private void destroySnapshot(ChunkDataSnapshot snap) {
 		freeList.deallocate(snap.blocks);
 	}
+}
+
+version(unittest) {
+	struct Handlers {
+		void setup(ChunkManager cm) {
+			cm.onChunkAddedHandlers ~= &onChunkAddedHandler;
+			cm.onChunkRemovedHandlers ~= &onChunkRemovedHandler;
+			cm.onChunkLoadedHandlers ~= &onChunkLoadedHandler;
+			cm.chunkChangesHandlers ~= &chunkChangesHandler;
+			cm.loadChunkHandler = &loadChunkHandler;
+			cm.saveChunkHandler = &saveChunkHandler;
+		}
+		void onChunkAddedHandler(ChunkWorldPos) {
+			onChunkAddedHandlerCalled = true;
+		}
+		void onChunkRemovedHandler(ChunkWorldPos) {
+			onChunkRemovedHandlerCalled = true;
+		}
+		void onChunkLoadedHandler(ChunkWorldPos, ChunkDataSnapshot) {
+			onChunkLoadedHandlerCalled = true;
+		}
+		void chunkChangesHandler(ChunkWorldPos, BlockChange[]) {
+			chunkChangesHandlerCalled = true;
+		}
+		void loadChunkHandler(ChunkWorldPos cwp, BlockId[] outBuffer) {
+			loadChunkHandlerCalled = true;
+		}
+		void saveChunkHandler(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
+			saveChunkHandlerCalled = true;
+		}
+		bool onChunkAddedHandlerCalled;
+		bool onChunkRemovedHandlerCalled;
+		bool onChunkLoadedHandlerCalled;
+		bool chunkChangesHandlerCalled;
+		bool loadChunkHandlerCalled;
+		bool saveChunkHandlerCalled;
+	}
+}
+
+// non_loaded,
+// added_loaded,
+// removed_loading,
+// added_loading,
+// removed_loaded_saving,
+// removed_loaded_used,
+// added_loaded_saving,
+
+unittest {
+	setupLogger("snapmantest.log");
+
+	Handlers h;
+	ChunkManager cm;
+
+	void assertState(ChunkState state) {
+		assert(cm.chunkStates.get(ChunkWorldPos(0), ChunkState.non_loaded) == state);
+	}
+
+	void resetHandlersState() {
+		h = Handlers.init;
+	}
+	void resetChunkManager() {
+		cm = new ChunkManager;
+		h.setup(cm);
+	}
+	void reset() {
+		resetHandlersState();
+		resetChunkManager();
+	}
+
+	reset();
+
+	//--------------------------------------------------------------------------
+	// non_loaded -> added_loading
+	cm.loadChunk(ChunkWorldPos(0));
+	assertState(ChunkState.added_loading);
+	assert(cm.getChunkSnapshot(ChunkWorldPos(0)).isNull);
+	assert( h.onChunkAddedHandlerCalled); // called
+	assert(!h.onChunkRemovedHandlerCalled);
+	assert(!h.onChunkLoadedHandlerCalled);
+	assert(!h.chunkChangesHandlerCalled);
+	assert( h.loadChunkHandlerCalled); // called
+	assert(!h.saveChunkHandlerCalled);
+
+	resetHandlersState();
+	//--------------------------------------------------------------------------
+	// added_loading -> removed_loading
+	cm.unloadChunk(ChunkWorldPos(0));
+	assertState(ChunkState.removed_loading);
+	assert( cm.getChunkSnapshot(ChunkWorldPos(0)).isNull);
+	assert(!h.onChunkAddedHandlerCalled);
+	assert( h.onChunkRemovedHandlerCalled); // called
+	assert(!h.onChunkLoadedHandlerCalled);
+	assert(!h.chunkChangesHandlerCalled);
+	assert(!h.loadChunkHandlerCalled);
+	assert(!h.saveChunkHandlerCalled);
+
+	resetHandlersState();
+	//--------------------------------------------------------------------------
+	// removed_loading -> added_loading
+	cm.loadChunk(ChunkWorldPos(0));
+	assertState(ChunkState.added_loading);
+	assert( cm.getChunkSnapshot(ChunkWorldPos(0)).isNull);
+	assert( h.onChunkAddedHandlerCalled); // called
+	assert(!h.onChunkRemovedHandlerCalled);
+	assert(!h.onChunkLoadedHandlerCalled);
+	assert(!h.chunkChangesHandlerCalled);
+	assert(!h.loadChunkHandlerCalled);
+	assert(!h.saveChunkHandlerCalled);
+
+	cm.unloadChunk(ChunkWorldPos(0));
+	assertState(ChunkState.removed_loading);
+
+	resetHandlersState();
+	//--------------------------------------------------------------------------
+	// removed_loading -> non_loaded
+	cm.onSnapshotLoaded(ChunkWorldPos(0), ChunkDataSnapshot(new BlockId[16]));
+	assertState(ChunkState.non_loaded);
+	assert( cm.getChunkSnapshot(ChunkWorldPos(0)).isNull); // null
+	assert(!h.onChunkAddedHandlerCalled);
+	assert(!h.onChunkRemovedHandlerCalled);
+	assert(!h.onChunkLoadedHandlerCalled);
+	assert(!h.chunkChangesHandlerCalled);
+	assert(!h.loadChunkHandlerCalled);
+	assert(!h.saveChunkHandlerCalled);
+
+	cm.loadChunk(ChunkWorldPos(0));
+	assertState(ChunkState.added_loading);
+
+	resetHandlersState();
+	//--------------------------------------------------------------------------
+	// added_loading -> added_loaded
+	cm.onSnapshotLoaded(ChunkWorldPos(0), ChunkDataSnapshot(new BlockId[16]));
+	assertState(ChunkState.added_loaded);
+	assert(!cm.getChunkSnapshot(ChunkWorldPos(0)).isNull); // !null
+	assert(!h.onChunkAddedHandlerCalled);
+	assert(!h.onChunkRemovedHandlerCalled);
+	assert( h.onChunkLoadedHandlerCalled); // called
+	assert(!h.chunkChangesHandlerCalled);
+	assert(!h.loadChunkHandlerCalled);
+	assert(!h.saveChunkHandlerCalled);
+	resetHandlersState();
 }

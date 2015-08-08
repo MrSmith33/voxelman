@@ -9,5 +9,6 @@
 	},
 
 	"sourcePaths" : [ "./" ],
-	"mainSourceFile" : "main.d"
+	"mainSourceFile" : "main.d",
+	"importPaths": ["./"]
 }
