@@ -68,7 +68,7 @@ public:
 			auto donePercents = cast(float)(toBeDone - chunkStorage.chunks.length) / toBeDone * 100;
 			if (donePercents >= donePercentsPrev + 10)
 			{
-				donePercentsPrev += ((donePercents - donePercentsPrev) / 10) * 10;
+				donePercentsPrev += cast(uint)((donePercents - donePercentsPrev) / 10) * 10;
 				infof("saved %s%%", donePercentsPrev);
 			}
 		}

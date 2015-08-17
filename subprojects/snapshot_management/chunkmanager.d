@@ -41,6 +41,8 @@ final class ChunkManager {
 	private BlockChange[][ChunkWorldPos] chunkChanges;
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
+	private size_t[ChunkWorldPos] numInternalChunkUsers;
+	private size_t[ChunkWorldPos] numExternalChunkUsers;
 
 	void postUpdate(Timestamp currentTime) {
 		commitSnapshots(currentTime);
@@ -89,13 +91,7 @@ final class ChunkManager {
 	BlockId[] getWriteBuffer(ChunkWorldPos cwp) {
 		auto newData = writeBuffers.get(cwp, null);
 		if (newData is null) {
-			infof("   SNAP #%s", cwp);
-			auto old = getChunkSnapshot(cwp);
-			if (old.isNull)
-				return null;
-			newData = freeList.allocate();
-			newData[] = old.blocks;
-			writeBuffers[cwp] = newData;
+			newData = createWriteBuffer(cwp);
 		}
 		return newData;
 	}
@@ -104,8 +100,8 @@ final class ChunkManager {
 		chunkChanges[cwp] = chunkChanges.get(cwp, null) ~ blockChange;
 	}
 
-	void changeChunkNumObservers(ChunkWorldPos cwp, size_t numObservers) {
-		if (numObservers > 0) {
+	void changeChunkTotalObservers(ChunkWorldPos cwp, size_t totalObservers) {
+		if (totalObservers > 0) {
 			loadChunk(cwp);
 		} else {
 			unloadChunk(cwp);
@@ -238,13 +234,58 @@ final class ChunkManager {
 		mixin(traceStateStr);
 	}
 
-	// fully remove chunk
+	// fully removes chunk
 	private void clearChunkData(ChunkWorldPos cwp) {
 		snapshots.remove(cwp);
 		assert(cwp !in writeBuffers);
 		assert(cwp !in chunkChanges);
 		assert(cwp !in modifiedChunks);
 		chunkStates.remove(cwp);
+	}
+
+	// Creates write buffer for writing changes in it.
+	// Latest snapshot's data is copied in it.
+	// On commit stage this is moved into new snapshot and.
+	// Adds internal user that is removed on commit to prevent unloading with uncommitted changes.
+	private BlockId[] createWriteBuffer(ChunkWorldPos cwp) {
+		assert(writeBuffers.get(cwp, null) is null);
+		infof("   SNAP #%s", cwp);
+		auto old = getChunkSnapshot(cwp);
+		if (old.isNull) {
+			warning("WARN Write buffer created for chunk without snapshot");
+			return null;
+		}
+		auto newData = freeList.allocate();
+		newData[] = old.blocks;
+		writeBuffers[cwp] = newData;
+
+		addInternalUser(cwp);
+		return newData;
+	}
+
+	private void changeChunkExternalObservers(ChunkWorldPos cwp, size_t numExternalObservers) {
+		numExternalChunkUsers[cwp] = numExternalObservers;
+		if (numExternalObservers == 0)
+			numExternalChunkUsers.remove(cwp);
+		changeChunkTotalObservers(cwp, numInternalChunkUsers[cwp] + numExternalObservers);
+	}
+
+	private void addInternalUser(ChunkWorldPos cwp) {
+		numInternalChunkUsers[cwp] = numInternalChunkUsers.get(cwp, 0) + 1;
+		auto totalUsers = numInternalChunkUsers[cwp] + numExternalChunkUsers.get(cwp, 0);
+		changeChunkTotalObservers(cwp, totalUsers);
+	}
+
+	private void removeInternalUser(ChunkWorldPos cwp) {
+		auto numUsers = numInternalChunkUsers.get(cwp, 0);
+		assert(numUsers > 0, "numInternalChunkUsers is zero when removing internal user");
+		--numUsers;
+		if (numUsers == 0)
+			numInternalChunkUsers.remove(cwp);
+		else
+			numInternalChunkUsers[cwp] = numUsers;
+		auto totalUsers = numUsers + numExternalChunkUsers[cwp];
+		changeChunkTotalObservers(cwp, totalUsers);
 	}
 
 	private void clearWriteBuffers() {
@@ -381,17 +422,24 @@ final class ChunkManager {
 			case added_loaded:
 				break; // ignore
 			case removed_loading:
+				// Write buffer will be never returned when no snapshot is loaded.
 				assert(false, "Commit is not possible for removed chunk");
 			case added_loading:
-				goto case non_loaded;
+				// Write buffer will be never returned when no snapshot is loaded.
+				assert(false, "Commit is not possible for non-loaded chunk");
 			case removed_loaded_saving:
-				goto case removed_loading;
+				// This is guarded by internal user count.
+				assert(false, "Commit is not possible for removed chunk");
 			case removed_loaded_used:
-				goto case removed_loading;
+				// This is guarded by internal user count.
+				assert(false, "Commit is not possible for removed chunk");
 			case added_loaded_saving:
+				// This is now old snapshot with saving state. New one is not used by IO.
 				chunkStates[cwp] = added_loaded;
 				break;
 		}
+		removeInternalUser(cwp);
+
 		mixin(traceStateStr);
 	}
 

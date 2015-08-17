@@ -9,6 +9,7 @@ import std.experimental.logger;
 import std.file : read, exists;
 public import std.variant;
 import std.traits : isArray;
+import std.conv : to;
 
 import sdlang;
 import resource;
@@ -134,7 +135,7 @@ private:
 			}
 			else
 			{
-				warningf("Cannot parse '%s' from '%s'", optionName, value);
+				warningf("Cannot parse '%s' from '%s'", optionName, value.to!string);
 			}
 		}
 		else if (values.length > 1)
@@ -183,7 +184,7 @@ private:
 			}
 			else
 			{
-				warningf("Cannot parse '%s' from '%s'", optionName, values);
+				warningf("Cannot parse '%s' from '%s'", optionName, values.to!string);
 			}
 		}
 	}

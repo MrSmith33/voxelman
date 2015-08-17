@@ -184,7 +184,7 @@ final class Server {
 		snapshotProvider.onSnapshotLoadedHandler = &chunkManager.onSnapshotLoaded;
 		snapshotProvider.onSnapshotSavedHandler = &chunkManager.onSnapshotSaved;
 		chunkObserverManager = new ChunkObserverManager();
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.changeChunkNumObservers;
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.changeChunkTotalObservers;
 		worldAccess = new WorldAccess(&chunkManager);
 	}
 
