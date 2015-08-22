@@ -11,11 +11,11 @@ import std.string;
 import std.typecons : Nullable;
 import std.conv : to;
 import server;
-import chunkmanager;
+import chunkmanager : ChunkManager;
 import voxelman.utils.queue;
 import voxelman.storage.utils;
 
-
+// Storage made to test delays in read and write.
 struct ChunkInMemoryStorage {
 	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onChunkSavedHandlers;
@@ -76,39 +76,6 @@ struct ChunkInMemoryStorage {
 	}
 }
 
-final class SnapshotProvider {
-	void delegate(ChunkWorldPos, ChunkDataSnapshot) onSnapshotLoadedHandler;
-	void delegate(ChunkWorldPos, ChunkDataSnapshot) onSnapshotSavedHandler;
-
-	private ChunkInMemoryStorage inMemoryStorage; // Simulates delay of IO
-
-	this() {
-		inMemoryStorage.onChunkLoadedHandlers ~= &onSnapshotLoaded;
-		inMemoryStorage.onChunkSavedHandlers ~= &onSnapshotSaved;
-	}
-
-	void update() {
-		inMemoryStorage.update();
-	}
-
-	void loadChunk(ChunkWorldPos cwp, BlockId[] outBuffer) {
-		inMemoryStorage.loadChunk(cwp, outBuffer);
-	}
-
-	// called if chunk was loaded before and needs to be saved
-	void saveChunk(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
-		inMemoryStorage.saveChunk(cwp, snapshot);
-	}
-
-	private void onSnapshotLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
-		onSnapshotLoadedHandler(cwp, snapshot);
-	}
-
-	private void onSnapshotSaved(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) {
-		onSnapshotSavedHandler(cwp, snapshot);
-	}
-}
-
 final class WorldAccess {
 	private ChunkManager* chunkManager;
 
@@ -122,9 +89,11 @@ final class WorldAccess {
 		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos);
 		if (blocks is null)
 			return false;
-		infof("  SETB #%s", chunkPos);
+		infof("  SETB @%s", chunkPos);
 		blocks[blockPos.pos] = blockId;
-		chunkManager.onBlockChange(chunkPos, BlockChange(blockPos, blockId));
+
+		import std.range : only;
+		chunkManager.onBlockChanges(chunkPos, only(BlockChange(blockPos, blockId)));
 		return true;
 	}
 
@@ -233,7 +202,7 @@ final class ChunkObserverManager {
 		list.add(clientId);
 		changeChunkNumObservers(cwp, list.numObservers);
 		chunkObservers[cwp] = list;
-		infof(" OBSV #%s by '%s'", cwp, clientId);
+		infof(" OBSV @%s by '%s'", cwp, clientId);
 	}
 
 	private void removeChunkObserver(ChunkWorldPos cwp, ClientId clientId) {
@@ -244,7 +213,7 @@ final class ChunkObserverManager {
 			chunkObservers.remove(cwp);
 		else
 			chunkObservers[cwp] = list;
-		infof(" UNOB #%s by '%s'", cwp, clientId);
+		infof(" UNOB @%s by '%s'", cwp, clientId);
 	}
 }
 

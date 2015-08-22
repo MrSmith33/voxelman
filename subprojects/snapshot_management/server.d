@@ -113,7 +113,7 @@ struct Client {
 	Volume1D viewVolume;
 	void sendChunk(ChunkWorldPos pos, const ubyte[] chunkData){}
 	void sendChanges(ChunkWorldPos cwp, BlockChange[] changes){
-		infof("changes #%s %s", cwp, changes);
+		infof("changes @%s %s", cwp, changes);
 	}
 	void delegate(Server* server) sendDataToServer;
 }
@@ -166,7 +166,7 @@ struct Set(T) {
 
 final class Server {
 	Timestamp currentTime;
-	SnapshotProvider snapshotProvider;
+	ChunkInMemoryStorage inmemStorage;
 	ChunkManager chunkManager;
 	ChunkObserverManager chunkObserverManager;
 	WorldAccess worldAccess;
@@ -175,23 +175,22 @@ final class Server {
 
 	this()
 	{
-		snapshotProvider = new SnapshotProvider();
 		chunkManager = new ChunkManager();
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
-		chunkManager.loadChunkHandler = &snapshotProvider.loadChunk;
-		chunkManager.saveChunkHandler = &snapshotProvider.saveChunk;
-		snapshotProvider.onSnapshotLoadedHandler = &chunkManager.onSnapshotLoaded;
-		snapshotProvider.onSnapshotSavedHandler = &chunkManager.onSnapshotSaved;
+		chunkManager.loadChunkHandler = &inmemStorage.loadChunk;
+		chunkManager.saveChunkHandler = &inmemStorage.saveChunk;
+		inmemStorage.onChunkLoadedHandlers ~= &chunkManager.onSnapshotLoaded;
+		inmemStorage.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
 		chunkObserverManager = new ChunkObserverManager();
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.setChunkExternalObservers;
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
 		worldAccess = new WorldAccess(&chunkManager);
 	}
 
 	void preUpdate() {
 		// Advance time
 		++currentTime;
-		snapshotProvider.update();
+		inmemStorage.update();
 	}
 
 	void update() {
@@ -199,7 +198,8 @@ final class Server {
 	}
 
 	void postUpdate() {
-		chunkManager.postUpdate(currentTime);
+		chunkManager.commitSnapshots(currentTime);
+		chunkManager.sendChanges();
 
 		// do regular save
 		// chunkManager.save(currentTime);
@@ -216,7 +216,7 @@ final class Server {
 	}
 
 	void onChunkLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snap) {
-		infof("LOAD #%s", cwp);
+		infof("LOAD @%s", cwp);
 		foreach(clientId; chunkObserverManager.getChunkObservers(cwp)) {
 			clientMap[clientId].sendChunk(cwp, snap.blocks);
 		}
