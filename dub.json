@@ -47,7 +47,7 @@
 			"mainSourceFile" : "source/benchmain.d"
 		},
 		{
-			"name": "lib",
+			"name": "library",
 			"targetType": "library",
 			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d", "source/benchmain.d"]
 		}

@@ -184,7 +184,7 @@ final class Server {
 		snapshotProvider.onSnapshotLoadedHandler = &chunkManager.onSnapshotLoaded;
 		snapshotProvider.onSnapshotSavedHandler = &chunkManager.onSnapshotSaved;
 		chunkObserverManager = new ChunkObserverManager();
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.changeChunkTotalObservers;
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setChunkExternalObservers;
 		worldAccess = new WorldAccess(&chunkManager);
 	}
 
@@ -206,7 +206,7 @@ final class Server {
 	}
 
 	void save() {
-		chunkManager.save(currentTime);
+		chunkManager.save();
 	}
 
 	void sendChanges(ChunkWorldPos cwp, BlockChange[] changes) {
