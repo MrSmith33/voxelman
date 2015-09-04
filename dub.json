@@ -20,6 +20,12 @@
 	"copyFiles-windows-x86" : ["lib/*.dll"],
 	"copyFiles-windows-x86_64" : ["lib64/*.dll"],
 
+	"buildTypes": {
+		"debug": {
+			"buildOptions": ["debugMode", "debugInfoC", "alwaysStackFrame"]
+		}
+	},
+
 	"configurations": [
 		{
 			"name" : "client",

@@ -56,6 +56,19 @@ public:
 		camera.move(START_POS);
 		camera.sensivity = cameraSensivity.get!float;
 		camera.fov = cameraFov.get!float;
+	}
+
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
+		evDispatcher.subscribeToEvent(&draw);
+
+		auto gui = pluginman.getPlugin!GuiPlugin(this);
+		renderer = gui.renderer;
+
+		glGenVertexArrays(1, &vao);
+		glGenBuffers( 1, &vbo);
 
 		// Setup shaders
 
@@ -84,19 +97,6 @@ public:
 			glUniformMatrix4fv(projectionLoc, 1, GL_FALSE,
 				cast(const float*)camera.perspective.arrayof);
 		chunkShader.unbind;
-	}
-
-	override void init(IPluginManager pluginman)
-	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
-		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
-		evDispatcher.subscribeToEvent(&draw);
-
-		auto gui = pluginman.getPlugin!GuiPlugin(this);
-		renderer = gui.renderer;
-
-		glGenVertexArrays(1, &vao);
-		glGenBuffers( 1, &vbo);
 	}
 
 	override void postInit()
