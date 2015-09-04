@@ -59,6 +59,13 @@ enum StorageType
 	array,
 }
 
+struct ChunkDataSnapshot {
+	//BlockType[] blocks;
+	BlockData blockData;
+	TimestampType timestamp;
+	uint numUsers;
+}
+
 // stores all used snapshots of the chunk. Current is blocks
 struct BlockDataSnapshot
 {
@@ -97,6 +104,15 @@ struct BlockData
 			blocks[] = uniformType;
 			uniform = false;
 		}
+	}
+
+	void copyToBuffer(BlockType[] outBuffer)
+	{
+		assert(outBuffer.length == CHUNK_SIZE_CUBE);
+		if (uniform)
+			outBuffer[] = uniformType;
+		else
+			outBuffer[] = blocks;
 	}
 
 	void convertToUniform(BlockType _uniformType)
