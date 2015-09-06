@@ -82,14 +82,6 @@ struct ChunkMan
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
-	@property auto visibleChunks()
-	{
-		import std.algorithm : filter;
-		return chunkStorage.chunks
-			.byValue
-			.filter!((c) => c.isLoaded && c.isVisible && c.hasMesh && c.mesh !is null);
-	}
-
 	Volume calcVolume(ChunkWorldPos position)
 	{
 		auto size = viewRadius*2 + 1;

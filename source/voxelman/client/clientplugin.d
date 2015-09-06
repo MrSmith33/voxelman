@@ -456,8 +456,10 @@ public:
 		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
-		foreach(Chunk* c; chunkMan.visibleChunks)
+		foreach(ChunkWorldPos cwp; chunkMan.chunkMeshMan.visibleChunks.items)
 		{
+			Chunk* c = chunkMan.getChunk(cwp);
+			assert(c);
 			++stats.chunksVisible;
 
 			if (isCullingEnabled)

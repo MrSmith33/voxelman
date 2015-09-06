@@ -18,6 +18,7 @@ import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 import voxelman.utils.queue;
 import voxelman.utils.workergroup;
+import voxelman.utils.hashset;
 
 
 ///
@@ -30,6 +31,7 @@ struct ChunkMeshMan
 	Queue!(Chunk*) changedChunks;
 	Queue!(Chunk*) chunksToMesh;
 	Queue!(Chunk*) dirtyChunks;
+	HashSet!ChunkWorldPos visibleChunks;
 
 	size_t numMeshChunkTasks;
 	size_t numDirtyChunksPending;
@@ -126,6 +128,7 @@ struct ChunkMeshMan
 
 	void onChunkRemoved(Chunk* chunk)
 	{
+		visibleChunks.remove(chunk.position);
 		chunkChanges.remove(chunk.position);
 		changedChunks.remove(chunk);
 		chunksToMesh.remove(chunk);
@@ -203,6 +206,9 @@ struct ChunkMeshMan
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
+
+		if (chunk.isVisible)
+			visibleChunks.put(chunk.position);
 
 		//infof("Chunk mesh loaded at %s, length %s", chunk.position, chunk.mesh.data.length);
 	}
