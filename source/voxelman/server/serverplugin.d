@@ -9,6 +9,7 @@ module voxelman.server.serverplugin;
 import std.experimental.logger;
 
 import derelict.enet.enet;
+import tharsis.prof : Profiler, DespikerSender, Zone;
 
 import plugin;
 import plugin.pluginmanager;
@@ -36,6 +37,8 @@ import voxelman.storage.world;
 import voxelman.utils.math;
 
 
+version = profiling;
+
 final class ServerConnection : BaseServer!ClientInfo{}
 
 class ServerPlugin : IPlugin
@@ -44,10 +47,14 @@ private:
 	PluginManager pluginman = new PluginManager;
 	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
 	// Plugins
-	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
+	EventDispatcherPlugin evDispatcher;
 	GameTimePlugin gameTime = new GameTimePlugin;
 	// Resource managers
 	Config config;
+
+	// Profiling
+	Profiler profiler;
+	DespikerSender profilerSender;
 
 public:
 	ServerConnection connection;
@@ -99,8 +106,16 @@ public:
 
 	this()
 	{
+		version(profiling)
+		{
+			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
+			profiler = new Profiler(storage);
+		}
+		profilerSender = new DespikerSender([profiler]);
+
 		loadEnet();
 
+		evDispatcher = new EventDispatcherPlugin(profiler);
 		config = new Config(SERVER_CONFIG_FILE_NAME);
 		connection = new ServerConnection;
 		chunkMan = ChunkMan(connection, &world.chunkStorage);
@@ -154,14 +169,15 @@ public:
 		isRunning = true;
 		while (isRunning)
 		{
+			Zone frameZone = Zone(profiler, "frame");
 			newTime = Clock.currAppTick;
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
-			evDispatcher.postEvent(new PreUpdateEvent(delta));
-			evDispatcher.postEvent(new UpdateEvent(delta));
+			evDispatcher.postEvent(PreUpdateEvent(delta));
+			evDispatcher.postEvent(UpdateEvent(delta));
 			update(delta);
-			evDispatcher.postEvent(new PostUpdateEvent(delta));
+			evDispatcher.postEvent(PostUpdateEvent(delta));
 
 			GC.collect();
 
@@ -170,7 +186,12 @@ public:
 			auto sleepTime = frameTime - updateTime;
 			if (sleepTime > Duration.zero)
 				Thread.sleep(sleepTime);
+			version(profiling) {
+				frameZone.__dtor;
+				profilerSender.update();
+			}
 		}
+		profilerSender.reset();
 
 		while (connection.clientStorage.length)
 		{
@@ -213,7 +234,7 @@ public:
 		return names;
 	}
 
-	void handleCommand(CommandEvent event)
+	void handleCommand(ref CommandEvent event)
 	{
 		import std.algorithm : splitter;
 		import std.string : format;
@@ -257,7 +278,7 @@ public:
 		event.peer.data = cast(void*)clientId;
 		//enet_peer_timeout(event.peer, 0, 0, 2000);
 		infof("%s connected", clientId);
-		evDispatcher.postEvent(new ClientConnectedEvent(clientId));
+		evDispatcher.postEvent(ClientConnectedEvent(clientId));
 
 		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
 	}
@@ -270,7 +291,7 @@ public:
 
 		chunkMan.removeRegionObserver(clientId);
 
-		evDispatcher.postEvent(new ClientDisconnectedEvent(clientId));
+		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
 
 		// Reset client's information
 		event.peer.data = null;
@@ -295,7 +316,7 @@ public:
 		connection.sendTo(clientId, SessionInfoPacket(clientId, clientNames));
 		connection.sendToAllExcept(clientId, ClientLoggedInPacket(clientId, packet.clientName));
 
-		evDispatcher.postEvent(new ClientLoggedInEvent(clientId));
+		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
 	}
 
 	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
@@ -310,8 +331,7 @@ public:
 
 		if (strippedMsg.startsWith("/"))
 		{
-			auto commandEvent = new CommandEvent(clientId, strippedMsg);
-			evDispatcher.postEvent(commandEvent);
+			evDispatcher.postEvent(CommandEvent(clientId, strippedMsg));
 			return;
 		}
 

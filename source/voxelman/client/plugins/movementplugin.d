@@ -60,7 +60,7 @@ class MovementPlugin : IPlugin
 
 	}
 
-	void onPreUpdateEvent(PreUpdateEvent event)
+	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		if(clientPlugin.mouseLocked)
 		{

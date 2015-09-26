@@ -32,7 +32,7 @@ public:
 	}
 	override void postInit() {}
 
-	void preUpdate(PreUpdateEvent event)
+	void preUpdate(ref PreUpdateEvent event)
 	{
 		++_currentTick;
 	}

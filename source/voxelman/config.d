@@ -39,7 +39,7 @@ enum DESPIKER_PATH = "../tools/despiker/despiker" ~ EXE_SUFFIX;
 enum NUM_WORKERS = 4;
 enum DEFAULT_VIEW_RADIUS = 5;
 enum MIN_VIEW_RADIUS = 1;
-enum MAX_VIEW_RADIUS = 12;
+enum MAX_VIEW_RADIUS = 40;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 

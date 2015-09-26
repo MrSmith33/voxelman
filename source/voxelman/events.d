@@ -8,64 +8,58 @@ module voxelman.events;
 
 import anchovy.graphics.interfaces.irenderer;
 import dlib.math.vector;
-import voxelman.plugins.eventdispatcherplugin : GameEvent;
+import tharsis.prof : Profiler;
 
+struct GameStopEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
+}
 
-class GameStopEvent : GameEvent {}
-
-class UpdateEvent : GameEvent {
-	this(double dt)
-	{
-		deltaTime = dt;
-	}
+struct UpdateEvent {
 	double deltaTime;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
-class PreUpdateEvent : UpdateEvent {
-	this(double dt) {
-		super(dt);
-	}
+struct PreUpdateEvent {
+	double deltaTime;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
-class PostUpdateEvent : UpdateEvent {
-	this(double dt) {
-		super(dt);
-	}
+struct PostUpdateEvent {
+	double deltaTime;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 
 // Initiate drawing in graphics plugin
-class RenderEvent : GameEvent {
+struct RenderEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 
 // draw in 3d. With depth test
-class Render1Event : GameEvent {
-	this(IRenderer renderer)
-	{
-		this.renderer = renderer;
-	}
+struct Render1Event {
 	IRenderer renderer;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 
 // draw 2d. without depth test. with alpha
-class Render2Event : GameEvent {
-	this(IRenderer renderer)
-	{
-		this.renderer = renderer;
-	}
+struct Render2Event {
 	IRenderer renderer;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 // draw 2d gui. without depth test. with alpha
-class Render3Event : GameEvent {
-	this(IRenderer renderer)
-	{
-		this.renderer = renderer;
-	}
+struct Render3Event {
 	IRenderer renderer;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 
-class WindowResizedEvent : GameEvent
+struct WindowResizedEvent
 {
-	this(uvec2 size)
-	{
-		newSize = size;
-	}
 	uvec2 newSize;
+	Profiler profiler;
+	bool continuePropagation = true;
 }

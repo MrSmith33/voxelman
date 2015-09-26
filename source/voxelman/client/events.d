@@ -7,40 +7,34 @@ Authors: Andrey Penechko.
 module voxelman.client.events;
 
 import netlib.connection : ClientId;
-import voxelman.plugins.eventdispatcherplugin : GameEvent;
+import tharsis.prof : Profiler;
 
-class ClientLoggedInEvent : GameEvent
-{
-	this(ClientId clientId) {
-		this.clientId = clientId;
-	}
+struct ClientLoggedInEvent {
 	ClientId clientId;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
-
-class ClientLoggedOutEvent : GameEvent
-{
-	this(ClientId clientId) {
-		this.clientId = clientId;
-	}
+struct ClientLoggedOutEvent {
 	ClientId clientId;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
-
-class ThisClientConnectedEvent : GameEvent {}
-class ThisClientDisconnectedEvent : GameEvent {}
-class ThisClientLoggedInEvent : GameEvent
-{
-	this(ClientId myId) {
-		this.myId = myId;
-	}
+struct ThisClientConnectedEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
+}
+struct ThisClientDisconnectedEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
+}
+struct ThisClientLoggedInEvent {
 	ClientId myId;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
-
-class ChatMessageEvent : GameEvent
-{
-	this(ClientId sender, string message) {
-		this.sender = sender;
-		this.message = message;
-	}
+struct ChatMessageEvent {
 	ClientId sender;
 	string message;
+	Profiler profiler;
+	bool continuePropagation = true;
 }

@@ -72,7 +72,7 @@ private:
 	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
 
 	// Plugins
-	EventDispatcherPlugin evDispatcher = new EventDispatcherPlugin;
+	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics = new GraphicsPlugin;
 	GuiPlugin guiPlugin = new GuiPlugin;
 	InputPlugin input = new InputPlugin;
@@ -242,6 +242,7 @@ public:
 		}
 		profilerSender = new DespikerSender([profiler]);
 
+		evDispatcher = new EventDispatcherPlugin(profiler);
 		config = new Config(CLIENT_CONFIG_FILE_NAME);
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
@@ -305,26 +306,32 @@ public:
 
 			{
 				Zone subZone = Zone(profiler, "preUpdate");
-				evDispatcher.postEvent(new PreUpdateEvent(delta));
+				evDispatcher.postEvent(PreUpdateEvent(delta));
 			}
 			{
 				Zone subZone = Zone(profiler, "update");
-				evDispatcher.postEvent(new UpdateEvent(delta));
+				evDispatcher.postEvent(UpdateEvent(delta));
 			}
 			{
 				Zone subZone = Zone(profiler, "postUpdate");
-				evDispatcher.postEvent(new PostUpdateEvent(delta));
+				evDispatcher.postEvent(PostUpdateEvent(delta));
 			}
 			{
 				Zone subZone = Zone(profiler, "render");
-				evDispatcher.postEvent(new RenderEvent());
+				evDispatcher.postEvent(RenderEvent());
 			}
-
-			version(manualGC) GC.collect();
-
-			// time used in frame
-			delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
-			guiPlugin.fpsHelper.sleepAfterFrame(delta);
+			{
+				version(manualGC) {
+					Zone subZone = Zone(profiler, "GC.collect()");
+					GC.collect();
+				}
+			}
+			{
+				Zone subZone = Zone(profiler, "sleepAfterFrame");
+				// time used in frame
+				delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
+				guiPlugin.fpsHelper.sleepAfterFrame(delta);
+			}
 
 			version(profiling) {
 				frameZone.__dtor;
@@ -343,7 +350,7 @@ public:
 			connection.update();
 		}
 
-		evDispatcher.postEvent(new GameStopEvent);
+		evDispatcher.postEvent(GameStopEvent());
 	}
 
 	void connect()
@@ -378,13 +385,13 @@ public:
 		guiPlugin.context.getWidgetById("toggleProfiler").setProperty!dstring("text", text);
 	}
 
-	void onGameStopEvent(GameStopEvent gameStopEvent)
+	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
 		chunkMan.stop();
 		thread_joinAll();
 	}
 
-	void onUpdateEvent(UpdateEvent event)
+	void onUpdateEvent(ref UpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
 		{
@@ -402,7 +409,7 @@ public:
 		stats.resetCounters();
 	}
 
-	void onPostUpdateEvent(PostUpdateEvent event)
+	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		connection.flush();
 	}
@@ -469,7 +476,7 @@ public:
 		connection.send(MessagePacket(0, msg));
 	}
 
-	void onClosePressedEvent(ClosePressedEvent event)
+	void onClosePressedEvent(ref ClosePressedEvent event)
 	{
 		isRunning = false;
 	}
@@ -506,8 +513,10 @@ public:
 		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
-	void drawScene(Render1Event event)
+	void drawScene(ref Render1Event event)
 	{
+		Zone drawSceneZone = Zone(profiler, "drawScene");
+
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
@@ -553,7 +562,7 @@ public:
 		graphics.chunkShader.unbind;
 	}
 
-	void drawOverlay(Render2Event event)
+	void drawOverlay(ref Render2Event event)
 	{
 		event.renderer.setColor(Color(0,0,0,1));
 		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
@@ -572,7 +581,7 @@ public:
 		// Reset server's information
 		event.peer.data = null;
 
-		evDispatcher.postEvent(new ThisClientDisconnectedEvent);
+		evDispatcher.postEvent(ThisClientDisconnectedEvent());
 		isDisconnecting = false;
 	}
 
@@ -584,7 +593,7 @@ public:
 		//connection.printPacketMap();
 
 		connection.send(LoginPacket(myName));
-		evDispatcher.postEvent(new ThisClientConnectedEvent);
+		evDispatcher.postEvent(ThisClientConnectedEvent());
 	}
 
 	void handleSessionInfoPacket(ubyte[] packetData, ClientId clientId)
@@ -593,7 +602,7 @@ public:
 
 		clientNames = loginInfo.clientNames;
 		myId = loginInfo.yourId;
-		evDispatcher.postEvent(new ThisClientLoggedInEvent(myId));
+		evDispatcher.postEvent(ThisClientLoggedInEvent(myId));
 	}
 
 	void handleUserLoggedInPacket(ubyte[] packetData, ClientId clientId)
@@ -601,14 +610,14 @@ public:
 		auto newUser = unpackPacket!ClientLoggedInPacket(packetData);
 		clientNames[newUser.clientId] = newUser.clientName;
 		infof("%s has connected", newUser.clientName);
-		evDispatcher.postEvent(new ClientLoggedInEvent(clientId));
+		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
 	}
 
 	void handleUserLoggedOutPacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!ClientLoggedOutPacket(packetData);
 		infof("%s has disconnected", clientName(packet.clientId));
-		evDispatcher.postEvent(new ClientLoggedOutEvent(clientId));
+		evDispatcher.postEvent(ClientLoggedOutEvent(clientId));
 		clientNames.remove(packet.clientId);
 	}
 
@@ -619,7 +628,7 @@ public:
 			infof("%s", msg.msg);
 		else
 			infof("%s> %s", clientName(msg.clientId), msg.msg);
-		evDispatcher.postEvent(new ChatMessageEvent(msg.clientId, msg.msg));
+		evDispatcher.postEvent(ChatMessageEvent(msg.clientId, msg.msg));
 	}
 
 	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)

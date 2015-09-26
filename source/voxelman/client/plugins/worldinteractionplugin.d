@@ -56,7 +56,7 @@ class WorldInteractionPlugin : IPlugin
 		evDispatcher.subscribeToEvent(&drawDebug);
 	}
 
-	void onUpdateEvent(UpdateEvent event)
+	void onUpdateEvent(ref UpdateEvent event)
 	{
 		traceCursor();
 		drawDebugCursor();
@@ -143,10 +143,10 @@ class WorldInteractionPlugin : IPlugin
 		}
 	}
 
-	void drawDebug(Render1Event event)
+	void drawDebug(ref Render1Event event)
 	{
-		graphics.chunkShader.bind;
+		//graphics.chunkShader.bind;
 		//graphics.draw(hitBatch);
-		graphics.chunkShader.unbind;
+		//graphics.chunkShader.unbind;
 	}
 }

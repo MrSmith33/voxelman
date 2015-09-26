@@ -14,6 +14,7 @@ import anchovy.graphics.windows.glfwwindow;
 import anchovy.gui.application.application;
 import anchovy.gui;
 public import anchovy.core.input;
+import tharsis.prof : Zone;
 
 
 import plugin;
@@ -29,7 +30,11 @@ import voxelman.plugins.eventdispatcherplugin;
 import voxelman.resourcemanagers.config;
 
 
-class ClosePressedEvent : GameEvent {}
+struct ClosePressedEvent {
+	import tharsis.prof : Profiler;
+	Profiler profiler;
+	bool continuePropagation = true;
+}
 
 final class GuiPlugin : IPlugin
 {
@@ -80,22 +85,24 @@ public:
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-		evDispatcher.subscribeToEvent(&onRender2Event);
+		evDispatcher.subscribeToEvent(&onRender3Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
 
-	void onPreUpdateEvent(PreUpdateEvent event)
+	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
+		Zone drawSceneZone = Zone(event.profiler, "updateGui");
 		window.processEvents();
 		application.update(event.deltaTime);
 	}
 
-	void onRender2Event(Render3Event Render2Event)
+	void onRender3Event(ref Render3Event event)
 	{
+		Zone drawSceneZone = Zone(event.profiler, "drawGui");
 		application.context.eventDispatcher.draw();
 	}
 
-	void onGameStopEvent(GameStopEvent stopEvent)
+	void onGameStopEvent(ref GameStopEvent stopEvent)
 	{
 		application.window.releaseWindow;
 	}
@@ -151,11 +158,11 @@ public:
 
 	private void windowResized(uvec2 newSize)
 	{
-		evDispatcher.postEvent(new WindowResizedEvent(newSize));
+		evDispatcher.postEvent(WindowResizedEvent(newSize));
 	}
 
 	private void closePressed()
 	{
-		evDispatcher.postEvent(new ClosePressedEvent);
+		evDispatcher.postEvent(ClosePressedEvent());
 	}
 }

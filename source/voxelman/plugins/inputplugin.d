@@ -43,15 +43,6 @@ final class InputPlugin : IPlugin
 		guiPlugin.window.mouseReleased.connect(&onMouseReleased);
 	}
 
-	//void registerKeyBinding(KeyBinding* binding)
-	//{
-	//	assert(binding);
-	//	keyBindingsByCode[binding.keyCode] = binding;
-	//	keyBindingsByName[binding.keyName] = binding;
-	//
-	//	//infof("Regiseterd key binding %s", *binding);
-	//}
-
 	void onKeyPressed(uint keyCode)
 	{
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)

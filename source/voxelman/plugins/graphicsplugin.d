@@ -105,7 +105,7 @@ public:
 		camera.aspect = cast(float)renderer.windowSize.x/renderer.windowSize.y;
 	}
 
-	private void onWindowResizedEvent(WindowResizedEvent event)
+	private void onWindowResizedEvent(ref WindowResizedEvent event)
 	{
 		camera.aspect = cast(float)event.newSize.x/event.newSize.y;
 	}
@@ -118,13 +118,13 @@ public:
 		camera.update();
 	}
 
-	private void draw(RenderEvent event)
+	private void draw(ref RenderEvent event)
 	{
 		glScissor(0, 0, renderer.windowSize.x, renderer.windowSize.y);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		evDispatcher.postEvent(new Render1Event(renderer));
+		evDispatcher.postEvent(Render1Event(renderer));
 
 		chunkShader.bind;
 		draw(debugBatch);
@@ -134,11 +134,13 @@ public:
 		glDisable(GL_DEPTH_TEST);
 
 		renderer.enableAlphaBlending();
-		evDispatcher.postEvent(new Render2Event(renderer));
-		evDispatcher.postEvent(new Render3Event(renderer));
+		evDispatcher.postEvent(Render2Event(renderer));
+		evDispatcher.postEvent(Render3Event(renderer));
 		renderer.disableAlphaBlending();
-
-		renderer.flush();
+		{
+			Zone subZone = Zone(profiler, "renderer.flush()");
+			renderer.flush();
+		}
 	}
 
 	void draw(Batch batch)
