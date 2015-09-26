@@ -138,7 +138,7 @@ public:
 		evDispatcher.postEvent(Render3Event(renderer));
 		renderer.disableAlphaBlending();
 		{
-			Zone subZone = Zone(profiler, "renderer.flush()");
+			Zone subZone = Zone(event.profiler, "renderer.flush()");
 			renderer.flush();
 		}
 	}

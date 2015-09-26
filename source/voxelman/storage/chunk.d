@@ -74,14 +74,6 @@ struct BlockDataSnapshot
 
 	// actual data
 	BlockData blockData;
-
-	// How many tasks are reading or writing this chunk
-	ushort numReaders = 0;
-
-	bool isUsed() @property
-	{
-		return numReaders > 0;
-	}
 }
 
 // Stores blocks of the chunk

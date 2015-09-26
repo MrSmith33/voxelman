@@ -18,6 +18,7 @@ import anchovy.utils.noise.simplex;
 import voxelman.block;
 import voxelman.config;
 import voxelman.storage.chunk;
+import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
 
 
@@ -45,7 +46,9 @@ void chunkGenWorkerThread(Tid mainTid)
 		while (atomicLoad(*isRunning) && isRunningLocal)
 		{
 			receive(
-				(ChunkWorldPos position){chunkGenWorker(position, mainTid);},
+				(immutable(LoadSnapshotMessage)* message){
+					chunkGenWorker(cast(LoadSnapshotMessage*)message, mainTid);
+				},
 				(Variant v){isRunningLocal = false;}
 			);
 		}
@@ -58,15 +61,18 @@ void chunkGenWorkerThread(Tid mainTid)
 }
 
 // Gen single chunk
-void chunkGenWorker(ChunkWorldPos position, Tid mainThread)
+void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
 {
-	int wx = position.x, wy = position.y, wz = position.z;
+	ChunkWorldPos cwp = message.cwp;
+	int wx = cwp.x, wy = cwp.y, wz = cwp.z;
 
 	BlockData bd;
+	bd.blocks = message.blockBuffer;
 	bd.convertToArray();
+	bd.uniform = false;
 	bool uniform = true;
 
-	Generator generator = Generator(position.vector * CHUNK_SIZE);
+	Generator generator = Generator(cwp.vector * CHUNK_SIZE);
 	generator.genPerChunkData();
 
 	bd.blocks[0] = generator.generateBlock(0, 0, 0);
@@ -88,20 +94,20 @@ void chunkGenWorker(ChunkWorldPos position, Tid mainThread)
 		}
 	}
 
-	if(uniform)
-		bd.convertToUniform(type);
+	bd.uniform = uniform;
+	if(uniform) {
+		bd.uniformType = type;
+	}
 
-	//infof("Chunk generated at %s uniform %s", chunk.position, chunk.data.uniform);
-
-	auto result = cast(immutable(ChunkGenResult)*)new ChunkGenResult(bd, position);
-	mainThread.send(result);
+	auto res = new SnapshotLoadedMessage(message.cwp, BlockDataSnapshot(0, bd));
+	mainThread.send(cast(immutable(SnapshotLoadedMessage)*)res);
 }
 
 struct Generator2d3d
 {
 	ivec3 chunkOffset;
 
-	private int[CHUNK_SIZE_SQR] heightMap;
+	private int[CHUNK_SIZE_SQR] heightMap = void;
 
 	void genPerChunkData()
 	{
@@ -128,7 +134,7 @@ struct Generator2d
 {
 	ivec3 chunkOffset;
 
-	private int[CHUNK_SIZE_SQR] heightMap;
+	private int[CHUNK_SIZE_SQR] heightMap = void;
 
 	void genPerChunkData()
 	{

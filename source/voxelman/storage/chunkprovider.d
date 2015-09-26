@@ -23,6 +23,31 @@ import voxelman.utils.workergroup;
 
 version = Disk_Storage;
 
+struct SnapshotLoadedMessage
+{
+	ChunkWorldPos cwp;
+	BlockDataSnapshot snapshot;
+}
+
+struct SnapshotSavedMessage
+{
+	ChunkWorldPos cwp;
+	BlockDataSnapshot snapshot;
+}
+
+struct LoadSnapshotMessage
+{
+	ChunkWorldPos cwp;
+	BlockType[] blockBuffer;
+	Tid genWorker;
+}
+
+struct SaveSnapshotMessage
+{
+	ChunkWorldPos cwp;
+	BlockDataSnapshot snapshot;
+}
+
 struct ChunkProvider
 {
 private:
@@ -83,7 +108,13 @@ public:
 		while (message)
 		{
 			message = receiveTimeout(0.msecs,
-				(immutable(ChunkGenResult)* data){onChunkLoaded(cast(ChunkGenResult*)data);}
+				(immutable(SnapshotLoadedMessage)* message) {
+					onChunkLoaded(cast(SnapshotLoadedMessage*)message);
+				},
+				(immutable(SnapshotSavedMessage)* message) {
+					auto m = cast(SnapshotSavedMessage*)message;
+					delete m.snapshot.blockData.blocks;
+				}
 			);
 		}
 	}
@@ -95,7 +126,9 @@ public:
 
 		version(Disk_Storage)
 		{
-			storeWorker.nextWorker.send(chunk.position, genWorkers.nextWorker);
+			auto buf = uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
+			auto m = new LoadSnapshotMessage(chunk.position, buf, genWorkers.nextWorker);
+			storeWorker.nextWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
 		}
 		else
 		{
@@ -107,9 +140,8 @@ public:
 	{
 		version(Disk_Storage)
 		{
-			storeWorker.nextWorker.send(
-				chunk.position, cast(shared)chunk.snapshot.blockData,
-				chunk.snapshot.timestamp, true);
+			auto m = new SaveSnapshotMessage(chunk.position, chunk.snapshot);
+			storeWorker.nextWorker.send(cast(immutable(SaveSnapshotMessage)*)m);
 		}
 		else
 		{
@@ -117,9 +149,9 @@ public:
 		}
 	}
 
-	void onChunkLoaded(ChunkGenResult* data)
+	void onChunkLoaded(SnapshotLoadedMessage* data)
 	{
-		Chunk* chunk = chunkStorage.getChunk(data.position);
+		Chunk* chunk = chunkStorage.getChunk(data.cwp);
 		assert(chunk !is null);
 
 		chunk.hasWriter = false;
@@ -131,8 +163,11 @@ public:
 		--numLoadChunkTasks;
 
 		chunk.isVisible = true;
-		chunk.snapshot.blockData = data.blockData;
-		chunk.snapshot.timestamp = data.timestamp;
+		chunk.snapshot = data.snapshot;
+		if (chunk.snapshot.blockData.uniform) {
+			assert(chunk.snapshot.blockData.blocks.length == CHUNK_SIZE_CUBE);
+			delete chunk.snapshot.blockData.blocks;
+		}
 
 		if (chunk.isMarkedForDeletion)
 		{
