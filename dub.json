@@ -9,7 +9,8 @@
 		"cbor-d" : ">=0.4.1",
 		"anchovy" : {"version" : ">=0.8.0"},
 		"derelict-enet": "==1.3.10",
-		"sdlang-d" : ">=0.9.1"
+		"sdlang-d" : ">=0.9.1",
+		"tharsis-prof" : "==0.5.4"
 	},
 
 	"targetPath" : "bin",

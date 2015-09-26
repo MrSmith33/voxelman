@@ -16,6 +16,7 @@ import dlib.math.vector;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
+import tharsis.prof;
 
 import plugin;
 import plugin.pluginmanager;
@@ -51,6 +52,8 @@ import voxelman.client.events;
 
 //version = manualGC;
 version(manualGC) import core.memory;
+
+version = profiling;
 
 auto formatDuration(Duration dur)
 {
@@ -91,6 +94,9 @@ public:
 
 	// Debug
 	Widget debugInfo;
+	Profiler profiler;
+	DespikerSender profilerSender;
+	bool isProfilerRunning;
 
 	// Client data
 	bool isRunning = false;
@@ -99,6 +105,7 @@ public:
 	bool mouseLocked;
 	ConfigOption serverIp;
 	ConfigOption serverPort;
+	ConfigOption runDespiker;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -123,6 +130,7 @@ public:
 	{
 		serverIp = config.registerOption!string("ip", "127.0.0.1");
 		serverPort = config.registerOption!ushort("port", 1234);
+		runDespiker = config.registerOption!bool("runDespiker", false);
 
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
@@ -175,6 +183,12 @@ public:
 		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
 		foreach(i; 0..12) guiPlugin.context.createWidget("label", debugInfo);
 		guiPlugin.context.getWidgetById("stopServer").addEventHandler(&onStopServer);
+		guiPlugin.context.getWidgetById("toggleProfiler").addEventHandler(
+			(Widget w,PointerClickEvent e){toggleProfiler(); return true;}
+		);
+
+		if (runDespiker.get!bool)
+				toggleProfiler();
 	}
 
 	bool onStopServer(Widget widget, PointerClickEvent event)
@@ -221,6 +235,13 @@ public:
 
 	this()
 	{
+		version(profiling)
+		{
+			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
+			profiler = new Profiler(storage);
+		}
+		profilerSender = new DespikerSender([profiler]);
+
 		config = new Config(CLIENT_CONFIG_FILE_NAME);
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
@@ -276,21 +297,43 @@ public:
 		isRunning = true;
 		while(isRunning)
 		{
+			Zone frameZone = Zone(profiler, "frame");
+
 			newTime = Clock.currAppTick;
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
-			evDispatcher.postEvent(new PreUpdateEvent(delta));
-			evDispatcher.postEvent(new UpdateEvent(delta));
-			evDispatcher.postEvent(new PostUpdateEvent(delta));
-			evDispatcher.postEvent(new RenderEvent());
+			{
+				Zone subZone = Zone(profiler, "preUpdate");
+				evDispatcher.postEvent(new PreUpdateEvent(delta));
+			}
+			{
+				Zone subZone = Zone(profiler, "update");
+				evDispatcher.postEvent(new UpdateEvent(delta));
+			}
+			{
+				Zone subZone = Zone(profiler, "postUpdate");
+				evDispatcher.postEvent(new PostUpdateEvent(delta));
+			}
+			{
+				Zone subZone = Zone(profiler, "render");
+				evDispatcher.postEvent(new RenderEvent());
+			}
 
 			version(manualGC) GC.collect();
 
 			// time used in frame
 			delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
 			guiPlugin.fpsHelper.sleepAfterFrame(delta);
+
+			version(profiling) {
+				frameZone.__dtor;
+				profilerSender.update();
+				if (profilerSender.sending != isProfilerRunning)
+					toggleProfilerButton();
+			}
 		}
+		profilerSender.reset();
 
 		isDisconnecting = connection.isConnected;
 		connection.disconnect();
@@ -311,6 +354,28 @@ public:
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
 		connection.connect(serverIp.get!string, serverPort.get!ushort);
+	}
+
+	void toggleProfiler()
+	{
+		if (profilerSender.sending)
+			profilerSender.reset();
+		else
+		{
+			import std.file : exists;
+			if (exists(DESPIKER_PATH))
+				profilerSender.startDespiker(DESPIKER_PATH);
+			else
+				warningf(`No despiker executable found at "%s"`, DESPIKER_PATH);
+		}
+		toggleProfilerButton();
+	}
+
+	void toggleProfilerButton()
+	{
+		isProfilerRunning = profilerSender.sending;
+		dstring text = isProfilerRunning ? "Stop profiler" : "Start profiler";
+		guiPlugin.context.getWidgetById("toggleProfiler").setProperty!dstring("text", text);
 	}
 
 	void onGameStopEvent(GameStopEvent gameStopEvent)

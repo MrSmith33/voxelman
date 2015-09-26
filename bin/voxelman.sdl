@@ -8,6 +8,7 @@ template:mainLayer {
 			text-button id="showInfo" text="Show info"
 			text-button id="showSettings" text="Show settings"
 			text-button id="stopServer" text="Stop server"
+			text-button id="toggleProfiler" text="Start profiler"
 			label text="[Q] mouse lock"
 		}
 	}

@@ -19,7 +19,6 @@ import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.storageworker;
 import voxelman.storage.world;
-import voxelman.utils.queue : Queue;
 import voxelman.utils.workergroup;
 
 version = Disk_Storage;
@@ -29,11 +28,8 @@ struct ChunkProvider
 private:
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
 	WorkerGroup!(storageWorkerThread) storeWorker;
-	Queue!ChunkWorldPos loadQueue;
 	ChunkStorage* chunkStorage;
 
-	size_t chunksEnqueued;
-	size_t maxChunksToEnqueue = 400;
 	size_t numLoadChunkTasks;
 	size_t totalLoadedChunks;
 
@@ -109,8 +105,6 @@ public:
 
 	void onChunkRemoved(Chunk* chunk)
 	{
-		//loadQueue.put(chunkPosition);
-
 		version(Disk_Storage)
 		{
 			storeWorker.nextWorker.send(
@@ -125,8 +119,6 @@ public:
 
 	void onChunkLoaded(ChunkGenResult* data)
 	{
-		//writefln("Chunk data received in main thread");
-
 		Chunk* chunk = chunkStorage.getChunk(data.position);
 		assert(chunk !is null);
 
@@ -137,7 +129,6 @@ public:
 
 		++totalLoadedChunks;
 		--numLoadChunkTasks;
-		//--chunksEnqueued;
 
 		chunk.isVisible = true;
 		chunk.snapshot.blockData = data.blockData;

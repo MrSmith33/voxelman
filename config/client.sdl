@@ -1,6 +1,9 @@
 ip "localhost"
 port 1234
 
+// Start profiler with client
+runDespiker false
+
 resolution 1280 720
 limit_fps true
 view_distance 4

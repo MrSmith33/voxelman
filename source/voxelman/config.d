@@ -16,6 +16,15 @@ enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
+enum EXE_SUFFIX_WINDOWS = ".exe";
+enum EXE_SUFFIX_POSIX = "";
+version(Windows)
+	alias EXE_SUFFIX = EXE_SUFFIX_WINDOWS;
+else version(Posix)
+	alias EXE_SUFFIX = EXE_SUFFIX_POSIX;
+else
+	static assert(false, "Implement exe suffix for this platform");
+
 // directories
 enum string SAVE_DIR = "../saves";
 enum string WORLD_NAME = "world";
@@ -24,6 +33,8 @@ enum string WORLD_FILE_NAME = "worldinfo.cbor";
 
 enum string CLIENT_CONFIG_FILE_NAME = "../config/client.sdl";
 enum string SERVER_CONFIG_FILE_NAME = "../config/server.sdl";
+
+enum DESPIKER_PATH = "../tools/despiker/despiker" ~ EXE_SUFFIX;
 
 enum NUM_WORKERS = 4;
 enum DEFAULT_VIEW_RADIUS = 5;
