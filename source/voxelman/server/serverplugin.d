@@ -56,7 +56,6 @@ final class WorldAccess {
 		BlockType[] blocks = chunkManager.getWriteBuffer(chunkPos);
 		if (blocks is null)
 			return false;
-		infof("  SETB @%s", chunkPos);
 		blocks[blockIndex] = blockId;
 
 		import std.range : only;
@@ -69,7 +68,7 @@ final class WorldAccess {
 		auto chunkPos = ChunkWorldPos(bwp);
 		auto snap = chunkManager.getChunkSnapshot(chunkPos);
 		if (!snap.isNull) {
-			return snap.blockData.blocks[blockIndex];
+			return snap.blockData.getBlockType(blockIndex);
 		}
 		return 0;
 	}
@@ -78,13 +77,18 @@ final class WorldAccess {
 class ServerPlugin : IPlugin
 {
 private:
-	PluginManager pluginman = new PluginManager;
-	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
+	PluginManager pluginman;
+	ResourceManagerRegistry resmanRegistry;
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
-	GameTimePlugin gameTime = new GameTimePlugin;
 	// Resource managers
 	Config config;
+
+	// Config
+	ConfigOption saveDirOpt;
+	ConfigOption worldNameOpt;
+	ConfigOption numWorkersOpt;
+	ConfigOption portOpt;
 
 	// Profiling
 	Profiler profiler;
@@ -100,14 +104,64 @@ public:
 	ChunkObserverManager chunkObserverManager;
 	World world;
 	WorldAccess worldAccess;
+
 	bool isRunning = false;
 
 	// IPlugin stuff
 	override string name() @property { return "ServerPlugin"; }
-	override string semver() @property { return "0.4.0"; }
+	override string semver() @property { return "0.5.0"; }
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		saveDirOpt = config.registerOption!string("save_dir", "../saves");
+		worldNameOpt = config.registerOption!string("world_name", "world");
+		numWorkersOpt = config.registerOption!uint("num_workers", 4);
+		portOpt = config.registerOption!ushort("port", 1234);
+	}
+
+	this()
+	{
+		version(profiling)
+		{
+			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
+			profiler = new Profiler(storage);
+		}
+		profilerSender = new DespikerSender([profiler]);
+		connection = new ServerConnection;
+
+		chunkManager = new ChunkManager();
+		worldAccess = new WorldAccess(&chunkManager);
+		chunkObserverManager = new ChunkObserverManager();
+
+		resmanRegistry = new ResourceManagerRegistry;
+		pluginman = new PluginManager;
+
+		// Resource managers
+		config = new Config(SERVER_CONFIG_FILE_NAME);
+		// Plugins
+		evDispatcher = new EventDispatcherPlugin(profiler);
+
+		// Connections
+		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
+		chunkManager.saveChunkHandler = &chunkProvider.saveChunk;
+		chunkProvider.onChunkLoadedHandlers ~= &chunkManager.onSnapshotLoaded;
+		chunkProvider.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
+		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
+		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
+		chunkManager.chunkChangesHandlers ~= &sendChanges;
+	}
 
 	override void preInit()
 	{
+		loadEnet();
+		auto worldDir = saveDirOpt.get!string ~ "/" ~ worldNameOpt.get!string;
+		chunkProvider.init(worldDir, numWorkersOpt.get!uint);
+		world.init(worldDir);
+		blockMan.loadBlockTypes();
+
+		world.load();
+
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;
 
@@ -132,67 +186,17 @@ public:
 		//shufflePackets();
 	}
 
-	void shufflePackets()
-	{
-		import std.random;
-		randomShuffle(connection.packetArray[1..$]);
-		foreach (i, packetInfo; connection.packetArray)
-			packetInfo.id = i;
-	}
-
-	this()
-	{
-		version(profiling)
-		{
-			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
-			profiler = new Profiler(storage);
-		}
-		profilerSender = new DespikerSender([profiler]);
-
-		loadEnet();
-
-		evDispatcher = new EventDispatcherPlugin(profiler);
-		config = new Config(SERVER_CONFIG_FILE_NAME);
-		connection = new ServerConnection;
-
-		chunkManager = new ChunkManager();
-
-		blockMan.loadBlockTypes();
-		chunkProvider.init(WORLD_DIR);
-		world.init(WORLD_DIR);
-		//worldAccess = WorldAccess(&chunkStorage.getChunk, &world.currentTimestamp);
-
-		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
-		chunkManager.chunkChangesHandlers ~= &sendChanges;
-		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
-		chunkManager.saveChunkHandler = &chunkProvider.saveChunk;
-		chunkProvider.onChunkLoadedHandlers ~= &chunkManager.onSnapshotLoaded;
-		chunkProvider.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
-		chunkObserverManager = new ChunkObserverManager();
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
-		worldAccess = new WorldAccess(&chunkManager);
-
-		//chunkProvider.onChunkLoadedHandlers ~= &blockMan.onChunkLoaded;
-		//chunkProvider.onChunkLoadedHandlers ~= &chunkMan.onChunkLoaded;
-		//world.chunkStorage.onChunkAddedHandlers ~= &chunkMan.onChunkAdded;
-		//world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
-		//world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
-		//world.chunkStorage.onChunkRemovedHandlers ~= &chunkProvider.onChunkRemoved;
-		//world.worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkModified;
-
-		world.load();
-	}
-
 	void run(string[] args)
 	{
 		import std.datetime : TickDuration, Duration, Clock, usecs;
 		import core.thread : Thread;
 		import core.memory;
 
+		// Register all plugins
 		pluginman.registerPlugin(this);
 		pluginman.registerPlugin(evDispatcher);
-		pluginman.registerPlugin(gameTime);
 
+		// Register all resource managers
 		resmanRegistry.registerResourceManager(config);
 
 		// Actual loading sequence
@@ -203,7 +207,7 @@ public:
 		pluginman.initPlugins();
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
-		connection.start(settings, ENET_HOST_ANY, SERVER_PORT);
+		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
 
@@ -244,13 +248,6 @@ public:
 		stop();
 	}
 
-	void stop()
-	{
-		connection.stop();
-		chunkProvider.stop();
-		world.save();
-	}
-
 	void update(double dt)
 	{
 		connection.update();
@@ -266,6 +263,22 @@ public:
 		connection.flush();
 	}
 
+	void stop()
+	{
+		connection.disconnectAll();
+		connection.stop();
+		chunkProvider.stop();
+		world.save();
+	}
+
+	void shufflePackets()
+	{
+		import std.random;
+		randomShuffle(connection.packetArray[1..$]);
+		foreach (i, packetInfo; connection.packetArray)
+			packetInfo.id = i;
+	}
+
 	bool isLoggedIn(ClientId clientId)
 	{
 		ClientInfo* clientInfo = connection.clientStorage[clientId];
@@ -275,8 +288,7 @@ public:
 	string[ClientId] clientNames()
 	{
 		string[ClientId] names;
-		foreach(id, client; connection.clientStorage.clients)
-		{
+		foreach(id, client; connection.clientStorage.clients) {
 			names[id] = client.name;
 		}
 
@@ -295,6 +307,15 @@ public:
 	{
 		connection.sendTo(chunkObserverManager.getChunkObservers(cwp),
 			ChunkDataPacket(cwp.vector, snap.blockData));
+	}
+
+	void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
+	{
+		auto snap = chunkManager.getChunkSnapshot(cwp);
+		if (!snap.isNull) {
+			connection.sendTo(clientId,
+				ChunkDataPacket(cwp.vector, snap.blockData));
+		}
 	}
 
 	void handleCommand(ref CommandEvent event)
@@ -316,7 +337,6 @@ public:
 		if (commName == "stop")
 		{
 			isRunning = false;
-			connection.disconnectAll();
 		}
 		else
 			sendMessageTo(event.clientId, format("Unknown command %s", commName));

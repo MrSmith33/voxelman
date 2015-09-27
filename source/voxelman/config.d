@@ -26,11 +26,8 @@ else
 	static assert(false, "Implement exe suffix for this platform");
 
 // directories
-enum string SAVE_DIR = "../saves";
-enum string WORLD_NAME = "world";
-enum string WORLD_DIR = SAVE_DIR ~ "/" ~ WORLD_NAME;
 enum string WORLD_FILE_NAME = "worldinfo.cbor";
-
+immutable string DEFAULT_WORLD_NAME = "world";
 enum string CLIENT_CONFIG_FILE_NAME = "../config/client.sdl";
 enum string SERVER_CONFIG_FILE_NAME = "../config/server.sdl";
 

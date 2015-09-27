@@ -57,9 +57,9 @@ public:
 	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, TimestampType)[] onChunkSavedHandlers;
 
-	void init(string worldDir)
+	void init(string worldDir, uint numWorkers)
 	{
-		genWorkers.startWorkers(NUM_WORKERS, thisTid);
+		genWorkers.startWorkers(numWorkers, thisTid);
 		storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
 	}
 

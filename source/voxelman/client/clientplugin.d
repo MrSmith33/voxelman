@@ -103,9 +103,11 @@ public:
 	bool isDisconnecting = false;
 	bool isSpawned = false;
 	bool mouseLocked;
-	ConfigOption serverIp;
-	ConfigOption serverPort;
-	ConfigOption runDespiker;
+
+	ConfigOption serverIpOpt;
+	ConfigOption serverPortOpt;
+	ConfigOption runDespikerOpt;
+	ConfigOption numWorkersOpt;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -128,9 +130,10 @@ public:
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		serverIp = config.registerOption!string("ip", "127.0.0.1");
-		serverPort = config.registerOption!ushort("port", 1234);
-		runDespiker = config.registerOption!bool("runDespiker", false);
+		serverIpOpt = config.registerOption!string("ip", "127.0.0.1");
+		serverPortOpt = config.registerOption!ushort("port", 1234);
+		runDespikerOpt = config.registerOption!bool("run_despiker", false);
+		numWorkersOpt = config.registerOption!uint("num_workers", 4);
 
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
@@ -148,7 +151,7 @@ public:
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;
 
-		chunkMan.init();
+		chunkMan.init(numWorkersOpt.get!uint);
 		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
 
 		registerPackets(connection);
@@ -179,6 +182,11 @@ public:
 	{
 		updatedCameraPos = graphics.camera.position;
 		chunkMan.updateObserverPosition(graphics.camera.position);
+		ConnectionSettings settings = {null, 1, 2, 0, 0};
+
+		connection.start(settings);
+		static if (ENABLE_RLE_PACKET_COMPRESSION)
+			enet_host_compress_with_range_coder(connection.host);
 		connect();
 
 		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
@@ -187,8 +195,11 @@ public:
 		guiPlugin.context.getWidgetById("toggleProfiler").addEventHandler(
 			(Widget w,PointerClickEvent e){toggleProfiler(); return true;}
 		);
+		guiPlugin.context.getWidgetById("connect").addEventHandler(
+			(Widget w,PointerClickEvent e){connect(); return true;}
+		);
 
-		if (runDespiker.get!bool)
+		if (runDespikerOpt.get!bool)
 				toggleProfiler();
 	}
 
@@ -356,12 +367,7 @@ public:
 
 	void connect()
 	{
-		ConnectionSettings settings = {null, 1, 2, 0, 0};
-
-		connection.start(settings);
-		static if (ENABLE_RLE_PACKET_COMPRESSION)
-			enet_host_compress_with_range_coder(connection.host);
-		connection.connect(serverIp.get!string, serverPort.get!ushort);
+		connection.connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
 	}
 
 	void toggleProfiler()
@@ -572,7 +578,8 @@ public:
 
 	void onConnect(ref ENetEvent event)
 	{
-		infof("Connection to %s:%s established", serverIp.get!string, serverPort.get!ushort);
+		infof("Connection to %s:%s established", serverIpOpt.get!string, serverPortOpt.get!ushort);
+		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
 	}
 
 	void onDisconnect(ref ENetEvent event)
@@ -584,6 +591,7 @@ public:
 
 		evDispatcher.postEvent(ThisClientDisconnectedEvent());
 		isDisconnecting = false;
+		isSpawned = false;
 	}
 
 	void handlePacketMapPacket(ubyte[] packetData, ClientId clientId)

@@ -16,11 +16,10 @@ import resource;
 
 final class ConfigOption
 {
-	this(Variant value, Variant defaultValue, bool isSaved)
+	this(Variant value, Variant defaultValue)
 	{
 		this.value = value;
 		this.defaultValue = defaultValue;
-		this.isSaved = isSaved;
 	}
 
 	T get(T)()
@@ -33,7 +32,6 @@ final class ConfigOption
 
 	Variant value;
 	Variant defaultValue;
-	bool isSaved;
 }
 
 final class Config : IResourceManager
@@ -58,9 +56,9 @@ public:
 	}
 
 	// Runtime options are not saved. Use them to store global options that need no saving
-	ConfigOption registerOption(T)(string optionName, T defaultValue, bool runtime = false)
+	ConfigOption registerOption(T)(string optionName, T defaultValue)
 	{
-		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue), runtime);
+		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue));
 		options[optionName] = option;
 		return option;
 	}

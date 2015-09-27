@@ -1,0 +1,5 @@
+save_dir "../saves"
+world_name "world"
+num_workers 4
+
+port 1234

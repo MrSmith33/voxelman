@@ -19,7 +19,7 @@ import voxelman.storage.worldaccess;
 
 struct WorldInfo
 {
-	string name = WORLD_NAME;
+	string name = DEFAULT_WORLD_NAME;
 	TimestampType simulationTick;
 	ivec3 spawnPosition;
 	//block mapping
@@ -55,7 +55,7 @@ struct World
 	void save()
 	{
 		writeWorldInfo();
-		info("saved world");
+		infof("saved world '%s'", worldInfoFilename);
 	}
 
 	void load()

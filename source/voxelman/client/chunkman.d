@@ -36,10 +36,10 @@ struct ChunkMan
 	BlockMan blockMan;
 	ChunkMeshMan chunkMeshMan;
 
-	void init()
+	void init(uint numWorkers)
 	{
 		blockMan.loadBlockTypes();
-		chunkMeshMan.init(&this, &blockMan);
+		chunkMeshMan.init(&this, &blockMan, numWorkers);
 		chunkStorage.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
 	}
 

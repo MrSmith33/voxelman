@@ -39,11 +39,11 @@ struct ChunkMeshMan
 	BlockMan* blockMan;
 	ChunkMan* chunkMan;
 
-	void init(ChunkMan* _chunkMan, BlockMan* _blockMan)
+	void init(ChunkMan* _chunkMan, BlockMan* _blockMan, uint numWorkers)
 	{
 		chunkMan = _chunkMan;
 		blockMan = _blockMan;
-		meshWorkers.startWorkers(NUM_WORKERS, thisTid, blockMan.blocks);
+		meshWorkers.startWorkers(numWorkers, thisTid, blockMan.blocks);
 	}
 
 	void stop()
@@ -140,8 +140,22 @@ struct ChunkMeshMan
 		assert(chunk);
 		if (chunk.needsMesh && chunk.canBeMeshed)
 		{
-			meshChunk(chunk);
+			if (!surroundedBySolidChunks(chunk))
+				meshChunk(chunk);
 		}
+	}
+
+	bool surroundedBySolidChunks(Chunk* chunk)
+	{
+		import voxelman.block;
+		foreach(i, a; chunk.adjacent)
+		if (a !is null) {
+			bool solidSide = a.snapshot.blockData.uniform &&
+			blockMan.blocks[a.snapshot.blockData.uniformType]
+				.isSideTransparent(cast(Side)oppSide[i]);
+			if (!solidSide) return false;
+		}
+		return true;
 	}
 
 	void meshChunk(Chunk* chunk)
