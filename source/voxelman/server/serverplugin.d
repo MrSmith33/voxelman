@@ -30,16 +30,50 @@ import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
 import voxelman.storage.chunk;
+import voxelman.storage.chunkmanager;
+import voxelman.storage.chunkobservermanager;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
+import voxelman.storage.volume;
 import voxelman.storage.world;
 import voxelman.utils.math;
-
 
 version = profiling;
 
 final class ServerConnection : BaseServer!ClientInfo{}
+
+final class WorldAccess {
+	private ChunkManager* chunkManager;
+
+	this(ChunkManager* chunkManager) {
+		this.chunkManager = chunkManager;
+	}
+
+	bool setBlock(BlockWorldPos bwp, BlockType blockId) {
+		auto blockIndex = BlockChunkIndex(bwp);
+		auto chunkPos = ChunkWorldPos(bwp);
+		BlockType[] blocks = chunkManager.getWriteBuffer(chunkPos);
+		if (blocks is null)
+			return false;
+		infof("  SETB @%s", chunkPos);
+		blocks[blockIndex] = blockId;
+
+		import std.range : only;
+		chunkManager.onBlockChanges(chunkPos, only(BlockChange(blockIndex.index, blockId)));
+		return true;
+	}
+
+	BlockType getBlock(BlockWorldPos bwp) {
+		auto blockIndex = BlockChunkIndex(bwp);
+		auto chunkPos = ChunkWorldPos(bwp);
+		auto snap = chunkManager.getChunkSnapshot(chunkPos);
+		if (!snap.isNull) {
+			return snap.blockData.blocks[blockIndex];
+		}
+		return 0;
+	}
+}
 
 class ServerPlugin : IPlugin
 {
@@ -61,9 +95,11 @@ public:
 
 	// Game data
 	BlockMan blockMan;
-	ChunkMan chunkMan;
 	ChunkProvider chunkProvider;
+	ChunkManager chunkManager;
+	ChunkObserverManager chunkObserverManager;
 	World world;
+	WorldAccess worldAccess;
 	bool isRunning = false;
 
 	// IPlugin stuff
@@ -118,21 +154,31 @@ public:
 		evDispatcher = new EventDispatcherPlugin(profiler);
 		config = new Config(SERVER_CONFIG_FILE_NAME);
 		connection = new ServerConnection;
-		chunkMan = ChunkMan(connection, &world.chunkStorage);
+
+		chunkManager = new ChunkManager();
 
 		blockMan.loadBlockTypes();
-		chunkProvider.init(WORLD_DIR, &world.chunkStorage);
-		world.init(WORLD_DIR, &chunkProvider);
+		chunkProvider.init(WORLD_DIR);
+		world.init(WORLD_DIR);
+		//worldAccess = WorldAccess(&chunkStorage.getChunk, &world.currentTimestamp);
 
-		chunkProvider.onChunkLoadedHandlers ~= &blockMan.onChunkLoaded;
-		chunkProvider.onChunkLoadedHandlers ~= &chunkMan.onChunkLoaded;
+		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
+		chunkManager.chunkChangesHandlers ~= &sendChanges;
+		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
+		chunkManager.saveChunkHandler = &chunkProvider.saveChunk;
+		chunkProvider.onChunkLoadedHandlers ~= &chunkManager.onSnapshotLoaded;
+		chunkProvider.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
+		chunkObserverManager = new ChunkObserverManager();
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
+		worldAccess = new WorldAccess(&chunkManager);
 
-		world.chunkStorage.onChunkAddedHandlers ~= &chunkMan.onChunkAdded;
-		world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
-		world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
-		world.chunkStorage.onChunkRemovedHandlers ~= &chunkProvider.onChunkRemoved;
-
-		world.worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkModified;
+		//chunkProvider.onChunkLoadedHandlers ~= &blockMan.onChunkLoaded;
+		//chunkProvider.onChunkLoadedHandlers ~= &chunkMan.onChunkLoaded;
+		//world.chunkStorage.onChunkAddedHandlers ~= &chunkMan.onChunkAdded;
+		//world.chunkStorage.onChunkAddedHandlers ~= &chunkProvider.onChunkAdded;
+		//world.chunkStorage.onChunkRemovedHandlers ~= &chunkMan.onChunkRemoved;
+		//world.chunkStorage.onChunkRemovedHandlers ~= &chunkProvider.onChunkRemoved;
+		//world.worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkModified;
 
 		world.load();
 	}
@@ -174,10 +220,7 @@ public:
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
-			evDispatcher.postEvent(PreUpdateEvent(delta));
-			evDispatcher.postEvent(UpdateEvent(delta));
 			update(delta);
-			evDispatcher.postEvent(PostUpdateEvent(delta));
 
 			GC.collect();
 
@@ -213,7 +256,13 @@ public:
 		connection.update();
 		chunkProvider.update();
 		world.update();
-		chunkMan.sendChanges();
+
+		evDispatcher.postEvent(PreUpdateEvent(dt));
+		evDispatcher.postEvent(UpdateEvent(dt));
+		evDispatcher.postEvent(PostUpdateEvent(dt));
+
+		chunkManager.commitSnapshots(world.currentTimestamp);
+		chunkManager.sendChanges();
 		connection.flush();
 	}
 
@@ -232,6 +281,20 @@ public:
 		}
 
 		return names;
+	}
+
+	void sendChanges(BlockChange[][ChunkWorldPos] changes)
+	{
+		foreach(pair; changes.byKeyValue) {
+			connection.sendTo(chunkObserverManager.getChunkObservers(pair.key),
+				MultiblockChangePacket(pair.key.vector, pair.value));
+		}
+	}
+
+	void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
+	{
+		connection.sendTo(chunkObserverManager.getChunkObservers(cwp),
+			ChunkDataPacket(cwp.vector, snap.blockData));
 	}
 
 	void handleCommand(ref CommandEvent event)
@@ -270,6 +333,8 @@ public:
 		info.pos = pos;
 		info.heading = heading;
 		connection.sendTo(clientId, ClientPositionPacket(pos, heading));
+		connection.sendTo(clientId, SpawnPacket());
+		updateObserverVolume(info);
 	}
 
 	void onConnect(ref ENetEvent event)
@@ -289,7 +354,7 @@ public:
 		infof("%s %s disconnected", clientId,
 			connection.clientStorage[clientId].name);
 
-		chunkMan.removeRegionObserver(clientId);
+		chunkObserverManager.removeObserver(clientId);
 
 		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
 
@@ -299,7 +364,7 @@ public:
 
 		connection.sendToAll(ClientLoggedOutPacket(clientId));
 
-		infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
+		//infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
@@ -307,6 +372,7 @@ public:
 		LoginPacket packet = unpackPacket!LoginPacket(packetData);
 		ClientInfo* info = connection.clientStorage[clientId];
 		info.name = packet.clientName;
+		info.id = clientId;
 		info.isLoggedIn = true;
 		spawnClient(info.pos, info.heading, clientId);
 
@@ -343,13 +409,10 @@ public:
 		if (isLoggedIn(clientId))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
-			//infof("Received ClientPositionPacket(%s, %s, %s)",
-			//	packet.x, packet.y, packet.z);
-
 			ClientInfo* info = connection.clientStorage[clientId];
 			info.pos = packet.pos;
 			info.heading = packet.heading;
-			chunkMan.updateObserverPosition(clientId);
+			updateObserverVolume(info);
 			//infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
 		}
 	}
@@ -361,8 +424,16 @@ public:
 		ClientInfo* info = connection.clientStorage[clientId];
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-		if (info.isLoggedIn)
-			chunkMan.updateObserverPosition(clientId);
+		updateObserverVolume(info);
+	}
+
+	void updateObserverVolume(ClientInfo* info)
+	{
+		if (info.isLoggedIn) {
+			ChunkWorldPos chunkPos = BlockWorldPos(info.pos);
+			auto volume = calcVolume(chunkPos, info.viewRadius);
+			chunkObserverManager.changeObserverVolume(info.id, volume);
+		}
 	}
 
 	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
@@ -372,7 +443,7 @@ public:
 			auto packet = unpackPacket!PlaceBlockPacket(packetData);
 			//infof("Received PlaceBlockPacket(%s)", packet);
 
-			world.worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
+			worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
 		}
 	}
 }

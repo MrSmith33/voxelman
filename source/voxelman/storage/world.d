@@ -30,30 +30,26 @@ private ubyte[1024] buffer;
 struct World
 {
 	WorldInfo worldInfo;
-	ChunkStorage chunkStorage;
-	WorldAccess worldAccess;
 
 	string worldDirectory;
 	string worldInfoFilename = WORLD_FILE_NAME;
 
-	ChunkProvider* chunkProvider;
-
-	void init(string worldDir, ChunkProvider* chunkProvider)
+	void init(string worldDir)
 	{
-		assert(chunkProvider);
 		assert(isValidPath(worldDir));
 
-		this.chunkProvider = chunkProvider;
-		worldAccess = WorldAccess(&chunkStorage.getChunk,
-			() => worldInfo.simulationTick);
 		worldDirectory = worldDir;
 		worldInfoFilename = buildPath(worldDir, WORLD_FILE_NAME);
+	}
+
+	TimestampType currentTimestamp() @property
+	{
+		return worldInfo.simulationTick;
 	}
 
 	void update()
 	{
 		++worldInfo.simulationTick;
-		chunkStorage.update();
 	}
 
 	void save()

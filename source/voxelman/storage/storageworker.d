@@ -84,7 +84,7 @@ void storageWorkerThread(Tid mainTid, string regionDir)
 				else
 					blockData.blocks = m.blockBuffer;
 
-				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(timestamp, blockData));
+				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(blockData, timestamp));
 				mainTid.send(cast(immutable(SnapshotLoadedMessage)*)res);
 			}
 			else

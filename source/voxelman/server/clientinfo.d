@@ -7,12 +7,13 @@ module voxelman.server.clientinfo;
 
 import netlib.connection : ENetPeer;
 import dlib.math.vector : vec3, vec2;
-import voxelman.storage.chunk : Volume;
+import voxelman.storage.volume : Volume;
 import voxelman.config;
 
 struct ClientInfo
 {
 	string name;
+	size_t id;
 	vec3 pos = START_POS;
 	vec2 heading = vec2(0, 0);
 	int viewRadius = DEFAULT_VIEW_RADIUS;

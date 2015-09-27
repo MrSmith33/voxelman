@@ -18,6 +18,7 @@ import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
+import voxelman.storage.volume;
 
 ///
 struct ChunkMan

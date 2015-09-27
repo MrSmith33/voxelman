@@ -162,6 +162,7 @@ public:
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -644,7 +645,11 @@ public:
 
 		nansToZero(packet.heading);
 		graphics.camera.setHeading(packet.heading);
+	}
 
+	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!SpawnPacket(packetData);
 		isSpawned = true;
 	}
 

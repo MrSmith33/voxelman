@@ -59,14 +59,14 @@ struct ChunkFreeList {
 final class ChunkManager {
 	void delegate(ChunkWorldPos)[] onChunkAddedHandlers;
 	void delegate(ChunkWorldPos)[] onChunkRemovedHandlers;
-	void delegate(ChunkWorldPos, ChunkDataSnapshot)[] onChunkLoadedHandlers;
+	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(BlockChange[][ChunkWorldPos])[] chunkChangesHandlers;
 	void delegate(ChunkWorldPos cwp, BlockType[] outBuffer) loadChunkHandler;
-	void delegate(ChunkWorldPos cwp, ChunkDataSnapshot snapshot) saveChunkHandler;
+	void delegate(ChunkWorldPos cwp, BlockDataSnapshot snapshot) saveChunkHandler;
 
 	private ChunkFreeList freeList;
-	private ChunkDataSnapshot[ChunkWorldPos] snapshots;
-	private ChunkDataSnapshot[TimestampType][ChunkWorldPos] oldSnapshots;
+	private BlockDataSnapshot[ChunkWorldPos] snapshots;
+	private BlockDataSnapshot[TimestampType][ChunkWorldPos] oldSnapshots;
 	private BlockType[][ChunkWorldPos] writeBuffers;
 	private BlockChange[][ChunkWorldPos] chunkChanges;
 	private ChunkState[ChunkWorldPos] chunkStates;
@@ -117,12 +117,12 @@ final class ChunkManager {
 	}
 
 	/// returned value isNull if chunk is not loaded/added
-	Nullable!ChunkDataSnapshot getChunkSnapshot(ChunkWorldPos cwp) {
+	Nullable!BlockDataSnapshot getChunkSnapshot(ChunkWorldPos cwp) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		if (state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving)
-			return Nullable!ChunkDataSnapshot(snapshots[cwp]);
+			return Nullable!BlockDataSnapshot(snapshots[cwp]);
 		else {
-			return Nullable!ChunkDataSnapshot.init;
+			return Nullable!BlockDataSnapshot.init;
 		}
 	}
 
@@ -183,8 +183,8 @@ final class ChunkManager {
 	}
 
 	/// Internal. Called by code which loads chunks from storage.
-	void onSnapshotLoaded(ChunkWorldPos cwp, ChunkDataSnapshot snap) {
-		snapshots[cwp] = ChunkDataSnapshot(snap.blockData, snap.timestamp);
+	void onSnapshotLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap) {
+		snapshots[cwp] = BlockDataSnapshot(snap.blockData, snap.timestamp);
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
 			case non_loaded:
@@ -438,10 +438,10 @@ final class ChunkManager {
 
 	// Returns that snapshot with updated numUsers.
 	// Snapshot is removed from oldSnapshots if numUsers == 0.
-	private ChunkDataSnapshot removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp) {
-		ChunkDataSnapshot[TimestampType]* chunkSnaps = cwp in oldSnapshots;
+	private BlockDataSnapshot removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp) {
+		BlockDataSnapshot[TimestampType]* chunkSnaps = cwp in oldSnapshots;
 		assert(chunkSnaps, "old snapshot should have waited for releasing user");
-		ChunkDataSnapshot* snapshot = timestamp in *chunkSnaps;
+		BlockDataSnapshot* snapshot = timestamp in *chunkSnaps;
 		assert(snapshot, "cannot release snapshot user. No such snapshot");
 		assert(snapshot.numUsers > 0, "snapshot with 0 users was not released");
 		--snapshot.numUsers;
@@ -461,11 +461,11 @@ final class ChunkManager {
 		if (currentSnapshot.numUsers == 0)
 			recycleSnapshotMemory(currentSnapshot);
 		else {
-			ChunkDataSnapshot[TimestampType] chunkSnaps = oldSnapshots.get(cwp, null);
+			BlockDataSnapshot[TimestampType] chunkSnaps = oldSnapshots.get(cwp, null);
 			assert(currentTime !in chunkSnaps);
 			chunkSnaps[currentTime] = currentSnapshot.get;
 		}
-		snapshots[cwp] = ChunkDataSnapshot(BlockData(blocks, BlockType.init, false), currentTime);
+		snapshots[cwp] = BlockDataSnapshot(BlockData(blocks, BlockType.init, false), currentTime);
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
@@ -496,7 +496,7 @@ final class ChunkManager {
 	}
 
 	// Called when snapshot data can be recycled.
-	private void recycleSnapshotMemory(ChunkDataSnapshot snap) {
+	private void recycleSnapshotMemory(BlockDataSnapshot snap) {
 		freeList.deallocate(snap.blockData.blocks);
 	}
 }

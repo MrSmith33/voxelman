@@ -26,6 +26,7 @@ void registerPackets(Connection c)
 
 	c.registerPacket!ChunkDataPacket;
 	c.registerPacket!MultiblockChangePacket;
+	c.registerPacket!SpawnPacket;
 
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
@@ -97,4 +98,8 @@ struct PlaceBlockPacket
 {
 	ivec3 blockPos;
 	BlockType blockType;
+}
+
+struct SpawnPacket
+{
 }

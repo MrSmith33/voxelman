@@ -1,5 +1,6 @@
 ip "localhost"
 port 1234
+name "Player"
 
 // Start profiler with client
 runDespiker false

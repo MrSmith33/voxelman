@@ -69,11 +69,9 @@ struct ChunkDataSnapshot {
 // stores all used snapshots of the chunk. Current is blocks
 struct BlockDataSnapshot
 {
-	// tick when snapshot was created, 0 when generated
-	TimestampType timestamp;
-
-	// actual data
 	BlockData blockData;
+	TimestampType timestamp;
+	uint numUsers;
 }
 
 // Stores blocks of the chunk

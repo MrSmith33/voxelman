@@ -21,6 +21,7 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
+import voxelman.storage.volume;
 
 
 struct ChunkObserverList
@@ -86,7 +87,7 @@ struct ChunkMan
 		Volume oldVolume = clientInfo.visibleVolume;
 
 		ChunkWorldPos chunkPos = BlockWorldPos(clientInfo.pos);
-		Volume newVolume = calcVolume(chunkPos.vector, clientInfo.viewRadius);
+		Volume newVolume = calcVolume(chunkPos, clientInfo.viewRadius);
 		if (oldVolume == newVolume) return;
 
 		onClientVisibleVolumeChanged(oldVolume, newVolume, clientId);

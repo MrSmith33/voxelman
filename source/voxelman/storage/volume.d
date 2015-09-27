@@ -10,11 +10,12 @@ import std.math : floor;
 import std.range : chain, only;
 import dlib.math.vector;
 
+import voxelman.storage.coordinates;
 
-Volume calcVolume(ivec3 position, int viewRadius)
+Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
-	return Volume(cast(ivec3)(position - viewRadius),
+	return Volume(cast(ivec3)(cwp.vector - viewRadius),
 		ivec3(size, size, size));
 }
 
