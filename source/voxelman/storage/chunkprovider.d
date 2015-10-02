@@ -56,6 +56,12 @@ private:
 public:
 	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, TimestampType)[] onChunkSavedHandlers;
+	private size_t loadQueueLength;
+
+	size_t loadQueueSpaceAvaliable() @property const
+	{
+		return MAX_LOAD_QUEUE_LENGTH - loadQueueLength;
+	}
 
 	void init(string worldDir, uint numWorkers)
 	{
@@ -77,6 +83,7 @@ public:
 			message = receiveTimeout(0.msecs,
 				(immutable(SnapshotLoadedMessage)* message) {
 					auto m = cast(SnapshotLoadedMessage*)message;
+					--loadQueueLength;
 					foreach(handler; onChunkLoadedHandlers)
 						handler(m.cwp, m.snapshot);
 				},
@@ -92,6 +99,7 @@ public:
 	void loadChunk(ChunkWorldPos cwp, BlockType[] blockBuffer) {
 		auto m = new LoadSnapshotMessage(cwp, blockBuffer, genWorkers.nextWorker);
 		storeWorker.nextWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
+		++loadQueueLength;
 	}
 
 	void saveChunk(ChunkWorldPos cwp, BlockDataSnapshot snapshot) {

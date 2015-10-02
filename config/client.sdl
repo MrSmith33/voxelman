@@ -7,7 +7,7 @@ run_despiker false
 num_workers 4
 
 resolution 1280 720
-limit_fps trueS
+limit_fps true
 view_distance 4
 
 camera_sensivity 0.1

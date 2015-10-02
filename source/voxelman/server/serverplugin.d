@@ -26,7 +26,6 @@ import voxelman.packets;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.gametimeplugin;
 import voxelman.resourcemanagers.config;
-import voxelman.server.chunkman;
 import voxelman.server.clientinfo;
 import voxelman.server.events;
 import voxelman.storage.chunk;
@@ -148,6 +147,7 @@ public:
 		chunkProvider.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
+		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
 	}
@@ -240,6 +240,7 @@ public:
 		}
 		profilerSender.reset();
 
+		connection.disconnectAll();
 		while (connection.clientStorage.length)
 		{
 			connection.update();
@@ -252,6 +253,7 @@ public:
 	{
 		connection.update();
 		chunkProvider.update();
+		chunkObserverManager.update();
 		world.update();
 
 		evDispatcher.postEvent(PreUpdateEvent(dt));
@@ -265,7 +267,6 @@ public:
 
 	void stop()
 	{
-		connection.disconnectAll();
 		connection.stop();
 		chunkProvider.stop();
 		world.save();
@@ -451,8 +452,7 @@ public:
 	{
 		if (info.isLoggedIn) {
 			ChunkWorldPos chunkPos = BlockWorldPos(info.pos);
-			auto volume = calcVolume(chunkPos, info.viewRadius);
-			chunkObserverManager.changeObserverVolume(info.id, volume);
+			chunkObserverManager.changeObserverVolume(info.id, chunkPos, info.viewRadius);
 		}
 	}
 

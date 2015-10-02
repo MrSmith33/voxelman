@@ -31,15 +31,18 @@ private enum traceStateStr = q{
 	//	chunkStates.get(cwp, ChunkState.non_loaded));
 };
 
+enum maxFreeItems = 200;
 struct ChunkFreeList {
-	BlockType[][] items;
+	BlockType[][maxFreeItems] items;
 	size_t numItems;
 
 	BlockType[] allocate() {
 		import std.array : uninitializedArray;
 		if (numItems > 0) {
 			--numItems;
-			return items[numItems];
+			BlockType[] item = items[numItems];
+			items[numItems] = null;
+			return item;
 		} else {
 			return uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
 		}
@@ -47,12 +50,11 @@ struct ChunkFreeList {
 
 	void deallocate(BlockType[] blocks) {
 		if (blocks is null) return;
-		if (items.length < numItems) {
-			items[numItems] = blocks;
-		} else {
-			items.reserve(32);
-			items ~= blocks;
+		if (numItems == maxFreeItems) {
+			delete(blocks);
+			return;
 		}
+		items[numItems] = blocks;
 	}
 }
 

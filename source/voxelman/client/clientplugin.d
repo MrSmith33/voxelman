@@ -108,6 +108,7 @@ public:
 	ConfigOption serverPortOpt;
 	ConfigOption runDespikerOpt;
 	ConfigOption numWorkersOpt;
+	ConfigOption nicknameOpt;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -116,7 +117,6 @@ public:
 
 	// Client id stuff
 	ClientId myId;
-	string myName = "client_name";
 	string[ClientId] clientNames;
 
 	// Send position interval
@@ -134,6 +134,7 @@ public:
 		serverPortOpt = config.registerOption!ushort("port", 1234);
 		runDespikerOpt = config.registerOption!bool("run_despiker", false);
 		numWorkersOpt = config.registerOption!uint("num_workers", 4);
+		nicknameOpt = config.registerOption!string("name", "Player");
 
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
@@ -298,7 +299,10 @@ public:
 
 		version(manualGC) GC.disable;
 
+		writeln("load1");
 		load();
+		writeln("load2");
+
 
 		info("\nSystem info");
 		foreach(item; guiPlugin.getHardwareInfo())
@@ -357,10 +361,12 @@ public:
 		isDisconnecting = connection.isConnected;
 		connection.disconnect();
 
+		infof("disconnecting");
 		while (isDisconnecting)
 		{
 			connection.update();
 		}
+		infof("stop");
 
 		evDispatcher.postEvent(GameStopEvent());
 	}
@@ -601,7 +607,7 @@ public:
 		connection.setPacketMap(packetMap.packetNames);
 		//connection.printPacketMap();
 
-		connection.send(LoginPacket(myName));
+		connection.send(LoginPacket(nicknameOpt.get!string));
 		evDispatcher.postEvent(ThisClientConnectedEvent());
 	}
 

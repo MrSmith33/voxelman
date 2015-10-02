@@ -56,7 +56,8 @@
 		{
 			"name": "library",
 			"targetType": "library",
-			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d", "source/benchmain.d"]
+			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d", "source/benchmain.d"],
+			"targetPath" : "./"
 		}
 	]
 }

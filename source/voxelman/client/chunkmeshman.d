@@ -166,6 +166,14 @@ struct ChunkMeshMan
 		foreach(a; chunk.adjacent)
 			if (a !is null) ++a.numReaders;
 
+		assert(chunk);
+		assert(!chunk.hasWriter);
+		foreach(a; chunk.adjacent)
+		{
+			assert(a !is null);
+			assert(!a.hasWriter);
+		}
+
 		chunk.isMeshing = true;
 		++numMeshChunkTasks;
 		meshWorkers.nextWorker.send(cast(shared(Chunk)*)chunk);
