@@ -299,10 +299,7 @@ public:
 
 		version(manualGC) GC.disable;
 
-		writeln("load1");
 		load();
-		writeln("load2");
-
 
 		info("\nSystem info");
 		foreach(item; guiPlugin.getHardwareInfo())
