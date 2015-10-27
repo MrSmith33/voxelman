@@ -11,7 +11,7 @@ import netlib.connection : ClientId;
 import voxelman.storage.coordinates : ChunkWorldPos;
 import voxelman.storage.volume : Volume, TrisectResult, trisect, calcVolume;
 
-enum chunkPackLoadSize = 2;
+enum chunkPackLoadSize = 200;
 
 struct ViewInfo
 {
@@ -35,6 +35,10 @@ final class ChunkObserverManager {
 	private ViewInfo[ClientId] viewInfos;
 
 	void update() {
+
+	}
+	string a = q{
+
 		import std.algorithm : sort;
 
 		if (viewInfos.length == 0)
@@ -132,7 +136,7 @@ final class ChunkObserverManager {
 		foreach(info; infos) {
 			viewInfos[info.clientId] = info;
 		}
-	}
+	};
 
 	ClientId[] getChunkObservers(ChunkWorldPos cwp) {
 		if (auto observers = cwp in chunkObservers)
@@ -189,9 +193,9 @@ final class ChunkObserverManager {
 		}
 
 		// add observer
-		//foreach(b; tsect.bPositions) {
-		//	addChunkObserver(ChunkWorldPos(b), clientId);
-		//}
+		foreach(b; tsect.bPositions) {
+			addChunkObserver(ChunkWorldPos(b), clientId);
+		}
 
 		if (newVolume.empty)
 			viewInfos.remove(clientId);

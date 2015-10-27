@@ -11,7 +11,6 @@ import std.experimental.logger;
 import dlib.math.vector;
 
 import plugin;
-import resource;
 import voxelman.events;
 
 import voxelman.client.clientplugin;
@@ -19,8 +18,12 @@ import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.plugins.guiplugin;
 import voxelman.plugins.inputplugin;
-import voxelman.resourcemanagers.keybindingmanager;
+import voxelman.managers.keybindingmanager;
 
+static this()
+{
+	pluginRegistry.regClientPlugin(new MovementPlugin);
+}
 
 class MovementPlugin : IPlugin
 {
@@ -33,7 +36,7 @@ class MovementPlugin : IPlugin
 	bool autoMove;
 
 	// IPlugin stuff
-	override string name() @property { return "MovementPlugin"; }
+	override string id() @property { return "voxelman.client.movementplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
@@ -50,14 +53,13 @@ class MovementPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
-		clientPlugin = pluginman.getPlugin!ClientPlugin(this);
-		input = pluginman.getPlugin!InputPlugin(this);
-		guiPlugin = pluginman.getPlugin!GuiPlugin(this);
-		graphics = pluginman.getPlugin!GraphicsPlugin(this);
+		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		graphics = pluginman.getPlugin!GraphicsPlugin;
+		guiPlugin = pluginman.getPlugin!GuiPlugin;
+		input = pluginman.getPlugin!InputPlugin;
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)

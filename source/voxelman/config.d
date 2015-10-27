@@ -28,8 +28,7 @@ else
 // directories
 enum string WORLD_FILE_NAME = "worldinfo.cbor";
 immutable string DEFAULT_WORLD_NAME = "world";
-enum string CLIENT_CONFIG_FILE_NAME = "../config/client.sdl";
-enum string SERVER_CONFIG_FILE_NAME = "../config/server.sdl";
+
 
 enum DESPIKER_PATH = "../tools/despiker/despiker" ~ EXE_SUFFIX;
 
@@ -48,4 +47,4 @@ enum SERVER_UPDATES_PER_SECOND = 20;
 enum size_t SERVER_FRAME_TIME_USECS = 1_000_000 / SERVER_UPDATES_PER_SECOND;
 enum SERVER_PORT = 1234;
 
-enum MAX_LOAD_QUEUE_LENGTH = 10;
+enum MAX_LOAD_QUEUE_LENGTH = 1000;

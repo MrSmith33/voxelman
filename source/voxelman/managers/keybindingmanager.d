@@ -3,13 +3,13 @@ Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.resourcemanagers.keybindingmanager;
+module voxelman.managers.keybindingmanager;
 
 import std.experimental.logger;
 
-import resource;
-import voxelman.resourcemanagers.config;
-import voxelma.utils.keynamemap;
+import plugin;
+import voxelman.managers.configmanager;
+import voxelman.utils.keynamemap;
 public import voxelman.plugins.guiplugin : KeyCode, PointerButton;
 
 
@@ -27,15 +27,14 @@ final class KeyBindingManager : IResourceManager
 {
 	KeyBinding*[uint] keyBindingsByCode;
 	KeyBinding*[string] keyBindingsByName;
-	ConfigOption[string] options;
-	Config config;
+	private ConfigOption[string] options;
+	private ConfigManager config;
 
-	override string name() @property { return "KeyBindingManager"; }
-	override string semver() @property { return "0.5.0"; }
+	override string id() @property { return "voxelman.managers.keybindingmanager"; }
 
 	override void init(IResourceManagerRegistry resmanRegistry)
 	{
-		config = resmanRegistry.getResourceManager!Config;
+		config = resmanRegistry.getResourceManager!ConfigManager;
 	}
 
 	// Load all keybindings from config
@@ -69,7 +68,5 @@ final class KeyBindingManager : IResourceManager
 		options[binding.keyName] = option;
 		keyBindingsByCode[binding.keyCode] = binding;
 		keyBindingsByName[binding.keyName] = binding;
-
-		//infof("Regiseterd key binding %s", *binding);
 	}
 }

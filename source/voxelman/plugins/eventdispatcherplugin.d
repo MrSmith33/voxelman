@@ -38,16 +38,17 @@ static assert(!isGameEvent!InvalidEvent3);
 
 private alias EventHandler = void delegate(ref GameEvent event);
 
+static this()
+{
+	pluginRegistry.regClientPlugin(new EventDispatcherPlugin);
+	pluginRegistry.regServerPlugin(new EventDispatcherPlugin);
+}
+
 class EventDispatcherPlugin : IPlugin
 {
-	override string name() @property { return "EventDispatcherPlugin"; }
+	override string id() @property { return "voxelman.plugins.eventdispatcherplugin"; }
 	override string semver() @property { return "0.3.0"; }
-
-	this(Profiler profiler)
-	{
-		assert(profiler);
-		this.profiler = profiler;
-	}
+	Profiler profiler;
 
 	void subscribeToEvent(Event)(void delegate(ref Event event) handler)
 	{
@@ -72,5 +73,4 @@ class EventDispatcherPlugin : IPlugin
 private:
 
 	EventHandler[][TypeInfo] _eventHandlers;
-	Profiler profiler;
 }

@@ -20,8 +20,6 @@ import tharsis.prof;
 
 import plugin;
 import plugin.pluginmanager;
-import resource;
-import resource.resourcemanagerregistry;
 
 import netlib.connection;
 import netlib.baseclient;
@@ -29,12 +27,9 @@ import netlib.baseclient;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.plugins.guiplugin;
-import voxelman.plugins.inputplugin;
-import voxelman.client.plugins.editplugin;
-import voxelman.client.plugins.movementplugin;
-import voxelman.client.plugins.worldinteractionplugin;
-import voxelman.resourcemanagers.config;
-import voxelman.resourcemanagers.keybindingmanager;
+
+import voxelman.managers.configmanager;
+import voxelman.managers.keybindingmanager;
 
 import voxelman.config;
 import voxelman.events;
@@ -68,21 +63,16 @@ final class ClientConnection : BaseClient{}
 final class ClientPlugin : IPlugin
 {
 private:
-	PluginManager pluginman = new PluginManager;
-	ResourceManagerRegistry resmanRegistry = new ResourceManagerRegistry;
+	PluginManager pluginman;
 
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
-	GraphicsPlugin graphics = new GraphicsPlugin;
-	GuiPlugin guiPlugin = new GuiPlugin;
-	InputPlugin input = new InputPlugin;
-	MovementPlugin movementPlugin = new MovementPlugin;
-	WorldInteractionPlugin worldInteraction = new WorldInteractionPlugin;
-	EditPlugin editPlugin = new EditPlugin;
+	GraphicsPlugin graphics;
+	GuiPlugin guiPlugin;
 
 	// Resource managers
-	Config config;
-	KeyBindingManager keyBindingMan = new KeyBindingManager;
+	KeyBindingManager keyBindingMan;
+	ConfigManager config;
 
 public:
 	AppStatistics stats;
@@ -125,11 +115,14 @@ public:
 	ChunkWorldPos prevChunkPos;
 
 	// IPlugin stuff
-	override string name() @property { return "ClientPlugin"; }
+	override string id() @property { return "voxelman.client.clientplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		config = resmanRegistry.getResourceManager!ConfigManager;
+		keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
+
 		serverIpOpt = config.registerOption!string("ip", "127.0.0.1");
 		serverPortOpt = config.registerOption!ushort("port", 1234);
 		runDespikerOpt = config.registerOption!bool("run_despiker", false);
@@ -171,6 +164,12 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.profiler = profiler;
+
+		graphics = pluginman.getPlugin!GraphicsPlugin;
+		guiPlugin = pluginman.getPlugin!GuiPlugin;
+
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
@@ -248,47 +247,24 @@ public:
 
 	this()
 	{
+		pluginman = new PluginManager;
+
 		version(profiling)
 		{
 			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
 			profiler = new Profiler(storage);
 		}
 		profilerSender = new DespikerSender([profiler]);
-
-		evDispatcher = new EventDispatcherPlugin(profiler);
-		config = new Config(CLIENT_CONFIG_FILE_NAME);
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
-	}
-
-	void registerPlugins()
-	{
-		pluginman.registerPlugin(guiPlugin);
-		pluginman.registerPlugin(graphics);
-		pluginman.registerPlugin(evDispatcher);
-		pluginman.registerPlugin(input);
-		pluginman.registerPlugin(worldInteraction);
-		pluginman.registerPlugin(editPlugin);
-		pluginman.registerPlugin(movementPlugin);
-		pluginman.registerPlugin(this);
-	}
-
-	void registerResourceManagers()
-	{
-		resmanRegistry.registerResourceManager(config);
-		resmanRegistry.registerResourceManager(keyBindingMan);
 	}
 
 	void load()
 	{
 		// register all plugins and managers
-		registerPlugins();
-		registerResourceManagers();
+		foreach(p; pluginRegistry.clientPlugins.byValue)
+			pluginman.registerPlugin(p);
 
 		// Actual loading sequence
-		resmanRegistry.initResourceManagers();
-		pluginman.registerResources(resmanRegistry);
-		resmanRegistry.loadResources();
-		resmanRegistry.postInitResourceManagers();
 		pluginman.initPlugins();
 	}
 

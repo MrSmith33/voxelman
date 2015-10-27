@@ -9,14 +9,17 @@ module voxelman.client.plugins.editplugin;
 import std.experimental.logger;
 
 import plugin;
-import resource;
 import voxelman.config;
 import voxelman.client.clientplugin;
 import voxelman.client.plugins.worldinteractionplugin;
 
 import voxelman.plugins.eventdispatcherplugin;
-import voxelman.resourcemanagers.keybindingmanager;
+import voxelman.managers.keybindingmanager;
 
+static this()
+{
+	pluginRegistry.regClientPlugin(new EditPlugin);
+}
 
 class EditPlugin : IPlugin
 {
@@ -26,7 +29,7 @@ class EditPlugin : IPlugin
 	BlockType currentBlock = 4;
 
 	// IPlugin stuff
-	override string name() @property { return "EditPlugin"; }
+	override string id() @property { return "voxelman.client.editplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
@@ -39,8 +42,8 @@ class EditPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		clientPlugin = pluginman.getPlugin!ClientPlugin(this);
-		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin(this);
+		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 	}
 
 	void onMainActionRelease(string key)

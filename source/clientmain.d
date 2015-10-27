@@ -8,20 +8,14 @@ module voxelman.clientmain;
 import std.file : mkdirRecurse;
 
 import voxelman.utils.log;
+import plugin.pluginregistry;
 import voxelman.client.clientplugin;
-import anchovy.gui;
 
 void main(string[] args)
 {
-	// BUG test
-	//import dlib.geometry.frustum;
-	//Frustum f;
-	//Frustum f2;
-	//f2 = f;
-
 	mkdirRecurse("../logs");
 	setupLogger("../logs/client.log");
-	auto clientPlugin = new ClientPlugin();
-	clientPlugin.run(args);
-	//auto app = new ClientApp(uvec2(1280, 720), "Voxelman client");
+	auto c = new ClientPlugin;
+	pluginRegistry.regClientPlugin(c);
+	c.run(args);
 }

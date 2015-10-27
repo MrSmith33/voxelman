@@ -6,5 +6,5 @@ Authors: Andrey Penechko.
 
 module plugin;
 
-public import plugin.iplugin;
-public import plugin.ipluginmanager;
+public import plugin.interfaces;
+public import plugin.pluginregistry;

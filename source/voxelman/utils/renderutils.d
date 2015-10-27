@@ -96,11 +96,6 @@ void resetBuffer(ref ColoredVertex[] buffer)
 	assumeSafeAppend(buffer);
 }
 
-struct DebugDraw
-{
-
-}
-
 void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(ubyte, 3) color)
 {
 	output.reserve(6 * 6); // 6 faces, 6 points per edge

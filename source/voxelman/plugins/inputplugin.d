@@ -10,11 +10,14 @@ import std.experimental.logger;
 import dlib.math.vector;
 
 import plugin;
-import resource;
 import voxelman.plugins.guiplugin;
-import voxelman.resourcemanagers.config;
-import voxelman.resourcemanagers.keybindingmanager;
+import voxelman.managers.keybindingmanager;
 
+
+static this()
+{
+	pluginRegistry.regClientPlugin(new InputPlugin);
+}
 
 final class InputPlugin : IPlugin
 {
@@ -22,8 +25,13 @@ final class InputPlugin : IPlugin
 	KeyBindingManager keyBindingsMan;
 
 	// IPlugin stuff
-	override string name() @property { return "InputPlugin"; }
+	override string id() @property { return "voxelman.plugins.inputplugin"; }
 	override string semver() @property { return "0.5.0"; }
+
+	override void registerResourceManagers(void delegate(IResourceManager) registerRM)
+	{
+		registerRM(new KeyBindingManager);
+	}
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -32,7 +40,7 @@ final class InputPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		guiPlugin = pluginman.getPlugin!GuiPlugin(this);
+		guiPlugin = pluginman.getPlugin!GuiPlugin;
 	}
 
 	override void postInit()

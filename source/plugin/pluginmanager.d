@@ -9,32 +9,85 @@ module plugin.pluginmanager;
 import std.experimental.logger;
 import std.string : format;
 import plugin;
-import resource;
 
-/// Simple implementation of IPluginManager
-class PluginManager : IPluginManager
+class PluginManager : IPluginManager, IResourceManagerRegistry
 {
-	IPlugin[string] plugins;
+	IPlugin[TypeInfo] plugins;
+	IPlugin[string] pluginsById;
+	IResourceManager[TypeInfo] resourceManagers;
 
 	void registerPlugin(IPlugin pluginInstance)
 	{
 		assert(pluginInstance);
-		assert(pluginInstance.name !in plugins,
-			format("Duplicate plugin registered: name=\"%s\" type=\"%s\"",
-				pluginInstance.name, pluginInstance));
-		plugins[pluginInstance.name] = pluginInstance;
+		assert(
+			typeid(pluginInstance) !in plugins &&
+			pluginInstance.id !in pluginsById,
+			format("Duplicate plugin registered: id=\"%s\" type=\"%s\"",
+				pluginInstance.id, pluginInstance));
+		plugins[typeid(pluginInstance)] = pluginInstance;
+		pluginsById[pluginInstance.id] = pluginInstance;
 	}
 
-	void registerResources(IResourceManagerRegistry resmanRegistry)
+	void registerResourceManager(IResourceManager rmInstance)
 	{
-		foreach(IPlugin p; plugins)
-		{
-			p.registerResources(resmanRegistry);
-		}
+		assert(rmInstance);
+		assert(typeid(rmInstance) !in resourceManagers,
+			format("Duplicate resource manager registered: id=\"%s\" type=\"%s\"",
+				rmInstance.id, rmInstance));
+		resourceManagers[typeid(rmInstance)] = rmInstance;
+	}
+
+	// IPluginManager
+	IPlugin findPlugin(TypeInfo pluginType)
+	{
+		return plugins.get(pluginType, null);
+	}
+
+	IPlugin findPluginById(string pluginId)
+	{
+		return pluginsById.get(pluginId, null);
+	}
+
+
+	// IResourceManagerRegistry
+	IResourceManager findResourceManager(TypeInfo rmType)
+	{
+		return resourceManagers.get(rmType, null);
 	}
 
 	void initPlugins()
 	{
+		// Register resources
+		foreach(IPlugin p; plugins)
+		{
+			p.registerResourceManagers(&registerResourceManager);
+		}
+
+		foreach(IResourceManager rm; resourceManagers)
+		{
+			rm.preInit();
+		}
+		foreach(IResourceManager rm; resourceManagers)
+		{
+			rm.init(this);
+		}
+
+		foreach(IPlugin p; plugins)
+		{
+			p.registerResources(this);
+		}
+
+		// Load resources
+		foreach(IResourceManager rm; resourceManagers)
+		{
+			rm.loadResources();
+		}
+		foreach(IResourceManager rm; resourceManagers)
+		{
+			rm.postInit();
+		}
+
+		// Load plugins
 		infof("Loading %s plugins", plugins.length);
 		foreach(IPlugin p; plugins)
 		{
@@ -49,17 +102,8 @@ class PluginManager : IPluginManager
 		foreach(IPlugin p; plugins)
 		{
 			p.postInit();
-			infof("Loaded #%s %s %s", i, p.name, p.semver);
+			infof("Loaded #%s %s %s", i, p.id, p.semver);
 			++i;
 		}
-	}
-
-	IPlugin findPlugin(IPlugin requester, string pluginName)
-	{
-		if (auto plug = pluginName in plugins)
-			return *plug;
-		else
-			throw new Exception(format("Plugin %s requested plugin %s that was not registered",
-				requester, pluginName));
 	}
 }

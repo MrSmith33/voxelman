@@ -18,7 +18,6 @@ import tharsis.prof : Zone;
 
 
 import plugin;
-import resource;
 
 import voxelman.config;
 import voxelman.storage.chunk;
@@ -27,13 +26,18 @@ import voxelman.storage.utils;
 import voxelman.events;
 
 import voxelman.plugins.eventdispatcherplugin;
-import voxelman.resourcemanagers.config;
+import voxelman.managers.configmanager;
 
 
 struct ClosePressedEvent {
 	import tharsis.prof : Profiler;
 	Profiler profiler;
 	bool continuePropagation = true;
+}
+
+static this()
+{
+	pluginRegistry.regClientPlugin(new GuiPlugin);
 }
 
 final class GuiPlugin : IPlugin
@@ -65,12 +69,12 @@ public:
 		return application.fpsHelper;
 	}
 
-	override string name() @property { return "GuiPlugin"; }
+	override string id() @property { return "voxelman.plugins.guiplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		auto config = resmanRegistry.getResourceManager!Config;
+		auto config = resmanRegistry.getResourceManager!ConfigManager;
 		resolution = config.registerOption!(uint[])("resolution", [1280, 720]);
 	}
 
@@ -83,7 +87,7 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onRender3Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);

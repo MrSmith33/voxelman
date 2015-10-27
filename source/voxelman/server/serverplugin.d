@@ -13,21 +13,22 @@ import tharsis.prof : Profiler, DespikerSender, Zone;
 
 import plugin;
 import plugin.pluginmanager;
-import resource;
-import resource.resourcemanagerregistry;
 
 import netlib.connection;
 import netlib.baseserver;
+import voxelman.utils.math;
 
 import voxelman.blockman;
 import voxelman.config;
 import voxelman.events;
 import voxelman.packets;
+
 import voxelman.plugins.eventdispatcherplugin;
-import voxelman.plugins.gametimeplugin;
-import voxelman.resourcemanagers.config;
+import voxelman.managers.configmanager;
+
 import voxelman.server.clientinfo;
 import voxelman.server.events;
+
 import voxelman.storage.chunk;
 import voxelman.storage.chunkmanager;
 import voxelman.storage.chunkobservermanager;
@@ -36,7 +37,6 @@ import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.volume;
 import voxelman.storage.world;
-import voxelman.utils.math;
 
 version = profiling;
 
@@ -73,15 +73,15 @@ final class WorldAccess {
 	}
 }
 
+
 class ServerPlugin : IPlugin
 {
 private:
 	PluginManager pluginman;
-	ResourceManagerRegistry resmanRegistry;
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
 	// Resource managers
-	Config config;
+	ConfigManager config;
 
 	// Config
 	ConfigOption saveDirOpt;
@@ -107,11 +107,12 @@ public:
 	bool isRunning = false;
 
 	// IPlugin stuff
-	override string name() @property { return "ServerPlugin"; }
+	override string id() @property { return "voxelman.server.serverplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		config = resmanRegistry.getResourceManager!ConfigManager;
 		saveDirOpt = config.registerOption!string("save_dir", "../saves");
 		worldNameOpt = config.registerOption!string("world_name", "world");
 		numWorkersOpt = config.registerOption!uint("num_workers", 4);
@@ -132,13 +133,7 @@ public:
 		worldAccess = new WorldAccess(&chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
-		resmanRegistry = new ResourceManagerRegistry;
 		pluginman = new PluginManager;
-
-		// Resource managers
-		config = new Config(SERVER_CONFIG_FILE_NAME);
-		// Plugins
-		evDispatcher = new EventDispatcherPlugin(profiler);
 
 		// Connections
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
@@ -178,6 +173,8 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.profiler = profiler;
 		evDispatcher.subscribeToEvent(&handleCommand);
 	}
 
@@ -186,25 +183,23 @@ public:
 		//shufflePackets();
 	}
 
+	void load()
+	{
+		// register all plugins and managers
+		foreach(p; pluginRegistry.serverPlugins.byValue)
+			pluginman.registerPlugin(p);
+
+		// Actual loading sequence
+		pluginman.initPlugins();
+	}
+
 	void run(string[] args)
 	{
 		import std.datetime : TickDuration, Duration, Clock, usecs;
 		import core.thread : Thread;
 		import core.memory;
 
-		// Register all plugins
-		pluginman.registerPlugin(this);
-		pluginman.registerPlugin(evDispatcher);
-
-		// Register all resource managers
-		resmanRegistry.registerResourceManager(config);
-
-		// Actual loading sequence
-		resmanRegistry.initResourceManagers();
-		pluginman.registerResources(resmanRegistry);
-		resmanRegistry.loadResources();
-		resmanRegistry.postInitResourceManagers();
-		pluginman.initPlugins();
+		load();
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
 		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);

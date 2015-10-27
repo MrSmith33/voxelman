@@ -21,6 +21,12 @@ import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.graphicsplugin;
 import voxelman.client.clientplugin;
 
+
+static this()
+{
+	pluginRegistry.regClientPlugin(new WorldInteractionPlugin);
+}
+
 class WorldInteractionPlugin : IPlugin
 {
 	ClientPlugin clientPlugin;
@@ -43,15 +49,15 @@ class WorldInteractionPlugin : IPlugin
 	Batch hitBatch;
 
 	// IPlugin stuff
-	override string name() @property { return "WorldInteractionPlugin"; }
+	override string id() @property { return "voxelman.client.worldinteractionplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void init(IPluginManager pluginman)
 	{
-		clientPlugin = pluginman.getPlugin!ClientPlugin(this);
-		graphics = pluginman.getPlugin!GraphicsPlugin(this);
+		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		graphics = pluginman.getPlugin!GraphicsPlugin;
 
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawDebug);
 	}

@@ -12,15 +12,19 @@ import dlib.math.vector : uvec2;
 import dlib.math.matrix;
 
 import plugin;
-import resource;
 import voxelman.config;
 import voxelman.events;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.plugins.guiplugin;
-import voxelman.resourcemanagers.config;
+import voxelman.managers.configmanager;
 import voxelman.utils.fpscamera;
 public import voxelman.utils.renderutils;
 
+
+static this()
+{
+	pluginRegistry.regClientPlugin(new GraphicsPlugin);
+}
 
 final class GraphicsPlugin : IPlugin
 {
@@ -41,12 +45,12 @@ public:
 	ConfigOption cameraFov;
 
 
-	override string name() @property { return "GraphicsPlugin"; }
+	override string id() @property { return "voxelman.plugins.graphicsplugin"; }
 	override string semver() @property { return "0.5.0"; }
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		auto config = resmanRegistry.getResourceManager!Config;
+		auto config = resmanRegistry.getResourceManager!ConfigManager;
 		cameraSensivity = config.registerOption!float("camera_sensivity", 0.4);
 		cameraFov = config.registerOption!float("camera_fov", 60.0);
 	}
@@ -60,11 +64,12 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin(this);
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		auto gui = pluginman.getPlugin!GuiPlugin;
+
 		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
 		evDispatcher.subscribeToEvent(&draw);
 
-		auto gui = pluginman.getPlugin!GuiPlugin(this);
 		renderer = gui.renderer;
 
 		glGenVertexArrays(1, &vao);

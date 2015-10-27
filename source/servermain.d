@@ -8,12 +8,14 @@ module voxelman.servermain;
 import std.file : mkdirRecurse;
 
 import voxelman.utils.log;
+import plugin;
 import voxelman.server.serverplugin;
 
 void main(string[] args)
 {
 	mkdirRecurse("../logs");
 	setupLogger("../logs/server.log");
-	auto serverPlugin = new ServerPlugin;
-	serverPlugin.run(args);
+	auto c = new ServerPlugin;
+	pluginRegistry.regServerPlugin(c);
+	c.run(args);
 }

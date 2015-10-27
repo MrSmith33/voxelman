@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.resourcemanagers.config;
+module voxelman.managers.configmanager;
 
 import std.experimental.logger;
 import std.file : read, exists;
@@ -11,8 +11,8 @@ public import std.variant;
 import std.traits : isArray;
 import std.conv : to;
 
+import plugin;
 import sdlang;
-import resource;
 
 final class ConfigOption
 {
@@ -34,7 +34,7 @@ final class ConfigOption
 	Variant defaultValue;
 }
 
-final class Config : IResourceManager
+final class ConfigManager : IResourceManager
 {
 private:
 	ConfigOption[string] options;
@@ -42,8 +42,7 @@ private:
 
 public:
 
-	override string name() @property { return "Config"; }
-	override string semver() @property { return "0.5.0"; }
+	override string id() @property { return "voxelman.managers.configmanager"; }
 
 	this(string filename)
 	{
@@ -113,7 +112,7 @@ public:
 
 private:
 
-	void parseValue(ConfigOption option, string optionName, Value[] values)
+	static void parseValue(ConfigOption option, string optionName, Value[] values)
 	{
 		if (values.length == 1)
 		{

@@ -56,7 +56,7 @@ private:
 public:
 	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, TimestampType)[] onChunkSavedHandlers;
-	private size_t loadQueueLength;
+	size_t loadQueueLength;
 
 	size_t loadQueueSpaceAvaliable() @property const
 	{
