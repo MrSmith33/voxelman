@@ -4,12 +4,12 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelma.utils.keynamemap;
+module voxelman.utils.keynamemap;
 
 uint[string] stringToKeyMap;
 string[uint] keyToStringMap;
 
-static this()
+shared static this()
 {
 stringToKeyMap = [
 	"mb_left" : 0,

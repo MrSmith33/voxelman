@@ -35,7 +35,7 @@ struct ClosePressedEvent {
 	bool continuePropagation = true;
 }
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new GuiPlugin);
 }

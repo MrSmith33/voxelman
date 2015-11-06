@@ -16,7 +16,7 @@ import voxelman.client.plugins.worldinteractionplugin;
 import voxelman.plugins.eventdispatcherplugin;
 import voxelman.managers.keybindingmanager;
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new EditPlugin);
 }

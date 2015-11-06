@@ -10,8 +10,8 @@ import std.experimental.logger;
 import std.exception;
 import plugin;
 
-/// register plugins here inside static this
-PluginRegistry pluginRegistry;
+/// register plugins here inside shared static this
+__gshared PluginRegistry pluginRegistry;
 
 alias MainDel = void delegate(string[] args);
 

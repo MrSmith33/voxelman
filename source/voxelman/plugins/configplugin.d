@@ -17,7 +17,7 @@ else version(SIDE_SERVER)
 else
 	enum string CONFIG_FILE_NAME = "../config/config.sdl";
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new ConfigPlugin);
 	pluginRegistry.regServerPlugin(new ConfigPlugin);

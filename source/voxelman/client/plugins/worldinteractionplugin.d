@@ -22,7 +22,7 @@ import voxelman.plugins.graphicsplugin;
 import voxelman.client.clientplugin;
 
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new WorldInteractionPlugin);
 }

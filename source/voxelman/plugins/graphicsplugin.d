@@ -21,7 +21,7 @@ import voxelman.utils.fpscamera;
 public import voxelman.utils.renderutils;
 
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new GraphicsPlugin);
 }

@@ -20,7 +20,7 @@ import voxelman.plugins.guiplugin;
 import voxelman.plugins.inputplugin;
 import voxelman.managers.keybindingmanager;
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new MovementPlugin);
 }

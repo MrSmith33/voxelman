@@ -38,7 +38,7 @@ static assert(!isGameEvent!InvalidEvent3);
 
 private alias EventHandler = void delegate(ref GameEvent event);
 
-static this()
+shared static this()
 {
 	pluginRegistry.regClientPlugin(new EventDispatcherPlugin);
 	pluginRegistry.regServerPlugin(new EventDispatcherPlugin);
