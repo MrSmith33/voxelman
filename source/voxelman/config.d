@@ -30,7 +30,8 @@ enum string WORLD_FILE_NAME = "worldinfo.cbor";
 immutable string DEFAULT_WORLD_NAME = "world";
 
 
-enum DESPIKER_PATH = "../tools/despiker/despiker" ~ EXE_SUFFIX;
+enum DESPIKER_PATH = "../../tools/despiker/despiker" ~ EXE_SUFFIX;
+enum LIB_PATH = "../../lib";
 
 enum NUM_WORKERS = 4;
 enum DEFAULT_VIEW_RADIUS = 5;

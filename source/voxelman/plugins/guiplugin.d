@@ -81,8 +81,23 @@ public:
 	override void preInit()
 	{
 		application = new Application!GlfwWindow();
+		initLibs();
 		application.init([], uvec2(resolution.get!(uint[])), "Voxelman client");
 		appLoad();
+	}
+
+	void initLibs()
+	{
+		import derelict.freetype.ft;
+		import derelict.freeimage.freeimage;
+		import derelict.glfw3.glfw3;
+		import derelict.opengl3.gl3;
+		import voxelman.utils.libloader;
+
+		DerelictFI.load([getLibName("FreeImage")], SharedLibVersion(3, 15, 0));
+		DerelictFT.load([getLibName("freetype")]);
+		DerelictGL3.load();
+		DerelictGLFW3.load([getLibName("glfw3")]);
 	}
 
 	override void init(IPluginManager pluginman)

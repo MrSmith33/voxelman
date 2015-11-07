@@ -139,7 +139,8 @@ public:
 
 	override void preInit()
 	{
-		loadEnet();
+		import voxelman.utils.libloader;
+		loadEnet([getLibName("enet")]);
 
 		connection = new ClientConnection;
 		connection.connectHandler = &onConnect;

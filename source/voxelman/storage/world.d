@@ -7,7 +7,7 @@ module voxelman.storage.world;
 
 import std.experimental.logger;
 import std.file : readFile = read, writeFile = write, exists, mkdirRecurse, isValidPath;
-import std.path : buildPath;
+import std.path : absolutePath, buildPath, buildNormalizedPath;
 
 import cbor;
 import dlib.math.vector;
@@ -38,8 +38,8 @@ struct World
 	{
 		assert(isValidPath(worldDir));
 
-		worldDirectory = worldDir;
-		worldInfoFilename = buildPath(worldDir, WORLD_FILE_NAME);
+		worldDirectory = worldDir.absolutePath.buildNormalizedPath;
+		worldInfoFilename = buildPath(worldDirectory, WORLD_FILE_NAME);
 	}
 
 	TimestampType currentTimestamp() @property

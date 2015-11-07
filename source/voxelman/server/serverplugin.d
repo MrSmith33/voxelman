@@ -113,7 +113,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		config = resmanRegistry.getResourceManager!ConfigManager;
-		saveDirOpt = config.registerOption!string("save_dir", "../saves");
+		saveDirOpt = config.registerOption!string("save_dir", "../../saves");
 		worldNameOpt = config.registerOption!string("world_name", "world");
 		numWorkersOpt = config.registerOption!uint("num_workers", 4);
 		portOpt = config.registerOption!ushort("port", 1234);
@@ -149,7 +149,9 @@ public:
 
 	override void preInit()
 	{
-		loadEnet();
+		import voxelman.utils.libloader;
+		loadEnet([getLibName("enet")]);
+
 		auto worldDir = saveDirOpt.get!string ~ "/" ~ worldNameOpt.get!string;
 		chunkProvider.init(worldDir, numWorkersOpt.get!uint);
 		world.init(worldDir);

@@ -11,11 +11,11 @@ import voxelman.config;
 import voxelman.managers.configmanager;
 
 version(SIDE_CLIENT)
-	enum string CONFIG_FILE_NAME = "../config/client.sdl";
+	enum string CONFIG_FILE_NAME = "../../config/client.sdl";
 else version(SIDE_SERVER)
-	enum string CONFIG_FILE_NAME = "../config/server.sdl";
+	enum string CONFIG_FILE_NAME = "../../config/server.sdl";
 else
-	enum string CONFIG_FILE_NAME = "../config/config.sdl";
+	enum string CONFIG_FILE_NAME = "../../config/config.sdl";
 
 shared static this()
 {

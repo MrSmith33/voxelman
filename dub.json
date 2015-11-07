@@ -7,19 +7,16 @@
 
 	"dependencies" : {
 		"cbor-d" : ">=0.4.1",
-		"anchovy" : {"version" : ">=0.8.0"},
+		"anchovy" : {"version" : "==0.8.2"},
 		"derelict-enet": "==2.0.0",
 		"sdlang-d" : "==0.9.1",
 		"tharsis-prof" : "==0.5.4"
 	},
 
-	"targetPath" : "bin",
-	"workingDirectory" : "bin",
+	"targetPath" : "builds/default",
+	"workingDirectory" : "builds/default",
 
-	"sourcePaths" : [ "source", "plugins" ],
-
-	"copyFiles-windows-x86" : ["lib/*.dll"],
-	"copyFiles-windows-x86_64" : ["lib64/*.dll"],
+	"sourcePaths" : [ "source", ".build" ],
 
 	"buildTypes": {
 		"debug": {

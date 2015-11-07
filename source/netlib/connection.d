@@ -18,9 +18,9 @@ public import derelict.enet.enet : ENetPeer;
 alias ClientId = size_t;
 
 
-void loadEnet()
+void loadEnet(string[] libNames)
 {
-	DerelictENet.load();
+	DerelictENet.load(libNames);
 
 	int err = enet_initialize();
 

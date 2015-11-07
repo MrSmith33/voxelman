@@ -1,0 +1,255 @@
+{
+   "fonts" : [
+      {
+         "file" : "FreePixel[16].ttf",
+         "name" : "normal",
+         "size" : 16,
+         "verticalOffset" : -3
+      }
+   ],
+   "image" : "skingray.png",
+   "name" : "base gray",
+   "styles" : [
+      {
+         "contentPadding" : [ 3 ],
+         "fixedBorders" : [ 3 ],
+         "name" : "button",
+         "rect" : [ 31, 0, 7, 7 ],
+         "states" : [
+            {
+               "fixedBorders" : [ 4 ],
+               "outline" : [ 1 ],
+               "rect" : [ 31, 7, 9, 9 ],
+               "state" : "hover"
+            },
+            {
+               "fixedBorders" : [ 2, 1, 1, 2 ],
+               "rect" : [ 38, 0, 4, 4 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "contentPadding" : [ 1 ],
+         "fixedBorders" : [ 1 ],
+         "name" : "frame",
+         "rect" : [ 0, 0, 3, 3 ]
+      },
+      {
+         "name" : "lightbox",
+         "fixedBorders" : [ 1 ],
+         "rect" : [ 36, 16, 3, 3 ]
+      },
+      {
+         "name" : "label"
+      },
+      {
+         "contentPadding" : [ 4 ],
+         "fixedBorders" : [ 2 ],
+         "name" : "edit",
+         "rect" : [ 31, 16, 5, 5 ],
+         "states" : [
+            {
+               "fixedBorders" : [ 4 ],
+               "outline" : [ 2 ],
+               "rect" : [ 31, 21, 9, 9 ],
+               "state" : "focused"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 18, 18 ],
+         "name" : "minimizeButton",
+         "rect" : [ 42, 18, 18, 18 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 18 ],
+               "rect" : [ 42, 0, 18, 18 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 18, 18 ],
+         "name" : "maximizeButton",
+         "rect" : [ 60, 18, 18, 18 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 18 ],
+               "rect" : [ 60, 0, 18, 18 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 18, 18 ],
+         "name" : "closeButton",
+         "rect" : [ 78, 36, 18, 18 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 18 ],
+               "rect" : [ 78, 0, 18, 18 ],
+               "state" : "pressed"
+            },
+            {
+               "maxSize" : [ 18, 18 ],
+               "rect" : [ 78, 18, 18, 18 ],
+               "state" : "hover"
+            }
+         ]
+      },
+      {
+         "name" : "smallClose",
+         "rect" : [ 3, 0, 8, 8 ]
+      },
+      {
+         "maxSize" : [ 11, 11 ],
+         "name" : "check",
+         "rect" : [ 96, 0, 11, 11 ],
+         "states" : [
+            {
+               "rect" : [ 96, 11, 11, 11 ],
+               "state" : "normal_checked"
+            },
+            {
+               "rect" : [ 107, 0, 11, 11 ],
+               "state" : "hovered_unchecked"
+            },
+            {
+               "rect" : [ 107, 11, 11, 11 ],
+               "state" : "hovered_checked"
+            },
+            {
+               "rect" : [ 118, 0, 11, 11 ],
+               "state" : "pressed_unchecked"
+            },
+            {
+               "rect" : [ 118, 11, 11, 11 ],
+               "state" : "pressed_checked"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 12, 12 ],
+         "name" : "radio",
+         "rect" : [ 129, 0, 12, 12 ],
+         "states" : [
+            {
+               "rect" : [ 129, 12, 12, 12 ],
+               "state" : "normal_checked"
+            },
+            {
+               "rect" : [ 141, 0, 12, 12 ],
+               "state" : "hovered_unchecked"
+            },
+            {
+               "rect" : [ 141, 12, 12, 12 ],
+               "state" : "hovered_checked"
+            },
+            {
+               "rect" : [ 153, 0, 12, 12 ],
+               "state" : "pressed_unchecked"
+            },
+            {
+               "rect" : [ 153, 12, 12, 12 ],
+               "state" : "pressed_checked"
+            }
+         ]
+      },
+      {
+         "contentPadding" : [ 3 ],
+         "fixedBorders" : [ 3 ],
+         "name" : "radiobutton",
+         "rect" : [ 31, 0, 7, 7 ],
+         "states" : [
+            {
+               "fixedBorders" : [ 2, 1, 1, 2 ],
+               "rect" : [ 38, 0, 4, 4 ],
+               "state" : "normal_checked"
+            },
+            {
+               "fixedBorders" : [ 4 ],
+               "outline" : [ 1 ],
+               "rect" : [ 31, 7, 9, 9 ],
+               "state" : "hovered_unchecked"
+            },
+            {
+               "fixedBorders" : [ 2, 1, 1, 2 ],
+               "rect" : [ 38, 0, 4, 4 ],
+               "state" : "hovered_checked"
+            },
+            {
+               "fixedBorders" : [ 2, 1, 1, 2 ],
+               "rect" : [ 38, 0, 4, 4 ],
+               "state" : "pressed_unchecked"
+            },
+            {
+               "fixedBorders" : [ 2, 1, 1, 2 ],
+               "rect" : [ 38, 0, 4, 4 ],
+               "state" : "pressed_checked"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 18, 13 ],
+         "name" : "scrollup",
+         "rect" : [ 0, 43, 18, 13 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 13 ],
+               "rect" : [ 0, 43, 18, 13 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 18, 13 ],
+         "name" : "scrolldown",
+         "rect" : [ 0, 57, 18, 13 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 13 ],
+               "rect" : [ 0, 57, 18, 13 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 13, 18 ],
+         "name" : "scrollleft",
+         "rect" : [ 18, 43, 13, 18 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 13 ],
+               "rect" : [ 18, 43, 13, 18 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "maxSize" : [ 13, 18 ],
+         "name" : "scrollright",
+         "rect" : [ 32, 43, 13, 18 ],
+         "states" : [
+            {
+               "maxSize" : [ 18, 13 ],
+               "rect" : [ 32, 43, 13, 18 ],
+               "state" : "pressed"
+            }
+         ]
+      },
+      {
+         "name" : "scrollbody_hori",
+         "rect" : [ 31, 43, 1, 18 ]
+      },
+      {
+         "name" : "scrollbody_vert",
+         "rect" : [ 0, 56, 18, 1 ]
+      },
+      {
+         "fixedBorders" : [ 2 ],
+         "name" : "slider",
+         "rect" : [ 18, 61, 5, 5 ]
+      }
+   ]
+}

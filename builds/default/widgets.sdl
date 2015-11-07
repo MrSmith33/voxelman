@@ -1,0 +1,152 @@
+template:container {
+	tree hasBack=false
+}
+
+template:vcontainer extends="container" {
+	tree layout="vertical"
+}
+
+template:hcontainer extends="container" {
+	tree layout="horizontal"
+}
+
+template:hfill {
+	tree hasBack=false hexpand=true
+}
+
+template:vfill {
+	tree hasBack=false vexpand=true
+}
+
+template:fill {
+	tree hasBack=false hexpand=true vexpand=true
+}
+
+template:widgetlist container="canvas" {
+	tree layout="horizontal" vexpand=true hexpand=true hasBack=false {
+		widget name="viewport" layout="horizontal" clipContent=true hexpand=true vexpand=true hasBack=false {
+			widget name="canvas" layout="vertical" vexpand=true padding=2 hasBack=false
+		}
+		scrollbar-vert name="vert-scroll" vexpand=true minSize="18 32"
+	}
+}
+
+template:stringlist {
+	tree layout="horizontal" vexpand=true hexpand=true {
+		widget name="viewport" layout="horizontal" clipContent=true hexpand=true vexpand=true style="edit"{
+			widget name="canvas" layout="vertical" vexpand=true spacing=0 padding=0 hasBack=false
+		}
+		scrollbar-vert name="vert-scroll" vexpand=true minSize="18 32"
+	}
+}
+
+template:mybutton extends="button" {
+	tree "vexpand" style="button"
+}
+
+template:text-button extends="button" {
+	properties {
+		text subwidget="label" property="text"
+	}
+
+	tree layout="vertical" padding=3 {
+		widget vexpand=true hasBack=false respondsToPointer=false
+		label name="label" respondsToPointer=false
+		widget vexpand=true hasBack=false respondsToPointer=false
+	}
+}
+
+template:caption-edit {
+	properties {
+		caption subwidget="label" property="text"
+		text subwidget="edit" property="text"
+	}
+
+	tree layout="horizontal" hasBack=false {
+		label name="label"
+		edit name="edit" hexpand=true
+	}
+}
+
+template:scrollbar-vert {
+	tree layout="vertical" vexpand=true hasBack=false {
+		button name="up-button" minSize="18 13" style="scrollup"
+		widget name="body" vexpand=true minSize="18 13" style="scrollbody_vert" {
+			dragable name="slider" minSize="18 13" style="slider" vexpand=true
+		}
+		button name="down-button" minSize="18 13" style="scrolldown" 
+	}
+}
+
+template:scrollbar-hori {
+	tree layout="horizontal" hexpand=true hasBack=false {
+		button name="down-button" minSize="13 18" style="scrollleft"
+		widget name="body" hexpand=true minSize="13 18" style="scrollbody_hori" {
+			dragable name="slider" minSize="13 18" style="slider" hexpand=true
+		}
+		button name="up-button" minSize="13 18" style="scrollright" 
+	}
+}
+
+template:text-check {
+	properties {
+		text subwidget="text" property="text"
+		isChecked subwidget="check" property="isChecked"
+	}
+
+	tree layout="horizontal" hasBack=false spacing=3 {
+		check name="check" minSize="13 13"
+		label hexpand=true name="text" respondsToPointer=false
+	}
+}
+
+template:text-radio {
+	properties {
+		group subwidget="radio"
+		text subwidget="text"    
+		isChecked subwidget="radio"
+	}
+
+	tree layout="horizontal" hasBack=false spacing=3 {
+		radio name="radio" minSize="13 13" style="radio"
+		label hexpand=true name="text" respondsToPointer=false
+	}
+}
+
+template:radiobutton extends="radio" {
+	tree minSize="13 13" style="radiobutton"
+}
+
+template:text-radiobutton extends="radiobutton" {
+	properties {
+		text subwidget="label"
+	}
+
+	tree layout="vertical" padding=3 {
+		label name="label" respondsToPointer=false
+	}
+}
+
+template:tooltip {
+	properties {
+		text subwidget="text"
+	}
+
+	tree layout="vertical" padding=3 style="edit" respondsToPointer=false {
+		label hexpand=true name="text" respondsToPointer=false 
+	}
+}
+
+template:frame container="container" {
+	properties {
+		caption subwidget="caption" property="text"
+	}
+
+	tree layout="vertical" padding=2 spacing=2 style="frame" hexpand=true vexpand=true {
+		dragable name="header" hexpand=true layout="horizontal" hasBack=false {
+			label name="caption" hexpand=true respondsToPointer=false
+			button name="close" minSize="18 18" style="closeButton"
+		}
+		widget name="container" hexpand=true vexpand=true layout="vertical" style="lightbox" padding=2 spacing=1
+	}
+}
