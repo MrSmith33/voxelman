@@ -5,7 +5,8 @@ Authors: Andrey Penechko.
 */
 
 module voxelman.utils.libloader;
-import voxelman.config;
+
+import voxelman.core.config;
 
 string getLibName(string libName)
 {

@@ -1,12 +1,11 @@
 module exampleplugin.server;
 
 import std.experimental.logger;
-import plugin;
+import pluginlib;
 import pinfo = exampleplugin.plugininfo;
 
 shared static this()
 {
-	import plugin.pluginregistry;
 	pluginRegistry.regServerPlugin(new ExamplePluginServer);
 }
 

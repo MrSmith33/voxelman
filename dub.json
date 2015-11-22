@@ -16,7 +16,7 @@
 	"targetPath" : "builds/default",
 	"workingDirectory" : "builds/default",
 
-	"sourcePaths" : [ "source", ".build" ],
+	"sourcePaths" : [ "source", "plugins", ".build" ],
 
 	"buildTypes": {
 		"debug": {
@@ -29,8 +29,7 @@
 			"name" : "client",
 			"targetName" : "client",
 			"targetType" : "executable",
-			"excludedSourceFiles" : [
-				"source/voxelman/server/*", "source/servermain.d"],
+			"excludedSourceFiles" : ["source/servermain.d"],
 			"mainSourceFile" : "source/clientmain.d",
 			"versions" : ["SIDE_CLIENT"]
 		},
@@ -38,13 +37,12 @@
 			"name": "server",
 			"targetName" : "server",
 			"targetType": "executable",
-			"excludedSourceFiles" : [
-				"source/voxelman/client/*", "source/clientmain.d"],
+			"excludedSourceFiles" : ["source/clientmain.d"],
 			"mainSourceFile" : "source/servermain.d",
 			"versions" : ["SIDE_SERVER"]
 		},
 		{
-			"name": "library",
+			"name": "lib",
 			"targetType": "library",
 			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
 			"targetPath" : "./"
