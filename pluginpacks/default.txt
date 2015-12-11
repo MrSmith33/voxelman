@@ -1,0 +1,16 @@
+default 0.1.0
+
+exampleplugin 0.1.0
+voxelman.client 0.5.0
+voxelman.config 0.5.0
+voxelman.core 0.5.0
+voxelman.edit 0.5.0
+voxelman.eventdispatcher 0.5.0
+voxelman.graphics 0.5.0
+voxelman.gui 0.5.0
+voxelman.input 0.5.0
+voxelman.movement 0.5.0
+voxelman.server 0.5.0
+voxelman.storage 0.5.0
+voxelman.utils 0.5.0
+voxelman.worldinteraction 0.5.0

@@ -190,11 +190,14 @@ public:
 		//shufflePackets();
 	}
 
-	void load()
+	void load(string[] args)
 	{
 		// register all plugins and managers
-		foreach(p; pluginRegistry.serverPlugins.byValue)
+		import voxelman.plugininforeader : filterEnabledPlugins;
+		foreach(p; pluginRegistry.serverPlugins.byValue.filterEnabledPlugins(args))
+		{
 			pluginman.registerPlugin(p);
+		}
 
 		// Actual loading sequence
 		pluginman.initPlugins();
@@ -206,7 +209,7 @@ public:
 		import core.thread : Thread;
 		import core.memory;
 
-		load();
+		load(args);
 
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
 		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);

@@ -265,11 +265,14 @@ public:
 		worldAccess = WorldAccess(&chunkMan.chunkStorage.getChunk, () => 0);
 	}
 
-	void load()
+	void load(string[] args)
 	{
 		// register all plugins and managers
-		foreach(p; pluginRegistry.clientPlugins.byValue)
+		import voxelman.plugininforeader : filterEnabledPlugins;
+		foreach(p; pluginRegistry.clientPlugins.byValue.filterEnabledPlugins(args))
+		{
 			pluginman.registerPlugin(p);
+		}
 
 		// Actual loading sequence
 		pluginman.initPlugins();
@@ -282,7 +285,7 @@ public:
 
 		version(manualGC) GC.disable;
 
-		load();
+		load(args);
 
 		info("\nSystem info");
 		foreach(item; guiPlugin.getHardwareInfo())
