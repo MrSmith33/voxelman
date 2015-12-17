@@ -4,16 +4,16 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.edit.editplugin;
+module voxelman.edit.plugin;
 
 import std.experimental.logger;
 
 import pluginlib;
 import voxelman.core.config;
-import voxelman.client.clientplugin;
-import voxelman.worldinteraction.worldinteractionplugin;
+import voxelman.client.plugin;
+import voxelman.worldinteraction.plugin;
 
-import voxelman.eventdispatcher.eventdispatcherplugin;
+import voxelman.eventdispatcher.plugin;
 import voxelman.input.keybindingmanager;
 
 shared static this()

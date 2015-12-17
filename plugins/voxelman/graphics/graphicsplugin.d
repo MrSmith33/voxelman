@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.graphics.graphicsplugin;
+module voxelman.graphics.plugin;
 
 import std.experimental.logger;
 import anchovy.gui;
@@ -14,8 +14,8 @@ import dlib.math.matrix;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.eventdispatcher.eventdispatcherplugin;
-import voxelman.gui.guiplugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.gui.plugin;
 import voxelman.config.configmanager;
 import voxelman.utils.fpscamera;
 public import voxelman.utils.renderutils;

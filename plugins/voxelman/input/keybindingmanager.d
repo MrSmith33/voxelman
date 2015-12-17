@@ -10,7 +10,7 @@ import std.experimental.logger;
 import pluginlib;
 import voxelman.config.configmanager;
 import voxelman.utils.keynamemap;
-public import voxelman.gui.guiplugin : KeyCode, PointerButton;
+public import voxelman.gui.plugin : KeyCode, PointerButton;
 
 
 struct KeyBinding

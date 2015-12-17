@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.server.serverplugin;
+module voxelman.server.plugin;
 
 import std.experimental.logger;
 
@@ -23,7 +23,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.core.packets;
 
-import voxelman.eventdispatcher.eventdispatcherplugin;
+import voxelman.eventdispatcher.plugin;
 import voxelman.config.configmanager;
 
 import voxelman.server.clientinfo;

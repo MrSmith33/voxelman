@@ -4,13 +4,13 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.input.inputplugin;
+module voxelman.input.plugin;
 
 import std.experimental.logger;
 import dlib.math.vector;
 
 import pluginlib;
-import voxelman.gui.guiplugin;
+import voxelman.gui.plugin;
 import voxelman.input.keybindingmanager;
 
 

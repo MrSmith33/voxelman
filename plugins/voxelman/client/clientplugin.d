@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.client.clientplugin;
+module voxelman.client.plugin;
 
 import core.thread : thread_joinAll;
 import core.time;
@@ -24,9 +24,9 @@ import pluginlib.pluginmanager;
 import netlib.connection;
 import netlib.baseclient;
 
-import voxelman.eventdispatcher.eventdispatcherplugin;
-import voxelman.graphics.graphicsplugin;
-import voxelman.gui.guiplugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.graphics.plugin;
+import voxelman.gui.plugin;
 
 import voxelman.config.configmanager;
 import voxelman.input.keybindingmanager;

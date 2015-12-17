@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.gui.guiplugin;
+module voxelman.gui.plugin;
 
 import std.experimental.logger;
 import std.string : format;
@@ -25,7 +25,7 @@ import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
 
-import voxelman.eventdispatcher.eventdispatcherplugin;
+import voxelman.eventdispatcher.plugin;
 import voxelman.config.configmanager;
 
 

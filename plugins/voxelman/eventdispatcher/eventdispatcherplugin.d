@@ -1,4 +1,4 @@
-module voxelman.eventdispatcher.eventdispatcherplugin;
+module voxelman.eventdispatcher.plugin;
 
 import pluginlib;
 import voxelman.core.config;

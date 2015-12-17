@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.movement.movementplugin;
+module voxelman.movement.plugin;
 
 import std.experimental.logger;
 
@@ -13,11 +13,11 @@ import dlib.math.vector;
 import pluginlib;
 import voxelman.core.events;
 
-import voxelman.client.clientplugin;
-import voxelman.eventdispatcher.eventdispatcherplugin;
-import voxelman.graphics.graphicsplugin;
-import voxelman.gui.guiplugin;
-import voxelman.input.inputplugin;
+import voxelman.client.plugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.graphics.plugin;
+import voxelman.gui.plugin;
+import voxelman.input.plugin;
 import voxelman.input.keybindingmanager;
 
 shared static this()

@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.worldinteraction.worldinteractionplugin;
+module voxelman.worldinteraction.plugin;
 
 import std.experimental.logger;
 import core.time;
@@ -16,10 +16,10 @@ import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.storage.coordinates;
 
-import voxelman.input.inputplugin;
-import voxelman.eventdispatcher.eventdispatcherplugin;
-import voxelman.graphics.graphicsplugin;
-import voxelman.client.clientplugin;
+import voxelman.input.plugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.graphics.plugin;
+import voxelman.client.plugin;
 
 
 shared static this()
