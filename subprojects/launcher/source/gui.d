@@ -82,7 +82,7 @@ struct LauncherGui
 		playMenu.init(&launcher);
 		refresh();
 
-		window = startGlfw();
+		window = startGlfw("Voxelman launcher");
 
 		if (window is null)
 			isRunning = false;
@@ -152,7 +152,6 @@ struct LauncherGui
 		igShowTestWindow(null);
 		igSetNextWindowSize(ImVec2(500, 440), ImGuiSetCond_FirstUseEver);
 
-		pluginSelection();
 		logView();
 		mainView();
 	}
@@ -160,7 +159,8 @@ struct LauncherGui
 	enum SelectedMenu
 	{
 		play,
-		code
+		code,
+		conf
 	}
 
 	SelectedMenu selectedMenu;
@@ -186,6 +186,10 @@ struct LauncherGui
 			selectedMenu = SelectedMenu.play;
 		if (igButton("Code"))
 			selectedMenu = SelectedMenu.code;
+		if (igButton("Conf"))
+			selectedMenu = SelectedMenu.conf;
+		//if (igButton("Refresh"))
+		//	refresh();
 		igSpacing();
 		if (igButton("Exit"))
 			isRunning = false;
@@ -207,75 +211,6 @@ struct LauncherGui
 			launcher.appLog.draw();
 			igEnd();
 		}
-	}
-
-	void pluginSelection()
-	{
-		static opened = true;
-		if (igBegin("Plugin selection", &opened, ImGuiWindowFlags_MenuBar))
-		{
-			if (igButton("Refresh"))
-				refresh();
-			igSameLine();
-			if (igButton("Print plugins"))
-				launcher.printPlugins();
-
-			igText("Installed plugins");
-			igBeginChild("left pane", ImVec2(igGetWindowWidth()*0.6, 0), true);
-				drawPlugins();
-			igEndChild();
-
-			igSameLine();
-
-			drawSelectedInfo();
-
-			igEnd();
-		}
-	}
-
-	void drawPlugins()
-	{
-		igColumns(2, "mycolumns");
-			igSetColumnOffset(1, igGetWindowWidth()-58);
-	        igText("Plugin"); igNextColumn();
-	        igText("On"); igNextColumn();
-	        igSeparator();
-		igColumns(1);
-
-		igBeginChild("items", ImVec2(0,0));
-			igColumns(2, "mycolumns");
-			igSetColumnOffset(1, igGetWindowWidth()-50);
-
-			foreach(int i, plugin; *plugins.items)
-			{
-				igPushIdInt(cast(int)i);
-				immutable bool itemSelected = (i == plugins.currentItem);
-
-				if (igSelectable(plugin.id.ptr, itemSelected))
-					plugins.currentItem = i;
-	            igNextColumn();
-
-	            igPushStyleVarVec(ImGuiStyleVar_FramePadding, ImVec2(0,0));
-	            igCheckbox("", &plugin.isEnabled);
-	            igPopStyleVar();
-
-	            igNextColumn();
-
-				igPopId();
-			}
-			igColumns(1);
-		igEndChild();
-	}
-
-	void drawSelectedInfo()
-	{
-		igBeginGroup();
-			if (plugins.hasSelected)
-			{
-				igText("Id: %s", plugins.selected.id.ptr);
-				igText("Version: %s", plugins.selected.semver.ptr);
-			}
-		igEndGroup();
 	}
 }
 
@@ -314,6 +249,7 @@ struct PlayMenu
 		igSameLine();
 		if (igButton("Load"))
 			selectedMenu = SelectedMenu.load;
+
 		//igSeparator();
 
 		if (selectedMenu == SelectedMenu.newGame)
@@ -324,11 +260,12 @@ struct PlayMenu
 
 	void drawNewGame()
 	{
-		string pluginpack = "default.txt";
+		string pluginpack = "default";
 		if (auto pack = pluginPacks.selected)
-			pluginpack = pack.filename;
+			pluginpack = pack.id;
 
-		igBeginChild("items", ImVec2(0, -igGetItemsLineHeightWithSpacing()), true);
+		// ------------------------ PACKAGES -----------------------------------
+		igBeginChild("packs", ImVec2(100, -igGetItemsLineHeightWithSpacing()), true);
 			foreach(int i, pluginPack; *pluginPacks.items)
 			{
 				igPushIdInt(cast(int)i);
@@ -340,7 +277,24 @@ struct PlayMenu
 				igPopId();
 			}
 		igEndChild();
-		igBeginChild("buttons", ImVec2(0,0));
+
+		igSameLine();
+
+		// ------------------------ PLUGINS ------------------------------------
+		if (pluginPacks.hasSelected)
+		{
+			igBeginChild("pack's plugins", ImVec2(250, -igGetItemsLineHeightWithSpacing()), true);
+				foreach(int i, plugin; pluginPacks.selected.plugins)
+				{
+					igPushIdInt(cast(int)i);
+			    	igTextUnformatted(plugin.id.ptr, plugin.id.ptr+plugin.id.length);
+		            igPopId();
+				}
+			igEndChild();
+		}
+
+		// ------------------------ BUTTONS ------------------------------------
+		igBeginGroup();
 			if (igButton("Start client"))
 				launcher.compile(CompileParams(AppType.client), StartParams(pluginpack));
 			igSameLine();
@@ -352,7 +306,7 @@ struct PlayMenu
 				size_t numKilled = launcher.stopProcesses();
 				launcher.appLog.addLog(format("killed %s processes\n", numKilled));
 			}
-		igEndChild();
+		igEndGroup();
 	}
 
 	void pluginPackPlugins()

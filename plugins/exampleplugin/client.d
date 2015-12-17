@@ -2,7 +2,6 @@ module exampleplugin.client;
 
 import std.experimental.logger;
 import pluginlib;
-import pinfo = exampleplugin.plugininfo;
 
 shared static this()
 {
@@ -11,8 +10,8 @@ shared static this()
 
 class ExamplePluginClient : IPlugin
 {
-	override string id() @property { return pinfo.id; }
-	override string semver() @property { return pinfo.semver; }
+	mixin IdAndSemverFrom!(exampleplugin.plugininfo);
+
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
 		infof("%s registerResourceManagers", id);

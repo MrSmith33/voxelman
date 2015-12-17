@@ -25,7 +25,7 @@ string getLibName(string libName)
 		static assert(false, "lib loading is not implemented for this platform");
 }
 
-GLFWwindow* startGlfw()
+GLFWwindow* startGlfw(string windowTitle)
 {
 	DerelictGL3.load();
 	DerelictGLFW3.load(getLibName("glfw3"));
@@ -40,7 +40,7 @@ GLFWwindow* startGlfw()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_VISIBLE, false);
-	auto window = glfwCreateWindow(1280, 720, "ImGui OpenGL3 example", null, null);
+	auto window = glfwCreateWindow(1280, 720, windowTitle.ptr, null, null);
 	glfwMakeContextCurrent(window);
 	glfwInit();
 

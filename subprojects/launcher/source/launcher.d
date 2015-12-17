@@ -101,7 +101,7 @@ struct Launcher
 	{
 		string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
 		appLog.addLog(format("  starting with pack %s\n", params.pluginPack));
-		info(format("  starting with pack %s", params.pluginPack));
+		//info(format("  starting with pack %s", params.pluginPack));
 		string command = format("%s --pack=%s", conf, params.pluginPack);
 		infof(command);
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, buildFolder);
@@ -138,10 +138,10 @@ struct Launcher
 			if (res.terminated) {
 				process.isRunning = false;
 
-				appLog.addLog("build success\n");
-
-				if (process.cParams.startAfterCompile && res.status == 0)
+				if (process.cParams.startAfterCompile && res.status == 0) {
+					appLog.addLog("build success\n");
 					startApp(process.sParams);
+				}
 			}
 		}
 

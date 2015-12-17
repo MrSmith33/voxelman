@@ -49,7 +49,7 @@ struct Batch
 	ColoredVertex[] lineBuffer;
 	ColoredVertex[] pointBuffer;
 
-	void putCube(vec3 pos, vec3 size, Vector!(ubyte, 3) color, bool fill)
+	void putCube(vec3 pos, vec3 size, Color3ub color, bool fill)
 	{
 		if (fill)
 			putFilledBlock(triBuffer, pos, size, color);
@@ -57,7 +57,7 @@ struct Batch
 			putLineBlock(lineBuffer, pos, size, color);
 	}
 
-	void putCubeFace(vec3 cubePos, vec3 size, Side side, Vector!(ubyte, 3) color, bool fill)
+	void putCubeFace(vec3 cubePos, vec3 size, Side side, Color3ub color, bool fill)
 	{
 		if (fill)
 			putFilledSide(triBuffer, cubePos, size, side, color);
@@ -65,7 +65,7 @@ struct Batch
 			putLineSide(lineBuffer, cubePos, size, side, color);
 	}
 
-	void putLine(vec3 start, vec3 end, Vector!(ubyte, 3) color)
+	void putLine(vec3 start, vec3 end, Color3ub color)
 	{
 		if (lineBuffer.capacity - lineBuffer.length < 2)
 			lineBuffer.reserve(lineBuffer.capacity + 1024);
@@ -74,7 +74,7 @@ struct Batch
 		lineBuffer ~= ColoredVertex(end, color);
 	}
 
-	void putPoint(vec3 pos, Vector!(ubyte, 3) color)
+	void putPoint(vec3 pos, Color3ub color)
 	{
 		if (pointBuffer.capacity - pointBuffer.length < 1)
 			pointBuffer.reserve(pointBuffer.capacity + 1024);
@@ -96,7 +96,7 @@ void resetBuffer(ref ColoredVertex[] buffer)
 	assumeSafeAppend(buffer);
 }
 
-void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(ubyte, 3) color)
+void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub color)
 {
 	output.reserve(6 * 6); // 6 faces, 6 points per edge
 
@@ -111,7 +111,7 @@ void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(uby
 	}
 }
 
-void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(ubyte, 3) color)
+void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub color)
 {
 	output.reserve(12 * 2); // 12 edges, 2 points per edge
 
@@ -126,7 +126,7 @@ void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Vector!(ubyte
 	}
 }
 
-void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Vector!(ubyte, 3) color)
+void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Color3ub color)
 {
 	output.reserve(6);
 
@@ -141,7 +141,7 @@ void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, V
 	}
 }
 
-void putLineSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Vector!(ubyte, 3) color)
+void putLineSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Color3ub color)
 {
 	output.reserve(6);
 

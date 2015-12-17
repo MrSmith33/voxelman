@@ -8,7 +8,7 @@ module voxelman.plugininforeader;
 import std.experimental.logger;
 import pluginlib;
 
-enum pluguinPackFolder = `D:/voxelman/pluginpacks/`;
+enum pluguinPackFolder = `../../pluginpacks`;
 
 auto filterEnabledPlugins(Plugins)(Plugins plugins, ref string[] args)
 {
@@ -16,16 +16,19 @@ auto filterEnabledPlugins(Plugins)(Plugins plugins, ref string[] args)
 	import std.file;
 	import std.range;
 	import std.algorithm;
+	import std.string : format;
 
 	string packName;
+	string packId;
+
 	auto helpInformation = getopt(args,
 		std.getopt.config.passThrough,
-	    "pack",  &packName);
+	    "pack",  &packId);
 
-	if (packName.length == 0)
-		packName = pluguinPackFolder ~ "default.txt";
+	if (packId.length == 0)
+		packId = "default";
 
-	infof("loading pack: %s", packName);
+	packName = format("%s/%s.txt", pluguinPackFolder, packId);
 
 	PluginInfo*[string] packPlugins;
 	if (exists(packName))
@@ -37,6 +40,8 @@ auto filterEnabledPlugins(Plugins)(Plugins plugins, ref string[] args)
 		infof("found %s plugins in '%s' pack", packPlugins.length, pack.id);
 		infof("%s", "voxelman.utils" in packPlugins);
 	}
+	else
+		infof("Cannot load: %s", packName);
 
 	return plugins.filter!(p => p.id in packPlugins);
 }
