@@ -16,7 +16,8 @@
 	"targetPath" : "builds/default",
 	"workingDirectory" : "builds/default",
 
-	"sourcePaths" : [ "source", "plugins", ".build" ],
+	"sourcePaths" : [ "source", "plugins" ],
+	"importPaths" : [ "source", "plugins" ],
 
 	"buildTypes": {
 		"debug": {
