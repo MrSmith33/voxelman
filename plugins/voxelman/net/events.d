@@ -4,29 +4,30 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.client.events;
+module voxelman.net.events;
 
 import netlib.connection : ClientId;
 import tharsis.prof : Profiler;
 
-struct ClientLoggedInEvent {
+struct ClientConnectedEvent {
 	ClientId clientId;
 	Profiler profiler;
 	bool continuePropagation = true;
 }
-struct ClientLoggedOutEvent {
+
+struct ClientDisconnectedEvent {
 	ClientId clientId;
 	Profiler profiler;
 	bool continuePropagation = true;
 }
-struct ThisClientLoggedInEvent {
-	ClientId myId;
+
+struct ThisClientConnectedEvent {
 	Profiler profiler;
 	bool continuePropagation = true;
 }
-struct ChatMessageEvent {
-	ClientId sender;
-	string message;
+
+struct ThisClientDisconnectedEvent {
+	uint data;
 	Profiler profiler;
 	bool continuePropagation = true;
 }

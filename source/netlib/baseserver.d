@@ -13,9 +13,9 @@ import derelict.enet.enet;
 import netlib.connection;
 import netlib.clientstorage;
 
-abstract class BaseServer(Client) : Connection
+abstract class BaseServer : Connection
 {
-	ClientStorage!Client clientStorage;
+	ClientStorage clientStorage;
 
 	void start(ConnectionSettings settings, uint host, ushort port)
 	{
@@ -30,9 +30,9 @@ abstract class BaseServer(Client) : Connection
 	/// Disconnects all clients.
 	void disconnectAll()
 	{
-		foreach(user; clientStorage.clients.byValue)
+		foreach(peer; clientStorage.clientPeers.byValue)
 		{
-			enet_peer_disconnect(user.peer, 0);
+			enet_peer_disconnect(peer, 0);
 		}
 	}
 
@@ -64,14 +64,14 @@ abstract class BaseServer(Client) : Connection
 		{
 			foreach(clientId; clients)
 			{
-				if (auto client = clientStorage[clientId])
-					enet_peer_send(client.peer, channel, packet);
+				if (auto peer = clientStorage[clientId])
+					enet_peer_send(peer, channel, packet);
 			}
 		}
-		else
+		else // single ClientId
 		{
-			if (auto client = clientStorage[clients])
-					enet_peer_send(client.peer, channel, packet);
+			if (auto peer = clientStorage[clients])
+				enet_peer_send(peer, channel, packet);
 		}
 	}
 
@@ -114,10 +114,10 @@ abstract class BaseServer(Client) : Connection
 	/// ditto
 	void sendToAllExcept(ClientId exceptClient, ENetPacket* packet, ubyte channel = 0)
 	{
-		foreach(clientId, client; clientStorage.clients)
+		foreach(clientId, peer; clientStorage.clientPeers)
 		{
-			if (clientId != exceptClient && client)
-				enet_peer_send(client.peer, channel, packet);
+			if (clientId != exceptClient && peer)
+				enet_peer_send(peer, channel, packet);
 		}
 	}
 }

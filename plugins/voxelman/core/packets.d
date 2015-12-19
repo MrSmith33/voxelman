@@ -11,19 +11,10 @@ import voxelman.storage.chunk : BlockChange, BlockData, BlockType;
 
 void registerPackets(Connection c)
 {
-	// Server -> Client
-	c.registerPacket!PacketMapPacket;
-	c.registerPacket!LoginPacket;
-	c.registerPacket!SessionInfoPacket;
-
 	// Common
-	c.registerPacket!MessagePacket;
 	c.registerPacket!ClientPositionPacket;
 
 	// Server -> Client
-	c.registerPacket!ClientLoggedInPacket;
-	c.registerPacket!ClientLoggedOutPacket;
-
 	c.registerPacket!ChunkDataPacket;
 	c.registerPacket!MultiblockChangePacket;
 	c.registerPacket!SpawnPacket;
@@ -31,42 +22,6 @@ void registerPackets(Connection c)
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
 	c.registerPacket!PlaceBlockPacket;
-}
-
-struct PacketMapPacket
-{
-	string[] packetNames;
-}
-
-// client request
-struct LoginPacket
-{
-	string clientName;
-}
-
-// server response
-struct SessionInfoPacket
-{
-	ClientId yourId;
-	string[ClientId] clientNames;
-}
-
-struct ClientLoggedInPacket
-{
-	ClientId clientId;
-	string clientName;
-}
-
-struct ClientLoggedOutPacket
-{
-	ClientId clientId;
-}
-
-// sent from client with peer == 0 and from server with userId of sender.
-struct MessagePacket
-{
-	ClientId clientId; // from. Set to 0 when sending from client
-	string msg;
 }
 
 // sent by client when position/heading changes.

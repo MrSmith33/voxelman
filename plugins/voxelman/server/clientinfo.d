@@ -13,13 +13,12 @@ import voxelman.storage.volume : Volume;
 
 struct ClientInfo
 {
-	string name;
 	size_t id;
+	string name;
 	vec3 pos = START_POS;
 	vec2 heading = vec2(0, 0);
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 	Volume visibleVolume;
 
-	ENetPeer* peer;
 	bool isLoggedIn;
 }

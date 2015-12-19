@@ -18,22 +18,24 @@ import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
 import tharsis.prof;
 
+import netlib;
 import pluginlib;
 import pluginlib.pluginmanager;
-
-import netlib.connection;
-import netlib.baseclient;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
+import voxelman.net.plugin;
+
+import voxelman.net.events;
+import voxelman.core.packets;
+import voxelman.net.packets;
 
 import voxelman.config.configmanager;
 import voxelman.input.keybindingmanager;
 
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.core.packets;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
@@ -65,7 +67,6 @@ auto formatDuration(Duration dur)
 		splitted.seconds, splitted.msecs, splitted.usecs);
 }
 
-final class ClientConnection : BaseClient{}
 
 final class ClientPlugin : IPlugin
 {
@@ -87,7 +88,6 @@ public:
 	// Game stuff
 	ChunkMan chunkMan;
 	WorldAccess worldAccess;
-	ClientConnection connection;
 
 	// Debug
 	Widget debugInfo;
@@ -121,6 +121,8 @@ public:
 	enum sendPositionInterval = 0.1;
 	ChunkWorldPos prevChunkPos;
 
+	NetClientPlugin connection;
+
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.client.plugininfo);
 
@@ -145,28 +147,8 @@ public:
 
 	override void preInit()
 	{
-		import voxelman.utils.libloader;
-		loadEnet([getLibName("enet")]);
-
-		connection = new ClientConnection;
-		connection.connectHandler = &onConnect;
-		connection.disconnectHandler = &onDisconnect;
-
 		chunkMan.init(numWorkersOpt.get!uint);
 		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
-
-		registerPackets(connection);
-		//connection.printPacketMap();
-
-		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
-		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
-		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
-		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
-		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
-		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
-		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
-		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
-		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -183,6 +165,24 @@ public:
 		evDispatcher.subscribeToEvent(&drawOverlay);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
+		evDispatcher.subscribeToEvent(&handleThisClientConnected);
+		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
+
+		connection = pluginman.getPlugin!NetClientPlugin;
+
+		//connection.printPacketMap();
+		voxelman.net.packets.registerPackets(connection);
+		voxelman.core.packets.registerPackets(connection);
+
+		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
+		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
+		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
+		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
+		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
+		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
+		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
+		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
 	}
 
 	override void postInit()
@@ -565,20 +565,15 @@ public:
 		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));
 	}
 
-	void onConnect(ref ENetEvent event)
+	void handleThisClientConnected(ref ThisClientConnectedEvent event)
 	{
 		infof("Connection to %s:%s established", serverIpOpt.get!string, serverPortOpt.get!ushort);
-		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
 	}
 
-	void onDisconnect(ref ENetEvent event)
+	void handleThisClientDisconnected(ref ThisClientDisconnectedEvent event)
 	{
 		infof("disconnected with data %s", event.data);
 
-		// Reset server's information
-		event.peer.data = null;
-
-		evDispatcher.postEvent(ThisClientDisconnectedEvent());
 		isDisconnecting = false;
 		isSpawned = false;
 	}
@@ -590,8 +585,8 @@ public:
 		connection.setPacketMap(packetMap.packetNames);
 		//connection.printPacketMap();
 
+		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
 		connection.send(LoginPacket(nicknameOpt.get!string));
-		evDispatcher.postEvent(ThisClientConnectedEvent());
 	}
 
 	void handleSessionInfoPacket(ubyte[] packetData, ClientId clientId)

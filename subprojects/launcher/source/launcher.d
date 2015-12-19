@@ -125,6 +125,11 @@ struct Launcher
 
 	void update()
 	{
+		foreach(process; compileJobs)
+			logPipes(only(process.pipes.stdout, process.pipes.stderr));
+		foreach(process; runJobs)
+			logPipes(only(process.pipes.stdout, process.pipes.stderr));
+
 		foreach(process; runJobs)
 		{
 			if (process.pipes.pid.tryWait.terminated) {
@@ -147,11 +152,6 @@ struct Launcher
 
 		runJobs = remove!(a => !a.isRunning)(runJobs);
 		compileJobs = remove!(a => !a.isRunning)(compileJobs);
-
-		foreach(process; compileJobs)
-			logPipes(only(process.pipes.stdout, process.pipes.stderr));
-		foreach(process; runJobs)
-			logPipes(only(process.pipes.stdout, process.pipes.stderr));
 	}
 
 	void logPipes(P)(P pipes)

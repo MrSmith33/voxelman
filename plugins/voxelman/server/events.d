@@ -16,18 +16,6 @@ struct CommandEvent {
 	bool continuePropagation = true;
 }
 
-struct ClientConnectedEvent {
-	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
-}
-
-struct ClientDisconnectedEvent {
-	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
-}
-
 struct ClientLoggedInEvent {
 	ClientId clientId;
 	Profiler profiler;

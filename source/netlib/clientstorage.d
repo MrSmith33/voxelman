@@ -6,58 +6,40 @@ Authors: Andrey Penechko.
 
 module netlib.clientstorage;
 
-import derelict.enet.enet;
-import netlib.connection;
+import derelict.enet.enet : ENetPeer;
+import netlib.connection : ClientId;
 
-// Needs at least peer field.
-// struct Client
-// {
-//     ENetPeer* peer;
-// }
 
-struct ClientStorage(Client)
+struct ClientStorage
 {
-	import std.traits : hasMember;
-	static assert(hasMember!(Client, "peer") &&
-		is(typeof(Client.peer) == ENetPeer*),
-		"Client type must have peer member");
+	ENetPeer*[ClientId] clientPeers;
+	// 0 is reserved for server.
+	private ClientId _nextClientId = 1;
 
-	Client*[ClientId] clients;
+	ENetPeer* opIndex(ClientId id)
+	{
+		return clientPeers.get(id, null);
+	}
 
 	ClientId addClient(ENetPeer* peer)
 	{
 		ClientId id = nextPeerId;
-		Client* client = new Client;
-		client.peer = peer;
-		clients[id] = client;
+		clientPeers[id] = peer;
 		return id;
-	}
-
-	Client* opIndex(ClientId id)
-	{
-		return clients.get(id, null);
 	}
 
 	void removeClient(ClientId id)
 	{
-		clients.remove(id);
-	}
-
-	ENetPeer* clientPeer(ClientId id)
-	{
-		return clients[id].peer;
+		clientPeers.remove(id);
 	}
 
 	size_t length()
 	{
-		return clients.length;
+		return clientPeers.length;
 	}
 
-	ClientId nextPeerId() @property
+	private ClientId nextPeerId() @property
 	{
 		return _nextClientId++;
 	}
-
-	// 0 is reserved for server.
-	private ClientId _nextClientId = 1;
 }

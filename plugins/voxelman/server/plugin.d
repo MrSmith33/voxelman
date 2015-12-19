@@ -11,20 +11,23 @@ import std.experimental.logger;
 import derelict.enet.enet;
 import tharsis.prof : Profiler, DespikerSender, Zone;
 
+import netlib;
 import pluginlib;
 import pluginlib.pluginmanager;
 
-import netlib.connection;
-import netlib.baseserver;
 import voxelman.utils.math;
 
 import voxelman.core.blockman;
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.core.packets;
 
 import voxelman.eventdispatcher.plugin;
+import voxelman.net.plugin;
 import voxelman.config.configmanager;
+
+import voxelman.net.events;
+import voxelman.core.packets;
+import voxelman.net.packets;
 
 import voxelman.server.clientinfo;
 import voxelman.server.events;
@@ -47,7 +50,6 @@ shared static this()
 	pluginRegistry.regServerMain(&s.run);
 }
 
-final class ServerConnection : BaseServer!ClientInfo{}
 
 final class WorldAccess {
 	private ChunkManager* chunkManager;
@@ -101,7 +103,8 @@ private:
 	DespikerSender profilerSender;
 
 public:
-	ServerConnection connection;
+	NetServerPlugin connection;
+	ClientInfo*[ClientId] clients;
 
 	// Game data
 	BlockMan blockMan;
@@ -132,7 +135,6 @@ public:
 			profiler = new Profiler(storage);
 		}
 		profilerSender = new DespikerSender([profiler]);
-		connection = new ServerConnection;
 
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(&chunkManager);
@@ -154,20 +156,29 @@ public:
 
 	override void preInit()
 	{
-		import voxelman.utils.libloader;
-		loadEnet([getLibName("enet")]);
-
 		auto worldDir = saveDirOpt.get!string ~ "/" ~ worldNameOpt.get!string;
 		chunkProvider.init(worldDir, numWorkersOpt.get!uint);
 		world.init(worldDir);
 		blockMan.loadBlockTypes();
 
 		world.load();
+	}
 
-		connection.connectHandler = &onConnect;
-		connection.disconnectHandler = &onDisconnect;
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.profiler = profiler;
 
-		registerPackets(connection);
+		evDispatcher.subscribeToEvent(&handleCommand);
+		evDispatcher.subscribeToEvent(&handleClientConnected);
+		evDispatcher.subscribeToEvent(&handleClientDisconnected);
+
+		connection = pluginman.getPlugin!NetServerPlugin;
+
+		static import voxelman.core.packets;
+		static import voxelman.net.packets;
+		voxelman.net.packets.registerPackets(connection);
+		voxelman.core.packets.registerPackets(connection);
 		//connection.printPacketMap();
 
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
@@ -176,13 +187,6 @@ public:
 		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
 
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
-	}
-
-	override void init(IPluginManager pluginman)
-	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.profiler = profiler;
-		evDispatcher.subscribeToEvent(&handleCommand);
 	}
 
 	override void postInit()
@@ -287,14 +291,14 @@ public:
 
 	bool isLoggedIn(ClientId clientId)
 	{
-		ClientInfo* clientInfo = connection.clientStorage[clientId];
+		ClientInfo* clientInfo = clients[clientId];
 		return clientInfo.isLoggedIn;
 	}
 
 	string[ClientId] clientNames()
 	{
 		string[ClientId] names;
-		foreach(id, client; connection.clientStorage.clients) {
+		foreach(id, client; clients) {
 			names[id] = client.name;
 		}
 
@@ -355,7 +359,7 @@ public:
 
 	void spawnClient(vec3 pos, vec2 heading, ClientId clientId)
 	{
-		ClientInfo* info = connection.clientStorage[clientId];
+		ClientInfo* info = clients[clientId];
 		info.pos = pos;
 		info.heading = heading;
 		connection.sendTo(clientId, ClientPositionPacket(pos, heading));
@@ -363,47 +367,32 @@ public:
 		updateObserverVolume(info);
 	}
 
-	void onConnect(ref ENetEvent event)
+	void handleClientConnected(ref ClientConnectedEvent event)
 	{
-		auto clientId = connection.clientStorage.addClient(event.peer);
-		event.peer.data = cast(void*)clientId;
-		//enet_peer_timeout(event.peer, 0, 0, 2000);
-		infof("%s connected", clientId);
-		evDispatcher.postEvent(ClientConnectedEvent(clientId));
-
-		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
+		clients[event.clientId] = new ClientInfo(event.clientId);
+		connection.sendTo(event.clientId, PacketMapPacket(connection.packetNames));
 	}
 
-	void onDisconnect(ref ENetEvent event)
+	void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
-		ClientId clientId = cast(ClientId)event.peer.data;
-		infof("%s %s disconnected", clientId,
-			connection.clientStorage[clientId].name);
+		chunkObserverManager.removeObserver(event.clientId);
 
-		chunkObserverManager.removeObserver(clientId);
+		infof("%s %s disconnected", event.clientId,
+			clients[event.clientId].name);
 
-		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
-
-		// Reset client's information
-		event.peer.data = null;
-		connection.clientStorage.removeClient(clientId);
-
-		connection.sendToAll(ClientLoggedOutPacket(clientId));
-
-		//infof("totalObservedChunks %s", chunkMan.totalObservedChunks);
+		connection.sendToAll(ClientLoggedOutPacket(event.clientId));
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
 	{
 		LoginPacket packet = unpackPacket!LoginPacket(packetData);
-		ClientInfo* info = connection.clientStorage[clientId];
+		ClientInfo* info = clients[clientId];
 		info.name = packet.clientName;
 		info.id = clientId;
 		info.isLoggedIn = true;
 		spawnClient(info.pos, info.heading, clientId);
 
-		infof("%s %s logged in", clientId,
-			connection.clientStorage[clientId].name);
+		infof("%s %s logged in", clientId, clients[clientId].name);
 
 		connection.sendTo(clientId, SessionInfoPacket(clientId, clientNames));
 		connection.sendToAllExcept(clientId, ClientLoggedInPacket(clientId, packet.clientName));
@@ -435,7 +424,7 @@ public:
 		if (isLoggedIn(clientId))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
-			ClientInfo* info = connection.clientStorage[clientId];
+			ClientInfo* info = clients[clientId];
 			info.pos = packet.pos;
 			info.heading = packet.heading;
 			updateObserverVolume(info);
@@ -447,7 +436,7 @@ public:
 	{
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
 		infof("Received ViewRadiusPacket(%s)", packet.viewRadius);
-		ClientInfo* info = connection.clientStorage[clientId];
+		ClientInfo* info = clients[clientId];
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 		updateObserverVolume(info);

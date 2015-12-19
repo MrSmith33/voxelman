@@ -37,8 +37,7 @@ auto filterEnabledPlugins(Plugins)(Plugins plugins, ref string[] args)
 		PluginPack* pack = readPluginPack(fileData);
 		foreach(plug; pack.plugins)
 			packPlugins[plug.id] = plug;
-		infof("found %s plugins in '%s' pack", packPlugins.length, pack.id);
-		infof("%s", "voxelman.utils" in packPlugins);
+		infof("Found %s plugins in '%s' pack", packPlugins.length, pack.id);
 	}
 	else
 		infof("Cannot load: %s", packName);
