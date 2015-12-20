@@ -7,9 +7,9 @@
 
 	"dependencies" : {
 		"cbor-d" : ">=0.4.1",
-		"anchovy" : {"version" : "==0.8.2"},
+		"anchovy" : "==0.8.3",
 		"derelict-enet": "==2.0.0",
-		"sdlang-d" : "==0.9.1",
+		"sdlang-d" : "==0.9.3",
 		"tharsis-prof" : "==0.5.4"
 	},
 

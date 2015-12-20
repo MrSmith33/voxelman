@@ -63,8 +63,8 @@ struct FpsCamera
 
 	void update()
 	{
-		rotationQuatHor = rotation!float(vec3(0,1,0), degtorad!float(heading.x));
-		rotationQuatVert = rotation!float(vec3(1,0,0), degtorad!float(heading.y));
+		rotationQuatHor = rotationQuaternion!float(vec3(0,1,0), degtorad!float(heading.x));
+		rotationQuatVert = rotationQuaternion!float(vec3(1,0,0), degtorad!float(heading.y));
 
 		rotationQuat = rotationQuatHor * rotationQuatVert;
 		rotationQuat.normalize();
