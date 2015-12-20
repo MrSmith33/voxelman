@@ -2,6 +2,7 @@
 
 Voxel engine for voxel-based games written in D language.
 
+[![Build Status](https://travis-ci.org/MrSmith33/voxelman.svg?branch=master)](https://travis-ci.org/MrSmith33/voxelman)
 [![Join the chat at https://gitter.im/MrSmith33/voxelman](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/MrSmith33/voxelman?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 
