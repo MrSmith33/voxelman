@@ -173,8 +173,8 @@ struct Launcher
 			}
 		}
 
-		runJobs = remove!(a => a.needsClose)(runJobs);
-		compileJobs = remove!(a => a.needsClose)(compileJobs);
+		runJobs = remove!(a => a.needsClose && !a.isRunning)(runJobs);
+		compileJobs = remove!(a => a.needsClose && !a.isRunning)(compileJobs);
 	}
 
 	void logPipes(J)(J job)

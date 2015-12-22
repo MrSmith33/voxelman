@@ -293,11 +293,7 @@ struct PlayMenu
 
 		// ------------------------ BUTTONS ------------------------------------
 		igBeginGroup();
-			if (igButton("Start client"))
-				launcher.compile(CompileParams(AppType.client), StartParams(pluginpack));
-			igSameLine();
-			if (igButton("Start server"))
-				launcher.compile(CompileParams(AppType.server), StartParams(pluginpack));
+			startButtons(launcher, pluginpack);
 			igSameLine();
 			if (igButton("Stop"))
 			{
@@ -311,6 +307,15 @@ struct PlayMenu
 	{
 
 	}
+}
+
+void startButtons(Launcher* launcher, string pack)
+{
+	if (igButton("Start client"))
+		launcher.compile(CompileParams(AppType.client), StartParams(pack));
+	igSameLine();
+	if (igButton("Start server"))
+		launcher.compile(CompileParams(AppType.server), StartParams(pack));
 }
 
 struct CodeMenu
@@ -337,11 +342,14 @@ struct CodeMenu
 	void draw()
 	{
 		igBeginGroup();
+		igPushItemWidth(200);
 		igCombo3(
 			cast(const(char*))"Pack".ptr,
 			cast(int*)&pluginPacks.currentItem,
 			&getter, &this,
 			cast(int)pluginPacks.items.length, -1);
+		igSameLine();
+		startButtons(launcher, pluginPacks.selected.id);
 
 		foreach(process; launcher.compileJobs) drawJobLog(process);
 		foreach(process; launcher.runJobs) drawJobLog(process);
@@ -360,8 +368,12 @@ struct CodeMenu
 void drawJobLog(J)(J job)
 {
 	igPushIdPtr(job);
-	if (igCollapsingHeader(job.command.ptr, null, true, true))
+	if (igCollapsingHeader(job.command.ptr, null, true, true)) {
+		if (igButton("Close")) job.needsClose = true;
+		igSameLine();
+		if (igButton("Clear")) job.log.clear();
 		job.log.draw();
+	}
 	igPopId();
 }
 
@@ -396,9 +408,9 @@ struct AppLog
 
     void draw()
     {
-        igSetNextWindowSize(ImVec2(500,400), ImGuiSetCond_FirstUseEver);
-        if (igButton("Clear")) clear();
-        igSeparator();
+        //igSetNextWindowSize(ImVec2(500,400), ImGuiSetCond_FirstUseEver);
+        //if (igButton("Clear")) clear();
+        //igSeparator();
         igBeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
 	    char* lineStart = lines.data.ptr;
 	    foreach(lineSize; lineSizes.data)
