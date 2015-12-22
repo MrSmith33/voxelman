@@ -58,16 +58,28 @@ struct StartParams
 struct CompileJob
 {
 	ProcessPipes pipes;
+
 	CompileParams cParams;
 	StartParams sParams;
+
+	string command;
 	bool isRunning = true;
+	bool needsClose = false;
+	AppLog log;
+	int status;
 }
 
 struct RunJob
 {
 	ProcessPipes pipes;
+
 	StartParams params;
+
+	string command;
 	bool isRunning = true;
+	bool needsClose = false;
+	AppLog log;
+	int status;
 }
 
 immutable buildFolder = "builds/default";
@@ -82,30 +94,37 @@ struct Launcher
 
 	CompileJob*[] compileJobs;
 	RunJob*[] runJobs;
+	size_t numRunningJobs;
 	AppLog appLog;
 
 	void compile(CompileParams cParams = CompileParams.init,
 		StartParams sParams = StartParams.init)
 	{
+		++numRunningJobs;
+		//infof("+1 %s", numRunningJobs);
 		immutable arch = cParams.arch64 ? `--arch=x86_64`   : `--arch=x86`;
 		immutable conf = cParams.appType == AppType.client ? `--config=client` : `--config=server`;
 		immutable deps = cParams.nodeps ? `--nodeps`        : ``;
 		//immutable cmnd = cParams.startAfterCompile ? "run" : "build";
-		immutable command = format(`dub build -q %s %s %s`, arch, conf, deps);
+		immutable command = format("dub build -q %s %s %s\0", arch, conf, deps);
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null);
 		sParams.appType = cParams.appType;
-		compileJobs ~= new CompileJob(pipes, cParams, sParams);
+		compileJobs ~= new CompileJob(pipes, cParams, sParams, command);
 	}
 
-	void startApp(StartParams params = StartParams.init)
+	void startApp(StartParams params = StartParams.init, AppLog log = AppLog.init)
 	{
+		++numRunningJobs;
+		//infof("+2 %s", numRunningJobs);
 		string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
-		appLog.addLog(format("  starting with pack %s\n", params.pluginPack));
 		//info(format("  starting with pack %s", params.pluginPack));
-		string command = format("%s --pack=%s", conf, params.pluginPack);
+		string command = format("%s --pack=%s\0", conf, params.pluginPack);
 		infof(command);
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, buildFolder);
-		runJobs ~= new RunJob(pipes, params);
+		auto job = new RunJob(pipes, params, command);
+		job.log = log;
+		job.log.addLog(format("starting with pack %s\n", params.pluginPack));
+		runJobs ~= job;
 	}
 
 	size_t stopProcesses()
@@ -120,49 +139,53 @@ struct Launcher
 
 	bool anyProcessesRunning() @property
 	{
-		return (runJobs.length + compileJobs.length) > 0;
+		return numRunningJobs > 0;
 	}
 
 	void update()
 	{
-		foreach(process; compileJobs)
-			logPipes(only(process.pipes.stdout, process.pipes.stderr));
-		foreach(process; runJobs)
-			logPipes(only(process.pipes.stdout, process.pipes.stderr));
+		foreach(process; compileJobs) logPipes(process);
+		foreach(process; runJobs) logPipes(process);
 
 		foreach(process; runJobs)
 		{
 			if (process.pipes.pid.tryWait.terminated) {
+				--numRunningJobs;
+				//infof("-1 %s", numRunningJobs);
 				process.isRunning = false;
+				process.needsClose = true;
 			}
 		}
 
 		foreach(process; compileJobs)
 		{
 			auto res = process.pipes.pid.tryWait();
-			if (res.terminated) {
+			if (res.terminated && process.isRunning) {
 				process.isRunning = false;
+				--numRunningJobs;
+				//infof("-2 %s %s", numRunningJobs, process.command);
+				process.status = res.status;
 
 				if (process.cParams.startAfterCompile && res.status == 0) {
-					appLog.addLog("build success\n");
-					startApp(process.sParams);
+					startApp(process.sParams, process.log);
+					process.needsClose = true;
 				}
 			}
 		}
 
-		runJobs = remove!(a => !a.isRunning)(runJobs);
-		compileJobs = remove!(a => !a.isRunning)(compileJobs);
+		runJobs = remove!(a => a.needsClose)(runJobs);
+		compileJobs = remove!(a => a.needsClose)(compileJobs);
 	}
 
-	void logPipes(P)(P pipes)
+	void logPipes(J)(J job)
 	{
-		foreach(ref pipe; pipes)
+		foreach(ref pipe; only(job.pipes.stdout, job.pipes.stderr))
 		if (pipe.size > 0)
 		{
 			char[1024] buf;
 			size_t charsToRead = min(pipe.size, buf.length);
 			char[] data = pipe.rawRead(buf[0..charsToRead]);
-			appLog.addLog(data);
+			job.log.addLog(data);
 		}
 	}
 

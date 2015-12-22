@@ -25,7 +25,7 @@ string getLibName(string libName)
 		static assert(false, "lib loading is not implemented for this platform");
 }
 
-GLFWwindow* startGlfw(string windowTitle)
+GLFWwindow* startGlfw(string windowTitle, int w, int h)
 {
 	DerelictGL3.load();
 	DerelictGLFW3.load(getLibName("glfw3"));
@@ -36,11 +36,11 @@ GLFWwindow* startGlfw(string windowTitle)
 	if (!glfwInit())
 		return null;
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, true);
     glfwWindowHint(GLFW_VISIBLE, false);
-	auto window = glfwCreateWindow(1280, 720, windowTitle.ptr, null, null);
+	auto window = glfwCreateWindow(w, h, windowTitle.ptr, null, null);
 	glfwMakeContextCurrent(window);
 	glfwInit();
 

@@ -13,7 +13,7 @@ import std.format;
 import std.process;
 import std.range;
 import std.stdio;
-import std.string;
+import std.string : format;
 
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
@@ -80,9 +80,10 @@ struct LauncherGui
 		sharedLog = logger;
 
 		playMenu.init(&launcher);
+		codeMenu.init(&launcher);
 		refresh();
 
-		window = startGlfw("Voxelman launcher");
+		window = startGlfw("Voxelman launcher", 800, 600);
 
 		if (window is null)
 			isRunning = false;
@@ -118,6 +119,7 @@ struct LauncherGui
 		launcher.readPluginPacks();
 		plugins.items = &launcher.plugins;
 		playMenu.refresh();
+		codeMenu.refresh();
 	}
 
 	void update()
@@ -148,12 +150,20 @@ struct LauncherGui
 
 	void doGui()
 	{
-		// Menu
-		igShowTestWindow(null);
-		igSetNextWindowSize(ImVec2(500, 440), ImGuiSetCond_FirstUseEver);
+		//igPushStyleVar(ImGuiStyleVar_FrameRounding, 0f);
+		//igGetStyle().FrameRounding = 0.0f;
+		igSetNextWindowPos(ImVec2(0,0));
+		igSetNextWindowSize(igGetIO().DisplaySize);
+		if (igBegin("Main", null, mainWindowFlags))
+		{
+			drawMainMenu();
+			igSameLine();
+			drawMenuContent();
 
-		logView();
-		mainView();
+			igEnd();
+		}
+		//igPopStyleVar();
+		//igShowTestWindow(null);
 	}
 
 	enum SelectedMenu
@@ -165,23 +175,13 @@ struct LauncherGui
 
 	SelectedMenu selectedMenu;
 	PlayMenu playMenu;
-
-	void mainView()
-	{
-		static opened = true;
-		if (igBegin("Main view", &opened))
-		{
-			drawMainMenu();
-			igSameLine();
-			drawMenuContent();
-
-			igEnd();
-		}
-	}
+	CodeMenu codeMenu;
 
 	void drawMainMenu()
 	{
 		igBeginGroup();
+		//auto textPtrs = makeFormattedText("%s %s", igGetStyle().FrameRounding, igGetStyle());
+		//igTextUnformatted(textPtrs.start, textPtrs.end);
 		if (igButton("Play"))
 			selectedMenu = SelectedMenu.play;
 		if (igButton("Code"))
@@ -198,18 +198,16 @@ struct LauncherGui
 
 	void drawMenuContent()
 	{
-		if (selectedMenu == SelectedMenu.play) {
-			playMenu.draw();
-		}
-	}
-
-	void logView()
-	{
-		static opened = true;
-		if (igBegin("Log", &opened))
+		final switch(selectedMenu) with(SelectedMenu)
 		{
-			launcher.appLog.draw();
-			igEnd();
+			case play:
+				playMenu.draw();
+				break;
+			case code:
+				codeMenu.draw();
+				break;
+			case conf:
+				break;
 		}
 	}
 }
@@ -315,6 +313,58 @@ struct PlayMenu
 	}
 }
 
+struct CodeMenu
+{
+	Launcher* launcher;
+	ItemList!(PluginPack*) pluginPacks;
+
+	void init(Launcher* launcher)
+	{
+		this.launcher = launcher;
+	}
+
+	void refresh()
+	{
+		pluginPacks.items = &launcher.pluginPacks;
+	}
+
+	bool getItem(int idx, const(char)** out_text)
+	{
+		*out_text = (*pluginPacks.items)[idx].id.ptr;
+		return true;
+	}
+
+	void draw()
+	{
+		igBeginGroup();
+		igCombo3(
+			cast(const(char*))"Pack".ptr,
+			cast(int*)&pluginPacks.currentItem,
+			&getter, &this,
+			cast(int)pluginPacks.items.length, -1);
+
+		foreach(process; launcher.compileJobs) drawJobLog(process);
+		foreach(process; launcher.runJobs) drawJobLog(process);
+
+		igEndGroup();
+	}
+
+	static extern (C)
+	bool getter(void* codeMenu, int idx, const(char)** out_text)
+	{
+		auto cm = cast(CodeMenu*)codeMenu;
+		return cm.getItem(idx, out_text);
+	}
+}
+
+void drawJobLog(J)(J job)
+{
+	igPushIdPtr(job);
+	if (igCollapsingHeader(job.command.ptr, null, true, true))
+		job.log.draw();
+	igPopId();
+}
+
 struct AppLog
 {
 	import std.array : Appender;
@@ -389,4 +439,30 @@ void setStyle()
 	style.Colors[ImGuiCol_TooltipBg]             = ImVec4(0.86f, 0.86f, 0.86f, 0.90f);
 	style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	style.WindowFillAlphaDefault = 1.0f;
+}
+
+enum mainWindowFlags = ImGuiWindowFlags_NoTitleBar |
+	ImGuiWindowFlags_NoResize |
+	ImGuiWindowFlags_NoMove |
+	ImGuiWindowFlags_NoCollapse |
+	ImGuiWindowFlags_NoSavedSettings;
+	//ImGuiWindowFlags_MenuBar;
+
+char[64] buf;
+Appender!(char[]) app;
+
+static this()
+{
+	app = appender(buf[]);
+}
+
+static struct TextPtrs {
+	char* start;
+	char* end;
+}
+
+TextPtrs makeFormattedText(Args ...)(string fmt, Args args) {
+	app.clear();
+	formattedWrite(app, fmt, args);
+	return TextPtrs(app.data.ptr, app.data.ptr + app.data.length);
 }
