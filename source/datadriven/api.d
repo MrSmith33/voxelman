@@ -51,6 +51,9 @@ auto componentQuery(ComponentStorages...)(ComponentStorages storages)
 	return ComponentQuery!(ComponentStorages)(storages);
 }
 
+// Can be looped by Row.
+// struct Row {EntityId eid; Comp1* comp1; ... CompN* compN;}
+// Returned rows are for entities that have all the components.
 struct ComponentQuery(ComponentStorages...)
 {
 	//pragma(msg, genComponentStorages!(ComponentStorages)());
@@ -156,6 +159,8 @@ string genComponentStorageName(ComponentStorage)()
 {
 	return "_" ~ genComponentName!ComponentStorage ~ "Storage";
 }
+
+alias componentType(ComponentStorage) = TemplateArgsOf!ComponentStorage[0];
 
 string genComponentName(ComponentStorage)()
 {

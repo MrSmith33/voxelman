@@ -8,7 +8,7 @@ struct HashmapComponentStorage(ComponentType)
 
 	void add(EntityId eid, ComponentType component)
 	{
-		assert(eid !in components);
+		//assert(eid !in components);
 		components[eid] = component;
 	}
 

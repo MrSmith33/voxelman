@@ -344,7 +344,7 @@ struct CodeMenu
 		igBeginGroup();
 		igPushItemWidth(200);
 		igCombo3(
-			cast(const(char*))"Pack".ptr,
+			"Pack",
 			cast(int*)&pluginPacks.currentItem,
 			&getter, &this,
 			cast(int)pluginPacks.items.length, -1);
@@ -372,7 +372,9 @@ void drawJobLog(J)(J job)
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
 		if (igButton("Clear")) job.log.clear();
+        igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
 		job.log.draw();
+        igEndChild();
 	}
 	igPopId();
 }
@@ -411,7 +413,6 @@ struct AppLog
         //igSetNextWindowSize(ImVec2(500,400), ImGuiSetCond_FirstUseEver);
         //if (igButton("Clear")) clear();
         //igSeparator();
-        igBeginChild("scrolling", ImVec2(0,0), false, ImGuiWindowFlags_HorizontalScrollbar);
 	    char* lineStart = lines.data.ptr;
 	    foreach(lineSize; lineSizes.data)
 	    {
@@ -424,7 +425,6 @@ struct AppLog
         if (scrollToBottom)
             igSetScrollHere(1.0f);
         scrollToBottom = false;
-        igEndChild();
     }
 }
 

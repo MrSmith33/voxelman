@@ -149,11 +149,16 @@ struct Launcher
 
 		foreach(process; runJobs)
 		{
-			if (process.pipes.pid.tryWait.terminated) {
-				--numRunningJobs;
+			auto res = process.pipes.pid.tryWait();
+			if (res.terminated && process.isRunning) {
 				//infof("-1 %s", numRunningJobs);
+				--numRunningJobs;
 				process.isRunning = false;
-				process.needsClose = true;
+				process.status = res.status;
+
+				if (res.status == 0) {
+					process.needsClose = true;
+				}
 			}
 		}
 
@@ -161,13 +166,13 @@ struct Launcher
 		{
 			auto res = process.pipes.pid.tryWait();
 			if (res.terminated && process.isRunning) {
-				process.isRunning = false;
-				--numRunningJobs;
 				//infof("-2 %s %s", numRunningJobs, process.command);
+				--numRunningJobs;
+				process.isRunning = false;
 				process.status = res.status;
 
 				if (process.cParams.startAfterCompile && res.status == 0) {
-					startApp(process.sParams, process.log);
+					startApp(process.sParams);
 					process.needsClose = true;
 				}
 			}

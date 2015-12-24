@@ -9,7 +9,7 @@ module voxelman.net.plugin;
 import derelict.enet.enet;
 
 import pluginlib;
-import netlib;
+public import netlib;
 
 import voxelman.net.events;
 import voxelman.eventdispatcher.plugin;

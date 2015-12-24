@@ -126,7 +126,7 @@ abstract class Connection
 
 	void registerPacketHandler(P)(PacketHandler handler)
 	{
-		assert(typeid(P) in packetMap, "Packet was not registered");
+		assert(typeid(P) in packetMap, format("Packet '%s' was not registered", typeid(P)));
 		packetMap[typeid(P)].handler = handler;
 	}
 
@@ -211,18 +211,19 @@ abstract class Connection
 	{
 		ubyte[] packetData = event.packet.data[0..event.packet.dataLength];
 		auto fullPacketData = packetData;
+		size_t packetId;
 
 		try
 		{
 			// decodes and pops ulong from range.
-			size_t packetId = cast(size_t)decodeCborSingle!ulong(packetData);
+			packetId = cast(size_t)decodeCborSingle!ulong(packetData);
 
 			handlePacket(packetId, packetData, cast(ClientId)event.peer.data);
 		}
 		catch(CborException e)
 		{
 			error(e.to!string);
-			errorf("packet:%s data %(%x%)", event.packet.dataLength, fullPacketData);
+			errorf("packet:%s length:%s data:%(%x%)", packetName(packetId), event.packet.dataLength, fullPacketData);
 		}
 	}
 
