@@ -88,7 +88,6 @@ class PluginManager : IPluginManager, IResourceManagerRegistry
 		}
 
 		// Load plugins
-		infof("Loading %s plugins", plugins.length);
 		foreach(IPlugin p; plugins)
 		{
 			p.preInit();
@@ -98,10 +97,15 @@ class PluginManager : IPluginManager, IResourceManagerRegistry
 			p.init(this);
 		}
 
-		size_t i = 1;
 		foreach(IPlugin p; plugins)
 		{
 			p.postInit();
+		}
+
+		size_t i = 1;
+		infof("Loaded %s plugins", plugins.length);
+		foreach(IPlugin p; plugins)
+		{
 			infof("Loaded #%s %s %s", i, p.id, p.semver);
 			++i;
 		}

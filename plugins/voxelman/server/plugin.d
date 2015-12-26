@@ -177,9 +177,7 @@ public:
 
 		static import voxelman.core.packets;
 		static import voxelman.net.packets;
-		voxelman.net.packets.registerPackets(connection);
-		voxelman.core.packets.registerPackets(connection);
-		//connection.printPacketMap();
+		connection.printPacketMap();
 
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
@@ -303,6 +301,12 @@ public:
 		}
 
 		return names;
+	}
+
+	auto loggerInClients()
+	{
+		import std.algorithm : filter, map;
+		return clients.byKeyValue.filter!(a=>a.value.isLoggedIn).map!(a=>a.value.id);
 	}
 
 	void sendChanges(BlockChange[][ChunkWorldPos] changes)

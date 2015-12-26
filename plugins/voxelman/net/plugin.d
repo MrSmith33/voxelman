@@ -31,6 +31,8 @@ mixin template NetBase()
 
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;
+		voxelman.net.packets.registerPackets(connection);
+		voxelman.core.packets.registerPackets(connection);
 	}
 
 	override void init(IPluginManager pluginman) {

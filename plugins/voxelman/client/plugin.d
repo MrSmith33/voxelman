@@ -170,9 +170,7 @@ public:
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 
-		//connection.printPacketMap();
-		voxelman.net.packets.registerPackets(connection);
-		voxelman.core.packets.registerPackets(connection);
+		connection.printPacketMap();
 
 		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
 		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
@@ -583,7 +581,7 @@ public:
 		auto packetMap = unpackPacket!PacketMapPacket(packetData);
 
 		connection.setPacketMap(packetMap.packetNames);
-		//connection.printPacketMap();
+		connection.printPacketMap();
 
 		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
 		connection.send(LoginPacket(nicknameOpt.get!string));
