@@ -41,44 +41,33 @@ enum AppType
 	server
 }
 
-struct CompileParams
+enum JobType
 {
+	compile,
+	run
+}
+
+struct JobParams
+{
+	string pluginPack = "default";
 	AppType appType = AppType.client;
 	bool startAfterCompile = true;
 	bool arch64 = true;
 	bool nodeps = true;
+	bool force = false;
+	JobType jobType;
 }
 
-struct StartParams
+struct Job
 {
-	string pluginPack = "default";
-	AppType appType = AppType.client;
-}
-
-struct CompileJob
-{
+	JobParams params;
+	string command;
+	AppLog log;
 	ProcessPipes pipes;
 
-	CompileParams cParams;
-	StartParams sParams;
-
-	string command;
-	bool isRunning = true;
-	bool needsClose = false;
-	AppLog log;
-	int status;
-}
-
-struct RunJob
-{
-	ProcessPipes pipes;
-
-	StartParams params;
-
-	string command;
-	bool isRunning = true;
-	bool needsClose = false;
-	AppLog log;
+	bool isRunning;
+	bool needsClose;
+	bool needsRestart;
 	int status;
 }
 
@@ -92,49 +81,61 @@ struct Launcher
 	PluginPack*[] pluginPacks;
 	PluginPack*[string] pluginsPacksById;
 
-	CompileJob*[] compileJobs;
-	RunJob*[] runJobs;
+	Job*[] jobs;
 	size_t numRunningJobs;
 	AppLog appLog;
 
-	void compile(CompileParams cParams = CompileParams.init,
-		StartParams sParams = StartParams.init)
+	void startJob(JobParams params = JobParams.init)
 	{
-		++numRunningJobs;
-		//infof("+1 %s", numRunningJobs);
-		immutable arch = cParams.arch64 ? `--arch=x86_64`   : `--arch=x86`;
-		immutable conf = cParams.appType == AppType.client ? `--config=client` : `--config=server`;
-		immutable deps = cParams.nodeps ? `--nodeps`        : ``;
-		//immutable cmnd = cParams.startAfterCompile ? "run" : "build";
-		immutable command = format("dub build -q %s %s %s\0", arch, conf, deps);
-		ProcessPipes pipes = pipeShell(command, Redirect.all, null);
-		sParams.appType = cParams.appType;
-		compileJobs ~= new CompileJob(pipes, cParams, sParams, command);
+		auto job = new Job(params);
+		restartJob(job);
+		jobs ~= job;
 	}
 
-	void startApp(StartParams params = StartParams.init, AppLog log = AppLog.init)
+	void restartJob(Job* job)
 	{
+		assert(!job.isRunning);
 		++numRunningJobs;
-		//infof("+2 %s", numRunningJobs);
+
+		string command;
+		string workDir;
+		if (job.params.jobType == JobType.compile) {
+			command = makeCompileCommand(job.params);
+			workDir = "";
+		}
+		else if (job.params.jobType == JobType.run) {
+			command = makeRunCommand(job.params);
+			workDir = buildFolder;
+		}
+
+		//infof("%s", command);
+
+		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
+
+		(*job) = Job(job.params, command, job.log, pipes);
+		job.isRunning = true;
+	}
+
+	string makeCompileCommand(JobParams params)
+	{
+		immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+		immutable conf = params.appType == AppType.client ? `--config=client` : `--config=server`;
+		immutable deps = params.nodeps ? `--nodeps` : ``;
+		immutable doForce = params.force ? `--force` : ``;
+		return format("dub build -q %s %s %s %s\0", arch, conf, deps, doForce);
+	}
+
+	string makeRunCommand(JobParams params)
+	{
 		string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
-		//info(format("  starting with pack %s", params.pluginPack));
-		string command = format("%s --pack=%s\0", conf, params.pluginPack);
-		infof(command);
-		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, buildFolder);
-		auto job = new RunJob(pipes, params, command);
-		job.log = log;
-		job.log.addLog(format("starting with pack %s\n", params.pluginPack));
-		runJobs ~= job;
+		return format("%s --pack=%s\0", conf, params.pluginPack);
 	}
 
 	size_t stopProcesses()
 	{
-		foreach(process; runJobs)
-			process.pipes.pid.kill;
-		foreach(process; compileJobs)
-			process.pipes.pid.kill;
-		size_t numProcesses = runJobs.length + compileJobs.length;
-		return numProcesses;
+		foreach(job; jobs)
+			job.pipes.pid.kill;
+		return jobs.length;
 	}
 
 	bool anyProcessesRunning() @property
@@ -144,53 +145,77 @@ struct Launcher
 
 	void update()
 	{
-		foreach(process; compileJobs) logPipes(process);
-		foreach(process; runJobs) logPipes(process);
+		foreach(job; jobs) logPipes(job);
 
-		foreach(process; runJobs)
+		foreach(job; jobs)
 		{
-			auto res = process.pipes.pid.tryWait();
-			if (res.terminated && process.isRunning) {
-				//infof("-1 %s", numRunningJobs);
-				--numRunningJobs;
-				process.isRunning = false;
-				process.status = res.status;
+			if (job.isRunning)
+			{
+				auto res = job.pipes.pid.tryWait();
+				if (res.terminated)
+				{
+					--numRunningJobs;
+					job.isRunning = false;
+					job.status = res.status;
 
-				if (res.status == 0) {
-					process.needsClose = true;
+					if (job.status == 0)
+					{
+						if (job.params.jobType == JobType.compile)
+						{
+							if (job.params.startAfterCompile)
+							{
+								job.params.jobType = JobType.run;
+								job.needsClose = false;
+								job.log.clear();
+								restartJob(job);
+							}
+							else
+								job.needsClose = true;
+						}
+						else if (job.params.jobType == JobType.run)
+						{
+							if (job.status == 0)
+								job.needsClose = true;
+						}
+					}
+					else
+						job.needsClose = false;
 				}
+			}
+
+			if (!job.isRunning && job.needsRestart)
+			{
+				job.params.jobType = JobType.compile;
+				job.log.clear();
+				restartJob(job);
 			}
 		}
 
-		foreach(process; compileJobs)
-		{
-			auto res = process.pipes.pid.tryWait();
-			if (res.terminated && process.isRunning) {
-				//infof("-2 %s %s", numRunningJobs, process.command);
-				--numRunningJobs;
-				process.isRunning = false;
-				process.status = res.status;
-
-				if (process.cParams.startAfterCompile && res.status == 0) {
-					startApp(process.sParams);
-					process.needsClose = true;
-				}
-			}
-		}
-
-		runJobs = remove!(a => a.needsClose && !a.isRunning)(runJobs);
-		compileJobs = remove!(a => a.needsClose && !a.isRunning)(compileJobs);
+		jobs = remove!(a => a.needsClose && !a.isRunning)(jobs);
 	}
 
 	void logPipes(J)(J job)
 	{
-		foreach(ref pipe; only(job.pipes.stdout, job.pipes.stderr))
-		if (pipe.size > 0)
+		try
 		{
-			char[1024] buf;
-			size_t charsToRead = min(pipe.size, buf.length);
-			char[] data = pipe.rawRead(buf[0..charsToRead]);
-			job.log.addLog(data);
+			foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
+			{
+				auto size = pipe.size;
+				if (size > 0)
+				{
+					char[1024] buf;
+					size_t charsToRead = min(pipe.size, buf.length);
+					char[] data = pipe.rawRead(buf[0..charsToRead]);
+					job.log.addLog(data);
+				}
+			}
+		}
+		catch(ErrnoException e)
+		{	// Ignore e
+			// It happens only when both launcher and child process is 32bit
+			// and child crashes with access violation (in opengl call for example).
+			// exception std.exception.ErrnoException@std\stdio.d(920):
+			// Could not seek in file `HANDLE(32C)' (Invalid argument)
 		}
 	}
 
@@ -245,26 +270,9 @@ struct Launcher
 				string fileData = cast(string)read(entry.name);
 				auto pack = readPluginPack(fileData);
 				pack.filename = entry.name.absolutePath.buildNormalizedPath;
-				//infof(`"%s": "%s", "%s"`, pack.id, pack.semver, pack.filename);
-				//foreach(plug; pack.plugins)
-				//	infof(`	"%s": "%s"`, plug.id, plug.semver);
 				pluginPacks ~= pack;
 				pluginsPacksById[pack.id] = pack;
 			}
-		}
-	}
-
-	void addTestPlugins()
-	{
-		import std.string : format;
-
-		foreach(i; 0..100)
-		{
-			auto pinfo = new PluginInfo;
-			pinfo.id = format("testplugin.%s", i);
-			pinfo.semver = format("0.%s.0", i);
-			plugins ~= pinfo;
-			pluginsById[pinfo.id] = pinfo;
 		}
 	}
 }
@@ -280,7 +288,6 @@ PluginInfo* readPluginInfo(string fileData)
 
 	auto semverCapture = matchFirst(fileData, ctRegex!(`semver\s*=\s*"(?P<semver>[^"]*)"`, "s"));
 	pinfo.semver = semverCapture["semver"].toCString;
-	//
 
 	return pinfo;
 }
@@ -311,7 +318,6 @@ PluginPack* readPluginPack(string fileData)
 		auto pinfo = new PluginInfo;
 		pinfo.id = pluginInfo["id"].toCString;
 		pinfo.semver = pluginInfo["semver"].toCString;
-		//infof("line %s %s %s", line, pinfo.id, pinfo.semver);
 		pack.plugins ~= pinfo;
 	}
 

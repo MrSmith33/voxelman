@@ -18,7 +18,8 @@ import std.string : format;
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
 import derelict.opengl3.gl3;
-import imgui_glfw;
+import voxelman.imgui_glfw;
+import voxelman.utils.libloader;
 
 import launcher;
 
@@ -54,6 +55,7 @@ struct LauncherGui
 	float[3] clear_color = [0.3f, 0.4f, 0.6f];
 	bool isRunning = true;
 	GLFWwindow* window;
+	ImguiState igState;
 
 	Launcher launcher;
 
@@ -84,6 +86,9 @@ struct LauncherGui
 		refresh();
 
 		window = startGlfw("Voxelman launcher", 800, 600);
+		igState.init(window);
+
+		selectedMenu = SelectedMenu.code;
 
 		if (window is null)
 			isRunning = false;
@@ -93,6 +98,10 @@ struct LauncherGui
 
 	void run()
 	{
+		DerelictGL3.load();
+		DerelictGLFW3.load(getLibName("", "glfw3"));
+		DerelictImgui.load(getLibName("", "cimgui"));
+
 		init();
 
 		if (isRunning)
@@ -126,7 +135,7 @@ struct LauncherGui
 	{
 		launcher.update();
 		glfwPollEvents();
-		igImplGlfwGL3_NewFrame();
+		igState.newFrame();
 		doGui();
 		import core.thread;
 		Thread.sleep(15.msecs);
@@ -138,13 +147,13 @@ struct LauncherGui
 		glViewport(0, 0, cast(int)io.DisplaySize.x, cast(int)io.DisplaySize.y);
 		glClearColor(clear_color[0], clear_color[1], clear_color[2], 0);
 		glClear(GL_COLOR_BUFFER_BIT);
-		igRender();
+		igState.render();
 		glfwSwapBuffers(window);
 	}
 
 	void close()
 	{
-		igImplGlfwGL3_Shutdown();
+		igState.shutdown();
 		glfwTerminate();
 	}
 
@@ -311,11 +320,23 @@ struct PlayMenu
 
 void startButtons(Launcher* launcher, string pack)
 {
-	if (igButton("Start client"))
-		launcher.compile(CompileParams(AppType.client), StartParams(pack));
+	static bool nodeps = true;
+	igCheckbox("nodeps", &nodeps); igSameLine();
+
+	static bool force = false;
+	igCheckbox("force", &force); igSameLine();
+
+	static bool x64 = true;
+	igCheckbox("x64", &x64); igSameLine();
+
+	static bool start = true;
+	igCheckbox("start", &start); igSameLine();
+
+	if (igButton("Client"))
+		launcher.startJob(JobParams(pack, AppType.client, start, x64, nodeps, force, JobType.compile));
 	igSameLine();
-	if (igButton("Start server"))
-		launcher.compile(CompileParams(AppType.server), StartParams(pack));
+	if (igButton("Server"))
+		launcher.startJob(JobParams(pack, AppType.server, start, x64, nodeps, force, JobType.compile));
 }
 
 struct CodeMenu
@@ -351,8 +372,7 @@ struct CodeMenu
 		igSameLine();
 		startButtons(launcher, pluginPacks.selected.id);
 
-		foreach(process; launcher.compileJobs) drawJobLog(process);
-		foreach(process; launcher.runJobs) drawJobLog(process);
+		foreach(job; launcher.jobs) drawJobLog(job);
 
 		igEndGroup();
 	}
@@ -368,10 +388,13 @@ struct CodeMenu
 void drawJobLog(J)(J job)
 {
 	igPushIdPtr(job);
+	assert(job.command.ptr);
 	if (igCollapsingHeader(job.command.ptr, null, true, true)) {
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
 		if (igButton("Clear")) job.log.clear();
+		igSameLine();
+		if (igButton("Restart")) job.needsRestart = true;
         igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
 		job.log.draw();
         igEndChild();

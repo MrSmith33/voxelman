@@ -6,16 +6,11 @@
 	"license" : "BSL-1.0",
 
 	"dependencies" : {
-		"derelict-glfw3": "~>1.1.0",
-		"derelict-gl3": "~>1.0.12",
-		"dlib": "==0.6.2"
+		"voxelman" : {"path" : "../../"}
 	},
 
 	"targetPath" : "../../",
 	"workingDirectory" : "../../",
 
-	"sourcePaths" : [ "source" ],
-
-	"copyFiles-windows-x86" : ["lib/32/*.dll"],
-	"copyFiles-windows-x86_64" : ["lib/64/*.dll"]
+	"sourcePaths" : [ "source" ]
 }
