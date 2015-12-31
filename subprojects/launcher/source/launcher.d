@@ -13,8 +13,8 @@ import std.algorithm;
 import std.stdio;
 import std.array;
 import std.range;
-//import derelict.imgui.imgui;
 
+import voxelman.utils.linebuffer;
 import gui;
 
 struct PluginInfo
@@ -62,7 +62,7 @@ struct Job
 {
 	JobParams params;
 	string command;
-	AppLog log;
+	LineBuffer log;
 	ProcessPipes pipes;
 
 	bool isRunning;
@@ -83,7 +83,7 @@ struct Launcher
 
 	Job*[] jobs;
 	size_t numRunningJobs;
-	AppLog appLog;
+	LineBuffer appLog;
 
 	void startJob(JobParams params = JobParams.init)
 	{
@@ -165,21 +165,11 @@ struct Launcher
 							if (job.params.startAfterCompile)
 							{
 								job.params.jobType = JobType.run;
-								job.needsClose = false;
 								job.log.clear();
 								restartJob(job);
 							}
-							else
-								job.needsClose = true;
-						}
-						else if (job.params.jobType == JobType.run)
-						{
-							if (job.status == 0)
-								job.needsClose = true;
 						}
 					}
-					else
-						job.needsClose = false;
 				}
 			}
 
@@ -189,13 +179,17 @@ struct Launcher
 				job.log.clear();
 				restartJob(job);
 			}
+
+			job.needsRestart = false;
 		}
 
 		jobs = remove!(a => a.needsClose && !a.isRunning)(jobs);
+		jobs.each!(j => j.needsClose = false);
 	}
 
 	void logPipes(J)(J job)
 	{
+		import std.exception : ErrnoException;
 		try
 		{
 			foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
@@ -326,9 +320,9 @@ PluginPack* readPluginPack(string fileData)
 
 string toCString(in const(char)[] s)
 {
-    import std.exception : assumeUnique;
-    auto copy = new char[s.length + 1];
-    copy[0..s.length] = s[];
-    copy[s.length] = 0;
-    return assumeUnique(copy[0..s.length]);
+	import std.exception : assumeUnique;
+	auto copy = new char[s.length + 1];
+	copy[0..s.length] = s[];
+	copy[s.length] = 0;
+	return assumeUnique(copy[0..s.length]);
 }

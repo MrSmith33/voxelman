@@ -51,6 +51,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyPressed(uint keyCode)
 	{
+		if (guiPlugin.igState.keyboardCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -61,6 +62,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyReleased(uint keyCode)
 	{
+		if (guiPlugin.igState.keyboardCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -71,6 +73,7 @@ final class InputPlugin : IPlugin
 
 	void onMousePressed(uint keyCode)
 	{
+		if (guiPlugin.igState.mouseCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -81,6 +84,7 @@ final class InputPlugin : IPlugin
 
 	void onMouseReleased(uint keyCode)
 	{
+		if (guiPlugin.igState.mouseCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -91,6 +95,7 @@ final class InputPlugin : IPlugin
 
 	bool isKeyPressed(string keyName)
 	{
+		if (guiPlugin.igState.keyboardCaptured) return false;
 		if (auto binding = keyName in keyBindingsMan.keyBindingsByName)
 		{
 			KeyBinding* b = *binding;

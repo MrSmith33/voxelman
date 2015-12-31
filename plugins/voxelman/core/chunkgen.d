@@ -13,8 +13,8 @@ import std.conv : to;
 import core.exception : Throwable;
 
 import dlib.math.vector : ivec3;
-import anchovy.utils.noise.simplex;
 
+import anchovy.simplex;
 import voxelman.core.block;
 import voxelman.core.config;
 import voxelman.storage.chunk;

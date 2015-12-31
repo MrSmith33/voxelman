@@ -8,7 +8,7 @@ module clientmain;
 import std.file : mkdirRecurse;
 
 import voxelman.utils.log;
-import pluginlib.pluginregistry;
+import pluginlib;
 
 void main(string[] args)
 {

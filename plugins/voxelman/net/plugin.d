@@ -27,7 +27,7 @@ mixin template NetBase()
 
 	override void preInit() {
 		import voxelman.utils.libloader;
-		loadEnet([getLibName("enet")]);
+		loadEnet([getLibName(BUILD_TO_ROOT_PATH, "enet")]);
 
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;

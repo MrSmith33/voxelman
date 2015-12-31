@@ -7,17 +7,14 @@
 
 	"dependencies" : {
 		"cbor-d" : ">=0.4.1",
-		"anchovy" : "==0.8.3",
+		"dlib" : "==0.7.1",
 		"derelict-enet": "==2.0.0",
-		"sdlang-d" : "==0.9.3",
-		"tharsis-prof" : "==0.5.4"
+		"derelict-glfw3" : "==1.1.0",
+		"derelict-gl3" : "==1.0.17"
 	},
 
 	"targetPath" : "builds/default",
 	"workingDirectory" : "builds/default",
-
-	"sourcePaths" : [ "source", "plugins" ],
-	"importPaths" : [ "source", "plugins" ],
 
 	"buildTypes": {
 		"debug": {
@@ -32,7 +29,13 @@
 			"targetType" : "executable",
 			"excludedSourceFiles" : ["source/servermain.d"],
 			"mainSourceFile" : "source/clientmain.d",
-			"versions" : ["SIDE_CLIENT"]
+			"versions" : ["SIDE_CLIENT"],
+			"dependencies" : {
+				"sdlang-d" : "==0.9.3",
+				"tharsis-prof" : "==0.5.4"
+			},
+			"sourcePaths" : [ "source", "plugins" ],
+			"importPaths" : [ "source", "plugins" ]
 		},
 		{
 			"name": "server",
@@ -40,13 +43,21 @@
 			"targetType": "executable",
 			"excludedSourceFiles" : ["source/clientmain.d"],
 			"mainSourceFile" : "source/servermain.d",
-			"versions" : ["SIDE_SERVER"]
+			"versions" : ["SIDE_SERVER"],
+			"dependencies" : {
+				"sdlang-d" : "==0.9.3",
+				"tharsis-prof" : "==0.5.4"
+			},
+			"sourcePaths" : [ "source", "plugins" ],
+			"importPaths" : [ "source", "plugins" ]
 		},
 		{
 			"name": "lib",
 			"targetType": "library",
 			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
-			"targetPath" : "./"
+			"targetPath" : "./",
+			"sourcePaths" : [ "source" ],
+			"importPaths" : [ "source" ]
 		}
 	]
 }

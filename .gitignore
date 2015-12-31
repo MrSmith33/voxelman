@@ -8,10 +8,8 @@
 *.png
 *.zip
 .DS_Store
-deps/
 bin/
 saves/
-stuff/
 .dub/
 *.sublime*
 dub.selections.json

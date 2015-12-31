@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.core.events;
 
-import anchovy.graphics.interfaces.irenderer;
+import anchovy.irenderer;
 import dlib.math.vector;
 import tharsis.prof : Profiler;
 

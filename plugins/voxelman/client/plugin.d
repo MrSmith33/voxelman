@@ -10,12 +10,12 @@ import core.time;
 import std.datetime : StopWatch;
 import std.experimental.logger;
 
-import anchovy.gui;
-import anchovy.core.interfaces.iwindow;
 import dlib.math.vector;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
+import derelict.opengl3.gl3;
+import derelict.imgui.imgui;
 import tharsis.prof;
 
 import netlib;
@@ -42,6 +42,7 @@ import voxelman.storage.utils;
 import voxelman.storage.worldaccess;
 import voxelman.utils.math;
 import voxelman.utils.trace : traceRay;
+import voxelman.utils.textformatter;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
@@ -90,10 +91,8 @@ public:
 	WorldAccess worldAccess;
 
 	// Debug
-	Widget debugInfo;
 	Profiler profiler;
 	DespikerSender profilerSender;
-	bool isProfilerRunning;
 
 	// Client data
 	bool isRunning = false;
@@ -194,60 +193,46 @@ public:
 			enet_host_compress_with_range_coder(connection.host);
 		connect();
 
-		debugInfo = guiPlugin.context.getWidgetById("debugInfo");
-		foreach(i; 0..12) guiPlugin.context.createWidget("label", debugInfo);
-		guiPlugin.context.getWidgetById("stopServer").addEventHandler(&onStopServer);
-		guiPlugin.context.getWidgetById("toggleProfiler").addEventHandler(
-			(Widget w,PointerClickEvent e){toggleProfiler(); return true;}
-		);
-		guiPlugin.context.getWidgetById("connect").addEventHandler(
-			(Widget w,PointerClickEvent e){connect(); return true;}
-		);
-
 		if (runDespikerOpt.get!bool)
-				toggleProfiler();
-	}
-
-	bool onStopServer(Widget widget, PointerClickEvent event)
-	{
-		sendMessage("/stop");
-		return true;
+			toggleProfiler();
 	}
 
 	void printDebug()
 	{
-		// Print debug info
-		auto lines = debugInfo.getPropertyAs!("children", Widget[]);
-		string[] statStrings = stats.getFormattedOutput();
-
-		lines[ 0]["text"] = statStrings[0].to!dstring;
-		lines[ 1]["text"] = statStrings[1].to!dstring;
-
-		lines[ 2]["text"] = statStrings[2].to!dstring;
-		lines[ 3]["text"] = statStrings[3].to!dstring;
-		stats.lastFrameLoadedChunks = stats.totalLoadedChunks;
-
-		lines[ 4]["text"] = statStrings[4].to!dstring;
-		lines[ 5]["text"] = statStrings[5].to!dstring;
-
-		vec3 pos = graphics.camera.position;
-		lines[ 6]["text"] = format("Pos: X %.2f, Y %.2f, Z %.2f",
-			pos.x, pos.y, pos.z).to!dstring;
+		with(stats) {
+			igTextf("FPS: %s", fps);
+			igTextf("Chunks visible/rendered %s/%s %.0f%%",
+				chunksVisible, chunksRendered,
+				chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
+			igTextf("Chunks per frame loaded: %s",
+				totalLoadedChunks - lastFrameLoadedChunks);
+			igTextf("Chunks total loaded: %s",
+				totalLoadedChunks);
+			igTextf("Vertexes %s", vertsRendered);
+			igTextf("Triangles %s", trisRendered);
+			vec3 pos = graphics.camera.position;
+			igTextf("Pos: X %.2f, Y %.2f, Z %.2f", pos.x, pos.y, pos.z);
+		}
 
 		ChunkWorldPos chunkPos = chunkMan.observerPosition;
 		auto regionPos = RegionWorldPos(chunkPos);
 		auto localChunkPosition = ChunkRegionPos(chunkPos);
-		lines[ 7]["text"] = format("C: %s R: %s L: %s",
-			chunkPos, regionPos, localChunkPosition).to!dstring;
+		igTextf("C: %s R: %s L: %s", chunkPos, regionPos, localChunkPosition);
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;
-		lines[ 8]["text"] = format("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
-			heading.x, heading.y, target.x, target.y, target.z).to!dstring;
-		lines[ 9]["text"] = format("Chunks to remove: %s",
-			chunkMan.removeQueue.length).to!dstring;
-		//lines[ 10]["text"] = format("Chunks to load: %s", chunkMan.numLoadChunkTasks).to!dstring;
-		lines[ 11]["text"] = format("Chunks to mesh: %s", chunkMan.chunkMeshMan.numMeshChunkTasks).to!dstring;
+		igTextf("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
+			heading.x, heading.y, target.x, target.y, target.z);
+		igTextf("Chunks to remove: %s", chunkMan.removeQueue.length);
+		igTextf("Chunks to mesh: %s", chunkMan.chunkMeshMan.numMeshChunkTasks);
+
+		igSeparator();
+		if (igButton("Profiler"))
+			toggleProfiler();
+		if (igButton("Stop server"))
+			sendMessage("/stop");
+		if (igButton("Connect"))
+			connect();
 	}
 
 	this()
@@ -284,10 +269,6 @@ public:
 		version(manualGC) GC.disable;
 
 		load(args);
-
-		info("\nSystem info");
-		foreach(item; guiPlugin.getHardwareInfo())
-			info(item);
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime = TickDuration.from!"seconds"(0);
@@ -333,8 +314,6 @@ public:
 			version(profiling) {
 				frameZone.__dtor;
 				profilerSender.update();
-				if (profilerSender.sending != isProfilerRunning)
-					toggleProfilerButton();
 			}
 		}
 		profilerSender.reset();
@@ -369,14 +348,6 @@ public:
 			else
 				warningf(`No despiker executable found at "%s"`, DESPIKER_PATH);
 		}
-		toggleProfilerButton();
-	}
-
-	void toggleProfilerButton()
-	{
-		isProfilerRunning = profilerSender.sending;
-		dstring text = isProfilerRunning ? "Stop profiler" : "Start profiler";
-		guiPlugin.context.getWidgetById("toggleProfiler").setProperty!dstring("text", text);
 	}
 
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
@@ -558,9 +529,9 @@ public:
 
 	void drawOverlay(ref Render2Event event)
 	{
-		event.renderer.setColor(Color(0,0,0,1));
-		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
-		event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));
+		//event.renderer.setColor(Color(0,0,0,1));
+		//event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
+		//event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));
 	}
 
 	void handleThisClientConnected(ref ThisClientConnectedEvent event)

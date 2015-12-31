@@ -12,5 +12,5 @@ else version(Posix)
 else
 	static assert(false, "Implement exe suffix for this platform");
 
-enum DESPIKER_PATH = "../../tools/despiker/despiker" ~ EXE_SUFFIX;
-enum LIB_PATH = "../../lib";
+enum DESPIKER_PATH = "../../tools/despiker/64/despiker" ~ EXE_SUFFIX;
+enum BUILD_TO_ROOT_PATH = "../../";

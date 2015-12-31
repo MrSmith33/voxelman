@@ -7,11 +7,13 @@ Authors: Andrey Penechko.
 module voxelman.graphics.plugin;
 
 import std.experimental.logger;
-import anchovy.gui;
-import dlib.math.vector : uvec2;
+import derelict.opengl3.gl3;
+import dlib.math.vector;
 import dlib.math.matrix;
 
 import pluginlib;
+import anchovy.irenderer;
+import anchovy.shaderprogram;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
@@ -78,21 +80,12 @@ public:
 
 		string vShader = cast(string)read("perspective.vert");
 		string fShader = cast(string)read("colored.frag");
-		chunkShader = new ShaderProgram(vShader, fShader);
-
-		if(!chunkShader.compile())
-		{
-			error(chunkShader.errorLog);
-		}
-		else
-		{
-			info("Shaders compiled successfully");
-		}
+		chunkShader = renderer.createShaderProgram(vShader, fShader);
 
 		chunkShader.bind;
-			modelLoc = glGetUniformLocation( chunkShader.program, "model" );//model transformation
-			viewLoc = glGetUniformLocation( chunkShader.program, "view" );//camera trandformation
-			projectionLoc = glGetUniformLocation( chunkShader.program, "projection" );//perspective
+			modelLoc = glGetUniformLocation( chunkShader.handle, "model" );//model transformation
+			viewLoc = glGetUniformLocation( chunkShader.handle, "view" );//camera trandformation
+			projectionLoc = glGetUniformLocation( chunkShader.handle, "projection" );//perspective
 
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
 				cast(const float*)Matrix4f.identity.arrayof);
@@ -105,8 +98,8 @@ public:
 
 	override void postInit()
 	{
-		renderer.setClearColor(Color(115,200,169));
-		camera.aspect = cast(float)renderer.windowSize.x/renderer.windowSize.y;
+		renderer.setClearColor(115,200,169);
+		camera.aspect = cast(float)renderer.framebufferSize.x/renderer.framebufferSize.y;
 	}
 
 	private void onWindowResizedEvent(ref WindowResizedEvent event)
@@ -116,15 +109,15 @@ public:
 
 	void resetCamera()
 	{
-		camera.position=vec3(0,0,0);
-		camera.target=vec3(0,0,1);
+		camera.position = vec3(0,0,0);
+		camera.target = vec3(0,0,1);
 		camera.heading = vec2(0, 0);
 		camera.update();
 	}
 
 	private void draw(ref RenderEvent event)
 	{
-		glScissor(0, 0, renderer.windowSize.x, renderer.windowSize.y);
+		glScissor(0, 0, renderer.framebufferSize.x, renderer.framebufferSize.y);
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 

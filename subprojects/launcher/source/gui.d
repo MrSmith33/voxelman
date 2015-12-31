@@ -20,6 +20,8 @@ import derelict.imgui.imgui;
 import derelict.opengl3.gl3;
 import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
+import voxelman.utils.textformatter;
+import voxelman.utils.linebuffer;
 
 import launcher;
 
@@ -191,18 +193,48 @@ struct LauncherGui
 		igBeginGroup();
 		//auto textPtrs = makeFormattedText("%s %s", igGetStyle().FrameRounding, igGetStyle());
 		//igTextUnformatted(textPtrs.start, textPtrs.end);
-		if (igButton("Play"))
-			selectedMenu = SelectedMenu.play;
-		if (igButton("Code"))
-			selectedMenu = SelectedMenu.code;
-		if (igButton("Conf"))
-			selectedMenu = SelectedMenu.conf;
+		menuEntry("Play", SelectedMenu.play);
+		menuEntry("Code", SelectedMenu.code);
+		menuEntry("Conf", SelectedMenu.conf);
+
 		//if (igButton("Refresh"))
 		//	refresh();
 		igSpacing();
 		if (igButton("Exit"))
 			isRunning = false;
 		igEndGroup();
+	}
+
+	void menuEntry(string text, SelectedMenu select)
+	{
+		ImGuiStyle* style = igGetStyle();
+		const ImVec4 color       = style.Colors[ImGuiCol_Button];
+		const ImVec4 colorActive = style.Colors[ImGuiCol_ButtonActive];
+	    const ImVec4 colorHover  = style.Colors[ImGuiCol_ButtonHovered];
+
+		if (selectedMenu == select)
+        {
+            style.Colors[ImGuiCol_Button]        = colorActive;
+            style.Colors[ImGuiCol_ButtonActive]  = colorActive;
+            style.Colors[ImGuiCol_ButtonHovered] = colorActive;
+        }
+        else
+        {
+            style.Colors[ImGuiCol_Button]        = color;
+            style.Colors[ImGuiCol_ButtonActive]  = colorActive;
+            style.Colors[ImGuiCol_ButtonHovered] = colorHover;
+        }
+
+		if (igButton(text.ptr)) selectedMenu = select;
+
+		style.Colors[ImGuiCol_Button] =         color;
+	    style.Colors[ImGuiCol_ButtonActive] =   colorActive;
+	    style.Colors[ImGuiCol_ButtonHovered] =  colorHover;
+	}
+
+	void restoreStyle()
+	{
+
 	}
 
 	void drawMenuContent()
@@ -294,8 +326,8 @@ struct PlayMenu
 				foreach(int i, plugin; pluginPacks.selected.plugins)
 				{
 					igPushIdInt(cast(int)i);
-			    	igTextUnformatted(plugin.id.ptr, plugin.id.ptr+plugin.id.length);
-		            igPopId();
+					igTextUnformatted(plugin.id.ptr, plugin.id.ptr+plugin.id.length);
+					igPopId();
 				}
 			igEndChild();
 		}
@@ -389,66 +421,19 @@ void drawJobLog(J)(J job)
 {
 	igPushIdPtr(job);
 	assert(job.command.ptr);
-	if (igCollapsingHeader(job.command.ptr, null, true, true)) {
+	auto state = job.isRunning ? "[RUNNING] " : "[STOPPED] ";
+	auto textPtrs = makeFormattedText("%s%s\0", state, job.command);
+	if (igCollapsingHeader(textPtrs.start, null, true, true)) {
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
 		if (igButton("Clear")) job.log.clear();
 		igSameLine();
 		if (igButton("Restart")) job.needsRestart = true;
-        igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
+		igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
 		job.log.draw();
-        igEndChild();
+		igEndChild();
 	}
 	igPopId();
-}
-
-struct AppLog
-{
-	import std.array : Appender;
-    Appender!(char[]) lines;
-    Appender!(size_t[]) lineSizes;
-    bool scrollToBottom;
-
-    void clear()
-    {
-    	lines.clear();
-    	lineSizes.clear();
-    }
-
-    void addLog(const(char)[] str)
-    {
-    	import std.regex : ctRegex, splitter;
-    	auto splittedLines = splitter(str, ctRegex!"(\r\n|\r|\n|\v|\f)");
-    	auto lengths = splittedLines.map!(a => a.length);
-    	if (!lineSizes.data.empty)
-    	{
-    		lineSizes.data[$-1] += lengths.front;
-    		lengths.popFront();
-    	}
-    	lineSizes.put(lengths);
-    	foreach(line; splittedLines)
-	    	lines.put(line);
-        scrollToBottom = true;
-    }
-
-    void draw()
-    {
-        //igSetNextWindowSize(ImVec2(500,400), ImGuiSetCond_FirstUseEver);
-        //if (igButton("Clear")) clear();
-        //igSeparator();
-	    char* lineStart = lines.data.ptr;
-	    foreach(lineSize; lineSizes.data)
-	    {
-	    	igPushTextWrapPos(igGetWindowContentRegionWidth());
-	    	igTextUnformatted(lineStart, lineStart+lineSize);
-			igPopTextWrapPos();
-	    	lineStart += lineSize;
-	    }
-
-        if (scrollToBottom)
-            igSetScrollHere(1.0f);
-        scrollToBottom = false;
-    }
 }
 
 void setStyle()
@@ -482,22 +467,3 @@ enum mainWindowFlags = ImGuiWindowFlags_NoTitleBar |
 	ImGuiWindowFlags_NoCollapse |
 	ImGuiWindowFlags_NoSavedSettings;
 	//ImGuiWindowFlags_MenuBar;
-
-char[64] buf;
-Appender!(char[]) app;
-
-static this()
-{
-	app = appender(buf[]);
-}
-
-static struct TextPtrs {
-	char* start;
-	char* end;
-}
-
-TextPtrs makeFormattedText(Args ...)(string fmt, Args args) {
-	app.clear();
-	formattedWrite(app, fmt, args);
-	return TextPtrs(app.data.ptr, app.data.ptr + app.data.length);
-}

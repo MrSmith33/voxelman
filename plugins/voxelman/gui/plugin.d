@@ -9,15 +9,17 @@ module voxelman.gui.plugin;
 import std.experimental.logger;
 import std.string : format;
 
-import anchovy.core.interfaces.iwindow;
-import anchovy.graphics.windows.glfwwindow;
-import anchovy.gui.application.application;
-import anchovy.gui;
-public import anchovy.core.input;
+import anchovy.fpshelper;
+import anchovy.glfwwindow;
+import anchovy.input;
+import anchovy.irenderer;
+import anchovy.iwindow;
+import anchovy.oglrenderer;
+
 import tharsis.prof : Zone;
 
-
 import pluginlib;
+import voxelman.imgui_glfw;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -44,32 +46,15 @@ final class GuiPlugin : IPlugin
 {
 private:
 	EventDispatcherPlugin evDispatcher;
-	Application!GlfwWindow application;
 	ConfigOption resolution;
 
 public:
+	IWindow window;
+	IRenderer renderer;
+	FpsHelper fpsHelper;
+	ImguiState igState;
 
 	mixin IdAndSemverFrom!(voxelman.gui.plugininfo);
-
-	IRenderer renderer() @property
-	{
-		return application.renderer;
-	}
-
-	IWindow window() @property
-	{
-		return application.window;
-	}
-
-	GuiContext context() @property
-	{
-		return application.context;
-	}
-
-	ref FpsHelper fpsHelper() @property
-	{
-		return application.fpsHelper;
-	}
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -79,24 +64,29 @@ public:
 
 	override void preInit()
 	{
-		application = new Application!GlfwWindow();
 		initLibs();
-		application.init([], uvec2(resolution.get!(uint[])), "Voxelman client");
-		appLoad();
+		fpsHelper.limitFps = false;
+
+		window = new GlfwWindow();
+		window.init(uvec2(resolution.get!(uint[])), "Voxelman client");
+		renderer = new OglRenderer(window);
+		igState.init((cast(GlfwWindow)window).handle);
+
+		// Bind events
+		window.windowResized.connect(&windowResized);
+		window.closePressed.connect(&closePressed);
 	}
 
 	void initLibs()
 	{
-		import derelict.freetype.ft;
-		import derelict.freeimage.freeimage;
 		import derelict.glfw3.glfw3;
 		import derelict.opengl3.gl3;
+		import derelict.imgui.imgui;
 		import voxelman.utils.libloader;
 
-		DerelictFI.load([getLibName("FreeImage")], SharedLibVersion(3, 15, 0));
-		DerelictFT.load([getLibName("freetype")]);
 		DerelictGL3.load();
-		DerelictGLFW3.load([getLibName("glfw3")]);
+		DerelictGLFW3.load([getLibName(BUILD_TO_ROOT_PATH, "glfw3")]);
+		DerelictImgui.load(getLibName(BUILD_TO_ROOT_PATH, "cimgui"));
 	}
 
 	override void init(IPluginManager pluginman)
@@ -111,67 +101,19 @@ public:
 	{
 		Zone drawSceneZone = Zone(event.profiler, "updateGui");
 		window.processEvents();
-		application.update(event.deltaTime);
+		fpsHelper.update(event.deltaTime);
+		igState.newFrame();
 	}
 
 	void onRender3Event(ref Render3Event event)
 	{
 		Zone drawSceneZone = Zone(event.profiler, "drawGui");
-		application.context.eventDispatcher.draw();
+		igState.render();
 	}
 
 	void onGameStopEvent(ref GameStopEvent stopEvent)
 	{
-		application.window.releaseWindow;
-	}
-
-	void addHideHandler(string frameId)
-	{
-		auto frame = application.context.getWidgetById(frameId);
-		Widget closeButton = frame["subwidgets"].get!(Widget[string])["close"];
-		closeButton.addEventHandler(delegate bool(Widget widget, PointerClickEvent event){
-			frame["isVisible"] = false;
-			return true;
-		});
-	}
-
-	void setupFrameShowButton(string buttonId, string frameId)
-	{
-		auto frame = application.context.getWidgetById(frameId);
-		application.context.getWidgetById(buttonId).addEventHandler(delegate bool(Widget widget, PointerClickEvent event){
-			frame["isVisible"] = true;
-			return true;
-		});
-	}
-
-	string[] getHardwareInfo()
-	{
-		return application.getHardwareInfo();
-	}
-
-	void appLoad()
-	{
-		fpsHelper.limitFps = false;
-
-		// Bind events
-		window.windowResized.connect(&windowResized);
-		window.closePressed.connect(&closePressed);
-
-		// ----------------------------- Creating widgets -----------------------------
-		application.templateManager.parseFile("voxelman.sdl");
-
-		auto mainLayer = application.context.createWidget("mainLayer");
-		application.context.addRoot(mainLayer);
-
-		auto frameLayer = application.context.createWidget("frameLayer");
-		application.context.addRoot(frameLayer);
-
-		// Frames
-		addHideHandler("infoFrame");
-		addHideHandler("settingsFrame");
-
-		setupFrameShowButton("showInfo", "infoFrame");
-		setupFrameShowButton("showSettings", "settingsFrame");
+		window.releaseWindow;
 	}
 
 	private void windowResized(uvec2 newSize)
@@ -182,5 +124,6 @@ public:
 	private void closePressed()
 	{
 		evDispatcher.postEvent(ClosePressedEvent());
+		igState.shutdown();
 	}
 }
