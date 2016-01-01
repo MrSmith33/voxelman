@@ -191,8 +191,7 @@ struct LauncherGui
 	void drawMainMenu()
 	{
 		igBeginGroup();
-		//auto textPtrs = makeFormattedText("%s %s", igGetStyle().FrameRounding, igGetStyle());
-		//igTextUnformatted(textPtrs.start, textPtrs.end);
+
 		menuEntry("Play", SelectedMenu.play);
 		menuEntry("Code", SelectedMenu.code);
 		menuEntry("Conf", SelectedMenu.conf);
