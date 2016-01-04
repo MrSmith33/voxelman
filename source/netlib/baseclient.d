@@ -19,6 +19,7 @@ abstract class BaseClient : Connection
 {
 	ENetAddress serverAddress;
 	ENetPeer* server;
+	bool isConnecting;
 
 	void connect(string address, ushort port)
 	{
@@ -33,6 +34,8 @@ abstract class BaseClient : Connection
 			error("An error occured while trying to create an ENet server peer");
 			return;
 		}
+
+		isConnecting = true;
 	}
 
 	bool isConnected() @property
@@ -42,7 +45,11 @@ abstract class BaseClient : Connection
 
 	void disconnect()
 	{
-		enet_peer_disconnect(server, 0);
+		if (isConnecting)
+			enet_peer_disconnect_now(server, 0);
+		else
+			enet_peer_disconnect(server, 0);
+		isConnecting = false;
 	}
 
 	void send(ubyte[] data, ubyte channel = 0)
@@ -95,5 +102,29 @@ abstract class BaseClient : Connection
 		}
 
 		packetArray = newPacketArray;
+	}
+
+	override void update()
+	{
+		ENetEvent event;
+		while (enet_host_service(host, &event, 0) > 0)
+		{
+			final switch (event.type)
+			{
+				case ENET_EVENT_TYPE_NONE:
+					break;
+				case ENET_EVENT_TYPE_CONNECT:
+					isConnecting = false;
+					onConnect(event);
+					break;
+				case ENET_EVENT_TYPE_RECEIVE:
+					onPacketReceived(event);
+					break;
+				case ENET_EVENT_TYPE_DISCONNECT:
+					onDisconnect(event);
+					isConnecting = false;
+					break;
+			}
+		}
 	}
 }

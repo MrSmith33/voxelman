@@ -26,6 +26,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
 import voxelman.net.plugin;
+import voxelman.command.plugin;
 
 import voxelman.net.events;
 import voxelman.core.packets;
@@ -47,6 +48,7 @@ import voxelman.utils.textformatter;
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
 import voxelman.client.events;
+import voxelman.client.console;
 
 //version = manualGC;
 version(manualGC) import core.memory;
@@ -68,7 +70,6 @@ auto formatDuration(Duration dur)
 		splitted.seconds, splitted.msecs, splitted.usecs);
 }
 
-
 final class ClientPlugin : IPlugin
 {
 private:
@@ -78,6 +79,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	GuiPlugin guiPlugin;
+	CommandPlugin commandPlugin;
 
 	// Resource managers
 	KeyBindingManager keyBindingMan;
@@ -85,6 +87,7 @@ private:
 
 public:
 	AppStatistics stats;
+	Console console;
 
 	// Game stuff
 	ChunkMan chunkMan;
@@ -110,9 +113,10 @@ public:
 	bool isCullingEnabled = true;
 	bool doUpdateObserverPosition = true;
 	vec3 updatedCameraPos;
+	bool isConsoleShown = false;
 
 	// Client id stuff
-	ClientId myId;
+	ClientId thisClientId;
 	string[ClientId] clientNames;
 
 	// Send position interval
@@ -142,12 +146,14 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F4, "key.stopServer", null, &onStopServerKey));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
 	override void preInit()
 	{
 		chunkMan.init(numWorkersOpt.get!uint);
 		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
+		console.init();
 	}
 
 	override void init(IPluginManager pluginman)
@@ -166,6 +172,10 @@ public:
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 		evDispatcher.subscribeToEvent(&handleThisClientConnected);
 		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
+
+		commandPlugin = pluginman.getPlugin!CommandPlugin;
+		commandPlugin.registerCommand("connect", &connectCommand);
+		console.commandHandler = &onConsoleCommand;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 
@@ -190,7 +200,7 @@ public:
 		connection.start(settings);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
-		connect();
+		connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
 
 		if (runDespikerOpt.get!bool)
 			toggleProfiler();
@@ -229,9 +239,9 @@ public:
 		if (igButton("Profiler"))
 			toggleProfiler();
 		if (igButton("Stop server"))
-			sendMessage("/stop");
+			connection.send(CommandPacket("stop"));
 		if (igButton("Connect"))
-			connect();
+			connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
 	}
 
 	this()
@@ -330,9 +340,22 @@ public:
 		evDispatcher.postEvent(GameStopEvent());
 	}
 
-	void connect()
+	void connect(string ip, ushort port)
 	{
-		connection.connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
+		console.lineBuffer.putfln("Connecting to %s:%s", ip, port);
+		if (connection.isConnecting)
+			connection.disconnect();
+		connection.connect(ip, port);
+	}
+
+	void connectCommand(string[] args, ClientId source)
+	{
+		short port = serverPortOpt.get!ushort;
+		string serverIp = serverIpOpt.get!string;
+		getopt(args,
+			"ip", &serverIp,
+			"port", &port);
+		connect(serverIp, port);
 	}
 
 	void toggleProfiler()
@@ -371,6 +394,8 @@ public:
 		updateStats();
 		printDebug();
 		stats.resetCounters();
+		if (isConsoleShown)
+			console.draw();
 	}
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
@@ -406,6 +431,27 @@ public:
 	{
 		stats.fps = guiPlugin.fpsHelper.fps;
 		stats.totalLoadedChunks = chunkMan.totalLoadedChunks;
+	}
+
+	void onConsoleCommand(string command)
+	{
+		infof("Executing command '%s'", command);
+		ExecResult res = commandPlugin.execute(command, thisClientId);
+
+		if (res.status == ExecStatus.notRegistered)
+		{
+			if (connection.isConnected)
+				connection.send(CommandPacket(command));
+			else
+				console.lineBuffer.putfln("Unknown client command '%s', not connected to server", command);
+		}
+		else if (res.status == ExecStatus.error)
+			console.lineBuffer.putf("Error executing command '%s': %s", command, res.error);
+	}
+
+	void onConsoleToggleKey(string)
+	{
+		isConsoleShown = !isConsoleShown;
 	}
 
 	void incViewRadius()
@@ -464,7 +510,7 @@ public:
 
 	void onStopServerKey(string)
 	{
-		sendMessage("/stop");
+		connection.send(CommandPacket("stop"));
 	}
 
 	void onToggleCulling(string)
@@ -562,8 +608,8 @@ public:
 		auto loginInfo = unpackPacket!SessionInfoPacket(packetData);
 
 		clientNames = loginInfo.clientNames;
-		myId = loginInfo.yourId;
-		evDispatcher.postEvent(ThisClientLoggedInEvent(myId));
+		thisClientId = loginInfo.yourId;
+		evDispatcher.postEvent(ThisClientLoggedInEvent(thisClientId));
 	}
 
 	void handleUserLoggedInPacket(ubyte[] packetData, ClientId clientId)

@@ -12,11 +12,11 @@ import voxelman.net.plugin;
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new ChatPlugin);
-	//pluginRegistry.regServerPlugin(new ChatPlugin);
+	pluginRegistry.regClientPlugin(new ChatPluginClient);
+	pluginRegistry.regServerPlugin(new ChatPluginServer);
 }
 
-final class ChatPlugin : IPlugin
+final class ChatPluginClient : IPlugin
 {
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
@@ -25,9 +25,13 @@ final class ChatPlugin : IPlugin
 	private NetClientPlugin connection;
 	private EventDispatcherPlugin evDispatcher;
 	LineBuffer lineBuffer;
-	char[512] buf;
+	char[] buf;
 
-	override void preInit() {}
+	override void preInit()
+	{
+		buf = new char[](1024);
+	}
+
 	override void init(IPluginManager pluginman)
 	{
 		clientPlugin = pluginman.getPlugin!ClientPlugin;
@@ -42,9 +46,9 @@ final class ChatPlugin : IPlugin
 	{
 		import std.format : formattedWrite;
 		auto packet = unpackPacket!MessagePacket(packetData);
-		infof("message received %s '%s' buflen %s",
-			clientPlugin.clientName(packet.clientId),
-			packet.msg, lineBuffer.lineSizes.data.length);
+		//infof("message received %s '%s' buflen %s",
+		//	clientPlugin.clientName(packet.clientId),
+		//	packet.msg, lineBuffer.lineSizes.data.length);
 		if (packet.clientId == 0)
 			lineBuffer.putln(packet.msg);
 		else {
@@ -62,7 +66,7 @@ final class ChatPlugin : IPlugin
 		lineBuffer.draw();
 		igEndChild();
 		igSetNextWindowSize(ImVec2(0,0));
-		if (igInputText("##Input", buf.ptr, buf.length,
+		if (igInputText("##ChatInput", buf.ptr, buf.length,
 			ImGuiInputTextFlags_EnterReturnsTrue,
 			null, null))
 		{
@@ -77,5 +81,26 @@ final class ChatPlugin : IPlugin
 		}
 
 		igEnd();
+	}
+}
+
+final class ChatPluginServer : IPlugin
+{
+	// IPlugin stuff
+	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
+
+	private NetServerPlugin connection;
+
+	override void init(IPluginManager pluginman)
+	{
+		connection = pluginman.getPlugin!NetServerPlugin;
+		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
+	}
+
+	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!MessagePacket(packetData);
+		packet.clientId = clientId;
+		connection.sendToAll(packet);
 	}
 }

@@ -20,7 +20,7 @@ struct ClientLoggedOutEvent {
 	bool continuePropagation = true;
 }
 struct ThisClientLoggedInEvent {
-	ClientId myId;
+	ClientId thisClientId;
 	Profiler profiler;
 	bool continuePropagation = true;
 }

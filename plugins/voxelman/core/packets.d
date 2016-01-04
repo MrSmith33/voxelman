@@ -22,6 +22,7 @@ void registerPackets(Connection c)
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
 	c.registerPacket!PlaceBlockPacket;
+	c.registerPacket!CommandPacket;
 }
 
 // sent by client when position/heading changes.
@@ -57,4 +58,9 @@ struct PlaceBlockPacket
 
 struct SpawnPacket
 {
+}
+
+struct CommandPacket
+{
+	string command;
 }

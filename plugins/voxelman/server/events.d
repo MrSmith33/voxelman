@@ -9,13 +9,6 @@ module voxelman.server.events;
 import netlib.connection : ClientId;
 import tharsis.prof : Profiler;
 
-struct CommandEvent {
-	ClientId clientId;
-	string command;
-	Profiler profiler;
-	bool continuePropagation = true;
-}
-
 struct ClientLoggedInEvent {
 	ClientId clientId;
 	Profiler profiler;

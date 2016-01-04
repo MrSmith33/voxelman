@@ -22,6 +22,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 
 import voxelman.eventdispatcher.plugin;
+import voxelman.command.plugin;
 import voxelman.net.plugin;
 import voxelman.config.configmanager;
 
@@ -89,6 +90,8 @@ private:
 	PluginManager pluginman;
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
+	CommandPlugin commandPlugin;
+	NetServerPlugin connection;
 	// Resource managers
 	ConfigManager config;
 
@@ -103,7 +106,6 @@ private:
 	DespikerSender profilerSender;
 
 public:
-	NetServerPlugin connection;
 	ClientInfo*[ClientId] clients;
 
 	// Game data
@@ -169,9 +171,11 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.profiler = profiler;
 
-		evDispatcher.subscribeToEvent(&handleCommand);
 		evDispatcher.subscribeToEvent(&handleClientConnected);
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
+
+		commandPlugin = pluginman.getPlugin!CommandPlugin;
+		commandPlugin.registerCommand("stop", &stopCommand);
 
 		connection = pluginman.getPlugin!NetServerPlugin;
 
@@ -180,11 +184,11 @@ public:
 		connection.printPacketMap();
 
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
-		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
 		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
 
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
+		connection.registerPacketHandler!CommandPacket(&handleCommandPacket);
 	}
 
 	override void postInit()
@@ -332,28 +336,10 @@ public:
 		}
 	}
 
-	void handleCommand(ref CommandEvent event)
+	void stopCommand(string[] args, ClientId source)
 	{
-		import std.algorithm : splitter;
-		import std.string : format;
-
-		if (event.command.length <= 1)
-		{
-			sendMessageTo(event.clientId, "Invalid command");
-			return;
-		}
-
-		// Split without leading '/'
-		auto splitted = event.command[1..$].splitter;
-		string commName = splitted.front;
-		splitted.popFront;
-
-		if (commName == "stop")
-		{
-			isRunning = false;
-		}
-		else
-			sendMessageTo(event.clientId, format("Unknown command %s", commName));
+		connection.sendToAll(MessagePacket(0, "Stopping server"));
+		isRunning = false;
 	}
 
 	void sendMessageTo(ClientId clientId, string message, ClientId from = 0)
@@ -404,25 +390,6 @@ public:
 		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
 	}
 
-	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
-	{
-		import std.algorithm : startsWith;
-		import std.string : strip;
-
-		auto packet = unpackPacket!MessagePacket(packetData);
-
-		packet.clientId = clientId;
-		string strippedMsg = packet.msg.strip;
-
-		if (strippedMsg.startsWith("/"))
-		{
-			evDispatcher.postEvent(CommandEvent(clientId, strippedMsg));
-			return;
-		}
-
-		connection.sendToAll(packet);
-	}
-
 	void handleClientPosition(ubyte[] packetData, ClientId clientId)
 	{
 		if (isLoggedIn(clientId))
@@ -444,6 +411,18 @@ public:
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 		updateObserverVolume(info);
+	}
+
+	void handleCommandPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!CommandPacket(packetData);
+
+		ExecResult res = commandPlugin.execute(packet.command, clientId);
+
+		if (res.status == ExecStatus.notRegistered)
+			sendMessageTo(clientId, format("Unknown command '%s'", packet.command));
+		else if (res.status == ExecStatus.error)
+			sendMessageTo(clientId, format("Error executing command '%s': %s", packet.command, res.error));
 	}
 
 	void updateObserverVolume(ClientInfo* info)

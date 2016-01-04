@@ -50,9 +50,10 @@ interface IPluginManager
 	final P getPlugin(P)()
 	{
 		import std.exception : enforce;
+		import std.string : format;
 		IPlugin plugin = findPlugin(typeid(P));
 		P exactPlugin = cast(P)plugin;
-		enforce(exactPlugin);
+		enforce(exactPlugin, format("Cannot find plugin '%s'", typeid(P)));
 		return exactPlugin;
 	}
 }

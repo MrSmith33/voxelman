@@ -52,7 +52,7 @@ final class AvatarClient : IPlugin
 		auto packet = unpackPacket!UpdateAvatarsPacket(packetData);
 		batch.reset();
 		foreach (avatar; packet.avatars)
-		if (avatar.clientId != clientPlugin.myId)
+		if (avatar.clientId != clientPlugin.thisClientId)
 		{
 			batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
 		}

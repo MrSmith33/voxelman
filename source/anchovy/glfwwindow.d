@@ -17,9 +17,9 @@ import anchovy.iwindow : IWindow;
 class GlfwWindow : IWindow
 {
 private:
-	GLFWwindow*	_window;
-	bool _mouseGrabbed = false;
+	GLFWwindow*	glfwWindowPtr;
 	static bool	glfwInited = false;
+	bool isProcessingEvents = false;
 
 public:
 	override void init(uvec2 size, in string caption)
@@ -30,14 +30,14 @@ public:
 		scope(failure) glfwTerminate();
 
 		//BUG: sometimes fails in Windows 8. Maybe because of old drivers.
-		_window = glfwCreateWindow(size.x, size.y, toStringz(caption), null,  null);
+		glfwWindowPtr = glfwCreateWindow(size.x, size.y, toStringz(caption), null,  null);
 
-		if (_window is null)
+		if (glfwWindowPtr is null)
 		{
 			throw new Error("Error creating GLFW3 window");
 		}
 
-		glfwMakeContextCurrent(_window);
+		glfwMakeContextCurrent(glfwWindowPtr);
 		glfwSwapInterval(0);
 
 		glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -45,24 +45,31 @@ public:
 
 		DerelictGL3.reload();
 
-		glfwSetWindowUserPointer(_window, cast(void*)this);
-		glfwSetWindowPosCallback(_window, &windowposfun);
-		glfwSetFramebufferSizeCallback(_window, &windowsizefun);
-		glfwSetWindowCloseCallback(_window, &windowclosefun);
-		//glfwSetWindowRefreshCallback(_window, &windowrefreshfun);
-		glfwSetWindowFocusCallback(_window, &windowfocusfun);
-		glfwSetWindowIconifyCallback(_window, &windowiconifyfun);
-		glfwSetMouseButtonCallback(_window, &mousebuttonfun);
-		glfwSetCursorPosCallback(_window, &cursorposfun);
-		glfwSetScrollCallback(_window, &scrollfun);
-		glfwSetKeyCallback(_window, &keyfun);
-		glfwSetCharCallback(_window, &charfun);
+		glfwSetWindowUserPointer(glfwWindowPtr, cast(void*)this);
+		glfwSetWindowPosCallback(glfwWindowPtr, &windowposfun);
+		glfwSetFramebufferSizeCallback(glfwWindowPtr, &windowsizefun);
+		glfwSetWindowCloseCallback(glfwWindowPtr, &windowclosefun);
+		//glfwSetWindowRefreshCallback(glfwWindowPtr, &windowrefreshfun);
+		glfwSetWindowFocusCallback(glfwWindowPtr, &windowfocusfun);
+		glfwSetWindowIconifyCallback(glfwWindowPtr, &windowiconifyfun);
+		glfwSetMouseButtonCallback(glfwWindowPtr, &mousebuttonfun);
+		glfwSetCursorPosCallback(glfwWindowPtr, &cursorposfun);
+		glfwSetScrollCallback(glfwWindowPtr, &scrollfun);
+		glfwSetKeyCallback(glfwWindowPtr, &keyfun);
+		glfwSetCharCallback(glfwWindowPtr, &charfun);
 		//glfwSetCursorEnterCallback(window, GLFWcursorenterfun cbfun);
+		glfwSetWindowRefreshCallback(glfwWindowPtr, &refreshfun);
 	}
 
 	override void processEvents()
 	{
-		glfwPollEvents();
+		// prevent calling glfwPollEvents when inside window_refresh callback
+		if (!isProcessingEvents)
+		{
+			isProcessingEvents = true;
+			glfwPollEvents();
+			isProcessingEvents = false;
+		}
 	}
 
 	override double elapsedTime() @property //in seconds
@@ -77,66 +84,66 @@ public:
 
 	override void releaseWindow()
 	{
-		glfwDestroyWindow(_window);
+		glfwDestroyWindow(glfwWindowPtr);
 		glfwTerminate();
 	}
 
 	override void mousePosition(ivec2 newPosition) @property
 	{
-		glfwSetCursorPos(_window, newPosition.x, newPosition.y);
+		glfwSetCursorPos(glfwWindowPtr, newPosition.x, newPosition.y);
 	}
 
 	override ivec2 mousePosition() @property
 	{
 		double x, y;
-		glfwGetCursorPos(_window, &x, &y);
+		glfwGetCursorPos(glfwWindowPtr, &x, &y);
 		return ivec2(cast(int)x, cast(int)y);
 	}
 
 	override void swapBuffers()
 	{
-		glfwSwapBuffers(_window);
+		glfwSwapBuffers(glfwWindowPtr);
 	}
 
 	override void size(uvec2 newSize) @property
 	{
-		glfwSetWindowSize(_window, cast(int)newSize.x, cast(int)newSize.y);
+		glfwSetWindowSize(glfwWindowPtr, cast(int)newSize.x, cast(int)newSize.y);
 	}
 
 	override uvec2 size() @property
 	{
 		int width, height;
-		glfwGetWindowSize(_window, &width, &height);
+		glfwGetWindowSize(glfwWindowPtr, &width, &height);
 		return uvec2(cast(uint)width, cast(uint)height);
 	}
 
 	override uvec2 framebufferSize() @property
 	{
 		int width, height;
-		glfwGetFramebufferSize(_window, &width, &height);
+		glfwGetFramebufferSize(glfwWindowPtr, &width, &height);
 		return uvec2(cast(uint)width, cast(uint)height);
 	}
 
 	override string clipboardString() @property
 	{
-		const(char*) data = glfwGetClipboardString(_window);
+		const(char*) data = glfwGetClipboardString(glfwWindowPtr);
 		if (data is null) return "";
 		return cast(string)fromStringz(data);
 	}
 
 	override void clipboardString(string newClipboardString) @property
 	{
-		glfwSetClipboardString(_window, toStringz(newClipboardString));
+		glfwSetClipboardString(glfwWindowPtr, toStringz(newClipboardString));
 	}
 
 	override bool isKeyPressed(uint key)
 	{
-		return glfwGetKey(_window, key) == GLFW_PRESS;
+		return glfwGetKey(glfwWindowPtr, key) == GLFW_PRESS;
 	}
 
 	GLFWwindow* handle() @property
 	{
-		return _window;
+		return glfwWindowPtr;
 	}
 
 private:
@@ -246,6 +253,11 @@ extern(C) nothrow
 	void charfun(GLFWwindow* w, uint unicode)
 	{
 		try getWinFromUP(w).charEntered.emit(cast(dchar)unicode);
+		catch(Exception e) throw new Error(to!string(e));
+	}
+	void refreshfun(GLFWwindow* w)
+	{
+		try getWinFromUP(w).refresh.emit();
 		catch(Exception e) throw new Error(to!string(e));
 	}
 }
