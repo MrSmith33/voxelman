@@ -13,6 +13,7 @@ import std.algorithm;
 import std.stdio;
 import std.array;
 import std.range;
+import std.typecons : Flag, Yes, No;
 
 import voxelman.utils.linebuffer;
 import gui;
@@ -51,11 +52,12 @@ struct JobParams
 {
 	string pluginPack = "default";
 	AppType appType = AppType.client;
-	bool startAfterCompile = true;
-	bool arch64 = true;
-	bool nodeps = true;
-	bool force = false;
-	JobType jobType;
+	Flag!"start" start = Yes.start;
+	Flag!"arch64" arch64 = Yes.arch64;
+	Flag!"nodeps" nodeps = Yes.nodeps;
+	Flag!"force" force = No.force;
+	Flag!"release" release = No.release;
+	JobType jobType = JobType.compile;
 }
 
 struct Job
@@ -120,9 +122,10 @@ struct Launcher
 	{
 		immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
 		immutable conf = params.appType == AppType.client ? `--config=client` : `--config=server`;
-		immutable deps = params.nodeps ? `--nodeps` : ``;
-		immutable doForce = params.force ? `--force` : ``;
-		return format("dub build -q %s %s %s %s\0", arch, conf, deps, doForce);
+		immutable deps = params.nodeps ? ` --nodeps` : ``;
+		immutable doForce = params.force ? ` --force` : ``;
+		immutable release = params.release ? `--build=release` : `--build=debug`;
+		return format("dub build -q %s %s%s%s %s\0", arch, conf, deps, doForce, release);
 	}
 
 	string makeRunCommand(JobParams params)
@@ -162,7 +165,7 @@ struct Launcher
 					{
 						if (job.params.jobType == JobType.compile)
 						{
-							if (job.params.startAfterCompile)
+							if (job.params.start)
 							{
 								job.params.jobType = JobType.run;
 								job.log.clear();
@@ -200,7 +203,7 @@ struct Launcher
 					char[1024] buf;
 					size_t charsToRead = min(pipe.size, buf.length);
 					char[] data = pipe.rawRead(buf[0..charsToRead]);
-					job.log.addLog(data);
+					job.log.put(data);
 				}
 			}
 		}

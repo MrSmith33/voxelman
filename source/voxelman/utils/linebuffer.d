@@ -9,6 +9,8 @@ struct LineBuffer
 {
 	import derelict.imgui.imgui;
 	import std.array : Appender, empty;
+	import std.format : formattedWrite;
+
 	Appender!(char[]) lines;
 	Appender!(size_t[]) lineSizes;
 	bool scrollToBottom;
@@ -19,10 +21,11 @@ struct LineBuffer
 		lineSizes.clear();
 	}
 
-	void addLog(const(char)[] str)
+	void put(in char[] str)
 	{
 		import std.regex : ctRegex, splitter;
 		import std.algorithm : map;
+		if (str.empty) return;
 		auto splittedLines = splitter(str, ctRegex!"(\r\n|\r|\n|\v|\f)");
 		auto lengths = splittedLines.map!(a => a.length);
 		if (!lineSizes.data.empty)
@@ -36,10 +39,28 @@ struct LineBuffer
 		scrollToBottom = true;
 	}
 
+	void putf(Args...)(const(char)[] fmt, Args args)
+	{
+		formattedWrite(&this, fmt, args);
+	}
+
+	void putfln(Args...)(const(char)[] fmt, Args args)
+	{
+		formattedWrite(&this, fmt, args);
+		put("\n");
+	}
+
+	void putln(const(char)[] str)
+	{
+		put(str);
+		put("\n");
+	}
+
 	void draw()
 	{
 		char* lineStart = lines.data.ptr;
 		foreach(lineSize; lineSizes.data)
+		if (lineSize > 0)
 		{
 			igPushTextWrapPos(igGetWindowContentRegionWidth());
 			igTextUnformatted(lineStart, lineStart+lineSize);

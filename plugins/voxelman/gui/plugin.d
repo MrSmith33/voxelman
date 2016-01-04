@@ -8,6 +8,7 @@ module voxelman.gui.plugin;
 
 import std.experimental.logger;
 import std.string : format;
+import dlib.math.vector;
 
 import anchovy.fpshelper;
 import anchovy.glfwwindow;
@@ -75,6 +76,13 @@ public:
 		// Bind events
 		window.windowResized.connect(&windowResized);
 		window.closePressed.connect(&closePressed);
+
+		window.keyPressed.connect(&igState.onKeyPressed);
+		window.keyReleased.connect(&igState.onKeyReleased);
+		window.charEntered.connect(&igState.charCallback);
+		window.mousePressed.connect(&igState.onMousePressed);
+		window.mouseReleased.connect(&igState.onMouseReleased);
+		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
 	}
 
 	void initLibs()
@@ -114,6 +122,7 @@ public:
 	void onGameStopEvent(ref GameStopEvent stopEvent)
 	{
 		window.releaseWindow;
+		igState.shutdown();
 	}
 
 	private void windowResized(uvec2 newSize)
@@ -124,6 +133,5 @@ public:
 	private void closePressed()
 	{
 		evDispatcher.postEvent(ClosePressedEvent());
-		igState.shutdown();
 	}
 }

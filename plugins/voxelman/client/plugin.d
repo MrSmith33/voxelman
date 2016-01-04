@@ -175,7 +175,6 @@ public:
 		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
 		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
 		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
-		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
@@ -581,16 +580,6 @@ public:
 		infof("%s has disconnected", clientName(packet.clientId));
 		evDispatcher.postEvent(ClientLoggedOutEvent(clientId));
 		clientNames.remove(packet.clientId);
-	}
-
-	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
-	{
-		auto msg = unpackPacket!MessagePacket(packetData);
-		if (msg.clientId == 0)
-			infof("%s", msg.msg);
-		else
-			infof("%s> %s", clientName(msg.clientId), msg.msg);
-		evDispatcher.postEvent(ChatMessageEvent(msg.clientId, msg.msg));
 	}
 
 	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)

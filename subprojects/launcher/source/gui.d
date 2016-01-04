@@ -14,6 +14,7 @@ import std.process;
 import std.range;
 import std.stdio;
 import std.string : format;
+import std.typecons : Flag, Yes, No;
 
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
@@ -338,7 +339,7 @@ struct PlayMenu
 			if (igButton("Stop"))
 			{
 				size_t numKilled = launcher.stopProcesses();
-				launcher.appLog.addLog(format("killed %s processes\n", numKilled));
+				launcher.appLog.put(format("killed %s processes\n", numKilled));
 			}
 		igEndGroup();
 	}
@@ -351,23 +352,20 @@ struct PlayMenu
 
 void startButtons(Launcher* launcher, string pack)
 {
-	static bool nodeps = true;
-	igCheckbox("nodeps", &nodeps); igSameLine();
+	static JobParams params;
+	params.pluginPack = pack;
 
-	static bool force = false;
-	igCheckbox("force", &force); igSameLine();
+	igCheckbox("nodeps", cast(bool*)&params.nodeps); igSameLine();
+	igCheckbox("force", cast(bool*)&params.force); igSameLine();
+	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
+	igCheckbox("release", cast(bool*)&params.release); igSameLine();
+	igCheckbox("start", cast(bool*)&params.start); igSameLine();
 
-	static bool x64 = true;
-	igCheckbox("x64", &x64); igSameLine();
+	params.appType = AppType.client;
+	if (igButton("Client")) launcher.startJob(params); igSameLine();
 
-	static bool start = true;
-	igCheckbox("start", &start); igSameLine();
-
-	if (igButton("Client"))
-		launcher.startJob(JobParams(pack, AppType.client, start, x64, nodeps, force, JobType.compile));
-	igSameLine();
-	if (igButton("Server"))
-		launcher.startJob(JobParams(pack, AppType.server, start, x64, nodeps, force, JobType.compile));
+	params.appType = AppType.server;
+	if (igButton("Server")) launcher.startJob(params);
 }
 
 struct CodeMenu
