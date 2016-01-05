@@ -16,9 +16,11 @@ import std.stdio;
 import std.string : format;
 import std.typecons : Flag, Yes, No;
 
+import dlib.math.vector;
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
 import derelict.opengl3.gl3;
+import anchovy.glfwwindow;
 import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
 import voxelman.utils.textformatter;
@@ -57,8 +59,8 @@ struct LauncherGui
 	bool show_another_window = false;
 	float[3] clear_color = [0.3f, 0.4f, 0.6f];
 	bool isRunning = true;
-	GLFWwindow* window;
 	ImguiState igState;
+	GlfwWindow window;
 
 	Launcher launcher;
 
@@ -88,8 +90,15 @@ struct LauncherGui
 		codeMenu.init(&launcher);
 		refresh();
 
-		window = startGlfw("Voxelman launcher", 800, 600);
-		igState.init(window);
+		window = new GlfwWindow();
+		window.init(uvec2(800, 600), "Voxelman launcher");
+		igState.init(window.handle);
+		window.keyPressed.connect(&igState.onKeyPressed);
+		window.keyReleased.connect(&igState.onKeyReleased);
+		window.charEntered.connect(&igState.charCallback);
+		window.mousePressed.connect(&igState.onMousePressed);
+		window.mouseReleased.connect(&igState.onMouseReleased);
+		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
 
 		selectedMenu = SelectedMenu.code;
 
@@ -107,15 +116,12 @@ struct LauncherGui
 
 		init();
 
-		if (isRunning)
-			glfwShowWindow(window);
-
 		while(isRunning)
 		{
-			if (glfwWindowShouldClose(window) && !launcher.anyProcessesRunning)
+			if (glfwWindowShouldClose(window.handle) && !launcher.anyProcessesRunning)
 				isRunning = false;
 			else
-				glfwSetWindowShouldClose(window, false);
+				glfwSetWindowShouldClose(window.handle, false);
 			update();
 			render();
 		}
@@ -137,7 +143,7 @@ struct LauncherGui
 	void update()
 	{
 		launcher.update();
-		glfwPollEvents();
+		window.processEvents();
 		igState.newFrame();
 		doGui();
 		import core.thread;
@@ -151,11 +157,12 @@ struct LauncherGui
 		glClearColor(clear_color[0], clear_color[1], clear_color[2], 0);
 		glClear(GL_COLOR_BUFFER_BIT);
 		igState.render();
-		glfwSwapBuffers(window);
+		glfwSwapBuffers(window.handle);
 	}
 
 	void close()
 	{
+		window.releaseWindow;
 		igState.shutdown();
 		glfwTerminate();
 	}
