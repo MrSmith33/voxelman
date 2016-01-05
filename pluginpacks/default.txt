@@ -14,6 +14,7 @@ voxelman.gui 0.5.0
 voxelman.input 0.5.0
 voxelman.movement 0.5.0
 voxelman.net 0.5.0
+voxelman.remotecontrol 0.5.0
 voxelman.server 0.5.0
 voxelman.storage 0.5.0
 voxelman.utils 0.5.0

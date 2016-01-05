@@ -1,3 +1,8 @@
+/**
+Copyright: Copyright (c) 2015 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Authors: Andrey Penechko.
+*/
 module voxelman.command.plugin;
 
 import pluginlib;
@@ -10,10 +15,17 @@ shared static this()
 	pluginRegistry.regServerPlugin(new CommandPlugin);
 }
 
-// On client side source == thisClientId
+struct CommandParams
+{
+	string rawArgs; // without command name
+	string[] args; // first arg is command name
+	ClientId source;
+}
+
+// On client side source == 0
 // On server if command is issued locally source == 0
 // First argument is command name (useful for std.getopt)
-alias CommandHandler = void delegate(string[] args, ClientId source);
+alias CommandHandler = void delegate(CommandParams params);
 
 enum ExecStatus
 {
@@ -43,25 +55,26 @@ final class CommandPlugin : IPlugin
 		handlers[name] = handler;
 	}
 
-	ExecResult execute(string input, ClientId source = ClientId(0))
+	ExecResult execute(const(char)[] input, ClientId source = ClientId(0))
 	{
 		import std.regex : ctRegex, splitter;
 		import std.string : strip;
 		import std.array : array;
 
-		string stripped = input.strip;
+		string stripped = cast(string)input.strip;
 		string[] args = splitter(stripped, ctRegex!`\s+`).array;
 
 		if (args.length == 0)
 			return ExecResult(args, ExecStatus.notRegistered);
 
 		string comName = args[0];
+		string rawArgs = stripped[args[0].length..$];
 
-		if (auto handler = handlers.get(comName, null))
+		if (auto handler = handlers.get(cast(string)comName, null))
 		{
 			try
 			{
-				handler(args, source);
+				handler(CommandParams(rawArgs, args, source));
 			}
 			catch(Exception e)
 			{

@@ -175,7 +175,8 @@ public:
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
 
 		commandPlugin = pluginman.getPlugin!CommandPlugin;
-		commandPlugin.registerCommand("stop", &stopCommand);
+		commandPlugin.registerCommand("sv_stop", &stopCommand);
+		commandPlugin.registerCommand("msg", &messageCommand);
 
 		connection = pluginman.getPlugin!NetServerPlugin;
 
@@ -199,7 +200,7 @@ public:
 	void load(string[] args)
 	{
 		// register all plugins and managers
-		import voxelman.plugininforeader : filterEnabledPlugins;
+		import voxelman.pluginlib.plugininforeader : filterEnabledPlugins;
 		foreach(p; pluginRegistry.serverPlugins.byValue.filterEnabledPlugins(args))
 		{
 			pluginman.registerPlugin(p);
@@ -307,6 +308,12 @@ public:
 		return names;
 	}
 
+	string clientName(ClientId clientId)
+	{
+		auto cl = clients.get(clientId, null);
+		return cl ? cl.name : format("%s", clientId);
+	}
+
 	auto loggerInClients()
 	{
 		import std.algorithm : filter, map;
@@ -336,10 +343,18 @@ public:
 		}
 	}
 
-	void stopCommand(string[] args, ClientId source)
+	void stopCommand(CommandParams params)
 	{
 		connection.sendToAll(MessagePacket(0, "Stopping server"));
 		isRunning = false;
+	}
+
+	void messageCommand(CommandParams params)
+	{
+		import std.string : strip;
+		auto stripped = params.rawArgs.strip;
+		connection.sendToAll(MessagePacket(0, stripped));
+		infof("> %s", stripped);
 	}
 
 	void sendMessageTo(ClientId clientId, string message, ClientId from = 0)

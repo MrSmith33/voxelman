@@ -427,16 +427,18 @@ void drawJobLog(J)(J job)
 	assert(job.command.ptr);
 	auto state = job.isRunning ? "[RUNNING] " : "[STOPPED] ";
 	auto textPtrs = makeFormattedText("%s%s\0", state, job.command);
+
 	if (igCollapsingHeader(textPtrs.start, null, true, true)) {
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
-		if (igButton("Clear")) job.log.clear();
+		if (igButton("Clear")) job.messageWindow.lineBuffer.clear();
 		igSameLine();
 		if (igButton("Restart")) job.needsRestart = true;
 		igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
-		job.log.draw();
+		job.messageWindow.draw();
 		igEndChild();
 	}
+
 	igPopId();
 }
 

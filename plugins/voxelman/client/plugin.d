@@ -145,7 +145,6 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F4, "key.stopServer", null, &onStopServerKey));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
@@ -175,7 +174,7 @@ public:
 
 		commandPlugin = pluginman.getPlugin!CommandPlugin;
 		commandPlugin.registerCommand("connect", &connectCommand);
-		console.commandHandler = &onConsoleCommand;
+		console.messageWindow.messageHandler = &onConsoleCommand;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 
@@ -239,7 +238,7 @@ public:
 		if (igButton("Profiler"))
 			toggleProfiler();
 		if (igButton("Stop server"))
-			connection.send(CommandPacket("stop"));
+			connection.send(CommandPacket("sv_stop"));
 		if (igButton("Connect"))
 			connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
 	}
@@ -260,7 +259,7 @@ public:
 	void load(string[] args)
 	{
 		// register all plugins and managers
-		import voxelman.plugininforeader : filterEnabledPlugins;
+		import voxelman.pluginlib.plugininforeader : filterEnabledPlugins;
 		foreach(p; pluginRegistry.clientPlugins.byValue.filterEnabledPlugins(args))
 		{
 			pluginman.registerPlugin(p);
@@ -348,11 +347,11 @@ public:
 		connection.connect(ip, port);
 	}
 
-	void connectCommand(string[] args, ClientId source)
+	void connectCommand(CommandParams params)
 	{
 		short port = serverPortOpt.get!ushort;
 		string serverIp = serverIpOpt.get!string;
-		getopt(args,
+		getopt(params.args,
 			"ip", &serverIp,
 			"port", &port);
 		connect(serverIp, port);
@@ -436,7 +435,7 @@ public:
 	void onConsoleCommand(string command)
 	{
 		infof("Executing command '%s'", command);
-		ExecResult res = commandPlugin.execute(command, thisClientId);
+		ExecResult res = commandPlugin.execute(command, ClientId(0));
 
 		if (res.status == ExecStatus.notRegistered)
 		{
@@ -446,7 +445,9 @@ public:
 				console.lineBuffer.putfln("Unknown client command '%s', not connected to server", command);
 		}
 		else if (res.status == ExecStatus.error)
-			console.lineBuffer.putf("Error executing command '%s': %s", command, res.error);
+			console.lineBuffer.putfln("Error executing command '%s': %s", command, res.error);
+		else
+			console.lineBuffer.putln(command);
 	}
 
 	void onConsoleToggleKey(string)
@@ -506,11 +507,6 @@ public:
 	void onDecViewRadius(string)
 	{
 		decViewRadius();
-	}
-
-	void onStopServerKey(string)
-	{
-		connection.send(CommandPacket("stop"));
 	}
 
 	void onToggleCulling(string)

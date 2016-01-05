@@ -15,6 +15,7 @@ import std.array;
 import std.range;
 import std.typecons : Flag, Yes, No;
 
+import voxelman.utils.messagewindow;
 import voxelman.utils.linebuffer;
 import gui;
 
@@ -64,7 +65,7 @@ struct Job
 {
 	JobParams params;
 	string command;
-	LineBuffer log;
+	MessageWindow messageWindow;
 	ProcessPipes pipes;
 
 	bool isRunning;
@@ -90,6 +91,8 @@ struct Launcher
 	void startJob(JobParams params = JobParams.init)
 	{
 		auto job = new Job(params);
+		job.messageWindow.init();
+		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
 		restartJob(job);
 		jobs ~= job;
 	}
@@ -114,24 +117,8 @@ struct Launcher
 
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
 
-		(*job) = Job(job.params, command, job.log, pipes);
+		(*job) = Job(job.params, command, job.messageWindow, pipes);
 		job.isRunning = true;
-	}
-
-	string makeCompileCommand(JobParams params)
-	{
-		immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
-		immutable conf = params.appType == AppType.client ? `--config=client` : `--config=server`;
-		immutable deps = params.nodeps ? ` --nodeps` : ``;
-		immutable doForce = params.force ? ` --force` : ``;
-		immutable release = params.release ? `--build=release` : `--build=debug`;
-		return format("dub build -q %s %s%s%s %s\0", arch, conf, deps, doForce, release);
-	}
-
-	string makeRunCommand(JobParams params)
-	{
-		string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
-		return format("%s --pack=%s\0", conf, params.pluginPack);
 	}
 
 	size_t stopProcesses()
@@ -168,7 +155,7 @@ struct Launcher
 							if (job.params.start)
 							{
 								job.params.jobType = JobType.run;
-								job.log.clear();
+								job.messageWindow.lineBuffer.clear();
 								restartJob(job);
 							}
 						}
@@ -179,7 +166,7 @@ struct Launcher
 			if (!job.isRunning && job.needsRestart)
 			{
 				job.params.jobType = JobType.compile;
-				job.log.clear();
+				job.messageWindow.lineBuffer.clear();
 				restartJob(job);
 			}
 
@@ -188,32 +175,6 @@ struct Launcher
 
 		jobs = remove!(a => a.needsClose && !a.isRunning)(jobs);
 		jobs.each!(j => j.needsClose = false);
-	}
-
-	void logPipes(J)(J job)
-	{
-		import std.exception : ErrnoException;
-		try
-		{
-			foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
-			{
-				auto size = pipe.size;
-				if (size > 0)
-				{
-					char[1024] buf;
-					size_t charsToRead = min(pipe.size, buf.length);
-					char[] data = pipe.rawRead(buf[0..charsToRead]);
-					job.log.put(data);
-				}
-			}
-		}
-		catch(ErrnoException e)
-		{	// Ignore e
-			// It happens only when both launcher and child process is 32bit
-			// and child crashes with access violation (in opengl call for example).
-			// exception std.exception.ErrnoException@std\stdio.d(920):
-			// Could not seek in file `HANDLE(32C)' (Invalid argument)
-		}
 	}
 
 	void setRootPath(string pluginFolder, string pluginPackFolder)
@@ -271,6 +232,55 @@ struct Launcher
 				pluginsPacksById[pack.id] = pack;
 			}
 		}
+	}
+}
+
+
+string makeCompileCommand(JobParams params)
+{
+	immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+	immutable conf = params.appType == AppType.client ? `--config=client` : `--config=server`;
+	immutable deps = params.nodeps ? ` --nodeps` : ``;
+	immutable doForce = params.force ? ` --force` : ``;
+	immutable release = params.release ? `--build=release` : `--build=debug`;
+	return format("dub build -q %s %s%s%s %s\0", arch, conf, deps, doForce, release);
+}
+
+string makeRunCommand(JobParams params)
+{
+	string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
+	return format("%s --pack=%s\0", conf, params.pluginPack);
+}
+
+void sendCommand(Job* job, string command)
+{
+	job.pipes.stdin.rawWrite(command);
+	job.pipes.stdin.rawWrite("\n");
+}
+
+void logPipes(Job* job)
+{
+	import std.exception : ErrnoException;
+	try
+	{
+		foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
+		{
+			auto size = pipe.size;
+			if (size > 0)
+			{
+				char[1024] buf;
+				size_t charsToRead = min(pipe.size, buf.length);
+				char[] data = pipe.rawRead(buf[0..charsToRead]);
+				job.messageWindow.lineBuffer.put(data);
+			}
+		}
+	}
+	catch(ErrnoException e)
+	{	// Ignore e
+		// It happens only when both launcher and child process is 32bit
+		// and child crashes with access violation (in opengl call for example).
+		// exception std.exception.ErrnoException@std\stdio.d(920):
+		// Could not seek in file `HANDLE(32C)' (Invalid argument)
 	}
 }
 
