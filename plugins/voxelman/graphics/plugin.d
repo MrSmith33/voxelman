@@ -28,6 +28,27 @@ shared static this()
 	pluginRegistry.regClientPlugin(new GraphicsPlugin);
 }
 
+string color_frag_shader = `
+#version 330
+smooth in vec4 theColor;
+out vec4 outputColor;
+void main() { outputColor = theColor; }
+`;
+
+string perspective_vert_shader = `
+#version 330
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec4 color;
+smooth out vec4 theColor;
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+void main() {
+	gl_Position = projection * view * model * position;
+	theColor = color;
+}
+`;
+
 final class GraphicsPlugin : IPlugin
 {
 private:
@@ -77,10 +98,7 @@ public:
 		glGenBuffers( 1, &vbo);
 
 		// Setup shaders
-
-		string vShader = cast(string)read("perspective.vert");
-		string fShader = cast(string)read("colored.frag");
-		chunkShader = renderer.createShaderProgram(vShader, fShader);
+		chunkShader = renderer.createShaderProgram(perspective_vert_shader, color_frag_shader);
 
 		chunkShader.bind;
 			modelLoc = glGetUniformLocation( chunkShader.handle, "model" );//model transformation
