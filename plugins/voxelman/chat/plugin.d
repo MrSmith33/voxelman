@@ -48,9 +48,7 @@ final class ChatPluginClient : IPlugin
 	{
 		import std.format : formattedWrite;
 		auto packet = unpackPacket!MessagePacket(packetData);
-		//infof("message received %s '%s' buflen %s",
-		//	clientPlugin.clientName(packet.clientId),
-		//	packet.msg, messageWindow.lineSizes.data.length);
+
 		if (packet.clientId == 0)
 			messageWindow.putln(packet.msg);
 		else {
@@ -61,6 +59,10 @@ final class ChatPluginClient : IPlugin
 	void onUpdateEvent(ref UpdateEvent event)
 	{
 		import derelict.imgui.imgui;
+
+		float h = 200;
+		igSetNextWindowPos(ImVec2(0, igGetIO().DisplaySize.y-h), ImGuiSetCond_FirstUseEver);
+		igSetNextWindowSize(ImVec2(500, h), ImGuiSetCond_FirstUseEver);
 		if (!igBegin("Chat")) return;
 		messageWindow.draw();
 		igEnd();

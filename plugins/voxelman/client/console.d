@@ -21,6 +21,8 @@ struct Console
 	void draw()
 	{
 		import derelict.imgui.imgui;
+		igSetNextWindowPosCenter(ImGuiSetCond_FirstUseEver);
+		igSetNextWindowSize(ImVec2(400, 300), ImGuiSetCond_FirstUseEver);
 		if (!igBegin("Console")) return;
 		messageWindow.draw();
 		igEnd();

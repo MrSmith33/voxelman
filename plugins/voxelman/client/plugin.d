@@ -207,6 +207,9 @@ public:
 
 	void printDebug()
 	{
+		igSetNextWindowSize(ImVec2(400, 300), ImGuiSetCond_FirstUseEver);
+		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
+		igBegin("Debug");
 		with(stats) {
 			igTextf("FPS: %s", fps);
 			igTextf("Chunks visible/rendered %s/%s %.0f%%",
@@ -237,10 +240,13 @@ public:
 		igSeparator();
 		if (igButton("Profiler"))
 			toggleProfiler();
+		igSameLine();
 		if (igButton("Stop server"))
 			connection.send(CommandPacket("sv_stop"));
+		igSameLine();
 		if (igButton("Connect"))
 			connect(serverIpOpt.get!string, serverPortOpt.get!ushort);
+		igEnd();
 	}
 
 	this()
