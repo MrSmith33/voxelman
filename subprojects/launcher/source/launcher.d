@@ -43,7 +43,14 @@ enum AppType
 	server
 }
 
-enum JobType
+enum JobType : int
+{
+	run,
+	compile,
+	compileAndRun
+}
+
+enum JobState
 {
 	compile,
 	run
@@ -54,11 +61,12 @@ struct JobParams
 	string pluginPack = "default";
 	AppType appType = AppType.client;
 	Flag!"start" start = Yes.start;
+	Flag!"build" build = Yes.build;
 	Flag!"arch64" arch64 = Yes.arch64;
 	Flag!"nodeps" nodeps = Yes.nodeps;
 	Flag!"force" force = No.force;
 	Flag!"release" release = No.release;
-	JobType jobType = JobType.compile;
+	JobType jobType;
 }
 
 struct Job
@@ -68,6 +76,7 @@ struct Job
 	MessageWindow messageWindow;
 	ProcessPipes pipes;
 
+	JobState jobState = JobState.compile;
 	bool isRunning;
 	bool needsClose;
 	bool needsRestart;
@@ -93,8 +102,37 @@ struct Launcher
 		auto job = new Job(params);
 		job.messageWindow.init();
 		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
+		updateJobType(job);
+		restartJobState(job);
 		restartJob(job);
 		jobs ~= job;
+	}
+
+	void updateJobType(Job* job)
+	{
+		final switch(job.params.jobType) with(JobType) {
+			case run:
+				job.params.build = No.build;
+				job.params.start = Yes.start;
+				break;
+			case compile:
+				job.params.build = Yes.build;
+				job.params.start = No.start;
+				break;
+			case compileAndRun:
+				job.params.build = Yes.build;
+				job.params.start = Yes.start;
+				break;
+		}
+	}
+
+	void restartJobState(Job* job)
+	{
+		final switch(job.params.jobType) with(JobType) {
+			case run: job.jobState = JobState.run; break;
+			case compile: job.jobState = JobState.compile; break;
+			case compileAndRun: job.jobState = JobState.compile; break;
+		}
 	}
 
 	void restartJob(Job* job)
@@ -104,20 +142,18 @@ struct Launcher
 
 		string command;
 		string workDir;
-		if (job.params.jobType == JobType.compile) {
+		if (job.jobState == JobState.compile) {
 			command = makeCompileCommand(job.params);
 			workDir = "";
 		}
-		else if (job.params.jobType == JobType.run) {
+		else if (job.jobState == JobState.run) {
 			command = makeRunCommand(job.params);
 			workDir = buildFolder;
 		}
 
-		//infof("%s", command);
-
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
 
-		(*job) = Job(job.params, command, job.messageWindow, pipes);
+		(*job) = Job(job.params, command, job.messageWindow, pipes, job.jobState);
 		job.isRunning = true;
 	}
 
@@ -148,25 +184,23 @@ struct Launcher
 					job.isRunning = false;
 					job.status = res.status;
 
-					if (job.status == 0)
+					bool success = job.status == 0;
+					bool doneCompilation = job.jobState == JobState.compile;
+					bool needsStart = job.params.start;
+					if (doneCompilation) job.messageWindow.putln("Compilation successful");
+					if (success && doneCompilation && needsStart)
 					{
-						if (job.params.jobType == JobType.compile)
-						{
-							if (job.params.start)
-							{
-								job.params.jobType = JobType.run;
-								job.messageWindow.lineBuffer.clear();
-								restartJob(job);
-							}
-						}
+						job.jobState = JobState.run;
+						job.messageWindow.lineBuffer.clear();
+						restartJob(job);
 					}
 				}
 			}
 
 			if (!job.isRunning && job.needsRestart)
 			{
-				job.params.jobType = JobType.compile;
 				job.messageWindow.lineBuffer.clear();
+				restartJobState(job);
 				restartJob(job);
 			}
 
@@ -193,9 +227,10 @@ struct Launcher
 
 	void readPlugins()
 	{
-		import std.file : read, dirEntries, SpanMode;
+		import std.file : exists, read, dirEntries, SpanMode;
 		import std.path : baseName;
 
+		if (!exists(pluginFolderPath)) return;
 		foreach (entry; dirEntries(pluginFolderPath, SpanMode.depth))
 		{
 			if (entry.isFile && baseName(entry.name) == "plugininfo.d")
@@ -254,6 +289,7 @@ string makeRunCommand(JobParams params)
 
 void sendCommand(Job* job, string command)
 {
+	if (job.jobState != JobState.run) return;
 	job.pipes.stdin.rawWrite(command);
 	job.pipes.stdin.rawWrite("\n");
 }

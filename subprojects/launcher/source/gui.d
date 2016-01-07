@@ -217,26 +217,26 @@ struct LauncherGui
 		ImGuiStyle* style = igGetStyle();
 		const ImVec4 color       = style.Colors[ImGuiCol_Button];
 		const ImVec4 colorActive = style.Colors[ImGuiCol_ButtonActive];
-	    const ImVec4 colorHover  = style.Colors[ImGuiCol_ButtonHovered];
+		const ImVec4 colorHover  = style.Colors[ImGuiCol_ButtonHovered];
 
 		if (selectedMenu == select)
-        {
-            style.Colors[ImGuiCol_Button]        = colorActive;
-            style.Colors[ImGuiCol_ButtonActive]  = colorActive;
-            style.Colors[ImGuiCol_ButtonHovered] = colorActive;
-        }
-        else
-        {
-            style.Colors[ImGuiCol_Button]        = color;
-            style.Colors[ImGuiCol_ButtonActive]  = colorActive;
-            style.Colors[ImGuiCol_ButtonHovered] = colorHover;
-        }
+		{
+			style.Colors[ImGuiCol_Button]        = colorActive;
+			style.Colors[ImGuiCol_ButtonActive]  = colorActive;
+			style.Colors[ImGuiCol_ButtonHovered] = colorActive;
+		}
+		else
+		{
+			style.Colors[ImGuiCol_Button]        = color;
+			style.Colors[ImGuiCol_ButtonActive]  = colorActive;
+			style.Colors[ImGuiCol_ButtonHovered] = colorHover;
+		}
 
 		if (igButton(text.ptr)) selectedMenu = select;
 
 		style.Colors[ImGuiCol_Button] =         color;
-	    style.Colors[ImGuiCol_ButtonActive] =   colorActive;
-	    style.Colors[ImGuiCol_ButtonHovered] =  colorHover;
+		style.Colors[ImGuiCol_ButtonActive] =   colorActive;
+		style.Colors[ImGuiCol_ButtonHovered] =  colorHover;
 	}
 
 	void restoreStyle()
@@ -357,6 +357,14 @@ struct PlayMenu
 	}
 }
 
+import std.traits : Parameters;
+auto withWidth(float width, alias func)(auto ref Parameters!func args)
+{
+	scope(exit) igPopItemWidth();
+	igPushItemWidth(width);
+	return func(args);
+}
+
 void startButtons(Launcher* launcher, string pack)
 {
 	static JobParams params;
@@ -366,7 +374,11 @@ void startButtons(Launcher* launcher, string pack)
 	igCheckbox("force", cast(bool*)&params.force); igSameLine();
 	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
 	igCheckbox("release", cast(bool*)&params.release); igSameLine();
-	igCheckbox("start", cast(bool*)&params.start); igSameLine();
+
+	static int curJobType = 0;
+	withWidth!(100, igCombo2)("##job type", &curJobType, "Run\0Build\0Build & Run\0\0", 3);
+	igSameLine();
+	params.jobType = cast(JobType)curJobType;
 
 	params.appType = AppType.client;
 	if (igButton("Client")) launcher.startJob(params); igSameLine();
@@ -399,8 +411,7 @@ struct CodeMenu
 	void draw()
 	{
 		igBeginGroup();
-		igPushItemWidth(200);
-		igCombo3(
+		withWidth!(200, igCombo3)(
 			"Pack",
 			cast(int*)&pluginPacks.currentItem,
 			&getter, &this,
