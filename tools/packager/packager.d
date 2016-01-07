@@ -89,7 +89,9 @@ void makePackage(ReleasePackage* pack)
 	pack.addFiles("builds/default", "*.exe");
 	pack.addFiles("config", "*.sdl");
 	pack.addFiles("lib/"~archToString[pack.arch], "*.dll");
-	pack.addFile("readme.md");
+	pack.addFile("README.md");
+	pack.addFile("CHANGELOG.md");
+	pack.addFile("LICENSE.md");
 	pack.addFile("pluginpacks/default.txt");
 	pack.addFile("launcher.exe");
 }

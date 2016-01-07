@@ -4,7 +4,8 @@
 
 ## [0.6.0] - 2016-01-08
 ### Added
-- Changelog.
+- Add LICENSE.md.
+- Add CHANGELOG.md.
 - Add launcher.
 - Add packager tool.
 - Add command plugin. Close #44.
