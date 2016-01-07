@@ -33,7 +33,7 @@ void completeBuild(Arch arch, string semver)
 	string dub_arch = arch == Arch.x32 ? "x86" : "x86_64";
 	string launcher_arch = arch == Arch.x32 ? "32" : "64";
 	string dubCom(Arch arch) {
-		return format(`dub run --root="subprojects/launcher" -q --build=release --arch=%s --nodeps -- --release=%s`,
+		return format(`dub run --root="tools/launcher" -q --build=release --arch=%s --nodeps -- --release=%s`,
 				dub_arch, launcher_arch);
 	}
 
