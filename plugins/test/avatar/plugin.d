@@ -66,6 +66,7 @@ final class AvatarServer : IPlugin
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	ServerPlugin serverPlugin;
+	size_t lastAvatarsSent;
 
 	override void init(IPluginManager pluginman)
 	{
@@ -85,9 +86,10 @@ final class AvatarServer : IPlugin
 		{
 			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.heading));
 		}
-		if (avatars.data.length < 2) return;
+		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
 		connection.sendTo(serverPlugin.loggerInClients, UpdateAvatarsPacket(avatars.data));
+		lastAvatarsSent = avatars.data.length;
 	}
 }
 

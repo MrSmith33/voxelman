@@ -386,6 +386,7 @@ public:
 			clients[event.clientId].name);
 
 		connection.sendToAll(ClientLoggedOutPacket(event.clientId));
+		clients.remove(event.clientId);
 	}
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
