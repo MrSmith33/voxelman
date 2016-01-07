@@ -48,13 +48,13 @@ final class RemoteControl : IPlugin
 		if (!stdin.isOpen || stdin.eof || stdin.error) return;
 
 		auto size = stdin.size;
-		if (size > 0)
+		if (size > 0 && size != ulong.max)
 		{
 			import std.regex : ctRegex, splitter;
 			import std.algorithm : min;
 			import std.array : array;
 
-			size_t charsToRead = min(stdin.size, buf.length);
+			size_t charsToRead = min(size, buf.length);
 			char[] data = stdin.rawRead(buf[0..charsToRead]);
 			auto splittedLines = splitter(data, ctRegex!"(\r\n|\r|\n|\v|\f)").array;
 
@@ -67,9 +67,6 @@ final class RemoteControl : IPlugin
 
 				if (res.status == ExecStatus.notRegistered)
 				{
-					//if (connection.isConnected)
-					//	connection.send(CommandPacket(command));
-					//else
 					warningf("Unknown command '%s'", command);
 				}
 				else if (res.status == ExecStatus.error)
