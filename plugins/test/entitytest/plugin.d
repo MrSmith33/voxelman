@@ -52,7 +52,7 @@ mixin template EntityTestPluginClient()
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingsMan.registerKeyBinding(new KeyBinding(PointerButton.PB_1, "key.mainAction", null, &onMainActionRelease));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_E, "key.place_entity", null, &onMainActionRelease));
 	}
 
 	override void init(IPluginManager pluginman)

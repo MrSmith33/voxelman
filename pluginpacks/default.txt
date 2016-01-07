@@ -2,12 +2,15 @@ default 0.1.0
 
 exampleplugin 0.1.0
 
+test.avatar 1.0.0
+test.entitytest 1.0.0
 voxelman.chat 0.6.0
 voxelman.client 0.5.0
 voxelman.command 0.5.0
 voxelman.config 0.5.0
 voxelman.core 0.5.0
 voxelman.edit 0.5.0
+voxelman.entity 0.5.0
 voxelman.eventdispatcher 0.5.0
 voxelman.graphics 0.5.0
 voxelman.gui 0.5.0
