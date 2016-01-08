@@ -88,7 +88,7 @@ final class AvatarServer : IPlugin
 		}
 		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
-		connection.sendTo(serverPlugin.loggerInClients, UpdateAvatarsPacket(avatars.data));
+		connection.sendTo(serverPlugin.loggedInClients, UpdateAvatarsPacket(avatars.data));
 		lastAvatarsSent = avatars.data.length;
 	}
 }

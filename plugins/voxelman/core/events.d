@@ -15,12 +15,12 @@ struct GameStopEvent {
 	bool continuePropagation = true;
 }
 
-struct UpdateEvent {
+struct PreUpdateEvent {
 	double deltaTime;
 	Profiler profiler;
 	bool continuePropagation = true;
 }
-struct PreUpdateEvent {
+struct UpdateEvent {
 	double deltaTime;
 	Profiler profiler;
 	bool continuePropagation = true;

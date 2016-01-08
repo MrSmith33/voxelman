@@ -5,7 +5,14 @@
 - Add falling sand.
 - Add removeAll() method to component storage interface.
 - Add sand block.
+- Command name aliasing. Put | to separate aliases.
 
+### Changed
+- Server has stop alias of sv_stop now.
+- Moved world management from server plugin into world plugin.
+
+### Fixed
+- Fps limit now works as intended (120 fps by default).
 
 ## [0.6.0] - 2016-01-08
 ### Added

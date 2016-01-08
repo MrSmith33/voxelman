@@ -8,6 +8,7 @@ module voxelman.command.plugin;
 import pluginlib;
 public import netlib.connection : ClientId;
 public import std.getopt;
+import std.experimental.logger;
 
 shared static this()
 {
@@ -51,8 +52,12 @@ final class CommandPlugin : IPlugin
 
 	void registerCommand(string name, CommandHandler handler)
 	{
-		assert(name !in handlers, name ~ " command is already registered");
-		handlers[name] = handler;
+		import std.algorithm : splitter;
+		foreach(comAlias; name.splitter('|'))
+		{
+			assert(comAlias !in handlers, comAlias ~ " command is already registered");
+			handlers[comAlias] = handler;
+		}
 	}
 
 	ExecResult execute(const(char)[] input, ClientId source = ClientId(0))

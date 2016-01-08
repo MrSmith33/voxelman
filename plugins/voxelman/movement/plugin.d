@@ -39,14 +39,14 @@ class MovementPlugin : IPlugin
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		auto keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_W, "key.forward"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_A, "key.left"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_S, "key.backward"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_D, "key.right"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
+		auto keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_W, "key.forward"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_A, "key.left"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_S, "key.backward"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_D, "key.right"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
 	}
 
 	override void init(IPluginManager pluginman)
