@@ -39,6 +39,7 @@ unittest
 		void add(EntityId, int);
 		void remove(EntityId);
 		int* get(EntityId);
+		void removeAll();
 		auto byKeyValue() @property {
 			return (int[EntityId]).init.byKeyValue;
 		}
