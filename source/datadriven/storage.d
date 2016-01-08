@@ -17,6 +17,11 @@ struct HashmapComponentStorage(ComponentType)
 		components.remove(eid);
 	}
 
+	void removeAll()
+	{
+		components = null;
+	}
+
 	size_t length() @property
 	{
 		return components.length;

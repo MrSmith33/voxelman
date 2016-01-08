@@ -7,11 +7,16 @@ module test.entitytest.plugin;
 
 import std.experimental.logger;
 import dlib.math;
+import std.array : Appender;
 
 import pluginlib;
 import datadriven.api;
 import datadriven.storage;
 import voxelman.core.events;
+import voxelman.core.config : BlockType;
+import voxelman.storage.coordinates : BlockWorldPos;
+import derelict.imgui.imgui;
+import voxelman.utils.textformatter;
 
 import voxelman.entity.plugin;
 import voxelman.eventdispatcher.plugin;
@@ -71,8 +76,7 @@ mixin template EntityTestPluginClient()
 	void onMainActionRelease(string key)
 	{
 		if (worldInteraction.cursorHit) {
-			vec3 pos = vec3(worldInteraction.blockPos.vector + worldInteraction.hitNormal);
-			infof("create entity at %s", pos);
+			ivec3 pos = worldInteraction.blockPos.vector + worldInteraction.hitNormal;
 			connection.send(EntityCreatePacket(pos));
 		}
 	}
@@ -88,8 +92,11 @@ mixin template EntityTestPluginClient()
 		auto query = componentQuery(transformStorage);
 		foreach(row; query)
 		{
-			batch.putCube(row.transform.pos, vec3(1,1,1), Colors.black, true);
+			batch.putCube(vec3(row.transform.pos), vec3(1,1,1), Color3ub(225, 169, 95), true);
 		}
+		igBegin("Debug");
+		igTextf("Entities %s", transformStorage.length);
+		igEnd();
 	}
 
 	void drawEntities(ref Render1Event event)
@@ -102,9 +109,11 @@ mixin template EntityTestPluginClient()
 
 mixin template EntityTestPluginServer()
 {
+	import voxelman.server.plugin;
 	EntityPluginServer entityPlugin;
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
+	ServerPlugin serverPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
@@ -115,15 +124,47 @@ mixin template EntityTestPluginServer()
 		entityPlugin.registerComponent!Transform();
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!EntityCreatePacket(&handleEntityCreatePacket);
+		serverPlugin = pluginman.getPlugin!ServerPlugin;
 	}
 
 	void process(ref ProcessComponentsEvent event)
 	{
+		Appender!(EntityId[]) toRemove;
+		auto wa = serverPlugin.worldAccess;
 		auto query = componentQuery(transformStorage);
 		foreach(row; query)
 		{
-			row.transform.pos += vec3(0,1,0) * event.deltaTime;
+			ivec3 pos = row.transform.pos;
+			if (wa.isFree(BlockWorldPos(pos+ivec3(0, -1, 0)))) // lower
+				row.transform.pos += ivec3(0,-1,0);
+			else if (wa.isFree(BlockWorldPos(pos+ivec3( 0, 0, -1))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec3( 0, -1, -1))))
+			{
+				row.transform.pos = pos+ivec3( 0, 0, -1);
+			}
+			else if (wa.isFree(BlockWorldPos(pos+ivec3( 0, 0,  1))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec3( 0, -1,  1))))
+			{
+				row.transform.pos = pos+ivec3( 0, 0,  1);
+			}
+			else if (wa.isFree(BlockWorldPos(pos+ivec3(-1, 0,  0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec3(-1, -1,  0))))
+			{
+				row.transform.pos = pos+ivec3(-1, 0,  0);
+			}
+			else if (wa.isFree(BlockWorldPos(pos+ivec3( 1, 0,  0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec3( 1, -1,  0))))
+			{
+				row.transform.pos = pos+ivec3( 1, 0,  0);
+			}
+			else // set sand
+			{
+				wa.setBlock(BlockWorldPos(pos), BlockType(5));
+				toRemove.put(row.eid);
+			}
 		}
+		foreach(eid; toRemove.data)
+			transformStorage.remove(eid);
 	}
 
 	void sync(ref SyncComponentsEvent event)
@@ -137,16 +178,15 @@ mixin template EntityTestPluginServer()
 
 		EntityId eid = entityPlugin.entityManager.nextEntityId;
 		transformStorage.add(eid, Transform(packet.pos));
-		infof("Add %s %s", eid, packet.pos);
 	}
 }
 
 struct Transform
 {
-	vec3 pos;
+	ivec3 pos;
 }
 
 struct EntityCreatePacket
 {
-	vec3 pos;
+	ivec3 pos;
 }

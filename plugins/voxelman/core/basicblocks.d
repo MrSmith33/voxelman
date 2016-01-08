@@ -16,6 +16,7 @@ immutable Block airBlock = Block(1, "", [0,0,0], false,
 immutable Block grassBlock = makeColoredSolidBlock(2, [0, 255, 0]);
 immutable Block dirtBlock = makeColoredSolidBlock(3, [120, 72, 0]);
 immutable Block stoneBlock = makeColoredSolidBlock(4, [128, 128, 128]);
+immutable Block sandBlock = makeColoredSolidBlock(5, [225, 169, 95]);
 
 
 Block makeSolidBlock(BlockType id)

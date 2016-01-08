@@ -81,6 +81,10 @@ final class WorldAccess {
 		}
 		return 0;
 	}
+
+	bool isFree(BlockWorldPos bwp) {
+		 return getBlock(bwp) < 2; // air or unknown
+	}
 }
 
 

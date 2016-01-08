@@ -117,6 +117,7 @@ mixin template EntityPluginClientImpl()
 
 	void unpackComponents(Storage)(ref Storage storage, ubyte[] data)
 	{
+		storage.removeAll();
 		while(!data.empty)
 		{
 			storage.add(decodeCborSingle!size_t(data), decodeCborSingle!(componentType!Storage)(data));

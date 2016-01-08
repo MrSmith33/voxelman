@@ -21,6 +21,7 @@ struct BlockMan
 			&grassBlock,
 			&dirtBlock,
 			&stoneBlock,
+			&sandBlock
 		];
 	}
 

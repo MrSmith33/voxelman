@@ -1,6 +1,11 @@
 # Change Log
 
 ## [Unreleased]
+### Added
+- Add falling sand.
+- Add removeAll() method to component storage interface.
+- Add sand block.
+
 
 ## [0.6.0] - 2016-01-08
 ### Added

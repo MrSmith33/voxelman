@@ -20,6 +20,7 @@ template isComponentStorage(CS, C)
 
         cs.add(eid, c); // Can add component
         cs.remove(eid); // Can remove component
+        cs.removeAll(); // Can remove all
         C* cptr = cs.get(eid); // Can get component pointer
 
         foreach(pair; cs.byKeyValue)
