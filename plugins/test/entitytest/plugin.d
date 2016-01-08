@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2015 Andrey Penechko.
+Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -22,6 +22,7 @@ import voxelman.entity.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
+import voxelman.world.plugin : ServerWorld;
 import voxelman.input.keybindingmanager;
 
 shared static this()
@@ -109,11 +110,10 @@ mixin template EntityTestPluginClient()
 
 mixin template EntityTestPluginServer()
 {
-	import voxelman.server.plugin;
 	EntityPluginServer entityPlugin;
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	ServerPlugin serverPlugin;
+	ServerWorld serverWorld;
 
 	override void init(IPluginManager pluginman)
 	{
@@ -124,13 +124,13 @@ mixin template EntityTestPluginServer()
 		entityPlugin.registerComponent!Transform();
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!EntityCreatePacket(&handleEntityCreatePacket);
-		serverPlugin = pluginman.getPlugin!ServerPlugin;
+		serverWorld = pluginman.getPlugin!ServerWorld;
 	}
 
 	void process(ref ProcessComponentsEvent event)
 	{
 		Appender!(EntityId[]) toRemove;
-		auto wa = serverPlugin.worldAccess;
+		auto wa = serverWorld.worldAccess;
 		auto query = componentQuery(transformStorage);
 		foreach(row; query)
 		{

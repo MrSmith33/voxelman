@@ -8,6 +8,7 @@
 - Command name aliasing. Put | to separate aliases.
 
 ### Changed
+- Updated copyrights.
 - Server has stop alias of sv_stop now.
 - Moved world management from server plugin into world plugin.
 

@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2013-2015 Andrey Penechko.
+Copyright: Copyright (c) 2013-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -13,30 +13,30 @@ struct HashSet(K) {
 	}
 
 	bool remove()(auto ref K key) {
-        return set.remove(key);
-    }
+		return set.remove(key);
+	}
 
-    size_t length() const @property {
-        return set.length;
-    }
+	size_t length() const @property {
+		return set.length;
+	}
 
-    @property bool empty() const {
-        return set.length == 0;
-    }
+	@property bool empty() const {
+		return set.length == 0;
+	}
 
-    bool opCast(T: bool)() const {
-        return !empty;
-    }
+	bool opCast(T: bool)() const {
+		return !empty;
+	}
 
-    bool opBinaryRight(string op)(auto ref K key) const if(op == "in") {
-        return cast(bool)(key in set);
-    }
+	bool opBinaryRight(string op)(auto ref K key) const if(op == "in") {
+		return cast(bool)(key in set);
+	}
 
-    void clear() {
-    	set = null;
-    }
+	void clear() {
+		set = null;
+	}
 
-    auto items() @property {
-    	return set.byKey;
-    }
+	auto items() @property {
+		return set.byKey;
+	}
 }
