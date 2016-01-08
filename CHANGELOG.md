@@ -11,6 +11,9 @@
 - Updated copyrights.
 - Server has stop alias of sv_stop now.
 - Moved world management from server plugin into world plugin.
+- Move server command handling into command plugin.
+- Move message command into chat plugin.
+- Add checks allowing update of connection when connection is not running.
 
 ### Fixed
 - Fps limit now works as intended (120 fps by default).

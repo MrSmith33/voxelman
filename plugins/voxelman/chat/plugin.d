@@ -76,12 +76,15 @@ final class ChatPluginServer : IPlugin
 
 	private NetServerPlugin connection;
 	private ServerPlugin serverPlugin;
+	CommandPluginServer commandPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		serverPlugin = pluginman.getPlugin!ServerPlugin;
+		commandPlugin = pluginman.getPlugin!CommandPluginServer;
+		commandPlugin.registerCommand("msg", &messageCommand);
 	}
 
 	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
@@ -90,5 +93,13 @@ final class ChatPluginServer : IPlugin
 		packet.clientId = clientId;
 		connection.sendToAll(packet);
 		infof("%s> %s", serverPlugin.clientName(clientId), packet.msg);
+	}
+
+	void messageCommand(CommandParams params)
+	{
+		import std.string : strip;
+		auto stripped = params.rawArgs.strip;
+		connection.sendToAll(MessagePacket(0, stripped));
+		infof("> %s", stripped);
 	}
 }

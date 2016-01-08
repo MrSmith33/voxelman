@@ -5,15 +5,17 @@ Authors: Andrey Penechko.
 */
 module voxelman.command.plugin;
 
+import netlib;
 import pluginlib;
 public import netlib.connection : ClientId;
 public import std.getopt;
 import std.experimental.logger;
+import std.string : format;
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new CommandPlugin);
-	pluginRegistry.regServerPlugin(new CommandPlugin);
+	pluginRegistry.regClientPlugin(new CommandPluginClient);
+	pluginRegistry.regServerPlugin(new CommandPluginServer);
 }
 
 struct CommandParams
@@ -43,7 +45,18 @@ struct ExecResult
 	string error;
 }
 
-final class CommandPlugin : IPlugin
+final class CommandPluginClient : IPlugin
+{
+	mixin CommandPluginCommon;
+}
+
+final class CommandPluginServer : IPlugin
+{
+	mixin CommandPluginCommon;
+	mixin CommandPluginServerImpl;
+}
+
+mixin template CommandPluginCommon()
 {
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.command.plugininfo);
@@ -92,5 +105,31 @@ final class CommandPlugin : IPlugin
 		}
 
 		return ExecResult(args, ExecStatus.success);
+	}
+}
+
+mixin template CommandPluginServerImpl()
+{
+	import voxelman.net.plugin : NetServerPlugin;
+	import voxelman.core.packets : CommandPacket;
+	import voxelman.net.packets : MessagePacket;
+	NetServerPlugin connection;
+	override void init(IPluginManager pluginman)
+	{
+		connection = pluginman.getPlugin!NetServerPlugin;
+		connection.registerPacketHandler!CommandPacket(&handleCommandPacket);
+	}
+
+	void handleCommandPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!CommandPacket(packetData);
+
+		ExecResult res = execute(packet.command, clientId);
+
+		if (res.status == ExecStatus.notRegistered)
+			connection.sendTo(clientId, MessagePacket(0, format("Unknown command '%s'", packet.command)));
+		else if (res.status == ExecStatus.error)
+			connection.sendTo(clientId,
+				MessagePacket(0, format("Error executing command '%s': %s", packet.command, res.error)));
 	}
 }

@@ -22,7 +22,7 @@ import voxelman.core.events;
 import voxelman.storage.coordinates;
 
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
-import voxelman.command.plugin : CommandPlugin, CommandParams, ExecResult, ExecStatus;
+import voxelman.command.plugin : CommandPluginServer, CommandParams, ExecResult, ExecStatus;
 import voxelman.net.plugin : NetServerPlugin;
 import voxelman.world.plugin : ServerWorld;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
@@ -48,7 +48,7 @@ class ServerPlugin : IPlugin
 private:
 	PluginManager pluginman;
 	EventDispatcherPlugin evDispatcher;
-	CommandPlugin commandPlugin;
+	CommandPluginServer commandPlugin;
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
 
@@ -92,9 +92,8 @@ public:
 		evDispatcher.subscribeToEvent(&handleClientConnected);
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
 
-		commandPlugin = pluginman.getPlugin!CommandPlugin;
+		commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("sv_stop|stop", &stopCommand);
-		commandPlugin.registerCommand("msg", &messageCommand);
 
 		serverWorld = pluginman.getPlugin!ServerWorld;
 		connection = pluginman.getPlugin!NetServerPlugin;
@@ -102,12 +101,9 @@ public:
 		static import voxelman.core.packets;
 		static import voxelman.net.packets;
 		connection.printPacketMap();
-
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
-
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
-		connection.registerPacketHandler!CommandPacket(&handleCommandPacket);
 	}
 
 	override void postInit()
@@ -231,19 +227,6 @@ public:
 		isRunning = false;
 	}
 
-	void messageCommand(CommandParams params)
-	{
-		import std.string : strip;
-		auto stripped = params.rawArgs.strip;
-		connection.sendToAll(MessagePacket(0, stripped));
-		infof("> %s", stripped);
-	}
-
-	void sendMessageTo(ClientId clientId, string message, ClientId from = 0)
-	{
-		connection.sendTo(clientId, MessagePacket(from, message));
-	}
-
 	void spawnClient(vec3 pos, vec2 heading, ClientId clientId)
 	{
 		ClientInfo* info = clients[clientId];
@@ -308,18 +291,6 @@ public:
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 		updateObserverVolume(info);
-	}
-
-	void handleCommandPacket(ubyte[] packetData, ClientId clientId)
-	{
-		auto packet = unpackPacket!CommandPacket(packetData);
-
-		ExecResult res = commandPlugin.execute(packet.command, clientId);
-
-		if (res.status == ExecStatus.notRegistered)
-			sendMessageTo(clientId, format("Unknown command '%s'", packet.command));
-		else if (res.status == ExecStatus.error)
-			sendMessageTo(clientId, format("Error executing command '%s': %s", packet.command, res.error));
 	}
 
 	void updateObserverVolume(ClientInfo* info)

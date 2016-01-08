@@ -30,6 +30,7 @@ abstract class BaseServer : Connection
 	/// Disconnects all clients.
 	void disconnectAll()
 	{
+		if (!isRunning) return;
 		foreach(peer; clientStorage.clientPeers.byValue)
 		{
 			enet_peer_disconnect(peer, 0);
@@ -41,6 +42,7 @@ abstract class BaseServer : Connection
 		if ((isInputRange!R && is(ElementType!R : ClientId)) ||
 			is(R : ClientId))
 	{
+		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
 				ENET_PACKET_FLAG_RELIABLE);
 		sendTo(clients, packet, channel);
@@ -60,6 +62,7 @@ abstract class BaseServer : Connection
 		if ((isInputRange!R && is(ElementType!R : ClientId)) ||
 			is(R : ClientId))
 	{
+		if (!isRunning) return;
 		static if (isInputRange!R)
 		{
 			foreach(clientId; clients)
@@ -85,6 +88,7 @@ abstract class BaseServer : Connection
 	/// ditto
 	void sendToAll(ubyte[] data, ubyte channel = 0)
 	{
+		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
 					ENET_PACKET_FLAG_RELIABLE);
 		sendToAll(packet, channel);
@@ -93,6 +97,7 @@ abstract class BaseServer : Connection
 	/// ditto
 	void sendToAll(ENetPacket* packet, ubyte channel = 0)
 	{
+		if (!isRunning) return;
 		enet_host_broadcast(host, channel, packet);
 	}
 
@@ -106,6 +111,7 @@ abstract class BaseServer : Connection
 	/// ditto
 	void sendToAllExcept(ClientId exceptClient, ubyte[] data, ubyte channel = 0)
 	{
+		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
 					ENET_PACKET_FLAG_RELIABLE);
 		sendToAllExcept(exceptClient, packet, channel);
@@ -114,6 +120,7 @@ abstract class BaseServer : Connection
 	/// ditto
 	void sendToAllExcept(ClientId exceptClient, ENetPacket* packet, ubyte channel = 0)
 	{
+		if (!isRunning) return;
 		foreach(clientId, peer; clientStorage.clientPeers)
 		{
 			if (clientId != exceptClient && peer)

@@ -79,7 +79,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	GuiPlugin guiPlugin;
-	CommandPlugin commandPlugin;
+	CommandPluginClient commandPlugin;
 
 	// Resource managers
 	KeyBindingManager keyBindingMan;
@@ -172,7 +172,7 @@ public:
 		evDispatcher.subscribeToEvent(&handleThisClientConnected);
 		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
 
-		commandPlugin = pluginman.getPlugin!CommandPlugin;
+		commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("connect", &connectCommand);
 		console.messageWindow.messageHandler = &onConsoleCommand;
 

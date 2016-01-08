@@ -7,6 +7,7 @@ module voxelman.remotecontrol.plugin;
 
 import std.stdio;
 import std.experimental.logger;
+import std.traits : Select;
 
 import pluginlib;
 import voxelman.core.events;
@@ -15,12 +16,14 @@ import voxelman.command.plugin;
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new RemoteControl);
-	pluginRegistry.regServerPlugin(new RemoteControl);
+	pluginRegistry.regClientPlugin(new RemoteControl!true);
+	pluginRegistry.regServerPlugin(new RemoteControl!false);
 }
 
-final class RemoteControl : IPlugin
+final class RemoteControl(bool clientSide) : IPlugin
 {
+	alias CommandPlugin = Select!(clientSide, CommandPluginClient, CommandPluginServer);
+
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.remotecontrol.plugininfo);
 	private EventDispatcherPlugin evDispatcher;

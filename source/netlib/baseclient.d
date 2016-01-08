@@ -54,6 +54,7 @@ abstract class BaseClient : Connection
 
 	void send(ubyte[] data, ubyte channel = 0)
 	{
+		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
 				ENET_PACKET_FLAG_RELIABLE);
 		enet_peer_send(server, channel, packet);

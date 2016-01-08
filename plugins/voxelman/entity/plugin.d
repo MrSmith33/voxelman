@@ -147,7 +147,8 @@ mixin template EntityPluginServerImpl()
 	{
 		auto componentId = componentMap[typeid(componentType!Storage)].id;
 		auto packetData = createComponentPacket(componentId, storage);
-		connection.sendToAll(packetData);
+		if (packetData.length > 0)
+			connection.sendToAll(packetData);
 	}
 
 	ubyte[] createComponentPacket(Storage)(size_t componentId, Storage storage)

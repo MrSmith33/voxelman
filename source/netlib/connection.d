@@ -171,6 +171,7 @@ abstract class Connection
 
 	void flush()
 	{
+		if (!isRunning) return;
 		enet_host_flush(host);
 	}
 
@@ -182,6 +183,7 @@ abstract class Connection
 
 	void update()
 	{
+		if (!isRunning) return;
 		ENetEvent event;
 		while (enet_host_service(host, &event, 0) > 0)
 		{
