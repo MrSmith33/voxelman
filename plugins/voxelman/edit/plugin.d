@@ -28,7 +28,7 @@ class EditPlugin : IPlugin
 	ClientPlugin clientPlugin;
 	WorldInteractionPlugin worldInteraction;
 
-	BlockType currentBlock = 4;
+	BlockId currentBlock = 4;
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

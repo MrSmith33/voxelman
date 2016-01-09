@@ -37,7 +37,7 @@ struct SnapshotSavedMessage
 struct LoadSnapshotMessage
 {
 	ChunkWorldPos cwp;
-	BlockType[] blockBuffer;
+	BlockId[] blockBuffer;
 	Tid genWorker;
 }
 
@@ -96,7 +96,7 @@ public:
 		}
 	}
 
-	void loadChunk(ChunkWorldPos cwp, BlockType[] blockBuffer) {
+	void loadChunk(ChunkWorldPos cwp, BlockId[] blockBuffer) {
 		auto m = new LoadSnapshotMessage(cwp, blockBuffer, genWorkers.nextWorker);
 		storeWorker.nextWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
 		++loadQueueLength;

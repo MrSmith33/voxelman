@@ -26,7 +26,7 @@ struct WorldAccess
 	}
 	@disable this();
 
-	BlockType getBlock(BlockWorldPos blockPos)
+	BlockId getBlock(BlockWorldPos blockPos)
 	{
 		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
 		Chunk* chunk = chunkGetter(chunkPos);
@@ -43,7 +43,7 @@ struct WorldAccess
 		return 0; // unknown block. Indicates that chunk is not loaded.
 	}
 
-	bool setBlock(BlockWorldPos blockPos, BlockType blockType)
+	bool setBlock(BlockWorldPos blockPos, BlockId blockId)
 	{
 		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
 		Chunk* chunk = chunkGetter(chunkPos);
@@ -57,10 +57,10 @@ struct WorldAccess
 				return false;
 
 			auto blockIndex = BlockChunkIndex(blockPos);
-			snapshot.blockData.setBlockType(blockIndex, blockType);
+			snapshot.blockData.setBlockType(blockIndex, blockId);
 
 			foreach(handler; onChunkModifiedHandlers)
-				handler(chunk, [BlockChange(blockIndex.index, blockType)]);
+				handler(chunk, [BlockChange(blockIndex.index, blockId)]);
 
 			return true;
 		}

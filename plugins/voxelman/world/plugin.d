@@ -8,9 +8,9 @@ module voxelman.world.plugin;
 import netlib;
 import pluginlib;
 
-import voxelman.core.config : BlockType;
+import voxelman.core.config : BlockId;
 import voxelman.core.events : PreUpdateEvent, PostUpdateEvent, GameStopEvent;
-import voxelman.core.blockman;
+import voxelman.block.blockman;
 
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
@@ -38,10 +38,10 @@ final class WorldAccess {
 		this.chunkManager = chunkManager;
 	}
 
-	bool setBlock(BlockWorldPos bwp, BlockType blockId) {
+	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
-		BlockType[] blocks = chunkManager.getWriteBuffer(chunkPos);
+		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos);
 		if (blocks is null)
 			return false;
 		blocks[blockIndex] = blockId;
@@ -51,7 +51,7 @@ final class WorldAccess {
 		return true;
 	}
 
-	BlockType getBlock(BlockWorldPos bwp) {
+	BlockId getBlock(BlockWorldPos bwp) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
 		auto snap = chunkManager.getChunkSnapshot(chunkPos);
@@ -191,7 +191,7 @@ public:
 		//if (serverPlugin.isLoggedIn(clientId))
 		{
 			auto packet = unpackPacket!PlaceBlockPacket(packetData);
-			worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockType);
+			worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockId);
 		}
 	}
 }

@@ -8,7 +8,7 @@ module voxelman.storage.chunkmanager;
 import std.experimental.logger;
 import std.typecons : Nullable;
 
-import voxelman.core.block;
+import voxelman.block.block;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates : ChunkWorldPos;
@@ -33,22 +33,22 @@ private enum traceStateStr = q{
 
 enum maxFreeItems = 200;
 struct ChunkFreeList {
-	BlockType[][maxFreeItems] items;
+	BlockId[][maxFreeItems] items;
 	size_t numItems;
 
-	BlockType[] allocate() {
+	BlockId[] allocate() {
 		import std.array : uninitializedArray;
 		if (numItems > 0) {
 			--numItems;
-			BlockType[] item = items[numItems];
+			BlockId[] item = items[numItems];
 			items[numItems] = null;
 			return item;
 		} else {
-			return uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
+			return uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
 		}
 	}
 
-	void deallocate(BlockType[] blocks) {
+	void deallocate(BlockId[] blocks) {
 		if (blocks is null) return;
 		if (numItems == maxFreeItems) {
 			delete(blocks);
@@ -63,13 +63,13 @@ final class ChunkManager {
 	void delegate(ChunkWorldPos)[] onChunkRemovedHandlers;
 	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
 	void delegate(BlockChange[][ChunkWorldPos])[] chunkChangesHandlers;
-	void delegate(ChunkWorldPos cwp, BlockType[] outBuffer) loadChunkHandler;
+	void delegate(ChunkWorldPos cwp, BlockId[] outBuffer) loadChunkHandler;
 	void delegate(ChunkWorldPos cwp, BlockDataSnapshot snapshot) saveChunkHandler;
 
 	private ChunkFreeList freeList;
 	private BlockDataSnapshot[ChunkWorldPos] snapshots;
 	private BlockDataSnapshot[TimestampType][ChunkWorldPos] oldSnapshots;
-	private BlockType[][ChunkWorldPos] writeBuffers;
+	private BlockId[][ChunkWorldPos] writeBuffers;
 	private BlockChange[][ChunkWorldPos] chunkChanges;
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
@@ -133,7 +133,7 @@ final class ChunkManager {
 	/// This buffer is valid until commit.
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
-	BlockType[] getWriteBuffer(ChunkWorldPos cwp) {
+	BlockId[] getWriteBuffer(ChunkWorldPos cwp) {
 		auto newData = writeBuffers.get(cwp, null);
 		if (newData is null) {
 			newData = createWriteBuffer(cwp);
@@ -387,7 +387,7 @@ final class ChunkManager {
 	// Latest snapshot's data is copied in it.
 	// On commit stage this is moved into new snapshot and.
 	// Adds internal user that is removed on commit to prevent unloading with uncommitted changes.
-	private BlockType[] createWriteBuffer(ChunkWorldPos cwp) {
+	private BlockId[] createWriteBuffer(ChunkWorldPos cwp) {
 		assert(writeBuffers.get(cwp, null) is null);
 		auto old = getChunkSnapshot(cwp);
 		if (old.isNull) {
@@ -457,7 +457,7 @@ final class ChunkManager {
 	}
 
 	// Commit for single chunk.
-	private void commitChunkSnapshot(ChunkWorldPos cwp, BlockType[] blocks, TimestampType currentTime) {
+	private void commitChunkSnapshot(ChunkWorldPos cwp, BlockId[] blocks, TimestampType currentTime) {
 		auto currentSnapshot = getChunkSnapshot(cwp);
 		assert(!currentSnapshot.isNull);
 		if (currentSnapshot.numUsers == 0)
@@ -467,7 +467,7 @@ final class ChunkManager {
 			assert(currentTime !in chunkSnaps);
 			chunkSnaps[currentTime] = currentSnapshot.get;
 		}
-		snapshots[cwp] = BlockDataSnapshot(BlockData(blocks, BlockType.init, false), currentTime);
+		snapshots[cwp] = BlockDataSnapshot(BlockData(blocks, BlockId.init, false), currentTime);
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {

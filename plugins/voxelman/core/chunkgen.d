@@ -15,7 +15,7 @@ import core.exception : Throwable;
 import dlib.math.vector : ivec3;
 
 import anchovy.simplex;
-import voxelman.core.block;
+import voxelman.block.block;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
@@ -76,7 +76,7 @@ void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
 	generator.genPerChunkData();
 
 	bd.blocks[0] = generator.generateBlock(0, 0, 0);
-	BlockType type = bd.blocks[0];
+	BlockId type = bd.blocks[0];
 
 	int bx, by, bz;
 	foreach(i; 1..CHUNK_SIZE_CUBE)
@@ -114,7 +114,7 @@ struct Generator2d3d
 		genPerChunkData2d(heightMap[], chunkOffset);
 	}
 
-	BlockType generateBlock(int x, int y, int z)
+	BlockId generateBlock(int x, int y, int z)
 	{
 		int height = heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
@@ -141,7 +141,7 @@ struct Generator2d
 		genPerChunkData2d(heightMap[], chunkOffset);
 	}
 
-	BlockType generateBlock(int x, int y, int z)
+	BlockId generateBlock(int x, int y, int z)
 	{
 		int height = heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
@@ -157,7 +157,7 @@ struct TestGeneratorSmallCubes
 	ivec3 chunkOffset;
 	void genPerChunkData(){}
 
-	BlockType generateBlock(int x, int y, int z)
+	BlockId generateBlock(int x, int y, int z)
 	{
 		if (x % 2 == 0 && y % 2 == 0 && z % 2 == 0) return 2;
 		else return 1;
@@ -169,7 +169,7 @@ struct TestGeneratorSmallCubes2
 	ivec3 chunkOffset;
 	void genPerChunkData(){}
 
-	BlockType generateBlock(int x, int y, int z)
+	BlockId generateBlock(int x, int y, int z)
 	{
 		if (x % 4 == 0 && y % 4 == 0 && z % 4 == 0) return 2;
 		else return 1;
@@ -183,7 +183,7 @@ struct TestGeneratorSmallCubes3
 	ivec3 chunkOffset;
 	void genPerChunkData(){}
 
-	BlockType generateBlock(int x, int y, int z)
+	BlockId generateBlock(int x, int y, int z)
 	{
 		if (x % cubeOffsets < cubesSizes &&
 			y % cubeOffsets < cubesSizes &&

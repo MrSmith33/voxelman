@@ -9,7 +9,7 @@ public import voxelman.globalconfig;
 import std.experimental.logger;
 import dlib.math.vector : vec3, ivec3, ivec4, uvec2;
 
-alias BlockType = ubyte;
+alias BlockId = ubyte;
 alias TimestampType = ulong;
 
 enum CHUNK_SIZE = 32;

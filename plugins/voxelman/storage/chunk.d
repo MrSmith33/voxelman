@@ -11,7 +11,7 @@ import std.string : format;
 import dlib.math.vector;
 
 import voxelman.core.config;
-import voxelman.core.block;
+import voxelman.block.block;
 import voxelman.core.chunkmesh;
 import voxelman.storage.coordinates;
 import voxelman.storage.region;
@@ -33,7 +33,7 @@ struct BlockChange
 	// index of block in chunk data
 	ushort index;
 
-	BlockType blockType;
+	BlockId blockId;
 }
 
 ushort[2] areaOfImpact(BlockChange[] changes)
@@ -60,7 +60,7 @@ enum StorageType
 }
 
 struct ChunkDataSnapshot {
-	//BlockType[] blocks;
+	//BlockId[] blocks;
 	BlockData blockData;
 	TimestampType timestamp;
 	uint numUsers;
@@ -78,10 +78,10 @@ struct BlockDataSnapshot
 struct BlockData
 {
 	/// null if uniform is true, or contains chunk data otherwise
-	BlockType[] blocks;
+	BlockId[] blocks;
 
 	/// type of common block
-	BlockType uniformType = 0; // Unknown block
+	BlockId uniformType = 0; // Unknown block
 
 	/// is chunk filled with block of the same type
 	bool uniform = true;
@@ -90,13 +90,13 @@ struct BlockData
 	{
 		if (uniform)
 		{
-			blocks = uninitializedArray!(BlockType[])(CHUNK_SIZE_CUBE);
+			blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
 			blocks[] = uniformType;
 			uniform = false;
 		}
 	}
 
-	void copyToBuffer(BlockType[] outBuffer)
+	void copyToBuffer(BlockId[] outBuffer)
 	{
 		assert(outBuffer.length == CHUNK_SIZE_CUBE);
 		if (uniform)
@@ -105,7 +105,7 @@ struct BlockData
 			outBuffer[] = blocks;
 	}
 
-	void convertToUniform(BlockType _uniformType)
+	void convertToUniform(BlockId _uniformType)
 	{
 		uniform = true;
 		uniformType = _uniformType;
@@ -117,30 +117,30 @@ struct BlockData
 		blocks = null;
 	}
 
-	BlockType getBlockType(BlockChunkIndex index)
+	BlockId getBlockType(BlockChunkIndex index)
 	{
 		if (uniform) return uniformType;
 		return blocks[index];
 	}
 
 	// returns true if data was changed
-	bool setBlockType(BlockChunkIndex index, BlockType blockType)
+	bool setBlockType(BlockChunkIndex index, BlockId blockId)
 	{
 		if (uniform)
 		{
-			if (uniformType != blockType)
+			if (uniformType != blockId)
 			{
 				convertToArray();
-				blocks[index] = blockType;
+				blocks[index] = blockId;
 				return true;
 			}
 		}
 		else
 		{
-			if (blocks[index] == blockType)
+			if (blocks[index] == blockId)
 				return false;
 
-			blocks[index] = blockType;
+			blocks[index] = blockId;
 			return true;
 		}
 
@@ -157,7 +157,7 @@ struct BlockData
 
 		foreach(change; changes)
 		{
-			if (setBlockType(BlockChunkIndex(change.index), change.blockType))
+			if (setBlockType(BlockChunkIndex(change.index), change.blockId))
 			{
 				if (change.index < start)
 					start = change.index;
@@ -175,7 +175,7 @@ struct BlockData
 	{
 		foreach(change; changes)
 		{
-			setBlockType(BlockChunkIndex(change.index), change.blockType);
+			setBlockType(BlockChunkIndex(change.index), change.blockId);
 		}
 	}
 
@@ -185,7 +185,7 @@ struct BlockData
 		foreach(change; changes)
 		{
 			if (change.index <= CHUNK_SIZE_CUBE)
-				setBlockType(BlockChunkIndex(change.index), change.blockType);
+				setBlockType(BlockChunkIndex(change.index), change.blockId);
 		}
 	}
 }
@@ -200,12 +200,12 @@ struct Chunk
 		this.position = position;
 	}
 
-	BlockType getBlockType(int x, int y, int z)
+	BlockId getBlockType(int x, int y, int z)
 	{
 		return getBlockType(BlockChunkIndex(x, y, z));
 	}
 
-	BlockType getBlockType(BlockChunkIndex blockChunkIndex)
+	BlockId getBlockType(BlockChunkIndex blockChunkIndex)
 	{
 		return snapshot.blockData.getBlockType(blockChunkIndex);
 	}

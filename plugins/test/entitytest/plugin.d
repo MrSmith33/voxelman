@@ -13,7 +13,7 @@ import pluginlib;
 import datadriven.api;
 import datadriven.storage;
 import voxelman.core.events;
-import voxelman.core.config : BlockType;
+import voxelman.core.config : BlockId;
 import voxelman.storage.coordinates : BlockWorldPos;
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
@@ -159,7 +159,7 @@ mixin template EntityTestPluginServer()
 			}
 			else // set sand
 			{
-				wa.setBlock(BlockWorldPos(pos), BlockType(5));
+				wa.setBlock(BlockWorldPos(pos), BlockId(5));
 				toRemove.put(row.eid);
 			}
 		}

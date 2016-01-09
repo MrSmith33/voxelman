@@ -3,14 +3,14 @@ Copyright: Copyright (c) 2013-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.core.block;
+module voxelman.block.block;
 
 import voxelman.core.config;
 
 
 struct Block
 {
-	BlockType id;
+	BlockId id;
 	string name;
 	ubyte[3] color;
 	bool isVisible;

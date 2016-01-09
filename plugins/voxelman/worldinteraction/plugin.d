@@ -66,7 +66,7 @@ class WorldInteractionPlugin : IPlugin
 		drawDebugCursor();
 	}
 
-	void placeBlock(BlockType blockId)
+	void placeBlock(BlockId blockId)
 	{
 		if (clientPlugin.chunkMan.blockMan.blocks[blockId].isVisible)
 		{
@@ -95,7 +95,7 @@ class WorldInteractionPlugin : IPlugin
 		}
 	}
 
-	BlockType pickBlock()
+	BlockId pickBlock()
 	{
 		return clientPlugin.worldAccess.getBlock(blockPos);
 	}

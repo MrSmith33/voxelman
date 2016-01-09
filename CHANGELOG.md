@@ -1,7 +1,12 @@
 # Change Log
 
 ## [Unreleased]
+### Added
+- Add empty block plugin.
 
+### Changed
+- Move block modules into block plugin package.
+- Rename `BlockType` to `BlockId`.
 
 ## [0.6.1] - 2016-01-09
 ### Added

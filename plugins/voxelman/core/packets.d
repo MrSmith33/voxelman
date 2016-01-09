@@ -7,7 +7,7 @@ module voxelman.core.packets;
 
 import netlib.connection;
 import dlib.math.vector;
-import voxelman.storage.chunk : BlockChange, BlockData, BlockType;
+import voxelman.storage.chunk : BlockChange, BlockData, BlockId;
 
 void registerPackets(Connection c)
 {
@@ -53,7 +53,7 @@ struct MultiblockChangePacket
 struct PlaceBlockPacket
 {
 	ivec3 blockPos;
-	BlockType blockType;
+	BlockId blockId;
 }
 
 struct SpawnPacket

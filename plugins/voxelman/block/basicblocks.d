@@ -3,9 +3,9 @@ Copyright: Copyright (c) 2014-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.core.basicblocks;
+module voxelman.block.basicblocks;
 
-import voxelman.core.block;
+import voxelman.block.block;
 import voxelman.core.config;
 
 
@@ -19,13 +19,13 @@ immutable Block stoneBlock = makeColoredSolidBlock(4, [128, 128, 128]);
 immutable Block sandBlock = makeColoredSolidBlock(5, [225, 169, 95]);
 
 
-Block makeSolidBlock(BlockType id)
+Block makeSolidBlock(BlockId id)
 {
 	return Block(id, "", [255, 255, 255], true,
 		&sideIsNotTransparent,	&makeColoredBlockMesh);
 }
 
-Block makeColoredSolidBlock(BlockType id, ubyte[3] color)
+Block makeColoredSolidBlock(BlockId id, ubyte[3] color)
 {
 	Block result = makeSolidBlock(id);
 	result.color = color;

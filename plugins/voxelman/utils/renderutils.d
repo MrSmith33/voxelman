@@ -11,8 +11,8 @@ import std.experimental.logger;
 import derelict.opengl3.gl3;
 import dlib.math.vector;
 
-import voxelman.core.basicblocks : faces;
-import voxelman.core.block : Side;
+import voxelman.block.basicblocks : faces;
+import voxelman.block.block : Side;
 
 
 align(4) struct ColoredVertex

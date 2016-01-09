@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.storage.chunkstorage;
 
 import dlib.math.vector : vec3, ivec3;
-import voxelman.core.block;
+import voxelman.block.block;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 

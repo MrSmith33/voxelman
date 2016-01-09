@@ -11,8 +11,8 @@ import std.datetime : StopWatch, Duration;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.client.chunkmeshman;
-import voxelman.core.block;
-import voxelman.core.blockman;
+import voxelman.block.block;
+import voxelman.block.blockman;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
