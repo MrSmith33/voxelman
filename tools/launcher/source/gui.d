@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2015 Andrey Penechko.
+Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -100,7 +100,8 @@ struct LauncherGui
 		window.mouseReleased.connect(&igState.onMouseReleased);
 		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
 
-		selectedMenu = SelectedMenu.code;
+		selectedMenu = SelectedMenu.play;
+		playMenu.selectedMenu = PlayMenu.SelectedMenu.connect;
 
 		if (window is null)
 			isRunning = false;
@@ -135,6 +136,7 @@ struct LauncherGui
 		launcher.setRootPath(pluginFolder, pluginPackFolder);
 		launcher.readPlugins();
 		launcher.readPluginPacks();
+		launcher.readServers();
 		plugins.items = &launcher.plugins;
 		playMenu.refresh();
 		codeMenu.refresh();
@@ -239,11 +241,6 @@ struct LauncherGui
 		style.Colors[ImGuiCol_ButtonHovered] =  colorHover;
 	}
 
-	void restoreStyle()
-	{
-
-	}
-
 	void drawMenuContent()
 	{
 		final switch(selectedMenu) with(SelectedMenu)
@@ -271,6 +268,7 @@ struct PlayMenu
 	Launcher* launcher;
 	SelectedMenu selectedMenu;
 	ItemList!(PluginPack*) pluginPacks;
+	ItemList!(ServerInfo*) servers;
 
 	void init(Launcher* launcher)
 	{
@@ -280,6 +278,7 @@ struct PlayMenu
 	void refresh()
 	{
 		pluginPacks.items = &launcher.pluginPacks;
+		servers.items = &launcher.servers;
 	}
 
 	void draw()
@@ -300,6 +299,8 @@ struct PlayMenu
 
 		if (selectedMenu == SelectedMenu.newGame)
 			drawNewGame();
+		else if (selectedMenu == SelectedMenu.connect)
+			drawConnect();
 
 		igEndGroup();
 	}
@@ -349,6 +350,21 @@ struct PlayMenu
 				launcher.appLog.put(format("killed %s processes\n", numKilled));
 			}
 		igEndGroup();
+	}
+
+	void drawConnect()
+	{
+		igBeginChild("Servers", ImVec2(400, -igGetItemsLineHeightWithSpacing()), true);
+			foreach(int i, server; *servers.items)
+			{
+				igPushIdInt(cast(int)i);
+				immutable bool itemSelected = (i == servers.currentItem);
+
+				if (igSelectable(server.name.ptr, itemSelected))
+					servers.currentItem = i;
+				igPopId();
+			}
+		igEndChild();
 	}
 
 	void pluginPackPlugins()

@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2015 Andrey Penechko.
+Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -14,6 +14,9 @@ import std.stdio;
 import std.array;
 import std.range;
 import std.typecons : Flag, Yes, No;
+import std.file;
+import std.path;
+import std.conv : to;
 
 import voxelman.utils.messagewindow;
 import voxelman.utils.linebuffer;
@@ -83,7 +86,16 @@ struct Job
 	int status;
 }
 
+struct ServerInfo
+{
+	string name;
+	string ip;
+	ushort port;
+}
+
 immutable buildFolder = "builds/default";
+immutable configFolder = "config";
+immutable serversFname = "config/servers.txt";
 struct Launcher
 {
 	string pluginFolderPath;
@@ -92,6 +104,7 @@ struct Launcher
 	PluginInfo*[string] pluginsById;
 	PluginPack*[] pluginPacks;
 	PluginPack*[string] pluginsPacksById;
+	ServerInfo*[] servers;
 
 	Job*[] jobs;
 	size_t numRunningJobs;
@@ -227,9 +240,6 @@ struct Launcher
 
 	void readPlugins()
 	{
-		import std.file : exists, read, dirEntries, SpanMode;
-		import std.path : baseName;
-
 		if (!exists(pluginFolderPath)) return;
 		foreach (entry; dirEntries(pluginFolderPath, SpanMode.depth))
 		{
@@ -243,19 +253,8 @@ struct Launcher
 		}
 	}
 
-	void printPlugins()
-	{
-		foreach(p; plugins)
-		{
-			infof("%s %s", p.id, p.semver);
-		}
-	}
-
 	void readPluginPacks()
 	{
-		import std.file : read, dirEntries, SpanMode;
-		import std.path : extension, absolutePath, buildNormalizedPath;
-
 		foreach (entry; dirEntries(pluginPackFolderPath, SpanMode.depth))
 		{
 			if (entry.isFile && entry.name.extension == ".txt")
@@ -268,8 +267,24 @@ struct Launcher
 			}
 		}
 	}
-}
 
+	void readServers()
+	{
+		import std.regex : matchFirst, ctRegex;
+		if (!exists(serversFname)) return;
+		string serversData = cast(string)read(serversFname);
+		foreach(line; serversData.lineSplitter)
+		{
+			auto serverInfoStr = matchFirst(line, ctRegex!(`(?P<ip>[^:]*):(?P<port>\d{1,5})\s*(?P<name>.*)`, "s"));
+			auto sinfo = new ServerInfo;
+			sinfo.ip = serverInfoStr["ip"].toCString;
+			sinfo.port = to!ushort(serverInfoStr["port"]);
+			sinfo.name = serverInfoStr["name"].toCString;
+			infof("%s", *sinfo);
+			servers ~= sinfo;
+		}
+	}
+}
 
 string makeCompileCommand(JobParams params)
 {
