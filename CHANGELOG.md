@@ -19,6 +19,7 @@
 - Add checks allowing update of connection when connection is not running.
 
 ### Fixed
+- Fix wrong key supply for imgui not clearing key modifiers.
 - Fps limit now works as intended (120 fps by default).
 
 ## [0.6.0] - 2016-01-08

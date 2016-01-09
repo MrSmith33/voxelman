@@ -87,12 +87,9 @@ struct ImguiState
 			mouse_y *= cast(float)display_h / h;
 			io.MousePos = ImVec2(mouse_x, mouse_y);   // Mouse position, in pixels (set to -1,-1 if no mouse / on another screen, etc.)
 
-			if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS)
-				io.KeyShift = true;
-			if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)
-				io.KeyCtrl = true;
-			if (glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS)
-				io.KeyAlt = true;
+			io.KeyShift = glfwGetKey(window, GLFW_KEY_LSHIFT) || glfwGetKey(window, GLFW_KEY_RSHIFT);
+			io.KeyCtrl = glfwGetKey(window, GLFW_KEY_LCTRL) || glfwGetKey(window, GLFW_KEY_RCTRL);
+			io.KeyAlt = glfwGetKey(window, GLFW_KEY_LALT) || glfwGetKey(window, GLFW_KEY_RALT);
 		}
 		else
 		{
