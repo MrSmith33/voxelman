@@ -18,7 +18,7 @@ enum ROOT_PATH = "../..";
 
 void main(string[] args)
 {
-	string semver = "0.6.0";
+	string semver = "0.6.1";
 
 	StopWatch sw;
 	sw.start();

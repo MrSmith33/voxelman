@@ -1,6 +1,9 @@
 # Change Log
 
 ## [Unreleased]
+
+
+## [0.6.1] - 2016-01-09
 ### Added
 - Add spawn command moving client to starting position.
 - Add clientDb plugin and move client handling there from server plugin.
