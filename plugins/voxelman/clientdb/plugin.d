@@ -16,6 +16,7 @@ import voxelman.core.packets;
 import voxelman.net.packets;
 import voxelman.storage.coordinates;
 
+import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.world.plugin;
@@ -54,6 +55,19 @@ public:
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
+
+		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
+		commandPlugin.registerCommand("spawn", &onSpawn);
+	}
+
+	void onSpawn(CommandParams params)
+	{
+		ClientInfo* info = clients.get(params.source, null);
+		if(info is null) return;
+		info.pos = START_POS;
+		info.heading = vec2(0,0);
+		connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading));
+		updateObserverVolume(info);
 	}
 
 	bool isLoggedIn(ClientId clientId)

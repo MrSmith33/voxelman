@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add spawn command moving client to starting position.
 - Add clientDb plugin and move client handling there from server plugin.
 - Add falling sand.
 - Add removeAll() method to component storage interface.
