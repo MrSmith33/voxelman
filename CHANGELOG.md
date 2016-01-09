@@ -5,18 +5,18 @@
 
 ## [0.6.1] - 2016-01-09
 ### Added
-- Add spawn command moving client to starting position.
-- Add clientDb plugin and move client handling there from server plugin.
+- Add `spawn` command moving client to starting position.
+- Add _clientDb_ plugin and move client handling there from server plugin.
 - Add falling sand.
-- Add removeAll() method to component storage interface.
+- Add `removeAll()` method to component storage interface.
 - Add sand block.
-- Command name aliasing. Put | to separate aliases.
+- Command name aliasing. Put `|` to separate aliases.
 
 ### Changed
 - Change cursor ray distance from 80 to 200.
 - Move connection handling from server to net plugin.
 - Updated copyrights.
-- Server has stop alias of sv_stop now.
+- Server has `stop` alias of `sv_stop` now.
 - Moved world management from server plugin into world plugin.
 - Move server command handling into command plugin.
 - Move message command into chat plugin.
@@ -97,5 +97,6 @@
 - Fix server stop.
 - Fix wrong rendering when resizing window. Viewport wasn't updated.
 
-[Unreleased]: https://github.com/MrSmith33/voxelman/compare/v0.6.0...HEAD
-[0.3.0]: https://github.com/MrSmith33/voxelman/compare/v0.5.0...v0.6.0
+[Unreleased]: https://github.com/MrSmith33/voxelman/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/MrSmith33/voxelman/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/MrSmith33/voxelman/compare/v0.5.0...v0.6.0
