@@ -4,12 +4,14 @@ import std.experimental.logger;
 import pluginlib;
 import voxelman.utils.messagewindow : MessageWindow;
 
-import voxelman.client.plugin;
-import voxelman.server.plugin;
 import voxelman.core.events;
-import voxelman.eventdispatcher.plugin;
 import voxelman.net.packets;
+
+import voxelman.client.plugin;
+import voxelman.command.plugin;
+import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
+import voxelman.clientdb.plugin;
 
 shared static this()
 {
@@ -75,14 +77,14 @@ final class ChatPluginServer : IPlugin
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
 
 	private NetServerPlugin connection;
-	private ServerPlugin serverPlugin;
+	private ClientDb clientDb;
 	CommandPluginServer commandPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
-		serverPlugin = pluginman.getPlugin!ServerPlugin;
+		clientDb = pluginman.getPlugin!ClientDb;
 		commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("msg", &messageCommand);
 	}
@@ -92,7 +94,7 @@ final class ChatPluginServer : IPlugin
 		auto packet = unpackPacket!MessagePacket(packetData);
 		packet.clientId = clientId;
 		connection.sendToAll(packet);
-		infof("%s> %s", serverPlugin.clientName(clientId), packet.msg);
+		infof("%s> %s", clientDb.clientName(clientId), packet.msg);
 	}
 
 	void messageCommand(CommandParams params)

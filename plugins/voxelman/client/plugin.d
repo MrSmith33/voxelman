@@ -47,7 +47,6 @@ import voxelman.utils.textformatter;
 
 import voxelman.client.appstatistics;
 import voxelman.client.chunkman;
-import voxelman.client.events;
 import voxelman.client.console;
 
 //version = manualGC;
@@ -60,6 +59,12 @@ shared static this()
 	auto c = new ClientPlugin;
 	pluginRegistry.regClientPlugin(c);
 	pluginRegistry.regClientMain(&c.run);
+}
+
+struct ThisClientLoggedInEvent {
+	ClientId thisClientId;
+	Profiler profiler;
+	bool continuePropagation = true;
 }
 
 auto formatDuration(Duration dur)
@@ -163,7 +168,7 @@ public:
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 
-		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawScene);
 		evDispatcher.subscribeToEvent(&drawOverlay);
@@ -383,28 +388,26 @@ public:
 		thread_joinAll();
 	}
 
-	void onUpdateEvent(ref UpdateEvent event)
+	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
 		{
 			updatedCameraPos = graphics.camera.position;
 		}
 		chunkMan.updateObserverPosition(updatedCameraPos);
-
 		connection.update();
 		chunkMan.update();
-		if (doUpdateObserverPosition)
-			sendPosition(event.deltaTime);
+	}
 
+	void onPostUpdateEvent(ref PostUpdateEvent event)
+	{
 		updateStats();
 		printDebug();
 		stats.resetCounters();
 		if (isConsoleShown)
 			console.draw();
-	}
-
-	void onPostUpdateEvent(ref PostUpdateEvent event)
-	{
+		if (doUpdateObserverPosition)
+			sendPosition(event.deltaTime);
 		connection.flush();
 	}
 

@@ -8,7 +8,7 @@ module voxelman.config.plugin;
 
 import pluginlib;
 import voxelman.core.config;
-import voxelman.config.configmanager;
+public import voxelman.config.configmanager;
 
 version(SIDE_CLIENT)
 	enum string CONFIG_FILE_NAME = "../../config/client.sdl";

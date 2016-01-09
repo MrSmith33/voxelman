@@ -119,7 +119,7 @@ class WorldInteractionPlugin : IPlugin
 			isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
-			80.0, // max distance
+			200.0, // max distance
 			hitPosition,
 			hitNormal,
 			traceBatch);

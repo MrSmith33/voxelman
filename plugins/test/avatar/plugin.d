@@ -11,7 +11,7 @@ import voxelman.net.plugin;
 import voxelman.core.events;
 import voxelman.graphics.plugin;
 import voxelman.client.plugin;
-import voxelman.server.plugin;
+import voxelman.clientdb.plugin;
 
 shared static this()
 {
@@ -65,12 +65,12 @@ final class AvatarServer : IPlugin
 
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	ServerPlugin serverPlugin;
+	ClientDb clientDb;
 	size_t lastAvatarsSent;
 
 	override void init(IPluginManager pluginman)
 	{
-		serverPlugin = pluginman.getPlugin!ServerPlugin;
+		clientDb = pluginman.getPlugin!ClientDb;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		connection = pluginman.getPlugin!NetServerPlugin;
@@ -79,16 +79,15 @@ final class AvatarServer : IPlugin
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
+		import std.algorithm : filter;
 		Appender!(Avatar[]) avatars;
-		avatars.reserve(serverPlugin.clients.length);
-		foreach (cinfo; serverPlugin.clients)
-		if (cinfo.isLoggedIn)
-		{
+		avatars.reserve(clientDb.clients.length);
+		foreach (cinfo; clientDb.clients.byValue.filter!(a=>a.isLoggedIn))
 			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.heading));
-		}
+
 		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
-		connection.sendTo(serverPlugin.loggedInClients, UpdateAvatarsPacket(avatars.data));
+		connection.sendTo(clientDb.loggedInClients, UpdateAvatarsPacket(avatars.data));
 		lastAvatarsSent = avatars.data.length;
 	}
 }

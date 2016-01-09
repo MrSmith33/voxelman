@@ -10,9 +10,16 @@ import derelict.enet.enet;
 
 import pluginlib;
 public import netlib;
+import derelict.enet.enet;
 
+import voxelman.core.config;
 import voxelman.net.events;
+import voxelman.core.events;
+import voxelman.core.packets;
+import voxelman.net.packets;
+
 import voxelman.eventdispatcher.plugin;
+import voxelman.config.configmanager;
 
 shared static this()
 {
@@ -20,7 +27,7 @@ shared static this()
 	pluginRegistry.regServerPlugin(new NetServerPlugin);
 }
 
-mixin template NetBase()
+mixin template NetCommon()
 {
 	mixin IdAndSemverFrom!(voxelman.net.plugininfo);
 	private EventDispatcherPlugin evDispatcher;
@@ -42,7 +49,7 @@ mixin template NetBase()
 
 final class NetClientPlugin : IPlugin
 {
-	mixin NetBase;
+	mixin NetCommon;
 
 	BaseClient connection;
 	alias connection this;
@@ -63,17 +70,52 @@ final class NetClientPlugin : IPlugin
 
 final class NetServerPlugin : IPlugin
 {
-	mixin NetBase;
+private:
+	ConfigOption portOpt;
+	EventDispatcherPlugin evDispatcher;
+
+public:
+	mixin NetCommon;
 
 	BaseServer connection;
 	alias connection this;
 
-	this() {
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		portOpt = config.registerOption!ushort("port", 1234);
+	}
+
+	this()
+	{
 		connection = new class BaseServer{};
 	}
 
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&handleGameStartEvent);
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
+		evDispatcher.subscribeToEvent(&handleGameStopEvent);
+	}
+
+	override void postInit()
+	{
+		//connection.shufflePackets();
+		connection.printPacketMap();
+	}
+
+	void handleGameStartEvent(ref GameStartEvent event)
+	{
+		ConnectionSettings settings = {null, 32, 2, 0, 0};
+		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);
+		static if (ENABLE_RLE_PACKET_COMPRESSION)
+			enet_host_compress_with_range_coder(connection.host);
+	}
+
 	void onConnect(ref ENetEvent event) {
-		auto clientId = clientStorage.addClient(event.peer);
+		auto clientId = connection.clientStorage.addClient(event.peer);
 		event.peer.data = cast(void*)clientId;
 
 		evDispatcher.postEvent(ClientConnectedEvent(clientId));
@@ -82,9 +124,28 @@ final class NetServerPlugin : IPlugin
 	void onDisconnect(ref ENetEvent event) {
 		ClientId clientId = cast(ClientId)event.peer.data;
 		event.peer.data = null;
-
-		clientStorage.removeClient(clientId);
-
+		connection.clientStorage.removeClient(clientId);
 		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
+	}
+
+	void onPreUpdateEvent(ref PreUpdateEvent event)
+	{
+		connection.update();
+	}
+
+	void onPostUpdateEvent(ref PostUpdateEvent event)
+	{
+		connection.flush();
+	}
+
+	void handleGameStopEvent(ref GameStopEvent event)
+	{
+		connection.sendToAll(MessagePacket(0, "Stopping server"));
+		connection.disconnectAll();
+		while (connection.clientStorage.length)
+		{
+			connection.update();
+		}
+		connection.stop();
 	}
 }

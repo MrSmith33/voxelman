@@ -23,3 +23,4 @@ voxelman.storage 0.5.0
 voxelman.utils 0.5.0
 voxelman.worldinteraction 0.5.0
 voxelman.world 0.6.0
+voxelman.clientdb 0.6.0

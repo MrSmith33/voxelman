@@ -2,12 +2,15 @@
 
 ## [Unreleased]
 ### Added
+- Add clientDb plugin and move client handling there from server plugin.
 - Add falling sand.
 - Add removeAll() method to component storage interface.
 - Add sand block.
 - Command name aliasing. Put | to separate aliases.
 
 ### Changed
+- Change cursor ray distance from 80 to 200.
+- Move connection handling from server to net plugin.
 - Updated copyrights.
 - Server has stop alias of sv_stop now.
 - Moved world management from server plugin into world plugin.

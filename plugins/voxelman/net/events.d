@@ -31,3 +31,15 @@ struct ThisClientDisconnectedEvent {
 	Profiler profiler;
 	bool continuePropagation = true;
 }
+
+struct ClientLoggedInEvent {
+	ClientId clientId;
+	Profiler profiler;
+	bool continuePropagation = true;
+}
+
+struct ClientLoggedOutEvent {
+	ClientId clientId;
+	Profiler profiler;
+	bool continuePropagation = true;
+}

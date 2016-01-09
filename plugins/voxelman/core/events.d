@@ -10,6 +10,10 @@ import anchovy.irenderer;
 import dlib.math.vector;
 import tharsis.prof : Profiler;
 
+struct GameStartEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
+}
 struct GameStopEvent {
 	Profiler profiler;
 	bool continuePropagation = true;

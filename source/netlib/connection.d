@@ -169,6 +169,14 @@ abstract class Connection
 		}
 	}
 
+	void shufflePackets()
+	{
+		import std.random;
+		randomShuffle(packetArray[1..$]);
+		foreach (i, packetInfo; packetArray)
+			packetInfo.id = i;
+	}
+
 	void flush()
 	{
 		if (!isRunning) return;
