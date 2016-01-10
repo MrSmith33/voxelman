@@ -43,3 +43,8 @@ struct ClientLoggedOutEvent {
 	Profiler profiler;
 	bool continuePropagation = true;
 }
+
+struct SendClientSettingsEvent {
+	Profiler profiler;
+	bool continuePropagation = true;
+}

@@ -3,16 +3,22 @@
 ## [Unreleased]
 ### Added
 - Add block registering in block plugin.
-- Add empty block plugin.
+- Add block plugin.
+- Add client part of `clientDb`.
+- Add isSpawned state to client info.
 
 ### Changed
 - Move block modules into block plugin package.
 - Rename `BlockType` to `BlockId`.
+- Move world handling to `world` plugin from `client`.
+- Move login handling to `clientDb` from `client`.
+- Move network handling to `net` from `client`.
 
 ### Removed
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
 
 ### Fixed
+- Make random block tint persistent.
 - Fix performance bug in chunk meshing. Now meshing is much faster. Was allocating on each block's meshing.
 
 ## [0.6.1] - 2016-01-09

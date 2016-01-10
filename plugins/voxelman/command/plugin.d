@@ -12,12 +12,6 @@ public import std.getopt;
 import std.experimental.logger;
 import std.string : format;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new CommandPluginClient);
-	pluginRegistry.regServerPlugin(new CommandPluginServer);
-}
-
 struct CommandParams
 {
 	string rawArgs; // without command name

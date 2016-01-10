@@ -5,15 +5,22 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.plugin;
 
+import std.experimental.logger;
 import netlib;
 import pluginlib;
 
-import voxelman.core.config : BlockId;
-import voxelman.core.events : PreUpdateEvent, PostUpdateEvent, GameStopEvent;
+import voxelman.core.config;
+import voxelman.core.events;
+import voxelman.net.events;
 
+import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
-import voxelman.net.plugin : NetServerPlugin;
+import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
+import voxelman.clientdb.plugin;
+import voxelman.block.plugin;
+import voxelman.net.packets;
+import voxelman.core.packets;
 
 import voxelman.storage.chunk;
 import voxelman.storage.chunkmanager;
@@ -24,11 +31,7 @@ import voxelman.storage.coordinates;
 import voxelman.storage.volume;
 import voxelman.storage.world;
 
-shared static this()
-{
-	//pluginRegistry.regClientPlugin(new ClientWorld);
-	pluginRegistry.regServerPlugin(new ServerWorld);
-}
+
 
 final class WorldAccess {
 	private ChunkManager* chunkManager;
@@ -65,11 +68,208 @@ final class WorldAccess {
 	}
 }
 
+final class ClientWorld : IPlugin
+{
+	import voxelman.graphics.plugin;
+	import voxelman.world.chunkman;
+private:
+	EventDispatcherPlugin evDispatcher;
+	NetClientPlugin connection;
+	GraphicsPlugin graphics;
+	ClientDbClient clientDb;
+
+	ConfigOption numWorkersOpt;
+
+public:
+	//ChunkManager chunkManager;
+	//ChunkProvider chunkProvider;
+	//ChunkObserverManager chunkObserverManager;
+
+	//World world;
+	//WorldAccess worldAccess;
+	// Game stuff
+	ChunkMan chunkMan;
+	static import voxelman.storage.worldaccess;
+	voxelman.storage.worldaccess.WorldAccess worldAccess;
+
+	bool doUpdateObserverPosition = true;
+	vec3 updatedCameraPos;
+
+	// Send position interval
+	double sendPositionTimer = 0;
+	enum sendPositionInterval = 0.1;
+	ChunkWorldPos prevChunkPos;
+
+	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
+
+	override void registerResourceManagers(void delegate(IResourceManager) registerHandler) {}
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		numWorkersOpt = config.registerOption!uint("num_workers", 4);
+
+		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
+	}
+
+	override void preInit()
+	{
+		worldAccess.init(&chunkMan.chunkStorage.getChunk, () => 0);
+		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
+
+		//chunkManager = new ChunkManager();
+		//worldAccess = new WorldAccess(&chunkManager);
+		//chunkObserverManager = new ChunkObserverManager();
+	}
+
+	override void init(IPluginManager pluginman)
+	{
+		clientDb = pluginman.getPlugin!ClientDbClient;
+
+		BlockPlugin blockPlugin = pluginman.getPlugin!BlockPlugin;
+		chunkMan.init(numWorkersOpt.get!uint, blockPlugin.getBlocks());
+
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
+		evDispatcher.subscribeToEvent(&onGameStopEvent);
+		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
+
+		connection = pluginman.getPlugin!NetClientPlugin;
+		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
+		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+
+		graphics = pluginman.getPlugin!GraphicsPlugin;
+		updatedCameraPos = graphics.camera.position;
+	}
+
+	override void postInit()
+	{
+		chunkMan.updateObserverPosition(graphics.camera.position);
+	}
+
+	void onTogglePositionUpdate(string)
+	{
+		doUpdateObserverPosition = !doUpdateObserverPosition;
+	}
+
+	void onPreUpdateEvent(ref PreUpdateEvent event)
+	{
+		if (doUpdateObserverPosition)
+		{
+			updatedCameraPos = graphics.camera.position;
+		}
+		chunkMan.updateObserverPosition(updatedCameraPos);
+		chunkMan.update();
+	}
+
+	void onPostUpdateEvent(ref PostUpdateEvent event)
+	{
+		if (doUpdateObserverPosition)
+			sendPosition(event.deltaTime);
+	}
+
+	void onGameStopEvent(ref GameStopEvent gameStopEvent)
+	{
+		chunkMan.stop();
+		thread_joinAll();
+	}
+
+	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
+	{
+		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
+	}
+
+	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!ChunkDataPacket(packetData);
+		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
+		//	packet.chunkPos, packet.blockData.blocks.length);
+		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
+	}
+
+	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!MultiblockChangePacket(packetData);
+		Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(packet.chunkPos));
+		// We can receive data for chunk that is already deleted.
+		if (chunk is null || chunk.isMarkedForDeletion)
+			return;
+		chunkMan.onChunkChanged(chunk, packet.blockChanges);
+	}
+
+	void sendPosition(double dt)
+	{
+		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
+
+		if (clientDb.isSpawned)
+		{
+			sendPositionTimer += dt;
+			if (sendPositionTimer > sendPositionInterval ||
+				chunkPos != prevChunkPos)
+			{
+				connection.send(ClientPositionPacket(
+					graphics.camera.position,
+					graphics.camera.heading));
+
+				if (sendPositionTimer < sendPositionInterval)
+					sendPositionTimer = 0;
+				else
+					sendPositionTimer -= sendPositionInterval;
+			}
+		}
+
+		prevChunkPos = chunkPos;
+	}
+
+	void onIncViewRadius(string)
+	{
+		incViewRadius();
+	}
+
+	void onDecViewRadius(string)
+	{
+		decViewRadius();
+	}
+
+	void incViewRadius()
+	{
+		setViewRadius(getViewRadius() + 1);
+	}
+
+	void decViewRadius()
+	{
+		setViewRadius(getViewRadius() - 1);
+	}
+
+	int getViewRadius()
+	{
+		return chunkMan.viewRadius;
+	}
+
+	void setViewRadius(int newViewRadius)
+	{
+		import std.algorithm : clamp;
+		auto oldViewRadius = chunkMan.viewRadius;
+		chunkMan.viewRadius = clamp(newViewRadius,
+			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+
+		if (oldViewRadius != chunkMan.viewRadius)
+		{
+			connection.send(ViewRadiusPacket(chunkMan.viewRadius));
+		}
+	}
+}
+
 final class ServerWorld : IPlugin
 {
 private:
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
+	ClientDbServer clientDb;
 
 	ConfigOption saveDirOpt;
 	ConfigOption worldNameOpt;
@@ -123,10 +323,12 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		clientDb = pluginman.getPlugin!ClientDbServer;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
 		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
 		evDispatcher.subscribeToEvent(&handleStopEvent);
+		evDispatcher.subscribeToEvent(&handleClientDisconnected);
 
 		import voxelman.core.packets : PlaceBlockPacket;
 		connection = pluginman.getPlugin!NetServerPlugin;
@@ -163,6 +365,11 @@ public:
 		}
 	}
 
+	void handleClientDisconnected(ref ClientDisconnectedEvent event)
+	{
+		chunkObserverManager.removeObserver(event.clientId);
+	}
+
 	void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
@@ -185,7 +392,7 @@ public:
 	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
 	{
 		import voxelman.core.packets : PlaceBlockPacket;
-		//if (serverPlugin.isLoggedIn(clientId))
+		if (clientDb.isSpawned(clientId))
 		{
 			auto packet = unpackPacket!PlaceBlockPacket(packetData);
 			worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockId);

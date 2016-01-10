@@ -10,7 +10,7 @@ import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
 
 import voxelman.block.plugin;
-import voxelman.client.chunkman;
+import voxelman.world.chunkman;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
 import voxelman.core.meshgen;

@@ -20,4 +20,5 @@ struct ClientInfo
 	Volume visibleVolume;
 
 	bool isLoggedIn;
+	bool isSpawned;
 }

@@ -8,19 +8,22 @@ module voxelman.worldinteraction.plugin;
 
 import std.experimental.logger;
 import core.time;
+import std.datetime : StopWatch;
 
 import pluginlib;
 import voxelman.core.config;
+import voxelman.utils.trace : traceRay;
 
 import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.storage.coordinates;
 
-import voxelman.input.plugin;
+import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
-import voxelman.client.plugin;
-import voxelman.block.plugin;
+import voxelman.input.plugin;
+import voxelman.net.plugin;
+import voxelman.world.plugin;
 
 
 shared static this()
@@ -30,10 +33,11 @@ shared static this()
 
 class WorldInteractionPlugin : IPlugin
 {
-	ClientPlugin clientPlugin;
+	NetClientPlugin connection;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	BlockPlugin blockPlugin;
+	ClientWorld clientWorld;
 
 	// Cursor
 	bool cursorHit;
@@ -54,10 +58,11 @@ class WorldInteractionPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
+		connection = pluginman.getPlugin!NetClientPlugin;
 		blockPlugin = pluginman.getPlugin!BlockPlugin;
-		clientPlugin = pluginman.getPlugin!ClientPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
+		clientWorld = pluginman.getPlugin!ClientWorld;
 
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawDebug);
@@ -90,7 +95,7 @@ class WorldInteractionPlugin : IPlugin
 			traceBatch = Batch();
 
 			traceVisible = true;
-			clientPlugin.connection.send(PlaceBlockPacket(blockPos.vector, blockId));
+			connection.send(PlaceBlockPacket(blockPos.vector, blockId));
 		}
 		else
 		{
@@ -100,7 +105,7 @@ class WorldInteractionPlugin : IPlugin
 
 	BlockId pickBlock()
 	{
-		return clientPlugin.worldAccess.getBlock(blockPos);
+		return clientWorld.worldAccess.getBlock(blockPos);
 	}
 
 	void traceCursor()
@@ -109,7 +114,7 @@ class WorldInteractionPlugin : IPlugin
 		sw.start();
 
 		auto isBlockSolid = (ivec3 blockWorldPos) {
-			auto block = clientPlugin.worldAccess.getBlock(BlockWorldPos(blockWorldPos));
+			auto block = clientWorld.worldAccess.getBlock(BlockWorldPos(blockWorldPos));
 			return blockPlugin.getBlocks()[block].isVisible;
 		};
 

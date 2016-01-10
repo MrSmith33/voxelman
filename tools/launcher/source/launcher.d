@@ -200,7 +200,8 @@ struct Launcher
 					bool success = job.status == 0;
 					bool doneCompilation = job.jobState == JobState.compile;
 					bool needsStart = job.params.start;
-					if (doneCompilation) job.messageWindow.putln("Compilation successful");
+					if (doneCompilation)
+						job.messageWindow.putln(job.status == 0 ? "Compilation successful" : "Compilation failed");
 					if (success && doneCompilation && needsStart)
 					{
 						job.jobState = JobState.run;

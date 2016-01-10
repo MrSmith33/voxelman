@@ -83,9 +83,9 @@ struct BlockChunkPos
 		if (vector.z < 0) vector.z += CHUNK_SIZE;
 	}
 
-	this(ivec3 blockWorldPos)
+	this(ivec3 blockChunkPos)
 	{
-		vector = blockWorldPos;
+		vector = blockChunkPos;
 	}
 
 	ivec3 vector;

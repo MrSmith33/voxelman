@@ -7,7 +7,6 @@ import voxelman.utils.messagewindow : MessageWindow;
 import voxelman.core.events;
 import voxelman.net.packets;
 
-import voxelman.client.plugin;
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
@@ -24,7 +23,7 @@ final class ChatPluginClient : IPlugin
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
 
-	private ClientPlugin clientPlugin;
+	private ClientDbClient clientDb;
 	private NetClientPlugin connection;
 	private EventDispatcherPlugin evDispatcher;
 	MessageWindow messageWindow;
@@ -38,7 +37,7 @@ final class ChatPluginClient : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		clientDb = pluginman.getPlugin!ClientDbClient;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 
@@ -54,7 +53,7 @@ final class ChatPluginClient : IPlugin
 		if (packet.clientId == 0)
 			messageWindow.putln(packet.msg);
 		else {
-			messageWindow.putf("%s> %s\n", clientPlugin.clientName(packet.clientId), packet.msg);
+			messageWindow.putf("%s> %s\n", clientDb.clientName(packet.clientId), packet.msg);
 		}
 	}
 
@@ -77,14 +76,14 @@ final class ChatPluginServer : IPlugin
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
 
 	private NetServerPlugin connection;
-	private ClientDb clientDb;
+	private ClientDbServer clientDb;
 	CommandPluginServer commandPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
-		clientDb = pluginman.getPlugin!ClientDb;
+		clientDb = pluginman.getPlugin!ClientDbServer;
 		commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("msg", &messageCommand);
 	}

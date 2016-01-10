@@ -10,7 +10,6 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
 import voxelman.graphics.plugin;
-import voxelman.client.plugin;
 import voxelman.clientdb.plugin;
 
 shared static this()
@@ -28,11 +27,11 @@ final class AvatarClient : IPlugin
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
-	ClientPlugin clientPlugin;
+	ClientDbClient clientDb;
 
 	override void init(IPluginManager pluginman)
 	{
-		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		clientDb = pluginman.getPlugin!ClientDbClient;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&drawEntities);
@@ -52,7 +51,7 @@ final class AvatarClient : IPlugin
 		auto packet = unpackPacket!UpdateAvatarsPacket(packetData);
 		batch.reset();
 		foreach (avatar; packet.avatars)
-		if (avatar.clientId != clientPlugin.thisClientId)
+		if (avatar.clientId != clientDb.thisClientId)
 		{
 			batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
 		}
@@ -65,12 +64,12 @@ final class AvatarServer : IPlugin
 
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	ClientDb clientDb;
+	ClientDbServer clientDb;
 	size_t lastAvatarsSent;
 
 	override void init(IPluginManager pluginman)
 	{
-		clientDb = pluginman.getPlugin!ClientDb;
+		clientDb = pluginman.getPlugin!ClientDbServer;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		connection = pluginman.getPlugin!NetServerPlugin;

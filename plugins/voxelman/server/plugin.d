@@ -8,9 +8,6 @@ module voxelman.server.plugin;
 
 import std.experimental.logger;
 
-import tharsis.prof : Profiler, DespikerSender, Zone;
-
-import netlib;
 import pluginlib;
 import pluginlib.pluginmanager;
 

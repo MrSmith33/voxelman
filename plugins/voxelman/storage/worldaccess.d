@@ -16,7 +16,7 @@ import voxelman.storage.world;
 /// changes will automatically proparate to client each tick
 struct WorldAccess
 {
-	this(Chunk* delegate(ChunkWorldPos) chunkGetter,
+	void init(Chunk* delegate(ChunkWorldPos) chunkGetter,
 		TimestampType delegate() timestampGetter)
 	{
 		this.chunkGetter = chunkGetter;
@@ -24,7 +24,6 @@ struct WorldAccess
 		this.timestampGetter = timestampGetter;
 		assert(timestampGetter);
 	}
-	@disable this();
 
 	BlockId getBlock(BlockWorldPos blockPos)
 	{

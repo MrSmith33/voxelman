@@ -7,6 +7,7 @@ module voxelman.block.utils;
 
 import std.array : Appender;
 import dlib.math.vector : vec3, ivec3;
+import voxelman.storage.coordinates;
 
 enum Side : ubyte
 {
@@ -61,7 +62,9 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
-	float randomTint = uniform(0.92f, 1.0f);
+	auto index = BlockChunkIndex(bx, by, bz).index;
+	auto rnd = Xorshift32(index);
+	float randomTint = uniform(0.92f, 1.0f, rnd);
 
 	foreach(ubyte i; 0..6)
 	{

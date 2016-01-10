@@ -11,8 +11,11 @@ void registerPackets(Connection c)
 {
 	// Server -> Client
 	c.registerPacket!PacketMapPacket;
-	c.registerPacket!LoginPacket;
 	c.registerPacket!SessionInfoPacket;
+
+	// Client -> Server
+	c.registerPacket!LoginPacket;
+	c.registerPacket!GameStartPacket;
 
 	// Common
 	c.registerPacket!MessagePacket;
@@ -31,6 +34,10 @@ struct PacketMapPacket
 struct LoginPacket
 {
 	string clientName;
+}
+
+struct GameStartPacket
+{
 }
 
 // server response

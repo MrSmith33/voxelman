@@ -57,6 +57,8 @@ public:
 	// Runtime options are not saved. Use them to store global options that need no saving
 	ConfigOption registerOption(T)(string optionName, T defaultValue)
 	{
+		if (auto opt = optionName in options)
+			return *opt;
 		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue));
 		options[optionName] = option;
 		return option;

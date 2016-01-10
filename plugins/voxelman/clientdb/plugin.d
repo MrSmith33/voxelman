@@ -20,15 +20,124 @@ import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.world.plugin;
+import voxelman.graphics.plugin;
 
 import voxelman.clientdb.clientinfo;
 
 shared static this()
 {
-	pluginRegistry.regServerPlugin(new ClientDb);
+	pluginRegistry.regClientPlugin(new ClientDbClient);
+	pluginRegistry.regServerPlugin(new ClientDbServer);
 }
 
-final class ClientDb : IPlugin
+struct ThisClientLoggedInEvent {
+	ClientId thisClientId;
+	Profiler profiler;
+	bool continuePropagation = true;
+}
+
+final class ClientDbClient : IPlugin
+{
+private:
+	EventDispatcherPlugin evDispatcher;
+	GraphicsPlugin graphics;
+	NetClientPlugin connection;
+
+	ConfigOption nicknameOpt;
+
+public:
+	ClientId thisClientId;
+	string[ClientId] clientNames;
+	bool isSpawned = false;
+
+	// IPlugin stuff
+	mixin IdAndSemverFrom!(voxelman.clientdb.plugininfo);
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		nicknameOpt = config.registerOption!string("name", "Player");
+	}
+
+	override void init(IPluginManager pluginman)
+	{
+		graphics = pluginman.getPlugin!GraphicsPlugin;
+
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
+		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
+
+		connection = pluginman.getPlugin!NetClientPlugin;
+		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
+		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
+		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
+		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
+		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
+	}
+
+	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
+	{
+		connection.send(LoginPacket(nicknameOpt.get!string));
+	}
+
+	void handleThisClientDisconnected(ref ThisClientDisconnectedEvent event)
+	{
+		isSpawned = false;
+	}
+
+	void handleUserLoggedInPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto newUser = unpackPacket!ClientLoggedInPacket(packetData);
+		clientNames[newUser.clientId] = newUser.clientName;
+		infof("%s has connected", newUser.clientName);
+		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
+	}
+
+	void handleUserLoggedOutPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!ClientLoggedOutPacket(packetData);
+		infof("%s has disconnected", clientName(packet.clientId));
+		evDispatcher.postEvent(ClientLoggedOutEvent(clientId));
+		clientNames.remove(packet.clientId);
+	}
+
+	void handleSessionInfoPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto loginInfo = unpackPacket!SessionInfoPacket(packetData);
+
+		clientNames = loginInfo.clientNames;
+		thisClientId = loginInfo.yourId;
+		evDispatcher.postEvent(ThisClientLoggedInEvent(thisClientId));
+	}
+
+	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)
+	{
+		import voxelman.utils.math : nansToZero;
+
+		auto packet = unpackPacket!ClientPositionPacket(packetData);
+		tracef("Received ClientPositionPacket(%s, %s)",
+			packet.pos, packet.heading);
+
+		nansToZero(packet.pos);
+		graphics.camera.position = packet.pos;
+
+		nansToZero(packet.heading);
+		graphics.camera.setHeading(packet.heading);
+	}
+
+	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!SpawnPacket(packetData);
+		isSpawned = true;
+	}
+
+	string clientName(ClientId clientId)
+	{
+		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
+	}
+}
+
+final class ClientDbServer : IPlugin
 {
 private:
 	EventDispatcherPlugin evDispatcher;
@@ -41,8 +150,6 @@ public:
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.clientdb.plugininfo);
 
-	override void registerResources(IResourceManagerRegistry resmanRegistry) {}
-	override void preInit() {}
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
@@ -55,6 +162,7 @@ public:
 		connection.registerPacketHandler!LoginPacket(&handleLoginPacket);
 		connection.registerPacketHandler!ViewRadiusPacket(&handleViewRadius);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPosition);
+		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawn);
@@ -74,6 +182,12 @@ public:
 	{
 		ClientInfo* clientInfo = clients[clientId];
 		return clientInfo.isLoggedIn;
+	}
+
+	bool isSpawned(ClientId clientId)
+	{
+		ClientInfo* clientInfo = clients[clientId];
+		return clientInfo.isSpawned;
 	}
 
 	string[ClientId] clientNames()
@@ -117,8 +231,6 @@ public:
 
 	void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
-		serverWorld.chunkObserverManager.removeObserver(event.clientId);
-
 		infof("%s %s disconnected", event.clientId,
 			clients[event.clientId].name);
 
@@ -128,7 +240,7 @@ public:
 
 	void updateObserverVolume(ClientInfo* info)
 	{
-		if (info.isLoggedIn) {
+		if (info.isSpawned) {
 			ChunkWorldPos chunkPos = BlockWorldPos(info.pos);
 			serverWorld.chunkObserverManager.changeObserverVolume(info.id, chunkPos, info.viewRadius);
 		}
@@ -141,7 +253,6 @@ public:
 		info.name = packet.clientName;
 		info.id = clientId;
 		info.isLoggedIn = true;
-		spawnClient(info.pos, info.heading, clientId);
 
 		infof("%s %s logged in", clientId, clients[clientId].name);
 
@@ -149,6 +260,16 @@ public:
 		connection.sendToAllExcept(clientId, ClientLoggedInPacket(clientId, packet.clientName));
 
 		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
+	}
+
+	void handleGameStartPacket(ubyte[] packetData, ClientId clientId)
+	{
+		if (isLoggedIn(clientId))
+		{
+			ClientInfo* info = clients[clientId];
+			info.isSpawned = true;
+			spawnClient(info.pos, info.heading, clientId);
+		}
 	}
 
 	void handleViewRadius(ubyte[] packetData, ClientId clientId)
@@ -164,7 +285,7 @@ public:
 
 	void handleClientPosition(ubyte[] packetData, ClientId clientId)
 	{
-		if (isLoggedIn(clientId))
+		if (isSpawned(clientId))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
 			ClientInfo* info = clients[clientId];
