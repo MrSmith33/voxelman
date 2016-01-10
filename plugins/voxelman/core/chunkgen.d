@@ -15,7 +15,7 @@ import core.exception : Throwable;
 import dlib.math.vector : ivec3;
 
 import anchovy.simplex;
-import voxelman.block.block;
+import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;

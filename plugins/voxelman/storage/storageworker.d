@@ -11,7 +11,7 @@ import std.conv : to;
 import cbor;
 
 import voxelman.core.config;
-import voxelman.block.block;
+import voxelman.block.utils;
 import voxelman.core.chunkgen;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;

@@ -8,7 +8,7 @@ module voxelman.storage.chunkmanager;
 import std.experimental.logger;
 import std.typecons : Nullable;
 
-import voxelman.block.block;
+import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates : ChunkWorldPos;

@@ -11,8 +11,8 @@ import std.datetime : StopWatch, Duration;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.client.chunkmeshman;
-import voxelman.block.block;
-import voxelman.block.blockman;
+import voxelman.block.plugin;
+import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
@@ -33,13 +33,11 @@ struct ChunkMan
 	ChunkWorldPos observerPosition;
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 
-	BlockMan blockMan;
 	ChunkMeshMan chunkMeshMan;
 
-	void init(uint numWorkers)
+	void init(uint numWorkers, immutable(BlockInfo)[] blocks)
 	{
-		blockMan.loadBlockTypes();
-		chunkMeshMan.init(&this, &blockMan, numWorkers);
+		chunkMeshMan.init(&this, blocks, numWorkers);
 		chunkStorage.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
 	}
 

@@ -9,7 +9,7 @@ module voxelman.utils.trace;
 import std.math : floor, abs;
 import dlib.math.vector;
 import voxelman.utils.renderutils : Batch;
-import voxelman.block.block : sideFromNormal;
+import voxelman.block.utils : sideFromNormal;
 
 enum bool drawDebug = false;
 

@@ -10,7 +10,6 @@ import pluginlib;
 
 import voxelman.core.config : BlockId;
 import voxelman.core.events : PreUpdateEvent, PostUpdateEvent, GameStopEvent;
-import voxelman.block.blockman;
 
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
@@ -83,7 +82,6 @@ public:
 
 	World world;
 	WorldAccess worldAccess;
-	BlockMan blockMan;
 
 	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
 
@@ -117,7 +115,6 @@ public:
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
 
-		blockMan.loadBlockTypes();
 		auto worldDir = saveDirOpt.get!string ~ "/" ~ worldNameOpt.get!string;
 		chunkProvider.init(worldDir, numWorkersOpt.get!uint);
 		world.init(worldDir);

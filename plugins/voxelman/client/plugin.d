@@ -27,6 +27,7 @@ import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
 import voxelman.net.plugin;
 import voxelman.command.plugin;
+import voxelman.block.plugin;
 
 import voxelman.net.events;
 import voxelman.core.packets;
@@ -155,13 +156,15 @@ public:
 
 	override void preInit()
 	{
-		chunkMan.init(numWorkersOpt.get!uint);
 		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
 		console.init();
 	}
 
 	override void init(IPluginManager pluginman)
 	{
+		BlockPlugin blockPlugin = pluginman.getPlugin!BlockPlugin;
+		chunkMan.init(numWorkersOpt.get!uint, blockPlugin.getBlocks());
+
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.profiler = profiler;
 

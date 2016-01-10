@@ -11,7 +11,7 @@ import std.string : format;
 import dlib.math.vector;
 
 import voxelman.core.config;
-import voxelman.block.block;
+import voxelman.block.utils;
 import voxelman.core.chunkmesh;
 import voxelman.storage.coordinates;
 import voxelman.storage.region;

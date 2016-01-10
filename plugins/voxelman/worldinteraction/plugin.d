@@ -20,6 +20,7 @@ import voxelman.input.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.client.plugin;
+import voxelman.block.plugin;
 
 
 shared static this()
@@ -32,6 +33,7 @@ class WorldInteractionPlugin : IPlugin
 	ClientPlugin clientPlugin;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
+	BlockPlugin blockPlugin;
 
 	// Cursor
 	bool cursorHit;
@@ -52,6 +54,7 @@ class WorldInteractionPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
+		blockPlugin = pluginman.getPlugin!BlockPlugin;
 		clientPlugin = pluginman.getPlugin!ClientPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
@@ -68,7 +71,7 @@ class WorldInteractionPlugin : IPlugin
 
 	void placeBlock(BlockId blockId)
 	{
-		if (clientPlugin.chunkMan.blockMan.blocks[blockId].isVisible)
+		if (blockPlugin.getBlocks()[blockId].isVisible)
 		{
 			blockPos.vector += hitNormal;
 		}
@@ -107,10 +110,7 @@ class WorldInteractionPlugin : IPlugin
 
 		auto isBlockSolid = (ivec3 blockWorldPos) {
 			auto block = clientPlugin.worldAccess.getBlock(BlockWorldPos(blockWorldPos));
-			return clientPlugin.chunkMan
-				.blockMan
-				.blocks[block]
-				.isVisible;
+			return blockPlugin.getBlocks()[block].isVisible;
 		};
 
 		traceBatch.reset();

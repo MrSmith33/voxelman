@@ -2,11 +2,18 @@
 
 ## [Unreleased]
 ### Added
+- Add block registering in block plugin.
 - Add empty block plugin.
 
 ### Changed
 - Move block modules into block plugin package.
 - Rename `BlockType` to `BlockId`.
+
+### Removed
+- Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
+
+### Fixed
+- Fix performance bug in chunk meshing. Now meshing is much faster. Was allocating on each block's meshing.
 
 ## [0.6.1] - 2016-01-09
 ### Added

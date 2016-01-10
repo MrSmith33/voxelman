@@ -9,8 +9,8 @@ import std.experimental.logger;
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
 
+import voxelman.block.plugin;
 import voxelman.client.chunkman;
-import voxelman.block.blockman;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
 import voxelman.core.meshgen;
@@ -36,14 +36,14 @@ struct ChunkMeshMan
 	size_t numMeshChunkTasks;
 	size_t numDirtyChunksPending;
 
-	BlockMan* blockMan;
 	ChunkMan* chunkMan;
+	immutable(BlockInfo)[] blocks;
 
-	void init(ChunkMan* _chunkMan, BlockMan* _blockMan, uint numWorkers)
+	void init(ChunkMan* _chunkMan, immutable(BlockInfo)[] _blocks, uint numWorkers)
 	{
 		chunkMan = _chunkMan;
-		blockMan = _blockMan;
-		meshWorkers.startWorkers(numWorkers, thisTid, blockMan.blocks);
+		blocks = _blocks;
+		meshWorkers.startWorkers(numWorkers, thisTid, blocks);
 	}
 
 	void stop()
@@ -74,7 +74,7 @@ struct ChunkMeshMan
 		{
 			infof("full chunk change %s", chunk.position);
 			// if there was previous changes they do not matter anymore
-			chunkChanges[chunk.position] = ChunkChange(null, blockData);
+			//chunkChanges[chunk.position] = ChunkChange(null, blockData);
 			return;
 		}
 
@@ -98,7 +98,7 @@ struct ChunkMeshMan
 		chunk.isVisible = true;
 		if (blockData.uniform)
 		{
-			chunk.isVisible = blockMan.blocks[blockData.uniformType].isVisible;
+			chunk.isVisible = blocks[blockData.uniformType].isVisible;
 		}
 		chunk.snapshot.blockData = blockData;
 	}
@@ -147,12 +147,11 @@ struct ChunkMeshMan
 
 	bool surroundedBySolidChunks(Chunk* chunk)
 	{
-		import voxelman.block.block;
+		import voxelman.block.utils;
 		foreach(i, a; chunk.adjacent)
 		if (a !is null) {
 			bool solidSide = a.snapshot.blockData.uniform &&
-			blockMan.blocks[a.snapshot.blockData.uniformType]
-				.isSideTransparent(cast(Side)oppSide[i]);
+			blocks[a.snapshot.blockData.uniformType].isTransparent;
 			if (!solidSide) return false;
 		}
 		return true;

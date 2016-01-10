@@ -15,7 +15,9 @@ import core.exception : Throwable;
 
 import dlib.math.vector : ivec3;
 
-import voxelman.block.block;
+import voxelman.block.plugin;
+import voxelman.block.utils;
+
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
@@ -27,7 +29,7 @@ struct MeshGenResult
 	ChunkWorldPos position;
 }
 
-void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
+void meshWorkerThread(Tid mainTid, immutable(BlockInfo)[] blocks)
 {
 	try
 	{
@@ -58,7 +60,7 @@ void meshWorkerThread(Tid mainTid, immutable(Block*)[] blocks)
 	}
 }
 
-void chunkMeshWorker(Chunk* chunk, Chunk*[6] adjacent, immutable(Block*)[] blocks, Tid mainThread)
+void chunkMeshWorker(Chunk* chunk, Chunk*[6] adjacent, immutable(BlockInfo)[] blocks, Tid mainThread)
 in
 {
 	assert(chunk);
@@ -79,90 +81,84 @@ body
 		return blocks[id].isVisible;
 	}
 
-	bool getTransparency(int tx, int ty, int tz, Side side)
+	bool getTransparency(int tx, int ty, int tz)
 	{
 		ubyte x = cast(ubyte)tx;
 		ubyte y = cast(ubyte)ty;
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isTransparent;
 		else if(tx == CHUNK_SIZE) // east
-			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].isTransparent;
 
 		if(ty == -1) // bottom
 		{
-			assert(side == Side.top, to!string(side));
-			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isTransparent;
 		}
 		else if(ty == CHUNK_SIZE) // top
 		{
-			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].isTransparent;
 		}
 
 		if(tz == -1) // north
-			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isTransparent;
 		else if(tz == CHUNK_SIZE) // south
-			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isSideTransparent(side);
+			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isTransparent;
 
-		return blocks[ chunk.getBlockType(x, y, z) ].isSideTransparent(side);
+		return blocks[ chunk.getBlockType(x, y, z) ].isTransparent;
 	}
 
 	// Bit flags of sides to render
 	ubyte sides = 0;
-	// Num of sides to render
-	ubyte sidenum = 0;
 	// Offset to adjacent block
 	byte[3] offset;
 
 	if (chunk.snapshot.blockData.uniform)
 	{
+		BlockId id = chunk.snapshot.blockData.uniformType;
+		auto meshHandler = blocks[id].meshHandler;
+		auto color = blocks[id].color;
 		foreach (uint index; 0..CHUNK_SIZE_CUBE)
 		{
 			bx = index & CHUNK_SIZE_BITS;
 			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
 			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
-			sidenum = 0;
 
 			foreach(ubyte side; 0..6)
 			{
 				offset = sideOffsets[cast(Side)side];
 
-				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], cast(Side)oppSide[side]))
+				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
-					++sidenum;
 				}
 			}
-
-			appender ~= blocks[chunk.snapshot.blockData.uniformType]
-							.mesh(bx, by, bz, sides, sidenum);
+			meshHandler(appender, color, bx, by, bz, sides);
 		} // foreach
 	}
 	else
-	foreach (uint index, ref ubyte val; chunk.snapshot.blockData.blocks)
+	foreach (uint index, ubyte val; chunk.snapshot.blockData.blocks)
 	{
-		if (isVisibleBlock(val))
+		if (blocks[val].isVisible)
 		{
 			bx = index & CHUNK_SIZE_BITS;
 			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
 			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
-			sidenum = 0;
 
 			foreach(ubyte side; 0..6)
 			{
 				offset = sideOffsets[cast(Side)side];
 
-				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2], cast(Side)oppSide[side]))
+				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
-					++sidenum;
 				}
 			}
 
-			appender ~= blocks[val].mesh(bx, by, bz, sides, sidenum);
+			blocks[val].meshHandler(appender, blocks[val].color, bx, by, bz, sides);
 		} // if(val != 0)
 	} // foreach
 
