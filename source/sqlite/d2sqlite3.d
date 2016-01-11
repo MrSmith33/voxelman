@@ -32,10 +32,6 @@ import std.variant;
 import std.c.string : memcpy;
 import core.memory : GC;
 
-//version(Win32)
-//	pragma(lib, "sqlite32.lib");
-//else version(Win64)
-//	pragma(lib, "sqlite64.lib");
 
 public import etc.c.sqlite3;
 //public import sqlite3; replaced by etc.c.sqlite3 and some line from sqlite3.
@@ -52,6 +48,9 @@ extern (C) nothrow
 	int sqlite3_errcode(sqlite3 *db);
 	int sqlite3_bind_parameter_count(sqlite3_stmt*);
 	int sqlite3_column_count(sqlite3_stmt *pStmt);
+	void sqlite3_result_text64(sqlite3_context*, const char*,sqlite3_uint64,
+                               void function(void*), ubyte encoding);
+    void sqlite3_result_blob64(sqlite3_context*,const void*,sqlite3_uint64,void function(void*));
 }
 
 
