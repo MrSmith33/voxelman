@@ -13,7 +13,7 @@ struct ImguiState
 {
 	GLFWwindow* window;
 	double      time = 0.0f;
-	bool[3]     mousePressed;
+	bool[7]     mousePressed;
 	float       mouseWheel = 0.0f;
 	GLuint      fontTexture = 0;
 	int         shaderHandle = 0;

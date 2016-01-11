@@ -10,7 +10,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
 import voxelman.graphics.plugin;
-import voxelman.clientdb.plugin;
+import voxelman.login.plugin;
 
 shared static this()
 {

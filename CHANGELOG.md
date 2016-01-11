@@ -2,12 +2,14 @@
 
 ## [Unreleased]
 ### Added
+- Add sqlite2d lib.
 - Add block registering in block plugin.
 - Add block plugin.
 - Add client part of `clientDb`.
 - Add isSpawned state to client info.
 
 ### Changed
+- Rename clientdb plugin into login.
 - Move block modules into block plugin package.
 - Rename `BlockType` to `BlockId`.
 - Move world handling to `world` plugin from `client`.
@@ -18,6 +20,7 @@
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
 
 ### Fixed
+- Fix buttons in imgui_glfw.d.
 - Make random block tint persistent.
 - Fix performance bug in chunk meshing. Now meshing is much faster. Was allocating on each block's meshing.
 

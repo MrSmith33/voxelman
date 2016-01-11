@@ -7,7 +7,7 @@ test.entitytest 1.0.0
 voxelman.block 0.6.0
 voxelman.chat 0.6.0
 voxelman.client 0.5.0
-voxelman.clientdb 0.6.0
+voxelman.login 0.6.0
 voxelman.command 0.5.0
 voxelman.config 0.5.0
 voxelman.core 0.5.0

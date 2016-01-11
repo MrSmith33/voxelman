@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.clientdb.plugin;
+module voxelman.login.plugin;
 
 import std.experimental.logger;
 import netlib;
@@ -22,7 +22,7 @@ import voxelman.net.plugin;
 import voxelman.world.plugin;
 import voxelman.graphics.plugin;
 
-import voxelman.clientdb.clientinfo;
+import voxelman.login.clientinfo;
 
 shared static this()
 {
@@ -51,7 +51,7 @@ public:
 	bool isSpawned = false;
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.clientdb.plugininfo);
+	mixin IdAndSemverFrom!(voxelman.login.plugininfo);
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -148,7 +148,7 @@ public:
 	ClientInfo*[ClientId] clients;
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.clientdb.plugininfo);
+	mixin IdAndSemverFrom!(voxelman.login.plugininfo);
 
 	override void init(IPluginManager pluginman)
 	{

@@ -22,6 +22,10 @@
 		}
 	},
 
+	"libs-posix": ["sqlite3"],
+	"sourceFiles-windows-x86": ["lib/32/sqlite3.lib"],
+	"sourceFiles-windows-x86_64": ["lib/64/sqlite3.lib"],
+
 	"configurations": [
 		{
 			"name" : "client",

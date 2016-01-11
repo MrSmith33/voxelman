@@ -39,6 +39,11 @@ private:
 
 public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
+	override void preInit()
+	{
+		regBlock("unknown", [0,0,0], false, false, &makeNullMesh);
+		regBlock("air", [0,0,0], false, true, &makeNullMesh);
+	}
 
 	BlockId regBlock(string name, ubyte[3] color, bool isVisible,
 		bool isTransparent, Meshhandler meshHandler)
@@ -64,8 +69,6 @@ final class BlockPlugin : IPlugin
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		bm.regBlock("unknown", [0,0,0], false, false, &makeNullMesh);
-		bm.regBlock("air", [0,0,0], false, true, &makeNullMesh);
 		bm.regBlock("grass", [0, 255, 0], true, false, &makeColoredBlockMesh);
 		bm.regBlock("dirt", [120, 72, 0], true, false, &makeColoredBlockMesh);
 		bm.regBlock("stone", [128, 128, 128], true, false, &makeColoredBlockMesh);

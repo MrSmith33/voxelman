@@ -17,8 +17,9 @@ import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
-import voxelman.clientdb.plugin;
+import voxelman.login.plugin;
 import voxelman.block.plugin;
+
 import voxelman.net.packets;
 import voxelman.core.packets;
 
@@ -270,6 +271,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	ClientDbServer clientDb;
+	BlockPlugin blockPlugin;
 
 	ConfigOption saveDirOpt;
 	ConfigOption worldNameOpt;
@@ -323,6 +325,7 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		blockPlugin = pluginman.getPlugin!BlockPlugin;
 		clientDb = pluginman.getPlugin!ClientDbServer;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
