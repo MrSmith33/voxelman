@@ -1,5 +1,5 @@
 language: d
 
 before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install sqlite3
+  - wget -P /home/travis/ http://mirrors.kernel.org/ubuntu/pool/main/s/sqlite3/sqlite3_3.10.0-1_amd64.deb
+  - dpkg -i /home/travis/sqlite3_3.10.0-1_amd64.deb
