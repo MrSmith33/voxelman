@@ -185,7 +185,7 @@ final class ChunkManager {
 	}
 
 	/// Internal. Called by code which loads chunks from storage.
-	void onSnapshotLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap) {
+	void onSnapshotLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap, bool saved) {
 		snapshots[cwp] = BlockDataSnapshot(snap.blockData, snap.timestamp);
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
@@ -194,11 +194,14 @@ final class ChunkManager {
 			case added_loaded:
 				assert(false, "On loaded should not occur for already loaded chunk");
 			case removed_loading:
-				chunkStates[cwp] = non_loaded;
-				clearChunkData(cwp);
+				auto s = cwp in snapshots;
+				chunkStates[cwp] = removed_loaded_saving;
+				saveChunkHandler(cwp, *s);
+				++s.numUsers;
 				break;
 			case added_loading:
 				chunkStates[cwp] = added_loaded;
+				modifiedChunks.put(cwp);
 				// Create snapshot for loaded data
 				auto snapshot = cwp in snapshots;
 				if (snapshot.blockData.uniform) {

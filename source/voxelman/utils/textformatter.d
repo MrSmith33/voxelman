@@ -21,7 +21,13 @@ static struct TextPtrs {
 	char* end;
 }
 
-TextPtrs makeFormattedText(Args ...)(string fmt, Args args) {
+const(char[]) makeFormattedText(Args ...)(string fmt, Args args) {
+	app.clear();
+	formattedWrite(app, fmt, args);
+	return app.data;
+}
+
+TextPtrs makeFormattedTextPtrs(Args ...)(string fmt, Args args) {
 	app.clear();
 	formattedWrite(app, fmt, args);
 	app.put("\0");
@@ -31,6 +37,6 @@ TextPtrs makeFormattedText(Args ...)(string fmt, Args args) {
 void igTextf(Args ...)(string fmt, Args args)
 {
 	import derelict.imgui.imgui : igTextUnformatted;
-	TextPtrs pair = makeFormattedText(fmt, args);
+	TextPtrs pair = makeFormattedTextPtrs(fmt, args);
 	igTextUnformatted(pair.start, pair.end);
 }

@@ -1748,6 +1748,16 @@ struct Row
 	}
 
 	/// ditto
+	T peekNoDup(T)(int index)
+		if (isArray!T && !isSomeString!T)
+	{
+		auto i = internalIndex(index);
+		auto ptr = sqlite3_column_blob(statement, i);
+		auto length = sqlite3_column_bytes(statement, i);
+		return cast(T)ptr[0..length];
+	}
+
+	/// ditto
 	T peek(T : Nullable!U, U...)(int index)
 	{
 		if (sqlite3_column_type(statement, internalIndex(index)) == SqliteType.NULL)

@@ -99,7 +99,7 @@ void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
 		bd.uniformType = type;
 	}
 
-	auto res = new SnapshotLoadedMessage(message.cwp, BlockDataSnapshot(bd));
+	auto res = new SnapshotLoadedMessage(message.cwp, BlockDataSnapshot(bd), false);
 	mainThread.send(cast(immutable(SnapshotLoadedMessage)*)res);
 }
 

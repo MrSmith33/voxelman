@@ -26,6 +26,7 @@ struct SnapshotLoadedMessage
 {
 	ChunkWorldPos cwp;
 	BlockDataSnapshot snapshot;
+	bool saved;
 }
 
 struct SnapshotSavedMessage
@@ -54,7 +55,7 @@ private:
 	WorkerGroup!(storageWorkerThread) storeWorker;
 
 public:
-	void delegate(ChunkWorldPos, BlockDataSnapshot)[] onChunkLoadedHandlers;
+	void delegate(ChunkWorldPos, BlockDataSnapshot, bool)[] onChunkLoadedHandlers;
 	void delegate(ChunkWorldPos, TimestampType)[] onChunkSavedHandlers;
 	size_t loadQueueLength;
 
@@ -66,7 +67,8 @@ public:
 	void init(string worldDir, uint numWorkers)
 	{
 		genWorkers.startWorkers(numWorkers, thisTid);
-		storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
+		storeWorker.startWorkers(1, thisTid, worldDir~"/world.db");
+		//storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
 	}
 
 	void stop()
@@ -85,7 +87,7 @@ public:
 					auto m = cast(SnapshotLoadedMessage*)message;
 					--loadQueueLength;
 					foreach(handler; onChunkLoadedHandlers)
-						handler(m.cwp, m.snapshot);
+						handler(m.cwp, m.snapshot, m.saved);
 				},
 				(immutable(SnapshotSavedMessage)* message) {
 					auto m = cast(SnapshotSavedMessage*)message;
