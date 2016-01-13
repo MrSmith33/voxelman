@@ -35,10 +35,10 @@ struct WorldDb
 	{
 		auto db = Database(filename);
 
-		db.execute("PRAGMA synchronous=OFF");
-		db.execute("PRAGMA count_changes=OFF");
-		db.execute("PRAGMA journal_mode=MEMORY");
-		db.execute("PRAGMA temp_store=MEMORY");
+		db.execute("PRAGMA synchronous = normal");
+		db.execute("PRAGMA count_changes = OFF");
+		db.execute("PRAGMA journal_mode = WAL");
+		db.execute("PRAGMA temp_store = MEMORY");
 
 		db.execute(perWorldTableCreate);
 		db.execute(perDimentionTableCreate);

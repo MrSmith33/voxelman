@@ -237,6 +237,7 @@ extern(C) nothrow
 	}
 	void keyfun(GLFWwindow* w, int key, int, int action, int)
 	{
+		if (key < 0) return;
 		try
 		{
 			if (action == GLFW_RELEASE)
@@ -252,8 +253,10 @@ extern(C) nothrow
 	}
 	void charfun(GLFWwindow* w, uint unicode)
 	{
-		try getWinFromUP(w).charEntered.emit(cast(dchar)unicode);
-		catch(Exception e) throw new Error(to!string(e));
+	    if (unicode > 0 && unicode < 0x10000) {
+			try getWinFromUP(w).charEntered.emit(cast(dchar)unicode);
+			catch(Exception e) throw new Error(to!string(e));
+		}
 	}
 	void refreshfun(GLFWwindow* w)
 	{

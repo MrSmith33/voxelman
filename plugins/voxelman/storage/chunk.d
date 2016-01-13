@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.storage.chunk;
 
+import std.experimental.logger;
 import std.array : uninitializedArray;
 import std.string : format;
 
@@ -77,6 +78,13 @@ struct BlockDataSnapshot
 // Stores blocks of the chunk
 struct BlockData
 {
+	void validate()
+	{
+		if (!uniform && blocks.length != CHUNK_SIZE_CUBE) {
+			fatalf("Size of uniform chunk != CHUNK_SIZE_CUBE, == %s", blocks.length);
+		}
+	}
+
 	/// null if uniform is true, or contains chunk data otherwise
 	BlockId[] blocks;
 

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- Add lz4 compression.
+- Add simple chunk validation.
+- Add sqlite world storage.
+- Add simple worldDb implementation.
 - Add sqlite2d lib.
 - Add block registering in block plugin.
 - Add block plugin.
@@ -9,6 +13,7 @@
 - Add isSpawned state to client info.
 
 ### Changed
+- Use journal_mode = WAL in sqlite.
 - Rename clientdb plugin into login.
 - Move block modules into block plugin package.
 - Rename `BlockType` to `BlockId`.
@@ -20,6 +25,8 @@
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
 
 ### Fixed
+- Fix app crash on Alt+PrintScreen.
+- Fix generated chunks not saved, but regenerated every time.
 - Fix buttons in imgui_glfw.d.
 - Make random block tint persistent.
 - Fix performance bug in chunk meshing. Now meshing is much faster. Was allocating on each block's meshing.

@@ -24,24 +24,6 @@ struct AppStatistics
 		chunksRendered = 0;
 		vertsRendered = 0;
 		trisRendered = 0;
-	}
-
-	string[] getFormattedOutput()
-	{
-		import std.string : format;
-
-		string[] result;
-		result ~= format("FPS: %s", fps);
-		result ~= format("Chunks visible/rendered %s/%s %.0f%%",
-			chunksVisible, chunksRendered,
-			chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
-		result ~= format("Chunks per frame loaded: %s",
-			totalLoadedChunks - lastFrameLoadedChunks);
-		result ~= format("Chunks total loaded: %s",
-			totalLoadedChunks);
-		result ~= format("Vertexes %s", vertsRendered);
-		result ~= format("Triangles %s", trisRendered);
-
-		return result;
+		lastFrameLoadedChunks = totalLoadedChunks;
 	}
 }

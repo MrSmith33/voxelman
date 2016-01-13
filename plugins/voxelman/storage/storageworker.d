@@ -18,7 +18,7 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
 import voxelman.storage.regionstorage;
 import voxelman.world.worlddb;
-import voxelman.utils.rlecompression;
+import voxelman.utils.compression;
 
 private ubyte[4096*16] compressBuffer;
 private ubyte[4096*16] buffer;
@@ -42,7 +42,7 @@ void storageWorkerThread(Tid mainTid, string worldFilename)
 		//	timestamp <= regionStorage.chunkTimestamp(cwp)) return;
 
 		BlockData compressedData = data;
-		compressedData.blocks = rleEncode(data.blocks, compressBuffer);
+		compressedData.blocks = compress(data.blocks, compressBuffer);
 
 		try
 		{
@@ -81,7 +81,7 @@ void storageWorkerThread(Tid mainTid, string worldFilename)
 			if (cborData !is null) {
 				BlockData compressedData = decodeCborSingle!BlockData(cborData);
 				BlockData blockData = compressedData;
-				blockData.blocks = rleDecode(compressedData.blocks, compressBuffer);
+				blockData.blocks = decompress(compressedData.blocks, compressBuffer);
 
 				if (blockData.blocks.length > 0) {
 					bool validLength = blockData.blocks.length == CHUNK_SIZE_CUBE;

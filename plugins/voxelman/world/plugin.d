@@ -12,6 +12,7 @@ import pluginlib;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
+import voxelman.utils.compression;
 
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
@@ -186,9 +187,16 @@ public:
 
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
 	{
-		auto packet = unpackPacket!ChunkDataPacket(packetData);
+		import cbor;
+		auto packet = decodeCborSingle!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
+		if (!packet.blockData.uniform) {
+			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
+			packet.blockData.blocks = decompress(packet.blockData.blocks, blocks);
+			packet.blockData.validate();
+		}
+
 		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
 	}
 
@@ -277,6 +285,8 @@ private:
 	ConfigOption worldNameOpt;
 	ConfigOption numWorkersOpt;
 
+	ubyte[] buf;
+
 public:
 	ChunkManager chunkManager;
 	ChunkProvider chunkProvider;
@@ -299,6 +309,7 @@ public:
 
 	override void preInit()
 	{
+		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(&chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
@@ -361,10 +372,9 @@ public:
 
 	void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
-		import voxelman.core.packets : ChunkDataPacket;
 		auto snap = chunkManager.getChunkSnapshot(cwp);
 		if (!snap.isNull) {
-			connection.sendTo(clientId, ChunkDataPacket(cwp.vector, snap.blockData));
+			sendChunk(clientId, cwp, snap.blockData);
 		}
 	}
 
@@ -375,10 +385,16 @@ public:
 
 	void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
 	{
+		sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap.blockData);
+	}
+
+	void sendChunk(C)(C clients, ChunkWorldPos cwp, BlockData bd)
+	{
 		import voxelman.core.packets : ChunkDataPacket;
-		connection.sendTo(
-			chunkObserverManager.getChunkObservers(cwp),
-			ChunkDataPacket(cwp.vector, snap.blockData));
+		import voxelman.utils.compression;
+		bd.validate();
+		if (!bd.uniform) bd.blocks = compress(bd.blocks, buf);
+		connection.sendTo(clients, ChunkDataPacket(cwp.vector, bd));
 	}
 
 	void sendChanges(BlockChange[][ChunkWorldPos] changes)
