@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add IoManager.
+- Add basic io thread task support.
 - Add lz4 compression.
 - Add simple chunk validation.
 - Add sqlite world storage.
@@ -13,6 +15,7 @@
 - Add isSpawned state to client info.
 
 ### Changed
+- Move ClientWorld to voxelman/world/clientworld.d.
 - Use journal_mode = WAL in sqlite.
 - Rename clientdb plugin into login.
 - Move block modules into block plugin package.
@@ -23,6 +26,7 @@
 
 ### Removed
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
+- Remove voxelman/storage/world.d.
 
 ### Fixed
 - Fix app crash on Alt+PrintScreen.

@@ -23,7 +23,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.input.plugin;
 import voxelman.net.plugin;
-import voxelman.world.plugin;
+import voxelman.world.clientworld;
 
 
 shared static this()

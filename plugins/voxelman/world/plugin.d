@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.plugin;
 
 import std.experimental.logger;
+import std.concurrency;
 import netlib;
 import pluginlib;
 
@@ -31,8 +32,9 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.volume;
-import voxelman.storage.world;
+import voxelman.storage.storageworker;
 
+import voxelman.world.worlddb;
 
 
 final class WorldAccess {
@@ -70,207 +72,77 @@ final class WorldAccess {
 	}
 }
 
-final class ClientWorld : IPlugin
-{
-	import voxelman.graphics.plugin;
-	import voxelman.world.chunkman;
-private:
-	EventDispatcherPlugin evDispatcher;
-	NetClientPlugin connection;
-	GraphicsPlugin graphics;
-	ClientDbClient clientDb;
 
-	ConfigOption numWorkersOpt;
+alias IoHandler = void delegate(WorldDb);
+
+final class IoManager : IResourceManager
+{
+private:
+	ConfigOption saveDirOpt;
+	ConfigOption worldNameOpt;
+	void delegate(string) onPostInit;
+
+	IoHandler[] worldLoadHandlers;
+	Tid ioThreadId;
 
 public:
-	//ChunkManager chunkManager;
-	//ChunkProvider chunkProvider;
-	//ChunkObserverManager chunkObserverManager;
-
-	//World world;
-	//WorldAccess worldAccess;
-	// Game stuff
-	ChunkMan chunkMan;
-	static import voxelman.storage.worldaccess;
-	voxelman.storage.worldaccess.WorldAccess worldAccess;
-
-	bool doUpdateObserverPosition = true;
-	vec3 updatedCameraPos;
-
-	// Send position interval
-	double sendPositionTimer = 0;
-	enum sendPositionInterval = 0.1;
-	ChunkWorldPos prevChunkPos;
-
-	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
-
-	override void registerResourceManagers(void delegate(IResourceManager) registerHandler) {}
-
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	this(void delegate(string) onPostInit)
 	{
+		this.onPostInit = onPostInit;
+	}
+
+	override string id() @property { return "voxelman.world.iomanager"; }
+
+	override void preInit() {}
+	override void init(IResourceManagerRegistry resmanRegistry) {
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		numWorkersOpt = config.registerOption!uint("num_workers", 4);
-
-		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
+		saveDirOpt = config.registerOption!string("save_dir", "../../saves");
+		worldNameOpt = config.registerOption!string("world_name", "world");
+	}
+	override void loadResources() {}
+	override void postInit() {
+		import std.path : buildPath;
+		auto saveFilename = buildPath(saveDirOpt.get!string, worldNameOpt.get!string~".db");
+		onPostInit(saveFilename);
 	}
 
-	override void preInit()
+	void registerWorldLoadHandler(IoHandler worldLoadHandler)
 	{
-		worldAccess.init(&chunkMan.chunkStorage.getChunk, () => 0);
-		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
-
-		//chunkManager = new ChunkManager();
-		//worldAccess = new WorldAccess(&chunkManager);
-		//chunkObserverManager = new ChunkObserverManager();
+		worldLoadHandlers ~= worldLoadHandler;
 	}
+}
 
-	override void init(IPluginManager pluginman)
+/*
+private void ioThread(string worldFilename)
+{
+	WorldDb worldDb = new WorldDb;
+	worldDb.openWorld(worldFilename);
+	scope (exit) worldDb.close();
+
+	bool isRunning = true;
+	try while (isRunning)
 	{
-		clientDb = pluginman.getPlugin!ClientDbClient;
-
-		BlockPlugin blockPlugin = pluginman.getPlugin!BlockPlugin;
-		chunkMan.init(numWorkersOpt.get!uint, blockPlugin.getBlocks());
-
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		evDispatcher.subscribeToEvent(&onGameStopEvent);
-		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
-
-		connection = pluginman.getPlugin!NetClientPlugin;
-		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
-		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
-
-		graphics = pluginman.getPlugin!GraphicsPlugin;
-		updatedCameraPos = graphics.camera.position;
-	}
-
-	override void postInit()
-	{
-		chunkMan.updateObserverPosition(graphics.camera.position);
-	}
-
-	void onTogglePositionUpdate(string)
-	{
-		doUpdateObserverPosition = !doUpdateObserverPosition;
-	}
-
-	void onPreUpdateEvent(ref PreUpdateEvent event)
-	{
-		if (doUpdateObserverPosition)
-		{
-			updatedCameraPos = graphics.camera.position;
-		}
-		chunkMan.updateObserverPosition(updatedCameraPos);
-		chunkMan.update();
-	}
-
-	void onPostUpdateEvent(ref PostUpdateEvent event)
-	{
-		if (doUpdateObserverPosition)
-			sendPosition(event.deltaTime);
-	}
-
-	void onGameStopEvent(ref GameStopEvent gameStopEvent)
-	{
-		chunkMan.stop();
-		thread_joinAll();
-	}
-
-	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
-	{
-		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
-	}
-
-	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
-	{
-		import cbor;
-		auto packet = decodeCborSingle!ChunkDataPacket(packetData);
-		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
-		//	packet.chunkPos, packet.blockData.blocks.length);
-		if (!packet.blockData.uniform) {
-			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
-			packet.blockData.blocks = decompress(packet.blockData.blocks, blocks);
-			packet.blockData.validate();
-		}
-
-		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
-	}
-
-	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
-	{
-		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(packet.chunkPos));
-		// We can receive data for chunk that is already deleted.
-		if (chunk is null || chunk.isMarkedForDeletion)
-			return;
-		chunkMan.onChunkChanged(chunk, packet.blockChanges);
-	}
-
-	void sendPosition(double dt)
-	{
-		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
-
-		if (clientDb.isSpawned)
-		{
-			sendPositionTimer += dt;
-			if (sendPositionTimer > sendPositionInterval ||
-				chunkPos != prevChunkPos)
+		receive(
+			(immutable IoHandler h)
 			{
-				connection.send(ClientPositionPacket(
-					graphics.camera.position,
-					graphics.camera.heading));
-
-				if (sendPositionTimer < sendPositionInterval)
-					sendPositionTimer = 0;
-				else
-					sendPositionTimer -= sendPositionInterval;
-			}
-		}
-
-		prevChunkPos = chunkPos;
+				h(worldDb);
+			},
+			(Variant v){isRunning = false;}
+		);
 	}
-
-	void onIncViewRadius(string)
+	catch(Throwable t)
 	{
-		incViewRadius();
+		error(t.to!string, " in io thread");
+		throw t;
 	}
+}*/
 
-	void onDecViewRadius(string)
-	{
-		decViewRadius();
-	}
-
-	void incViewRadius()
-	{
-		setViewRadius(getViewRadius() + 1);
-	}
-
-	void decViewRadius()
-	{
-		setViewRadius(getViewRadius() - 1);
-	}
-
-	int getViewRadius()
-	{
-		return chunkMan.viewRadius;
-	}
-
-	void setViewRadius(int newViewRadius)
-	{
-		import std.algorithm : clamp;
-		auto oldViewRadius = chunkMan.viewRadius;
-		chunkMan.viewRadius = clamp(newViewRadius,
-			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-
-		if (oldViewRadius != chunkMan.viewRadius)
-		{
-			connection.send(ViewRadiusPacket(chunkMan.viewRadius));
-		}
-	}
+struct WorldInfo
+{
+	string name = DEFAULT_WORLD_NAME;
+	TimestampType simulationTick;
+	ivec3 spawnPosition;
+	//block mapping
 }
 
 final class ServerWorld : IPlugin
@@ -281,29 +153,32 @@ private:
 	ClientDbServer clientDb;
 	BlockPlugin blockPlugin;
 
-	ConfigOption saveDirOpt;
-	ConfigOption worldNameOpt;
+	IoManager ioManager;
+	Tid ioThreadId;
+
 	ConfigOption numWorkersOpt;
 
 	ubyte[] buf;
+	WorldInfo worldInfo;
 
 public:
 	ChunkManager chunkManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
 
-	World world;
 	WorldAccess worldAccess;
 
 	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
 
-	override void registerResourceManagers(void delegate(IResourceManager) registerHandler) {}
+	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
+	{
+		ioManager = new IoManager(&handleIoManagerPostInit);
+		registerHandler(ioManager);
+	}
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		saveDirOpt = config.registerOption!string("save_dir", "../../saves");
-		worldNameOpt = config.registerOption!string("world_name", "world");
 		numWorkersOpt = config.registerOption!uint("num_workers", 4);
 	}
 
@@ -328,10 +203,7 @@ public:
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
 
-		auto worldDir = saveDirOpt.get!string ~ "/" ~ worldNameOpt.get!string;
-		chunkProvider.init(worldDir, numWorkersOpt.get!uint);
-		world.init(worldDir);
-		world.load();
+		chunkProvider.init(ioThreadId, numWorkersOpt.get!uint);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -351,26 +223,65 @@ public:
 
 	override void postInit() {}
 
-	void handlePreUpdateEvent(ref PreUpdateEvent event)
+	void sendTask(IoHandler handler)
+	{
+		ioThreadId.send(cast(immutable)&handler);
+	}
+
+	TimestampType currentTimestamp() @property
+	{
+		return worldInfo.simulationTick;
+	}
+
+	void save()
+	{
+
+	}
+
+	private void handleIoManagerPostInit(string worldFilename)
+	{
+		WorldDb worldDb = new WorldDb;
+		worldDb.openWorld(worldFilename);
+		foreach(h; ioManager.worldLoadHandlers)
+		{
+			h(worldDb);
+		}
+		ioThreadId = spawn(&storageWorkerThread, thisTid, cast(immutable)worldDb);
+	}
+
+	private void readWorldInfo(WorldDb worldDb)
+	{
+		//ubyte[] data = cast(ubyte[])readFile(worldInfoFilename, 1024);
+		//worldInfo = decodeCborSingleDup!WorldInfo(data);
+	}
+
+	private void writeWorldInfo()
+	{
+		//ubyte[] bufferTemp = buf;
+		//size_t size = encodeCbor(bufferTemp[], worldInfo);
+		//writeFile(worldInfoFilename, bufferTemp[0..size]);
+	}
+
+	private void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
 		chunkProvider.update();
 		chunkObserverManager.update();
-		world.update();
+		++worldInfo.simulationTick;
 	}
 
-	void handlePostUpdateEvent(ref PostUpdateEvent event)
+	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
-		chunkManager.commitSnapshots(world.currentTimestamp);
+		chunkManager.commitSnapshots(currentTimestamp);
 		chunkManager.sendChanges();
 	}
 
-	void handleStopEvent(ref GameStopEvent event)
+	private void handleStopEvent(ref GameStopEvent event)
 	{
+		ioThreadId.send(0);
 		chunkProvider.stop();
-		world.save();
 	}
 
-	void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
+	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
 		auto snap = chunkManager.getChunkSnapshot(cwp);
 		if (!snap.isNull) {
@@ -378,17 +289,17 @@ public:
 		}
 	}
 
-	void handleClientDisconnected(ref ClientDisconnectedEvent event)
+	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
 		chunkObserverManager.removeObserver(event.clientId);
 	}
 
-	void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
+	private void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
 	{
 		sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap.blockData);
 	}
 
-	void sendChunk(C)(C clients, ChunkWorldPos cwp, BlockData bd)
+	private void sendChunk(C)(C clients, ChunkWorldPos cwp, BlockData bd)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
 		import voxelman.utils.compression;
@@ -397,7 +308,7 @@ public:
 		connection.sendTo(clients, ChunkDataPacket(cwp.vector, bd));
 	}
 
-	void sendChanges(BlockChange[][ChunkWorldPos] changes)
+	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
 	{
 		import voxelman.core.packets : MultiblockChangePacket;
 		foreach(pair; changes.byKeyValue)
@@ -408,7 +319,7 @@ public:
 		}
 	}
 
-	void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
+	private void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
 	{
 		import voxelman.core.packets : PlaceBlockPacket;
 		if (clientDb.isSpawned(clientId))

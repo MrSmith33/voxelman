@@ -17,8 +17,6 @@ import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
-import voxelman.storage.storageworker;
-import voxelman.storage.world;
 import voxelman.utils.workergroup;
 
 
@@ -52,7 +50,8 @@ struct ChunkProvider
 {
 private:
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
-	WorkerGroup!(storageWorkerThread) storeWorker;
+	//WorkerGroup!(storageWorkerThread) storeWorker;
+	Tid storeWorker;
 
 public:
 	void delegate(ChunkWorldPos, BlockDataSnapshot, bool)[] onChunkLoadedHandlers;
@@ -64,17 +63,18 @@ public:
 		return MAX_LOAD_QUEUE_LENGTH - loadQueueLength;
 	}
 
-	void init(string worldDir, uint numWorkers)
+	void init(Tid storeWorker, uint numWorkers)
 	{
+		this.storeWorker = storeWorker;
 		genWorkers.startWorkers(numWorkers, thisTid);
-		storeWorker.startWorkers(1, thisTid, worldDir~"/world.db");
+		//storeWorker.startWorkers(1, thisTid, worldDir~"/world.db");
 		//storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
 	}
 
 	void stop()
 	{
 		genWorkers.stopWorkers();
-		storeWorker.stopWorkersWhenDone();
+		//storeWorker.stopWorkersWhenDone();
 	}
 
 	void update()
@@ -100,12 +100,12 @@ public:
 
 	void loadChunk(ChunkWorldPos cwp, BlockId[] blockBuffer) {
 		auto m = new LoadSnapshotMessage(cwp, blockBuffer, genWorkers.nextWorker);
-		storeWorker.nextWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
+		storeWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
 		++loadQueueLength;
 	}
 
 	void saveChunk(ChunkWorldPos cwp, BlockDataSnapshot snapshot) {
 		auto m = new SaveSnapshotMessage(cwp, snapshot);
-		storeWorker.nextWorker.send(cast(immutable(SaveSnapshotMessage)*)m);
+		storeWorker.send(cast(immutable(SaveSnapshotMessage)*)m);
 	}
 }

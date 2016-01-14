@@ -9,6 +9,7 @@ shared static this()
 {
 	import pluginlib;
 	import voxelman.world.plugin;
+	import voxelman.world.clientworld;
 	pluginRegistry.regClientPlugin(new ClientWorld);
 	pluginRegistry.regServerPlugin(new ServerWorld);
 }

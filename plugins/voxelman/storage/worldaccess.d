@@ -10,7 +10,6 @@ import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
-import voxelman.storage.world;
 
 /// When modifying world through WorldAccess
 /// changes will automatically proparate to client each tick

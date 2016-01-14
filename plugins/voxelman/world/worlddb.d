@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.worlddb;
 
-import sqlite.d2sqlite3;
+public import sqlite.d2sqlite3;
 
 import std.conv;
 import std.stdio;
@@ -13,23 +13,25 @@ import std.typecons : Nullable;
 import voxelman.storage.coordinates : ChunkWorldPos;
 import voxelman.utils.textformatter;
 
+alias StatementHandle = size_t;
 
-struct WorldDb
+final class WorldDb
 {
-	Database db;
+	private Database db;
 
 	Statement perWorldInsertStmt;
 	Statement perWorldSelectStmt;
 	Statement perWorldDeleteStmt;
 
-	Statement perDimentionInsertStmt;
-	Statement perDimentionSelectStmt;
-	Statement perDimentionDeleteStmt;
+	//Statement perDimentionInsertStmt;
+	//Statement perDimentionSelectStmt;
+	//Statement perDimentionDeleteStmt;
 
 	Statement perChunkInsertStmt;
 	Statement perChunkSelectStmt;
 	Statement perChunkDeleteStmt;
 
+	private Statement[] statements;
 
 	void openWorld(string filename)
 	{
@@ -41,20 +43,36 @@ struct WorldDb
 		db.execute("PRAGMA temp_store = MEMORY");
 
 		db.execute(perWorldTableCreate);
-		db.execute(perDimentionTableCreate);
+		//db.execute(perDimentionTableCreate);
 		db.execute(perChunkTableCreate);
 
 		perWorldInsertStmt = db.prepare(perWorldTableInsert);
 		perWorldSelectStmt = db.prepare(perWorldTableSelect);
 		perWorldDeleteStmt = db.prepare(perWorldTableDelete);
 
-		perDimentionInsertStmt = db.prepare(perDimentionTableInsert);
-		perDimentionSelectStmt = db.prepare(perDimentionTableSelect);
-		perDimentionDeleteStmt = db.prepare(perDimentionTableDelete);
+		//perDimentionInsertStmt = db.prepare(perDimentionTableInsert);
+		//perDimentionSelectStmt = db.prepare(perDimentionTableSelect);
+		//perDimentionDeleteStmt = db.prepare(perDimentionTableDelete);
 
 		perChunkInsertStmt = db.prepare(perChunkTableInsert);
 		perChunkSelectStmt = db.prepare(perChunkTableSelect);
 		perChunkDeleteStmt = db.prepare(perChunkTableDelete);
+	}
+
+	void execute(string sql)
+	{
+		db.execute(sql);
+	}
+
+	StatementHandle prepareStmt(string sql)
+	{
+		statements ~= db.prepare(sql);
+		return statements.length - 1;
+	}
+
+	ref Statement stmt(StatementHandle stmtHandle)
+	{
+		return statements[stmtHandle];
 	}
 
 	void close()
@@ -62,12 +80,15 @@ struct WorldDb
 		destroy(perWorldInsertStmt);
 		destroy(perWorldSelectStmt);
 		destroy(perWorldDeleteStmt);
-		destroy(perDimentionInsertStmt);
-		destroy(perDimentionSelectStmt);
-		destroy(perDimentionDeleteStmt);
+		//destroy(perDimentionInsertStmt);
+		//destroy(perDimentionSelectStmt);
+		//destroy(perDimentionDeleteStmt);
 		destroy(perChunkInsertStmt);
 		destroy(perChunkSelectStmt);
 		destroy(perChunkDeleteStmt);
+		foreach(ref s; statements)
+			destroy(s);
+		destroy(statements);
 		//db.close();
 	}
 

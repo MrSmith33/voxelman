@@ -18,23 +18,23 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
 import voxelman.storage.regionstorage;
 import voxelman.world.worlddb;
+import voxelman.world.plugin : IoHandler;
 import voxelman.utils.compression;
 
 private ubyte[4096*16] compressBuffer;
 private ubyte[4096*16] buffer;
 
-void storageWorkerThread(Tid mainTid, string worldFilename)
+void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 {
 	try
 	{
 	//RegionStorage regionStorage = RegionStorage(regionDir);
-	WorldDb worldDb;
-	worldDb.openWorld(worldFilename);
+	WorldDb worldDb = cast(WorldDb)_worldDb;
 	scope (exit) worldDb.close();
 
-	shared(bool)* isRunning;
+	//shared(bool)* isRunning;
 	bool isRunningLocal = true;
-	receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
+	//receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
 
 	void writeChunk(ChunkWorldPos cwp, BlockData data, TimestampType timestamp)
 	{
@@ -116,14 +116,18 @@ void storageWorkerThread(Tid mainTid, string worldFilename)
 			// read
 			(immutable(LoadSnapshotMessage)* message)
 			{
-				if (!atomicLoad(*isRunning))
-					return;
+				//if (!atomicLoad(*isRunning))
+				//	return;
 				readChunk(message);
 			},
 			// write
 			(immutable(SaveSnapshotMessage)* message)
 			{
 				doWrite(message);
+			},
+			(immutable IoHandler h)
+			{
+				h(worldDb);
 			},
 			(Variant v)
 			{

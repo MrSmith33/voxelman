@@ -27,7 +27,7 @@ import voxelman.gui.plugin;
 import voxelman.net.plugin;
 import voxelman.command.plugin;
 import voxelman.block.plugin;
-import voxelman.world.plugin;
+import voxelman.world.clientworld;
 
 import voxelman.net.events;
 import voxelman.core.packets;
@@ -176,6 +176,7 @@ public:
 			heading.x, heading.y, target.x, target.y, target.z);
 		igTextf("Chunks to remove: %s", clientWorld.chunkMan.removeQueue.length);
 		igTextf("Chunks to mesh: %s", clientWorld.chunkMan.chunkMeshMan.numMeshChunkTasks);
+		igTextf("View radius: %s", clientWorld.chunkMan.viewRadius);
 		igEnd();
 	}
 

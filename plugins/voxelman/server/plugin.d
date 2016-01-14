@@ -93,6 +93,9 @@ public:
 			if (sleepTime > Duration.zero)
 				Thread.sleep(sleepTime);
 		}
+		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
+
+		infof("Stopped");
 	}
 }
