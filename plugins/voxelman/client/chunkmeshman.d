@@ -72,7 +72,7 @@ struct ChunkMeshMan
 		// full chunk update
 		if (chunk.isLoaded)
 		{
-			infof("full chunk change %s", chunk.position);
+			//infof("full chunk change %s", chunk.position);
 			// if there was previous changes they do not matter anymore
 			//chunkChanges[chunk.position] = ChunkChange(null, blockData);
 			return;

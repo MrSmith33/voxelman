@@ -397,10 +397,10 @@ void startButtons(Launcher* launcher, string pack)
 	params.jobType = cast(JobType)curJobType;
 
 	params.appType = AppType.client;
-	if (igButton("Client")) launcher.startJob(params); igSameLine();
+	if (igButton("Client")) launcher.setupJob(params); igSameLine();
 
 	params.appType = AppType.server;
-	if (igButton("Server")) launcher.startJob(params);
+	if (igButton("Server")) launcher.setupJob(params);
 }
 
 struct CodeMenu
@@ -453,14 +453,19 @@ void drawJobLog(J)(J job)
 	igPushIdPtr(job);
 	assert(job.command.ptr);
 	auto state = job.isRunning ? "[RUNNING] " : "[STOPPED] ";
-	auto textPtrs = makeFormattedText("%s%s\0", state, job.command);
+	auto textPtrs = makeFormattedTextPtrs("%s%s\0", state, job.command);
 
 	if (igCollapsingHeader(textPtrs.start, null, true, true)) {
-		if (igButton("Close")) job.needsClose = true;
-		igSameLine();
 		if (igButton("Clear")) job.messageWindow.lineBuffer.clear();
-		igSameLine();
-		if (igButton("Restart")) job.needsRestart = true;
+		if (!job.isRunning) {
+			igSameLine();
+			if (igButton("Close")) job.needsClose = true;
+			igSameLine();
+			if (igButton("Restart")) job.needsRestart = true;
+		} else {
+			igSameLine();
+			if (igButton("Stop")) job.sendCommand("stop");
+		}
 		igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
 		job.messageWindow.draw();
 		igEndChild();

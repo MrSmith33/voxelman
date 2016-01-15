@@ -21,43 +21,27 @@ import voxelman.world.worlddb;
 import voxelman.world.plugin : IoHandler;
 import voxelman.utils.compression;
 
-private ubyte[4096*16] compressBuffer;
-private ubyte[4096*16] buffer;
 
 void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 {
 	try
 	{
-	//RegionStorage regionStorage = RegionStorage(regionDir);
+	ubyte[] compressBuffer = new ubyte[](4096*16);
+	ubyte[] buffer = new ubyte[](4096*16);
 	WorldDb worldDb = cast(WorldDb)_worldDb;
-	scope (exit) worldDb.close();
+	scope(exit) worldDb.close();
 
-	//shared(bool)* isRunning;
-	bool isRunningLocal = true;
-	//receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
-
-	void writeChunk(ChunkWorldPos cwp, BlockData data, TimestampType timestamp)
-	{
-		//if (regionStorage.isChunkOnDisk(cwp) &&
-		//	timestamp <= regionStorage.chunkTimestamp(cwp)) return;
-
+	void writeChunk(ChunkWorldPos cwp, BlockData data, TimestampType timestamp) {
 		BlockData compressedData = data;
 		compressedData.blocks = compress(data.blocks, compressBuffer);
 
-		try
-		{
+		try {
 			size_t encodedSize = encodeCborArray(buffer[], compressedData);
-			//regionStorage.writeChunk(cwp, buffer[0..encodedSize], timestamp);
 			worldDb.savePerChunkData(cwp, 0, timestamp, buffer[0..encodedSize]);
-		}
-		catch(Exception e)
-		{
-			errorf("storage exception %s", e.to!string);
-		}
+		} catch(Exception e) errorf("storage exception %s", e.to!string);
 	}
 
-	void doWrite(immutable(SaveSnapshotMessage)* message)
-	{
+	void doWrite(immutable(SaveSnapshotMessage)* message) {
 		auto m = cast(SaveSnapshotMessage*)message;
 		writeChunk(m.cwp, m.snapshot.blockData, m.snapshot.timestamp);
 
@@ -65,19 +49,17 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 		mainTid.send(cast(immutable(SnapshotSavedMessage)*)res);
 	}
 
-	void readChunk(immutable(LoadSnapshotMessage)* message)
-	{
+	void readChunk(immutable(LoadSnapshotMessage)* message) {
 		auto m = cast(LoadSnapshotMessage*)message;
-		bool doGen;// = !regionStorage.isChunkOnDisk(m.cwp);
+		bool doGen;
 
-		try {
+		try
+		{
 		if (!doGen) {
 			TimestampType timestamp;
-			//ubyte[] cborData = regionStorage.readChunk(m.cwp, buffer[], timestamp);
 			ubyte[] cborData = worldDb.loadPerChunkData(m.cwp, 0, timestamp);
 			scope(exit) worldDb.perChunkSelectStmt.reset();
 
-			//infof("Read %s.%s.%s %s bytes", m.cwp.x, m.cwp.y, m.cwp.z, cborData.length);
 			if (cborData !is null) {
 				BlockData compressedData = decodeCborSingle!BlockData(cborData);
 				BlockData blockData = compressedData;
@@ -86,7 +68,6 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 				if (blockData.blocks.length > 0) {
 					bool validLength = blockData.blocks.length == CHUNK_SIZE_CUBE;
 					warningf(!validLength, "Wrong chunk data %s", m.cwp);
-
 					if (validLength) {
 						m.blockBuffer[] = blockData.blocks;
 						blockData.blocks = m.blockBuffer;
@@ -98,41 +79,30 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(blockData, timestamp));
 				mainTid.send(cast(immutable(SnapshotLoadedMessage)*)res);
 			}
-			else
-				doGen = true;
+			else doGen = true;
 		}}
 		catch(Exception e) {
 			infof("storage exception %s regenerating %s", e.to!string, m.cwp);
 			doGen = true;
 		}
-
-		if (doGen)
-			m.genWorker.send(message);
+		if (doGen) m.genWorker.send(message);
 	}
 
-	while (isRunningLocal)
+	bool isRunning = true;
+	while (isRunning)
 	{
 		receive(
-			// read
-			(immutable(LoadSnapshotMessage)* message)
-			{
-				//if (!atomicLoad(*isRunning))
-				//	return;
+			(immutable(LoadSnapshotMessage)* message) {
 				readChunk(message);
 			},
-			// write
-			(immutable(SaveSnapshotMessage)* message)
-			{
+			(immutable(SaveSnapshotMessage)* message) {
 				doWrite(message);
 			},
-			(immutable IoHandler h)
-			{
+			(immutable IoHandler h) {
 				h(worldDb);
 			},
-			(Variant v)
-			{
-				isRunningLocal = false;
-				//regionStorage.clear();
+			(Variant v) {
+				isRunning = false;
 			}
 		);
 	}

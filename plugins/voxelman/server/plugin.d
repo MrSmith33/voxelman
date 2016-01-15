@@ -63,11 +63,13 @@ public:
 	void run(string[] args)
 	{
 		import std.datetime : TickDuration, Duration, Clock, usecs;
-		import core.thread : Thread;
+		import core.thread : Thread, thread_joinAll;
 		import core.memory;
 
 		load(args);
+		infof("Starting game");
 		evDispatcher.postEvent(GameStartEvent());
+		infof("Running");
 
 		TickDuration lastTime = Clock.currAppTick;
 		TickDuration newTime;
@@ -95,7 +97,7 @@ public:
 		}
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
-
+		thread_joinAll();
 		infof("Stopped");
 	}
 }

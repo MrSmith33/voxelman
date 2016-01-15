@@ -7,6 +7,8 @@ module voxelman.world.plugin;
 
 import std.experimental.logger;
 import std.concurrency;
+import std.array : empty;
+import cbor;
 import netlib;
 import pluginlib;
 
@@ -18,7 +20,7 @@ import voxelman.utils.compression;
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
-import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
+import voxelman.net.plugin : NetServerPlugin;
 import voxelman.login.plugin;
 import voxelman.block.plugin;
 
@@ -156,10 +158,11 @@ private:
 	IoManager ioManager;
 	Tid ioThreadId;
 
-	ConfigOption numWorkersOpt;
+	ConfigOption numGenWorkersOpt;
 
 	ubyte[] buf;
 	WorldInfo worldInfo;
+	immutable string worldInfoKey = "voxelman.world.world_info";
 
 public:
 	ChunkManager chunkManager;
@@ -179,7 +182,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		numWorkersOpt = config.registerOption!uint("num_workers", 4);
+		numGenWorkersOpt = config.registerOption!uint("num_workers", 4);
 	}
 
 	override void preInit()
@@ -203,7 +206,7 @@ public:
 		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
 
-		chunkProvider.init(ioThreadId, numWorkersOpt.get!uint);
+		chunkProvider.init(ioThreadId, numGenWorkersOpt.get!uint);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -242,6 +245,7 @@ public:
 	{
 		WorldDb worldDb = new WorldDb;
 		worldDb.openWorld(worldFilename);
+		readWorldInfo(worldDb, worldFilename);
 		foreach(h; ioManager.worldLoadHandlers)
 		{
 			h(worldDb);
@@ -249,17 +253,21 @@ public:
 		ioThreadId = spawn(&storageWorkerThread, thisTid, cast(immutable)worldDb);
 	}
 
-	private void readWorldInfo(WorldDb worldDb)
+	private void readWorldInfo(WorldDb worldDb, string worldName)
 	{
-		//ubyte[] data = cast(ubyte[])readFile(worldInfoFilename, 1024);
-		//worldInfo = decodeCborSingleDup!WorldInfo(data);
+		ubyte[] data = worldDb.loadPerWorldData(worldInfoKey);
+		if (!data.empty) {
+			worldInfo = decodeCborSingleDup!WorldInfo(data);
+			infof("Loading world %s", worldName);
+		}
+		else
+			writeWorldInfo(worldDb);
 	}
 
-	private void writeWorldInfo()
+	private void writeWorldInfo(WorldDb worldDb)
 	{
-		//ubyte[] bufferTemp = buf;
-		//size_t size = encodeCbor(bufferTemp[], worldInfo);
-		//writeFile(worldInfoFilename, bufferTemp[0..size]);
+		size_t encodedSize = encodeCborArray(worldDb.tempBuffer, worldInfo);
+		worldDb.savePerWorldData(worldInfoKey, worldDb.tempBuffer[0..encodedSize]);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)

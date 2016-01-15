@@ -7,6 +7,7 @@ module voxelman.world.worlddb;
 
 public import sqlite.d2sqlite3;
 
+import std.array : uninitializedArray;
 import std.conv;
 import std.stdio;
 import std.typecons : Nullable;
@@ -18,6 +19,7 @@ alias StatementHandle = size_t;
 final class WorldDb
 {
 	private Database db;
+	private ubyte[] buffer;
 
 	Statement perWorldInsertStmt;
 	Statement perWorldSelectStmt;
@@ -35,6 +37,8 @@ final class WorldDb
 
 	void openWorld(string filename)
 	{
+		buffer = uninitializedArray!(ubyte[])(4096*32);
+
 		auto db = Database(filename);
 
 		db.execute("PRAGMA synchronous = normal");
@@ -58,6 +62,8 @@ final class WorldDb
 		perChunkSelectStmt = db.prepare(perChunkTableSelect);
 		perChunkDeleteStmt = db.prepare(perChunkTableDelete);
 	}
+
+	ubyte[] tempBuffer() @property { return buffer; }
 
 	void execute(string sql)
 	{
@@ -165,5 +171,5 @@ create table if not exists per_chunk_data(
 	data blob not null )` ~ withoutRowidStr;
 
 immutable perChunkTableInsert = `insert or replace into per_chunk_data values (:id, :tstamp, :value)`;
-immutable perChunkTableSelect = `select tstamp data from per_chunk_data where id = :id`;
+immutable perChunkTableSelect = `select tstamp, data from per_chunk_data where id = :id`;
 immutable perChunkTableDelete = `delete from per_chunk_data where id = :id`;

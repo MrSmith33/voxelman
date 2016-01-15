@@ -67,14 +67,11 @@ public:
 	{
 		this.storeWorker = storeWorker;
 		genWorkers.startWorkers(numWorkers, thisTid);
-		//storeWorker.startWorkers(1, thisTid, worldDir~"/world.db");
-		//storeWorker.startWorkers(1, thisTid, worldDir~"/regions");
 	}
 
 	void stop()
 	{
 		genWorkers.stopWorkers();
-		//storeWorker.stopWorkersWhenDone();
 	}
 
 	void update()

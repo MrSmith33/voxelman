@@ -110,14 +110,14 @@ struct Launcher
 	size_t numRunningJobs;
 	LineBuffer appLog;
 
-	void startJob(JobParams params = JobParams.init)
+	void setupJob(JobParams params = JobParams.init)
 	{
 		auto job = new Job(params);
 		job.messageWindow.init();
 		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
 		updateJobType(job);
 		restartJobState(job);
-		restartJob(job);
+		startJob(job);
 		jobs ~= job;
 	}
 
@@ -148,7 +148,7 @@ struct Launcher
 		}
 	}
 
-	void restartJob(Job* job)
+	void startJob(Job* job)
 	{
 		assert(!job.isRunning);
 		++numRunningJobs;
@@ -205,8 +205,7 @@ struct Launcher
 					if (success && doneCompilation && needsStart)
 					{
 						job.jobState = JobState.run;
-						job.messageWindow.lineBuffer.clear();
-						restartJob(job);
+						startJob(job);
 					}
 				}
 			}
@@ -215,7 +214,7 @@ struct Launcher
 			{
 				job.messageWindow.lineBuffer.clear();
 				restartJobState(job);
-				restartJob(job);
+				startJob(job);
 			}
 
 			job.needsRestart = false;

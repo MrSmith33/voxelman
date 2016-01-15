@@ -121,9 +121,14 @@ struct ChunkWorldPos
 			floor(cast(float)blockWorldPos.z / CHUNK_SIZE),);
 	}
 
-	this(ivec3 blockWorldPos)
+	this(ivec3 chunkWorldPos)
 	{
-		vector = blockWorldPos;
+		vector = chunkWorldPos;
+	}
+
+	this(int x, int y, int z)
+	{
+		vector = ivec3(x, y, z);
 	}
 
 	ivec3 vector;
