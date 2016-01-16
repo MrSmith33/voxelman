@@ -153,10 +153,7 @@ public:
 		evDispatcher.postEvent(Render2Event(renderer));
 		evDispatcher.postEvent(Render3Event(renderer));
 		renderer.disableAlphaBlending();
-		{
-			Zone subZone = Zone(event.profiler, "renderer.flush()");
-			renderer.flush();
-		}
+		renderer.flush();
 	}
 
 	void draw(Batch batch)

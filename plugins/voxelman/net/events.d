@@ -7,44 +7,21 @@ Authors: Andrey Penechko.
 module voxelman.net.events;
 
 import netlib.connection : ClientId;
-import tharsis.prof : Profiler;
 
 struct ClientConnectedEvent {
 	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
 struct ClientDisconnectedEvent {
 	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
-struct ThisClientConnectedEvent {
-	Profiler profiler;
-	bool continuePropagation = true;
-}
-
+struct ThisClientConnectedEvent {}
 struct ThisClientDisconnectedEvent {
 	uint data;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
 struct ClientLoggedInEvent {
 	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
 struct ClientLoggedOutEvent {
 	ClientId clientId;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
-struct SendClientSettingsEvent {
-	Profiler profiler;
-	bool continuePropagation = true;
-}
+struct SendClientSettingsEvent {}

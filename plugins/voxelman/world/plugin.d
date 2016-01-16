@@ -6,8 +6,9 @@ Authors: Andrey Penechko.
 module voxelman.world.plugin;
 
 import std.experimental.logger;
-import std.concurrency;
+import std.concurrency : spawn, thisTid;
 import std.array : empty;
+import core.atomic : atomicStore, atomicLoad;
 import cbor;
 import netlib;
 import pluginlib;
@@ -23,6 +24,7 @@ import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.net.plugin : NetServerPlugin;
 import voxelman.login.plugin;
 import voxelman.block.plugin;
+import voxelman.server.plugin : WorldSaveInternalEvent;
 
 import voxelman.net.packets;
 import voxelman.core.packets;
@@ -36,7 +38,7 @@ import voxelman.storage.coordinates;
 import voxelman.storage.volume;
 import voxelman.storage.storageworker;
 
-import voxelman.world.worlddb;
+import voxelman.world.worlddb : WorldDb;
 
 
 final class WorldAccess {
@@ -163,6 +165,9 @@ private:
 	ubyte[] buf;
 	WorldInfo worldInfo;
 	immutable string worldInfoKey = "voxelman.world.world_info";
+	string worldFilename;
+
+	shared bool isSaving;
 
 public:
 	ChunkManager chunkManager;
@@ -218,6 +223,7 @@ public:
 		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
 		evDispatcher.subscribeToEvent(&handleStopEvent);
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
+		evDispatcher.subscribeToEvent(&handleSaveEvent);
 
 		import voxelman.core.packets : PlaceBlockPacket;
 		connection = pluginman.getPlugin!NetServerPlugin;
@@ -228,7 +234,7 @@ public:
 
 	void sendTask(IoHandler handler)
 	{
-		ioThreadId.send(cast(immutable)&handler);
+		ioThreadId.send(cast(immutable)handler);
 	}
 
 	TimestampType currentTimestamp() @property
@@ -236,16 +242,27 @@ public:
 		return worldInfo.simulationTick;
 	}
 
-	void save()
+	private void handleSaveEvent(ref WorldSaveInternalEvent event)
 	{
-
+		if (!atomicLoad(isSaving)) {
+			atomicStore(isSaving, true);
+			chunkManager.save();
+			evDispatcher.postEvent(WorldSaveEvent());
+			sendTask(&onSaveEndTask);
+		}
 	}
 
-	private void handleIoManagerPostInit(string worldFilename)
+	private void onSaveEndTask(WorldDb)
 	{
+		atomicStore(isSaving, false);
+	}
+
+	private void handleIoManagerPostInit(string _worldFilename)
+	{
+		worldFilename = _worldFilename;
 		WorldDb worldDb = new WorldDb;
-		worldDb.openWorld(worldFilename);
-		readWorldInfo(worldDb, worldFilename);
+		worldDb.openWorld(_worldFilename);
+		readWorldInfo(worldDb);
 		foreach(h; ioManager.worldLoadHandlers)
 		{
 			h(worldDb);
@@ -253,12 +270,13 @@ public:
 		ioThreadId = spawn(&storageWorkerThread, thisTid, cast(immutable)worldDb);
 	}
 
-	private void readWorldInfo(WorldDb worldDb, string worldName)
+	private void readWorldInfo(WorldDb worldDb)
 	{
+		import std.path : absolutePath, buildNormalizedPath;
 		ubyte[] data = worldDb.loadPerWorldData(worldInfoKey);
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
-			infof("Loading world %s", worldName);
+			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
 		}
 		else
 			writeWorldInfo(worldDb);

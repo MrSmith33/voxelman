@@ -2,8 +2,6 @@ ip "localhost"
 port 1234
 name "Player"
 
-// Start profiler with client
-run_despiker false
 num_workers 4
 
 resolution 1280 720

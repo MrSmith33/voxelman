@@ -49,14 +49,8 @@ struct ComponentSyncPacket
 
 struct ProcessComponentsEvent {
 	float deltaTime;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
-
-struct SyncComponentsEvent {
-	Profiler profiler;
-	bool continuePropagation = true;
-}
+struct SyncComponentsEvent {}
 
 final class EntityPluginClient : IPlugin
 {

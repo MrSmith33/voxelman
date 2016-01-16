@@ -7,6 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.server.plugin;
 
 import std.experimental.logger;
+import std.datetime : MonoTime, Duration, usecs, dur;
 
 import pluginlib;
 import pluginlib.pluginmanager;
@@ -26,6 +27,8 @@ shared static this()
 	pluginRegistry.regServerMain(&s.run);
 }
 
+struct WorldSaveInternalEvent {}
+
 class ServerPlugin : IPlugin
 {
 private:
@@ -34,6 +37,9 @@ private:
 
 public:
 	bool isRunning = false;
+	bool isAutosaveEnabled = true;
+	Duration autosavePeriod = dur!"seconds"(5);
+	MonoTime lastSaveTime;
 
 	mixin IdAndSemverFrom!(voxelman.server.plugininfo);
 
@@ -43,9 +49,11 @@ public:
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("sv_stop|stop", &onStopCommand);
+		commandPlugin.registerCommand("save", &onSaveCommand);
 	}
 
 	void onStopCommand(CommandParams) { isRunning = false; }
+	void onSaveCommand(CommandParams) { save(); }
 
 	void load(string[] args)
 	{
@@ -62,42 +70,54 @@ public:
 
 	void run(string[] args)
 	{
-		import std.datetime : TickDuration, Duration, Clock, usecs;
 		import core.thread : Thread, thread_joinAll;
 		import core.memory;
 
 		load(args);
-		infof("Starting game");
+		infof("Starting game...");
 		evDispatcher.postEvent(GameStartEvent());
-		infof("Running");
+		infof("[Running]");
 
-		TickDuration lastTime = Clock.currAppTick;
-		TickDuration newTime;
+		MonoTime prevTime = MonoTime.currTime;
 		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
+		lastSaveTime = MonoTime.currTime;
 
 		// Main loop
 		isRunning = true;
 		while (isRunning)
 		{
-			newTime = Clock.currAppTick;
-			double delta = (newTime - lastTime).usecs / 1_000_000.0;
-			lastTime = newTime;
+			MonoTime newTime = MonoTime.currTime;
+			double delta = (newTime - prevTime).total!"usecs" / 1_000_000.0;
+			prevTime = newTime;
 
 			evDispatcher.postEvent(PreUpdateEvent(delta));
 			evDispatcher.postEvent(UpdateEvent(delta));
 			evDispatcher.postEvent(PostUpdateEvent(delta));
+			trySave(MonoTime.currTime);
 
 			GC.collect();
 
-			// update time
-			auto updateTime = Clock.currAppTick - newTime;
-			auto sleepTime = frameTime - updateTime;
+			Duration updateTime = MonoTime.currTime - newTime;
+			Duration sleepTime = frameTime - updateTime;
 			if (sleepTime > Duration.zero)
 				Thread.sleep(sleepTime);
 		}
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
 		thread_joinAll();
-		infof("Stopped");
+		infof("[Stopped]");
+	}
+
+	void trySave(MonoTime now)
+	{
+		if (isAutosaveEnabled && now - lastSaveTime >= autosavePeriod) {
+			lastSaveTime = now;
+			save();
+		}
+	}
+
+	void save()
+	{
+		evDispatcher.postEvent(WorldSaveInternalEvent());
 	}
 }

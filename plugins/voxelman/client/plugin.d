@@ -15,7 +15,6 @@ import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
 import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
-import tharsis.prof;
 
 import netlib;
 import pluginlib;
@@ -51,8 +50,6 @@ import voxelman.client.console;
 //version = manualGC;
 version(manualGC) import core.memory;
 
-version = profiling;
-
 shared static this()
 {
 	auto c = new ClientPlugin;
@@ -85,15 +82,9 @@ public:
 	AppStatistics stats;
 	Console console;
 
-	// Debug
-	Profiler profiler;
-	DespikerSender profilerSender;
-
 	// Client data
 	bool isRunning = false;
 	bool mouseLocked;
-
-	ConfigOption runDespikerOpt;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -105,7 +96,6 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		runDespikerOpt = config.registerOption!bool("run_despiker", false);
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
@@ -122,7 +112,6 @@ public:
 	{
 		clientWorld = pluginman.getPlugin!ClientWorld;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.profiler = profiler;
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
@@ -139,11 +128,7 @@ public:
 		connection = pluginman.getPlugin!NetClientPlugin;
 	}
 
-	override void postInit()
-	{
-		if (runDespikerOpt.get!bool)
-			toggleProfiler();
-	}
+	override void postInit() {}
 
 	void printDebug()
 	{
@@ -183,13 +168,6 @@ public:
 	this()
 	{
 		pluginman = new PluginManager;
-
-		version(profiling)
-		{
-			ubyte[] storage  = new ubyte[Profiler.maxEventBytes + 20 * 1024 * 1024];
-			profiler = new Profiler(storage);
-		}
-		profilerSender = new DespikerSender([profiler]);
 	}
 
 	void load(string[] args)
@@ -221,63 +199,22 @@ public:
 		isRunning = true;
 		while(isRunning)
 		{
-			Zone frameZone = Zone(profiler, "frame");
-
 			newTime = Clock.currAppTick;
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
 			lastTime = newTime;
 
-			{
-				Zone subZone = Zone(profiler, "preUpdate");
 				evDispatcher.postEvent(PreUpdateEvent(delta));
-			}
-			{
-				Zone subZone = Zone(profiler, "update");
 				evDispatcher.postEvent(UpdateEvent(delta));
-			}
-			{
-				Zone subZone = Zone(profiler, "postUpdate");
 				evDispatcher.postEvent(PostUpdateEvent(delta));
-			}
-			{
-				Zone subZone = Zone(profiler, "render");
 				evDispatcher.postEvent(RenderEvent());
-			}
-			{
 				version(manualGC) {
-					Zone subZone = Zone(profiler, "GC.collect()");
 					GC.collect();
 				}
-			}
-			{
-				Zone subZone = Zone(profiler, "sleepAfterFrame");
 				// time used in frame
 				delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
 				guiPlugin.fpsHelper.sleepAfterFrame(delta);
-			}
-
-			version(profiling) {
-				frameZone.__dtor;
-				profilerSender.update();
-			}
 		}
-		profilerSender.reset();
-
 		evDispatcher.postEvent(GameStopEvent());
-	}
-
-	void toggleProfiler()
-	{
-		if (profilerSender.sending)
-			profilerSender.reset();
-		else
-		{
-			import std.file : exists;
-			if (exists(DESPIKER_PATH))
-				profilerSender.startDespiker(DESPIKER_PATH);
-			else
-				warningf(`No despiker executable found at "%s"`, DESPIKER_PATH);
-		}
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
@@ -337,8 +274,6 @@ public:
 
 	void drawScene(ref Render1Event event)
 	{
-		Zone drawSceneZone = Zone(profiler, "drawScene");
-
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);

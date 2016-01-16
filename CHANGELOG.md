@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Added
+- Add autosave.
+- Add save command.
+- Add WorldSaveEvent.
+- Add stop button to launcher gui.
+- Add world info load.
 - Add IoManager.
 - Add basic io thread task support.
 - Add lz4 compression.
@@ -25,6 +30,8 @@
 - Move network handling to `net` from `client`.
 
 ### Removed
+- Remove `continuePropagation` from events.
+- Remove tharsis-prof dependency.
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.
 - Remove voxelman/storage/world.d.
 

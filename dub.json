@@ -35,8 +35,7 @@
 			"mainSourceFile" : "source/clientmain.d",
 			"versions" : ["SIDE_CLIENT"],
 			"dependencies" : {
-				"sdlang-d" : "==0.9.3",
-				"tharsis-prof" : "==0.5.4"
+				"sdlang-d" : "==0.9.3"
 			},
 			"sourcePaths" : [ "source", "plugins" ],
 			"importPaths" : [ "source", "plugins" ]
@@ -49,8 +48,7 @@
 			"mainSourceFile" : "source/servermain.d",
 			"versions" : ["SIDE_SERVER"],
 			"dependencies" : {
-				"sdlang-d" : "==0.9.3",
-				"tharsis-prof" : "==0.5.4"
+				"sdlang-d" : "==0.9.3"
 			},
 			"sourcePaths" : [ "source", "plugins" ],
 			"importPaths" : [ "source", "plugins" ]

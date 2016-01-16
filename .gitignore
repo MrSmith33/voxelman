@@ -13,3 +13,4 @@ saves/
 .dub/
 *.sublime*
 dub.selections.json
+*imgui.ini

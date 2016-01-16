@@ -17,8 +17,6 @@ import anchovy.irenderer;
 import anchovy.iwindow;
 import anchovy.oglrenderer;
 
-import tharsis.prof : Zone;
-
 import pluginlib;
 import voxelman.imgui_glfw;
 
@@ -32,11 +30,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.config.configmanager;
 
 
-struct ClosePressedEvent {
-	import tharsis.prof : Profiler;
-	Profiler profiler;
-	bool continuePropagation = true;
-}
+struct ClosePressedEvent {}
 
 shared static this()
 {
@@ -111,7 +105,6 @@ public:
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
-		Zone drawSceneZone = Zone(event.profiler, "updateGui");
 		window.processEvents();
 		fpsHelper.update(event.deltaTime);
 		igState.newFrame();
@@ -119,7 +112,6 @@ public:
 
 	void onRender3Event(ref Render3Event event)
 	{
-		Zone drawSceneZone = Zone(event.profiler, "drawGui");
 		igState.render();
 	}
 

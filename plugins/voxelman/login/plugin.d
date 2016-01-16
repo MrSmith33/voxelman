@@ -32,8 +32,6 @@ shared static this()
 
 struct ThisClientLoggedInEvent {
 	ClientId thisClientId;
-	Profiler profiler;
-	bool continuePropagation = true;
 }
 
 final class ClientDbClient : IPlugin
