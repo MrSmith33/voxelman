@@ -47,7 +47,6 @@ struct PacketInfo
 {
 	string name;
 	PacketHandler handler;
-	TypeInfo packetType;
 	size_t id;
 }
 
@@ -118,7 +117,7 @@ abstract class Connection
 	void registerPacket(P)(PacketHandler handler = null, string packetName = P.stringof)
 	{
 		size_t newId = packetArray.length;
-		PacketInfo* pinfo = new PacketInfo(packetName, handler, typeid(P), newId);
+		PacketInfo* pinfo = new PacketInfo(packetName, handler, newId);
 		packetArray ~= pinfo;
 		assert(typeid(P) !in packetMap);
 		packetMap[typeid(P)] = pinfo;

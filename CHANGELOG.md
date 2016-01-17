@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 ### Added
+- Add world save handler registration.
+- Add save on server stop.
+- Add generic id mapping synchronization.
+- Add generic id mapping utility.
+- Add block id map saving/loading/sync.
 - Add autosave.
 - Add save command.
 - Add WorldSaveEvent.

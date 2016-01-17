@@ -103,6 +103,8 @@ final class WorldDb
 	{
 		perWorldInsertStmt.inject(key, data);
 	}
+
+	// Reset statement after returned data is no longer needed
 	ubyte[] loadPerWorldData(string key)
 	{
 		perWorldSelectStmt.bindAll(key);
@@ -125,6 +127,7 @@ final class WorldDb
 		perChunkInsertStmt.inject(id, time, data);
 	}
 
+	// Reset statement after returned data is no longer needed
 	ubyte[] loadPerChunkData(ChunkWorldPos cwp, int dim, ref TimestampType time)
 	{
 		auto id = makeFormattedText("%s.%s.%s.%s", cwp.x, cwp.y, cwp.z, dim);

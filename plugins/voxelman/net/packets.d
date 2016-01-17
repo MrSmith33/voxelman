@@ -11,6 +11,7 @@ void registerPackets(Connection c)
 {
 	// Server -> Client
 	c.registerPacket!PacketMapPacket;
+	c.registerPacket!IdMapPacket;
 	c.registerPacket!SessionInfoPacket;
 
 	// Client -> Server
@@ -28,6 +29,12 @@ void registerPackets(Connection c)
 struct PacketMapPacket
 {
 	string[] packetNames;
+}
+
+struct IdMapPacket
+{
+	string mapName;
+	string[] names;
 }
 
 // client request

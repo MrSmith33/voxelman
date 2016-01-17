@@ -38,7 +38,7 @@ import voxelman.storage.coordinates;
 import voxelman.storage.volume;
 import voxelman.storage.storageworker;
 
-import voxelman.world.worlddb : WorldDb;
+public import voxelman.world.worlddb : WorldDb;
 
 
 final class WorldAccess {
@@ -87,6 +87,7 @@ private:
 	void delegate(string) onPostInit;
 
 	IoHandler[] worldLoadHandlers;
+	IoHandler[] worldSaveHandlers;
 	Tid ioThreadId;
 
 public:
@@ -97,13 +98,11 @@ public:
 
 	override string id() @property { return "voxelman.world.iomanager"; }
 
-	override void preInit() {}
 	override void init(IResourceManagerRegistry resmanRegistry) {
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		saveDirOpt = config.registerOption!string("save_dir", "../../saves");
 		worldNameOpt = config.registerOption!string("world_name", "world");
 	}
-	override void loadResources() {}
 	override void postInit() {
 		import std.path : buildPath;
 		auto saveFilename = buildPath(saveDirOpt.get!string, worldNameOpt.get!string~".db");
@@ -114,32 +113,12 @@ public:
 	{
 		worldLoadHandlers ~= worldLoadHandler;
 	}
+
+	void registerWorldSaveHandler(IoHandler worldSaveHandler)
+	{
+		worldSaveHandlers ~= worldSaveHandler;
+	}
 }
-
-/*
-private void ioThread(string worldFilename)
-{
-	WorldDb worldDb = new WorldDb;
-	worldDb.openWorld(worldFilename);
-	scope (exit) worldDb.close();
-
-	bool isRunning = true;
-	try while (isRunning)
-	{
-		receive(
-			(immutable IoHandler h)
-			{
-				h(worldDb);
-			},
-			(Variant v){isRunning = false;}
-		);
-	}
-	catch(Throwable t)
-	{
-		error(t.to!string, " in io thread");
-		throw t;
-	}
-}*/
 
 struct WorldInfo
 {
@@ -155,7 +134,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	ClientDbServer clientDb;
-	BlockPlugin blockPlugin;
+	BlockPluginServer blockPlugin;
 
 	IoManager ioManager;
 	Tid ioThreadId;
@@ -216,7 +195,7 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
-		blockPlugin = pluginman.getPlugin!BlockPlugin;
+		blockPlugin = pluginman.getPlugin!BlockPluginServer;
 		clientDb = pluginman.getPlugin!ClientDbServer;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
@@ -229,8 +208,6 @@ public:
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
 	}
-
-	override void postInit() {}
 
 	void sendTask(IoHandler handler)
 	{
@@ -247,16 +224,19 @@ public:
 		if (!atomicLoad(isSaving)) {
 			atomicStore(isSaving, true);
 			chunkManager.save();
+			foreach(h; ioManager.worldSaveHandlers)
+				sendTask(h);
 			evDispatcher.postEvent(WorldSaveEvent());
-			sendTask(&onSaveEndTask);
+			sendTask(&handleSaveEndTask);
 		}
 	}
 
-	private void onSaveEndTask(WorldDb)
+	private void handleSaveEndTask(WorldDb)
 	{
 		atomicStore(isSaving, false);
 	}
 
+	// Load world
 	private void handleIoManagerPostInit(string _worldFilename)
 	{
 		worldFilename = _worldFilename;
@@ -264,9 +244,7 @@ public:
 		worldDb.openWorld(_worldFilename);
 		readWorldInfo(worldDb);
 		foreach(h; ioManager.worldLoadHandlers)
-		{
 			h(worldDb);
-		}
 		ioThreadId = spawn(&storageWorkerThread, thisTid, cast(immutable)worldDb);
 	}
 
@@ -274,6 +252,7 @@ public:
 	{
 		import std.path : absolutePath, buildNormalizedPath;
 		ubyte[] data = worldDb.loadPerWorldData(worldInfoKey);
+		scope(exit) worldDb.perWorldSelectStmt.reset();
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);

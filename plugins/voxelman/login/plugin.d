@@ -71,6 +71,7 @@ public:
 		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
+		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
 	}
 
 	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
@@ -81,6 +82,13 @@ public:
 	void handleThisClientDisconnected(ref ThisClientDisconnectedEvent event)
 	{
 		isSpawned = false;
+	}
+
+	void handleGameStartPacket(ubyte[] packetData, ClientId clientId)
+	{
+		evDispatcher.postEvent(ThisClientConnectedEvent());
+		evDispatcher.postEvent(SendClientSettingsEvent());
+		connection.send(GameStartPacket());
 	}
 
 	void handleUserLoggedInPacket(ubyte[] packetData, ClientId clientId)
@@ -224,7 +232,6 @@ public:
 	void handleClientConnected(ref ClientConnectedEvent event)
 	{
 		clients[event.clientId] = new ClientInfo(event.clientId);
-		connection.sendTo(event.clientId, PacketMapPacket(connection.packetNames));
 	}
 
 	void handleClientDisconnected(ref ClientDisconnectedEvent event)
@@ -246,7 +253,7 @@ public:
 
 	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
 	{
-		LoginPacket packet = unpackPacket!LoginPacket(packetData);
+		auto packet = unpackPacket!LoginPacket(packetData);
 		ClientInfo* info = clients[clientId];
 		info.name = packet.clientName;
 		info.id = clientId;
@@ -292,5 +299,4 @@ public:
 			updateObserverVolume(info);
 		}
 	}
-
 }

@@ -31,6 +31,7 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.chunkstorage;
 import voxelman.storage.coordinates;
 import voxelman.storage.volume;
+import voxelman.storage.worldaccess;
 
 
 final class ClientWorld : IPlugin
@@ -46,16 +47,8 @@ private:
 	ConfigOption numWorkersOpt;
 
 public:
-	//ChunkManager chunkManager;
-	//ChunkProvider chunkProvider;
-	//ChunkObserverManager chunkObserverManager;
-
-	//World world;
-	//WorldAccess worldAccess;
-	// Game stuff
 	ChunkMan chunkMan;
-	static import voxelman.storage.worldaccess;
-	voxelman.storage.worldaccess.WorldAccess worldAccess;
+	WorldAccess worldAccess;
 
 	bool doUpdateObserverPosition = true;
 	vec3 updatedCameraPos;
@@ -84,17 +77,13 @@ public:
 	{
 		worldAccess.init(&chunkMan.chunkStorage.getChunk, () => 0);
 		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
-
-		//chunkManager = new ChunkManager();
-		//worldAccess = new WorldAccess(&chunkManager);
-		//chunkObserverManager = new ChunkObserverManager();
 	}
 
 	override void init(IPluginManager pluginman)
 	{
 		clientDb = pluginman.getPlugin!ClientDbClient;
 
-		BlockPlugin blockPlugin = pluginman.getPlugin!BlockPlugin;
+		auto blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		chunkMan.init(numWorkersOpt.get!uint, blockPlugin.getBlocks());
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;

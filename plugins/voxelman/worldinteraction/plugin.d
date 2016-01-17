@@ -36,7 +36,7 @@ class WorldInteractionPlugin : IPlugin
 	NetClientPlugin connection;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
-	BlockPlugin blockPlugin;
+	BlockPluginClient blockPlugin;
 	ClientWorld clientWorld;
 
 	// Cursor
@@ -59,7 +59,7 @@ class WorldInteractionPlugin : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetClientPlugin;
-		blockPlugin = pluginman.getPlugin!BlockPlugin;
+		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		clientWorld = pluginman.getPlugin!ClientWorld;

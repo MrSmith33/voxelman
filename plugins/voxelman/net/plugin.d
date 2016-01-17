@@ -55,6 +55,7 @@ final class NetClientPlugin : IPlugin
 	ConfigOption serverIpOpt;
 	ConfigOption serverPortOpt;
 	bool isDisconnecting = false;
+	void delegate(string[])[string] onMapReceivedHandlers;
 
 	mixin NetCommon;
 
@@ -87,10 +88,16 @@ final class NetClientPlugin : IPlugin
 		commandPlugin.registerCommand("connect", &connectCommand);
 
 		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
+		connection.registerPacketHandler!IdMapPacket(&handleIdMapPacket);
 	}
 
 	override void postInit()
 	{
+	}
+
+	void regIdMapHandler(string mapName, void delegate(string[]) onMapReceived)
+	{
+		onMapReceivedHandlers[mapName] = onMapReceived;
 	}
 
 	void handleGameStartEvent(ref GameStartEvent event)
@@ -155,10 +162,15 @@ final class NetClientPlugin : IPlugin
 		auto packetMap = unpackPacket!PacketMapPacket(packetData);
 		connection.setPacketMap(packetMap.packetNames);
 		connection.printPacketMap();
+	}
 
-		evDispatcher.postEvent(ThisClientConnectedEvent());
-		evDispatcher.postEvent(SendClientSettingsEvent());
-		connection.send(GameStartPacket());
+	void handleIdMapPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!IdMapPacket(packetData);
+		if (auto h = onMapReceivedHandlers.get(packet.mapName, null))
+		{
+			h(packet.names);
+		}
 	}
 
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
@@ -180,6 +192,7 @@ final class NetServerPlugin : IPlugin
 private:
 	ConfigOption portOpt;
 	EventDispatcherPlugin evDispatcher;
+	string[][string] idMaps;
 
 public:
 	mixin NetCommon;
@@ -213,6 +226,11 @@ public:
 		connection.printPacketMap();
 	}
 
+	void regIdMap(string name, string[] mapItems)
+	{
+		idMaps[name] = mapItems;
+	}
+
 	void handleGameStartEvent(ref GameStartEvent event)
 	{
 		ConnectionSettings settings = {null, 32, 2, 0, 0};
@@ -226,6 +244,12 @@ public:
 		event.peer.data = cast(void*)clientId;
 
 		evDispatcher.postEvent(ClientConnectedEvent(clientId));
+		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
+		foreach(key, idmap; idMaps)
+		{
+			connection.sendTo(clientId, IdMapPacket(key, idmap));
+		}
+		connection.sendTo(clientId, GameStartPacket());
 	}
 
 	void onDisconnect(ref ENetEvent event) {

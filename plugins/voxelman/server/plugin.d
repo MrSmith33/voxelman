@@ -102,6 +102,8 @@ public:
 			if (sleepTime > Duration.zero)
 				Thread.sleep(sleepTime);
 		}
+		infof("Saving...");
+		save();
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
 		thread_joinAll();
