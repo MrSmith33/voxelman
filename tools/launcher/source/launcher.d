@@ -312,6 +312,7 @@ void sendCommand(Job* job, string command)
 void logPipes(Job* job)
 {
 	import std.exception : ErrnoException;
+	import std.utf : UTFException;
 	try
 	{
 		foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
@@ -333,6 +334,10 @@ void logPipes(Job* job)
 		// exception std.exception.ErrnoException@std\stdio.d(920):
 		// Could not seek in file `HANDLE(32C)' (Invalid argument)
 	}
+	catch(UTFException e)
+	{	// Ignore e
+	}
+
 }
 
 PluginInfo* readPluginInfo(string fileData)
