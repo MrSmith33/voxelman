@@ -48,12 +48,15 @@ struct ChunkMan
 		foreach(chunk; chunkStorage.chunks.byValue)
 			chunkStorage.removeQueue.add(chunk);
 
+		while(chunkMeshMan.numMeshChunkTasks > 0)
+		{
+			chunkMeshMan.update();
+		}
+		chunkMeshMan.stop();
 		while(chunkStorage.chunks.length > 0)
 		{
 			chunkStorage.update();
 		}
-
-		chunkMeshMan.stop();
 	}
 
 	void update()

@@ -194,14 +194,19 @@ final class ChunkManager {
 			case added_loaded:
 				assert(false, "On loaded should not occur for already loaded chunk");
 			case removed_loading:
-				auto s = cwp in snapshots;
-				chunkStates[cwp] = removed_loaded_saving;
-				saveChunkHandler(cwp, *s);
-				++s.numUsers;
+				if (saved) {
+					chunkStates[cwp] = non_loaded;
+					clearChunkData(cwp);
+				} else {
+					auto s = cwp in snapshots;
+					chunkStates[cwp] = removed_loaded_saving;
+					saveChunkHandler(cwp, *s);
+					++s.numUsers;
+				}
 				break;
 			case added_loading:
 				chunkStates[cwp] = added_loaded;
-				modifiedChunks.put(cwp);
+				if (!saved) modifiedChunks.put(cwp);
 				// Create snapshot for loaded data
 				auto snapshot = cwp in snapshots;
 				if (snapshot.blockData.uniform) {

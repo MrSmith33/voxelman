@@ -50,7 +50,6 @@ struct ChunkProvider
 {
 private:
 	WorkerGroup!(chunkGenWorkerThread) genWorkers;
-	//WorkerGroup!(storageWorkerThread) storeWorker;
 	Tid storeWorker;
 
 public:

@@ -281,7 +281,6 @@ public:
 	{
 		import std.algorithm : clamp;
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
-		infof("Received ViewRadiusPacket(%s)", packet.viewRadius);
 		ClientInfo* info = clients[clientId];
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);

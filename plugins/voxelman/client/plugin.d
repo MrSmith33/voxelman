@@ -27,16 +27,17 @@ import voxelman.net.plugin;
 import voxelman.command.plugin;
 import voxelman.block.plugin;
 import voxelman.world.clientworld;
+import voxelman.dbg.plugin;
 
+import voxelman.core.config;
 import voxelman.net.events;
+import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.net.packets;
 
 import voxelman.config.configmanager;
 import voxelman.input.keybindingmanager;
 
-import voxelman.core.config;
-import voxelman.core.events;
 import voxelman.storage.chunk;
 import voxelman.storage.coordinates;
 import voxelman.storage.utils;
@@ -77,6 +78,7 @@ private:
 	CommandPluginClient commandPlugin;
 	ClientWorld clientWorld;
 	NetClientPlugin connection;
+	Debugger dbg;
 
 public:
 	AppStatistics stats;
@@ -85,6 +87,7 @@ public:
 	// Client data
 	bool isRunning = false;
 	bool mouseLocked;
+	double prevDelta;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -96,6 +99,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
@@ -157,8 +161,8 @@ public:
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;
-		igTextf("Heading: %.2f %.2f Target: X %.2f, Y %.2f, Z %.2f",
-			heading.x, heading.y, target.x, target.y, target.z);
+		igTextf("Heading: %.2f %.2f", heading.x, heading.y);
+		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
 		igTextf("Chunks to remove: %s", clientWorld.chunkMan.removeQueue.length);
 		igTextf("Chunks to mesh: %s", clientWorld.chunkMan.chunkMeshMan.numMeshChunkTasks);
 		igTextf("View radius: %s", clientWorld.chunkMan.viewRadius);
@@ -197,15 +201,18 @@ public:
 		TickDuration newTime = TickDuration.from!"seconds"(0);
 
 		isRunning = true;
+		ulong frame;
 		while(isRunning)
 		{
 			newTime = Clock.currAppTick;
 			double delta = (newTime - lastTime).usecs / 1_000_000.0;
+			prevDelta = delta;
 			lastTime = newTime;
 
-				evDispatcher.postEvent(PreUpdateEvent(delta));
-				evDispatcher.postEvent(UpdateEvent(delta));
-				evDispatcher.postEvent(PostUpdateEvent(delta));
+				evDispatcher.postEvent(PreUpdateEvent(delta, frame));
+				evDispatcher.postEvent(UpdateEvent(delta, frame));
+				evDispatcher.postEvent(PostUpdateEvent(delta, frame));
+				evDispatcher.postEvent(DoGuiEvent(frame));
 				evDispatcher.postEvent(RenderEvent());
 				version(manualGC) {
 					GC.collect();
@@ -213,6 +220,7 @@ public:
 				// time used in frame
 				delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
 				guiPlugin.fpsHelper.sleepAfterFrame(delta);
+				++frame;
 		}
 		evDispatcher.postEvent(GameStopEvent());
 	}
@@ -230,6 +238,7 @@ public:
 		stats.resetCounters();
 		if (isConsoleShown)
 			console.draw();
+		dbg.logVar("delta", cast(float)prevDelta, 256);
 	}
 
 	void onConsoleCommand(string command)

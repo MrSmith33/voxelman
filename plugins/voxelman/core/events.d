@@ -14,12 +14,18 @@ struct GameStopEvent {}
 
 struct PreUpdateEvent {
 	double deltaTime;
+	ulong frame;
 }
 struct UpdateEvent {
 	double deltaTime;
+	ulong frame;
 }
 struct PostUpdateEvent {
 	double deltaTime;
+	ulong frame;
+}
+struct DoGuiEvent {
+	ulong frame;
 }
 
 struct WorldSaveEvent {}

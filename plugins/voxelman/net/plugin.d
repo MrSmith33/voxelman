@@ -8,6 +8,7 @@ module voxelman.net.plugin;
 
 import std.experimental.logger;
 import derelict.enet.enet;
+import std.datetime : MonoTime, Duration, usecs, dur;
 
 import pluginlib;
 public import netlib;
@@ -21,6 +22,7 @@ import voxelman.net.packets;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.command.plugin;
+import voxelman.dbg.plugin;
 import voxelman.config.configmanager;
 
 shared static this()
@@ -52,6 +54,8 @@ mixin template NetCommon()
 final class NetClientPlugin : IPlugin
 {
 	CommandPluginClient commandPlugin;
+	Debugger dbg;
+
 	ConfigOption serverIpOpt;
 	ConfigOption serverPortOpt;
 	bool isDisconnecting = false;
@@ -69,6 +73,7 @@ final class NetClientPlugin : IPlugin
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		serverIpOpt = config.registerOption!string("ip", "127.0.0.1");
 		serverPortOpt = config.registerOption!ushort("port", 1234);
@@ -136,6 +141,16 @@ final class NetClientPlugin : IPlugin
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		connection.flush();
+
+		if (event.frame % 30 == 0) {
+			enum maxLen = 120;
+			with (connection.host) {
+				dbg.logVar("Recv (B)", cast(float)totalReceivedData, maxLen);
+				dbg.logVar("Send (B)", cast(float)totalSentData, maxLen);
+			}
+			connection.host.totalReceivedData = 0;
+			connection.host.totalSentData = 0;
+		}
 	}
 
 	void onConnect(ref ENetEvent event) {
@@ -175,15 +190,29 @@ final class NetClientPlugin : IPlugin
 
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
-		isDisconnecting = connection.isConnected;
+		import core.thread;
+
+		if (!connection.isConnected) return;
+
 		connection.disconnect();
 
-		infof("disconnecting");
-		while (isDisconnecting)
+		isDisconnecting = true;
+		MonoTime start = MonoTime.currTime;
+
+		size_t counter;
+		while (connection.isConnected && counter < 100)
 		{
 			connection.update();
+			Thread.sleep(1.msecs);
+			++counter;
 		}
-		infof("stop");
+
+		isDisconnecting = false;
+		Duration disconTime = MonoTime.currTime - start;
+		infof("disconnected in %s seconds",
+			disconTime.total!"seconds" +
+			0.001 * disconTime.total!"msecs" +
+			0.000_001 * disconTime.total!"usecs");
 	}
 }
 

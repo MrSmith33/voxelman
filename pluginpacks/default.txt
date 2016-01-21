@@ -4,19 +4,21 @@ exampleplugin 0.1.0
 
 test.avatar 1.0.0
 test.entitytest 1.0.0
+
 voxelman.block 0.6.0
 voxelman.chat 0.6.0
 voxelman.client 0.5.0
-voxelman.login 0.6.0
 voxelman.command 0.5.0
 voxelman.config 0.5.0
 voxelman.core 0.5.0
+voxelman.dbg 0.6.0
 voxelman.edit 0.5.0
 voxelman.entity 0.5.0
 voxelman.eventdispatcher 0.5.0
 voxelman.graphics 0.5.0
 voxelman.gui 0.5.0
 voxelman.input 0.5.0
+voxelman.login 0.6.0
 voxelman.movement 0.5.0
 voxelman.net 0.5.0
 voxelman.remotecontrol 0.5.0

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add debugger plugin.
 - Add world save handler registration.
 - Add save on server stop.
 - Add generic id mapping synchronization.
@@ -23,6 +24,7 @@
 - Add block plugin.
 - Add client part of `clientDb`.
 - Add isSpawned state to client info.
+- Add current frame number to update events.
 
 ### Changed
 - Move ClientWorld to voxelman/world/clientworld.d.
@@ -46,6 +48,8 @@
 - Fix buttons in imgui_glfw.d.
 - Make random block tint persistent.
 - Fix performance bug in chunk meshing. Now meshing is much faster. Was allocating on each block's meshing.
+- Fix wrong disconnect code.
+- Fix client chunkman stopping.
 
 ## [0.6.1] - 2016-01-09
 ### Added
