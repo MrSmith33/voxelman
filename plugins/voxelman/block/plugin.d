@@ -38,6 +38,20 @@ struct BlockInfo
 	size_t id;
 }
 
+/// Returned when registering block.
+/// Use this to set block properties.
+struct BlockInfoSetter
+{
+	private Mapping!(BlockInfo)* mapping;
+	private size_t blockId;
+	private ref BlockInfo info() {return (*mapping)[blockId]; }
+
+	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
+	ref BlockInfoSetter color(ubyte r, ubyte g, ubyte b) { info.color = [r,g,b]; return this; }
+	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
+	ref BlockInfoSetter isTransparent(bool val) { info.isTransparent = val; return this; }
+}
+
 final class BlockManager : IResourceManager
 {
 private:
@@ -47,16 +61,14 @@ public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
 	override void preInit()
 	{
-		regBlock("unknown", [0,0,0], false, false, &makeNullMesh);
-		regBlock("air", [0,0,0], false, true, &makeNullMesh);
+		regBlock("unknown").color(0,0,0).isVisible(false).isTransparent(false).meshHandler(&makeNullMesh);
+		regBlock("air").color(0,0,0).isVisible(false).isTransparent(true).meshHandler(&makeNullMesh);
 	}
 
-	BlockId regBlock(string name, ubyte[3] color, bool isVisible,
-		bool isTransparent, Meshhandler meshHandler)
-	{
-		auto id = blockMapping.put(BlockInfo(name, meshHandler, color, isVisible, isTransparent));
+	BlockInfoSetter regBlock(string name) {
+		size_t id = blockMapping.put(BlockInfo(name));
 		assert(id <= BlockId.max);
-		return cast(BlockId)id;
+		return BlockInfoSetter(&blockMapping, id);
 	}
 }
 
@@ -74,10 +86,10 @@ mixin template BlockPluginCommonImpl()
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		bm.regBlock("grass", [0, 255, 0], true, false, &makeColoredBlockMesh);
-		bm.regBlock("dirt", [120, 72, 0], true, false, &makeColoredBlockMesh);
-		bm.regBlock("stone", [128, 128, 128], true, false, &makeColoredBlockMesh);
-		bm.regBlock("sand", [225, 169, 95], true, false, &makeColoredBlockMesh);
+		bm.regBlock("grass").color(0, 255, 0).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("dirt").color(120, 72, 0).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("stone").color(128, 128, 128).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("sand").color(225, 169, 95).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
 		registerResourcesImpl(resmanRegistry);
 	}
 
@@ -100,7 +112,7 @@ final class BlockPluginClient : IPlugin
 	void handleBlockMap(string[] blocks)
 	{
 		bm.blockMapping.setMapping(blocks);
-		infof("received block map");
+		//infof("received block map %s", blocks);
 	}
 
 	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry){}
