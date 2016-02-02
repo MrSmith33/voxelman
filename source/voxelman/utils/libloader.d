@@ -9,7 +9,7 @@ module voxelman.utils.libloader;
 public import voxelman.globalconfig;
 
 version(Posix)
-	enum DLL_SUFFIX = ".a";
+	enum DLL_SUFFIX = ".so";
 else version(Windows)
 	enum DLL_SUFFIX = ".dll";
 else static assert(false, "lib loading is not implemented for this platform");

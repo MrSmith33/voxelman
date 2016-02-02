@@ -15,6 +15,7 @@ import voxelman.storage.coordinates : ChunkWorldPos;
 import voxelman.utils.textformatter;
 
 alias StatementHandle = size_t;
+enum USE_WAL = false;
 
 final class WorldDb
 {
@@ -41,10 +42,15 @@ final class WorldDb
 
 		auto db = Database(filename);
 
-		db.execute("PRAGMA synchronous = normal");
-		db.execute("PRAGMA count_changes = OFF");
-		db.execute("PRAGMA journal_mode = WAL");
-		db.execute("PRAGMA temp_store = MEMORY");
+		static if (USE_WAL) {
+			db.execute("PRAGMA synchronous = normal");
+			db.execute("PRAGMA journal_mode = wal");
+		} else {
+			db.execute("PRAGMA synchronous = off");
+			db.execute("PRAGMA journal_mode = memory");
+		}
+		db.execute("PRAGMA count_changes = off");
+		db.execute("PRAGMA temp_store = memory");
 
 		db.execute(perWorldTableCreate);
 		//db.execute(perDimentionTableCreate);

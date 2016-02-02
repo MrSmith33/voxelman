@@ -10,7 +10,6 @@ import std.experimental.logger;
 import std.string : format;
 import dlib.math.vector;
 
-import anchovy.fpshelper;
 import anchovy.glfwwindow;
 import anchovy.input;
 import anchovy.irenderer;
@@ -42,12 +41,10 @@ final class GuiPlugin : IPlugin
 private:
 	EventDispatcherPlugin evDispatcher;
 	ConfigOption resolution;
-	ConfigOption maxFpsOpt;
 
 public:
 	IWindow window;
 	IRenderer renderer;
-	FpsHelper fpsHelper;
 	ImguiState igState;
 
 	mixin IdAndSemverFrom!(voxelman.gui.plugininfo);
@@ -56,7 +53,6 @@ public:
 	{
 		auto config = resmanRegistry.getResourceManager!ConfigManager;
 		resolution = config.registerOption!(uint[])("resolution", [1280, 720]);
-		maxFpsOpt = config.registerOption!uint("max_fps", true);
 	}
 
 	override void preInit()
@@ -67,9 +63,6 @@ public:
 		window.init(uvec2(resolution.get!(uint[])), "Voxelman client");
 		renderer = new OglRenderer(window);
 		igState.init((cast(GlfwWindow)window).handle);
-
-		fpsHelper.maxFps = maxFpsOpt.get!uint;
-		if (fpsHelper.maxFps == 0) fpsHelper.limitFps = false;
 
 		// Bind events
 		window.windowResized.connect(&windowResized);
@@ -106,7 +99,6 @@ public:
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		window.processEvents();
-		fpsHelper.update(event.deltaTime);
 		igState.newFrame();
 	}
 

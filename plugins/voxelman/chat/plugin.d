@@ -27,6 +27,7 @@ final class ChatPluginClient : IPlugin
 	private NetClientPlugin connection;
 	private EventDispatcherPlugin evDispatcher;
 	MessageWindow messageWindow;
+	float alpha;
 
 	override void preInit()
 	{
@@ -62,9 +63,16 @@ final class ChatPluginClient : IPlugin
 		import derelict.imgui.imgui;
 
 		float h = 200;
-		igSetNextWindowPos(ImVec2(0, igGetIO().DisplaySize.y-h), ImGuiSetCond_FirstUseEver);
-		igSetNextWindowSize(ImVec2(500, h), ImGuiSetCond_FirstUseEver);
-		if (!igBegin("Chat")) return;
+		igSetNextWindowPos(ImVec2(0, igGetIO().DisplaySize.y-h), ImGuiSetCond_Always);
+		igSetNextWindowSize(ImVec2(400, h), ImGuiSetCond_Always);
+	    if (!igBegin2("Chat", null, ImVec2(0,0), 0.3f,
+	    	ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize|
+	    	ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings))
+	    {
+			igEnd();
+	    	return;
+	    }
+		//if (!igBegin("Chat")) return;
 		messageWindow.draw();
 		igEnd();
 	}

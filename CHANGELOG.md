@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add fps control in debug gui.
+- Add fog.
 - Add debugger plugin.
 - Add world save handler registration.
 - Add save on server stop.
@@ -27,6 +29,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Make chat transparent.
 - Move ClientWorld to voxelman/world/clientworld.d.
 - Use journal_mode = WAL in sqlite.
 - Rename clientdb plugin into login.
@@ -43,6 +46,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix chunk free list not working.
 - Fix app crash on Alt+PrintScreen.
 - Fix generated chunks not saved, but regenerated every time.
 - Fix buttons in imgui_glfw.d.

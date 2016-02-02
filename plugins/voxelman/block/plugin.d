@@ -31,10 +31,10 @@ alias Meshhandler = void function(ref Appender!(ubyte[]) output,
 struct BlockInfo
 {
 	string name;
-	Meshhandler meshHandler;
+	Meshhandler meshHandler = &makeNullMesh;
 	ubyte[3] color;
-	bool isVisible;
-	bool isTransparent;
+	bool isVisible = true;
+	bool isTransparent = false;
 	size_t id;
 }
 
@@ -48,6 +48,7 @@ struct BlockInfoSetter
 
 	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
 	ref BlockInfoSetter color(ubyte r, ubyte g, ubyte b) { info.color = [r,g,b]; return this; }
+	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockInfoSetter isTransparent(bool val) { info.isTransparent = val; return this; }
 }
@@ -86,10 +87,10 @@ mixin template BlockPluginCommonImpl()
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		bm.regBlock("grass").color(0, 255, 0).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("dirt").color(120, 72, 0).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("stone").color(128, 128, 128).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("sand").color(225, 169, 95).isVisible(true).isTransparent(false).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
 		registerResourcesImpl(resmanRegistry);
 	}
 

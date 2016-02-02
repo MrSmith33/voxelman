@@ -64,7 +64,7 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 
 	auto index = BlockChunkIndex(bx, by, bz).index;
 	auto rnd = Xorshift32(index);
-	float randomTint = uniform(0.92f, 1.0f, rnd);
+	float randomTint = uniform(0.90f, 1.0f, rnd);
 
 	foreach(ubyte i; 0..6)
 	{

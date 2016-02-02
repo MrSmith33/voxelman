@@ -16,6 +16,8 @@ import derelict.enet.enet;
 import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
 
+import anchovy.fpshelper;
+
 import netlib;
 import pluginlib;
 import pluginlib.pluginmanager;
@@ -87,7 +89,12 @@ public:
 	// Client data
 	bool isRunning = false;
 	bool mouseLocked;
-	double prevDelta;
+
+	double delta;
+	Duration frameTime;
+	ConfigOption maxFpsOpt;
+	bool limitFps = true;
+	FpsHelper fpsHelper;
 
 	// Graphics stuff
 	bool isCullingEnabled = true;
@@ -99,6 +106,8 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		maxFpsOpt = config.registerOption!uint("max_fps", true);
+
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
@@ -109,6 +118,8 @@ public:
 
 	override void preInit()
 	{
+		fpsHelper.maxFps = maxFpsOpt.get!uint;
+		if (fpsHelper.maxFps == 0) fpsHelper.limitFps = false;
 		console.init();
 	}
 
@@ -140,7 +151,16 @@ public:
 		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
 		igBegin("Debug");
 		with(stats) {
-			igTextf("FPS: %s", fps);
+			igTextf("FPS: %s", fps); igSameLine();
+
+			int fpsLimitVal = maxFpsOpt.get!uint;
+			igPushItemWidth(60);
+			//igInputInt("limit", &fpsLimitVal, 5, 20, 0);
+			igSliderInt(limitFps ? "limited##limit" : "unlimited##limit", &fpsLimitVal, 0, 240, null);
+			igPopItemWidth();
+			maxFpsOpt.set!uint(fpsLimitVal);
+			updateFrameTime();
+
 			igTextf("Chunks visible/rendered %s/%s %.0f%%",
 				chunksVisible, chunksRendered,
 				chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
@@ -157,7 +177,7 @@ public:
 		ChunkWorldPos chunkPos = clientWorld.chunkMan.observerPosition;
 		auto regionPos = RegionWorldPos(chunkPos);
 		auto localChunkPosition = ChunkRegionPos(chunkPos);
-		igTextf("C: %s R: %s L: %s", chunkPos, regionPos, localChunkPosition);
+		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;
@@ -189,7 +209,7 @@ public:
 
 	void run(string[] args)
 	{
-		import std.datetime : TickDuration, Clock, usecs;
+		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
 		version(manualGC) GC.disable;
@@ -197,48 +217,65 @@ public:
 		load(args);
 		evDispatcher.postEvent(GameStartEvent());
 
-		TickDuration lastTime = Clock.currAppTick;
-		TickDuration newTime = TickDuration.from!"seconds"(0);
+		MonoTime prevTime = MonoTime.currTime;
+		updateFrameTime();
 
 		isRunning = true;
 		ulong frame;
 		while(isRunning)
 		{
-			newTime = Clock.currAppTick;
-			double delta = (newTime - lastTime).usecs / 1_000_000.0;
-			prevDelta = delta;
-			lastTime = newTime;
+			MonoTime newTime = MonoTime.currTime;
+			delta = (newTime - prevTime).total!"usecs" / 1_000_000.0;
+			prevTime = newTime;
 
 				evDispatcher.postEvent(PreUpdateEvent(delta, frame));
 				evDispatcher.postEvent(UpdateEvent(delta, frame));
 				evDispatcher.postEvent(PostUpdateEvent(delta, frame));
 				evDispatcher.postEvent(DoGuiEvent(frame));
 				evDispatcher.postEvent(RenderEvent());
-				version(manualGC) {
-					GC.collect();
+
+				version(manualGC) GC.collect();
+
+				if (limitFps) {
+					Duration updateTime = MonoTime.currTime - newTime;
+					Duration sleepTime = frameTime - updateTime;
+					if (sleepTime > Duration.zero)
+						Thread.sleep(sleepTime);
 				}
-				// time used in frame
-				delta = (lastTime - Clock.currAppTick).usecs / 1_000_000.0;
-				guiPlugin.fpsHelper.sleepAfterFrame(delta);
+
 				++frame;
 		}
 		evDispatcher.postEvent(GameStopEvent());
 	}
 
+	void updateFrameTime()
+	{
+		uint maxFps = maxFpsOpt.get!uint;
+		if (maxFps == 0) {
+			limitFps = false;
+			frameTime = Duration.zero;
+			return;
+		}
+
+		limitFps = true;
+		frameTime = (1_000_000 / maxFpsOpt.get!uint).usecs;
+	}
+
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
+		fpsHelper.update(event.deltaTime);
 	}
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
-		stats.fps = guiPlugin.fpsHelper.fps;
+		stats.fps = fpsHelper.fps;
 		stats.totalLoadedChunks = clientWorld.chunkMan.totalLoadedChunks;
 
 		printDebug();
 		stats.resetCounters();
 		if (isConsoleShown)
 			console.draw();
-		dbg.logVar("delta", cast(float)prevDelta, 256);
+		dbg.logVar("delta, ms", delta*1000.0, 256);
 	}
 
 	void onConsoleCommand(string command)
@@ -296,32 +333,27 @@ public:
 		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
-		foreach(ChunkWorldPos cwp; clientWorld.chunkMan.chunkMeshMan.visibleChunks.items)
+		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.visibleChunks.byValue)
 		{
-			Chunk* c = clientWorld.chunkMan.getChunk(cwp);
-			assert(c);
 			++stats.chunksVisible;
-
-			if (isCullingEnabled)
+			if (isCullingEnabled) // Frustum culling
 			{
-				// Frustum culling
-				ivec3 ivecMin = c.position.vector * CHUNK_SIZE;
-				vec3 vecMin = vec3(ivecMin.x, ivecMin.y, ivecMin.z);
+				vec3 vecMin = mesh.position;
 				vec3 vecMax = vecMin + CHUNK_SIZE;
 				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
 				auto intersects = frustum.intersectsAABB(aabb);
 				if (!intersects) continue;
 			}
 
-			modelMatrix = translationMatrix!float(c.mesh.position);
+			modelMatrix = translationMatrix!float(mesh.position);
 			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 
-			c.mesh.bind;
-			c.mesh.render;
+			mesh.bind;
+			mesh.render;
 
 			++stats.chunksRendered;
-			stats.vertsRendered += c.mesh.numVertexes;
-			stats.trisRendered += c.mesh.numTris;
+			stats.vertsRendered += mesh.numVertexes;
+			stats.trisRendered += mesh.numTris;
 		}
 
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);

@@ -55,6 +55,7 @@ struct ChunkFreeList {
 			return;
 		}
 		items[numItems] = blocks;
+		++numItems;
 	}
 }
 

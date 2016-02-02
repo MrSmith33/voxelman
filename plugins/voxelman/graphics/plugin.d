@@ -32,7 +32,13 @@ string color_frag_shader = `
 #version 330
 smooth in vec4 theColor;
 out vec4 outputColor;
-void main() { outputColor = theColor; }
+const vec4 fogcolor = vec4(0.6, 0.8, 1.0, 1.0);
+const float fogdensity = .00002;
+void main() {
+	float z = gl_FragCoord.z / gl_FragCoord.w;
+	float fogModifier = clamp(exp(-fogdensity * z * z), 0.2, 1);
+	outputColor = mix(fogcolor, theColor, fogModifier);
+}
 `;
 
 string perspective_vert_shader = `
@@ -116,7 +122,7 @@ public:
 
 	override void postInit()
 	{
-		renderer.setClearColor(115,200,169);
+		renderer.setClearColor(165,211,238);
 		camera.aspect = cast(float)renderer.framebufferSize.x/renderer.framebufferSize.y;
 	}
 

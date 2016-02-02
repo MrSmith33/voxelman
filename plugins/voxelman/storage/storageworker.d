@@ -7,6 +7,7 @@ module voxelman.storage.storageworker;
 
 import std.experimental.logger;
 import std.conv : to;
+import std.datetime : MonoTime, Duration, usecs, dur;
 
 import cbor;
 
@@ -31,6 +32,23 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 	WorldDb worldDb = cast(WorldDb)_worldDb;
 	scope(exit) worldDb.close();
 
+	MonoTime prevTime;
+	string taskName;
+	void startTaskTiming(string name)
+	{
+		taskName = name;
+		prevTime = MonoTime.currTime;
+	}
+
+	void endTaskTiming()
+	{
+		Duration past = MonoTime.currTime - prevTime;
+		int seconds; short msecs; short usecs;
+		past.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
+		//if (msecs > 0 || seconds > 0)
+		//	infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
+	}
+
 	void writeChunk(ChunkWorldPos cwp, BlockData data, TimestampType timestamp) {
 		BlockData compressedData = data;
 		compressedData.blocks = compress(data.blocks, compressBuffer);
@@ -42,14 +60,17 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 	}
 
 	void doWrite(immutable(SaveSnapshotMessage)* message) {
+		startTaskTiming("WR");
 		auto m = cast(SaveSnapshotMessage*)message;
 		writeChunk(m.cwp, m.snapshot.blockData, m.snapshot.timestamp);
 
 		auto res = new SnapshotSavedMessage(m.cwp, m.snapshot);
 		mainTid.send(cast(immutable(SnapshotSavedMessage)*)res);
+		endTaskTiming();
 	}
 
 	void readChunk(immutable(LoadSnapshotMessage)* message) {
+		startTaskTiming("RD");
 		auto m = cast(LoadSnapshotMessage*)message;
 		bool doGen;
 
@@ -76,7 +97,7 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 				else
 					blockData.blocks = m.blockBuffer;
 
-				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(blockData, timestamp));
+				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(blockData, timestamp), true);
 				mainTid.send(cast(immutable(SnapshotLoadedMessage)*)res);
 			}
 			else doGen = true;
@@ -86,6 +107,7 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 			doGen = true;
 		}
 		if (doGen) m.genWorker.send(message);
+		endTaskTiming();
 	}
 
 	bool isRunning = true;

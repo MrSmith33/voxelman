@@ -30,6 +30,12 @@ final class ConfigOption
 			return value.coerce!T();
 	}
 
+	T set(T)(T newValue)
+	{
+		value = newValue;
+		return newValue;
+	}
+
 	Variant value;
 	Variant defaultValue;
 }

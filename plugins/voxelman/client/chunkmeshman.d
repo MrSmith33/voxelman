@@ -31,7 +31,7 @@ struct ChunkMeshMan
 	Queue!(Chunk*) changedChunks;
 	Queue!(Chunk*) chunksToMesh;
 	Queue!(Chunk*) dirtyChunks;
-	HashSet!ChunkWorldPos visibleChunks;
+	ChunkMesh[ChunkWorldPos] visibleChunks;
 
 	size_t numMeshChunkTasks;
 	size_t numDirtyChunksPending;
@@ -229,7 +229,7 @@ struct ChunkMeshMan
 		chunk.hasMesh = true;
 
 		if (chunk.isVisible)
-			visibleChunks.put(chunk.position);
+			visibleChunks[chunk.position] = chunk.mesh;
 
 		//infof("Chunk mesh loaded at %s, length %s", chunk.position, chunk.mesh.data.length);
 	}

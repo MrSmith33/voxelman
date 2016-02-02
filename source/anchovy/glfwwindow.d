@@ -29,6 +29,10 @@ public:
 
 		scope(failure) glfwTerminate();
 
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
+		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
 		//BUG: sometimes fails in Windows 8. Maybe because of old drivers.
 		glfwWindowPtr = glfwCreateWindow(size.x, size.y, toStringz(caption), null,  null);
 
@@ -155,11 +159,6 @@ private:
 		{
 			throw new Error("Error initializing GLFW3"); //TODO: add proper error handling
 		}
-
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
 		glfwInited = true;
 	}
 }

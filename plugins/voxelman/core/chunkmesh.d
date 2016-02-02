@@ -23,8 +23,6 @@ struct Attribute
 	bool normalized;
 }
 
-
-
 class ChunkMesh
 {
 	vec3 position;
