@@ -47,7 +47,7 @@ struct BlockInfoSetter
 	private ref BlockInfo info() {return (*mapping)[blockId]; }
 
 	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
-	ref BlockInfoSetter color(ubyte r, ubyte g, ubyte b) { info.color = [r,g,b]; return this; }
+	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
 	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockInfoSetter isTransparent(bool val) { info.isTransparent = val; return this; }

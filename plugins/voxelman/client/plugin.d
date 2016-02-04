@@ -183,9 +183,12 @@ public:
 		vec2 heading = graphics.camera.heading;
 		igTextf("Heading: %.2f %.2f", heading.x, heading.y);
 		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
-		igTextf("Chunks to remove: %s", clientWorld.chunkMan.removeQueue.length);
-		igTextf("Chunks to mesh: %s", clientWorld.chunkMan.chunkMeshMan.numMeshChunkTasks);
-		igTextf("View radius: %s", clientWorld.chunkMan.viewRadius);
+		with(clientWorld.chunkMan) {
+			igTextf("Chunks to remove: %s", removeQueue.length);
+			igTextf("Chunks to mesh: %s", chunkMeshMan.numMeshChunkTasks);
+			igTextf("Meshed/Meshes %s/%s", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes);
+			igTextf("View radius: %s", viewRadius);
+		}
 		igEnd();
 	}
 

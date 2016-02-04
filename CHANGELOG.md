@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add multiblock editing. Press and drag to select a box.
 - Add fps control in debug gui.
 - Add fog.
 - Add debugger plugin.

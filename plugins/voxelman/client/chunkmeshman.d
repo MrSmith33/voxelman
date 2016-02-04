@@ -35,6 +35,8 @@ struct ChunkMeshMan
 
 	size_t numMeshChunkTasks;
 	size_t numDirtyChunksPending;
+	size_t totalMeshedChunks;
+	size_t totalMeshes;
 
 	ChunkMan* chunkMan;
 	immutable(BlockInfo)[] blocks;
@@ -227,6 +229,10 @@ struct ChunkMeshMan
 		chunk.mesh.isDataDirty = true;
 		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
+
+		++totalMeshedChunks;
+		if (chunk.isVisible)
+			++totalMeshes;
 
 		if (chunk.isVisible)
 			visibleChunks[chunk.position] = chunk.mesh;

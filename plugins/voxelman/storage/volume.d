@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.storage.volume;
 
 import std.experimental.logger;
+import std.algorithm : alg_min = min, alg_max = max;
 import std.math : floor;
 import std.range : chain, only;
 import dlib.math.vector;
@@ -17,6 +18,30 @@ Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 	int size = viewRadius*2 + 1;
 	return Volume(cast(ivec3)(cwp.vector - viewRadius),
 		ivec3(size, size, size));
+}
+
+Volume volumeFromCorners(ivec3 a, ivec3 b)
+{
+	Volume vol;
+	vol.position = min(a, b);
+	vol.size = max(a, b) - vol.position + ivec3(1,1,1);
+	return vol;
+}
+
+Vector!(T, size) min(T, int size)(Vector!(T, size) a, Vector!(T, size) b)
+{
+	Vector!(T, size) res;
+	foreach(i; 0..size)
+		res.arrayof[i] = alg_min(a.arrayof[i], b.arrayof[i]);
+	return res;
+}
+
+Vector!(T, size) max(T, int size)(Vector!(T, size) a, Vector!(T, size) b)
+{
+	Vector!(T, size) res;
+	foreach(i; 0..size)
+		res.arrayof[i] = alg_max(a.arrayof[i], b.arrayof[i]);
+	return res;
 }
 
 // 3d grid volume

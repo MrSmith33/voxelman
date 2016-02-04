@@ -42,6 +42,7 @@ class WorldInteractionPlugin : IPlugin
 	// Cursor
 	bool cursorHit;
 	BlockWorldPos blockPos;
+	BlockWorldPos sideBlockPos; // blockPos + hitNormal
 	ivec3 hitNormal;
 
 	// Cursor rendering stuff
@@ -103,6 +104,11 @@ class WorldInteractionPlugin : IPlugin
 		}
 	}
 
+	void placeBlockAt(BlockId blockId, BlockWorldPos bwp)
+	{
+		connection.send(PlaceBlockPacket(bwp.vector, blockId));
+	}
+
 	BlockId pickBlock()
 	{
 		return clientWorld.worldAccess.getBlock(blockPos);
@@ -130,6 +136,7 @@ class WorldInteractionPlugin : IPlugin
 			traceBatch);
 
 		blockPos = BlockWorldPos(hitPosition);
+		sideBlockPos = BlockWorldPos(blockPos.vector + hitNormal);
 		cursorTraceTime = cast(Duration)sw.peek;
 	}
 

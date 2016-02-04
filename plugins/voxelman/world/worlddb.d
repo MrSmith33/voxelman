@@ -145,7 +145,7 @@ final class WorldDb
 	}
 }
 
-enum bool withoutRowid = false;
+enum bool withoutRowid = true;
 enum string withoutRowidStr = withoutRowid ? ` without rowid;` : ``;
 
 immutable perWorldTableCreate = `
