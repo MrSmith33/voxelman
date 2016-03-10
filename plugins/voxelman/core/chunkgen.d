@@ -22,8 +22,8 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
 
 
-alias Generator = Generator2d;
-//alias Generator = Generator2d3d;
+//alias Generator = Generator2d;
+alias Generator = Generator2d3d;
 //alias Generator = TestGeneratorSmallCubes;
 //alias Generator = TestGeneratorSmallCubes2;
 //alias Generator = TestGeneratorSmallCubes3;
@@ -116,13 +116,20 @@ struct Generator2d3d
 
 	BlockId generateBlock(int x, int y, int z)
 	{
+		enum NOISE_SCALE_3D = 42;
+		enum NOISE_TRESHOLD_3D = -0.6;
 		int height = heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
-		if (blockY > height) return 1;
+		if (blockY > height) {
+			if (blockY > 0)
+				return 1;
+			else
+				return 6;
+		}
 
-		float noise = Simplex.noise(cast(float)(chunkOffset.x+x)/42,
-			cast(float)(chunkOffset.y+y)/42, cast(float)(chunkOffset.z+z)/42);
-		if (noise < -0.1) return 1;
+		float noise3d = Simplex.noise(cast(float)(chunkOffset.x+x)/NOISE_SCALE_3D,
+			cast(float)(chunkOffset.y+y)/NOISE_SCALE_3D, cast(float)(chunkOffset.z+z)/NOISE_SCALE_3D);
+		if (noise3d < NOISE_TRESHOLD_3D) return 1;
 
 		if (blockY == height) return 2;
 		else if (blockY > height - 10) return 3;
@@ -145,7 +152,13 @@ struct Generator2d
 	{
 		int height = heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
-		if (blockY > height) return 1;
+		if (blockY > height) {
+			if (blockY > 0)
+				return 1;
+			else
+				return 6;
+		}
+
 		if (blockY == height) return 2;
 		else if (blockY > height - 10) return 3;
 		else return 4;
@@ -194,7 +207,7 @@ struct TestGeneratorSmallCubes3
 
 float noise2d(int x, int z)
 {
-	enum NUM_OCTAVES = 6;
+	enum NUM_OCTAVES = 8;
 	enum DIVIDER = 50; // bigger - smoother
 	enum HEIGHT_MODIFIER = 4; // bigger - higher
 

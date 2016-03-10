@@ -91,6 +91,7 @@ mixin template BlockPluginCommonImpl()
 		bm.regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
 		bm.regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
 		bm.regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
+		bm.regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh);
 		registerResourcesImpl(resmanRegistry);
 	}
 

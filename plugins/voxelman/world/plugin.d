@@ -173,6 +173,8 @@ public:
 	{
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
+		size_t numLayers = 1;
+		chunkManager.setup(numLayers);
 		worldAccess = new WorldAccess(&chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 

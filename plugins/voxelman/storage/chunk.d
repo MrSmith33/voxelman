@@ -60,13 +60,6 @@ enum StorageType
 	array,
 }
 
-struct ChunkDataSnapshot {
-	//BlockId[] blocks;
-	BlockData blockData;
-	TimestampType timestamp;
-	uint numUsers;
-}
-
 // stores all used snapshots of the chunk. Current is blocks
 struct BlockDataSnapshot
 {

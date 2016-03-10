@@ -68,15 +68,21 @@ final class ChunkManager {
 	void delegate(ChunkWorldPos cwp, BlockDataSnapshot snapshot) saveChunkHandler;
 
 	private ChunkFreeList freeList;
-	private BlockDataSnapshot[ChunkWorldPos] snapshots;
-	private BlockDataSnapshot[TimestampType][ChunkWorldPos] oldSnapshots;
-	private BlockId[][ChunkWorldPos] writeBuffers;
-	private BlockChange[][ChunkWorldPos] chunkChanges;
+	private BlockDataSnapshot[ChunkWorldPos][] snapshots;
+	private BlockDataSnapshot[TimestampType][ChunkWorldPos][] oldSnapshots;
+	private BlockId[][ChunkWorldPos][] writeBuffers;
+	private BlockChange[][ChunkWorldPos][] chunkChanges;
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
 	private size_t[ChunkWorldPos] numInternalChunkUsers;
 	private size_t[ChunkWorldPos] numExternalChunkUsers;
 
+	void setup(size_t numLayers) {
+		snapshots.length = numLayers;
+		oldSnapshots.length = numLayers;
+		writeBuffers.length = numLayers;
+		chunkChanges.length = numLayers;
+	}
 
 	/// Performs save of all modified chunks.
 	/// Modified chunks are those that were committed.
@@ -89,7 +95,7 @@ final class ChunkManager {
 					assert(false, "Save should not occur for not added chunks");
 				case added_loaded:
 					chunkStates[cwp] = added_loaded_saving;
-					auto snap = cwp in snapshots;
+					auto snap = cwp in snapshots[0];
 					++snap.numUsers;
 					saveChunkHandler(cwp, *snap);
 					break;
@@ -123,7 +129,7 @@ final class ChunkManager {
 	Nullable!BlockDataSnapshot getChunkSnapshot(ChunkWorldPos cwp) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		if (state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving)
-			return Nullable!BlockDataSnapshot(snapshots[cwp]);
+			return Nullable!BlockDataSnapshot(snapshots[0][cwp]);
 		else {
 			return Nullable!BlockDataSnapshot.init;
 		}
@@ -135,7 +141,7 @@ final class ChunkManager {
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
 	BlockId[] getWriteBuffer(ChunkWorldPos cwp) {
-		auto newData = writeBuffers.get(cwp, null);
+		auto newData = writeBuffers[0].get(cwp, null);
 		if (newData is null) {
 			newData = createWriteBuffer(cwp);
 		}
@@ -148,13 +154,13 @@ final class ChunkManager {
 	void onBlockChanges(R)(ChunkWorldPos cwp, R blockChanges)
 		if (isInputRange!(R))
 	{
-		chunkChanges[cwp] = chunkChanges.get(cwp, null) ~ blockChanges.array;
+		chunkChanges[0][cwp] = chunkChanges[0].get(cwp, null) ~ blockChanges.array;
 	}
 
 	/// Returns timestamp of current chunk snapshot.
 	/// Store this timestamp to use in removeSnapshotUser
 	TimestampType addCurrentSnapshotUser(ChunkWorldPos cwp) {
-		auto snap = cwp in snapshots;
+		auto snap = cwp in snapshots[0];
 		assert(snap, "Cannot add chunk user. No such snapshot.");
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
@@ -168,7 +174,7 @@ final class ChunkManager {
 	/// Generic removal of snapshot user. Removes chunk if numUsers == 0.
 	/// Use this to remove added snapshot user. Use timestamp returned from addCurrentSnapshotUser.
 	void removeSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp) {
-		auto snap = cwp in snapshots;
+		auto snap = cwp in snapshots[0];
 		if (snap && snap.timestamp == timestamp) {
 			auto numUsersLeft = removeCurrentSnapshotUser(cwp);
 			if (numUsersLeft == 0) {
@@ -187,7 +193,7 @@ final class ChunkManager {
 
 	/// Internal. Called by code which loads chunks from storage.
 	void onSnapshotLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap, bool saved) {
-		snapshots[cwp] = BlockDataSnapshot(snap.blockData, snap.timestamp);
+		snapshots[0][cwp] = BlockDataSnapshot(snap.blockData, snap.timestamp);
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
 			case non_loaded:
@@ -199,7 +205,7 @@ final class ChunkManager {
 					chunkStates[cwp] = non_loaded;
 					clearChunkData(cwp);
 				} else {
-					auto s = cwp in snapshots;
+					auto s = cwp in snapshots[0];
 					chunkStates[cwp] = removed_loaded_saving;
 					saveChunkHandler(cwp, *s);
 					++s.numUsers;
@@ -209,7 +215,7 @@ final class ChunkManager {
 				chunkStates[cwp] = added_loaded;
 				if (!saved) modifiedChunks.put(cwp);
 				// Create snapshot for loaded data
-				auto snapshot = cwp in snapshots;
+				auto snapshot = cwp in snapshots[0];
 				if (snapshot.blockData.uniform) {
 					freeList.deallocate(snapshot.blockData.blocks);
 					snapshot.blockData.blocks = null;
@@ -228,7 +234,7 @@ final class ChunkManager {
 
 	/// Internal. Called by code which saves chunks to storage.
 	void onSnapshotSaved(ChunkWorldPos cwp, TimestampType timestamp) {
-		auto snap = cwp in snapshots;
+		auto snap = cwp in snapshots[0];
 		if (snap && snap.timestamp == timestamp) {
 			auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 			with(ChunkState) final switch(state) {
@@ -266,10 +272,10 @@ final class ChunkManager {
 
 	/// called at the end of tick
 	void commitSnapshots(TimestampType currentTime) {
-		auto writeBuffersCopy = writeBuffers;
+		auto writeBuffersCopy = writeBuffers[0];
 		// Clear it here because commit can unload chunk.
 		// And unload asserts that chunk is not in writeBuffers.
-		writeBuffers = null;
+		writeBuffers[0] = null;
 		foreach(snapshot; writeBuffersCopy.byKeyValue) {
 			auto cwp = snapshot.key;
 			auto blockData = snapshot.value;
@@ -281,8 +287,8 @@ final class ChunkManager {
 	/// Send changes to clients
 	void sendChanges() {
 		foreach(handler; chunkChangesHandlers)
-				handler(chunkChanges);
-		chunkChanges = null;
+				handler(chunkChanges[0]);
+		chunkChanges[0] = null;
 	}
 
 	//	PPPPPP  RRRRRR  IIIII VV     VV   AAA   TTTTTTT EEEEEEE
@@ -351,9 +357,9 @@ final class ChunkManager {
 			case non_loaded:
 				assert(false, "Unload should not occur when chunk was not yet loaded");
 			case added_loaded:
-				assert(cwp !in writeBuffers, "Chunk with write buffer should not be unloaded");
+				assert(cwp !in writeBuffers[0], "Chunk with write buffer should not be unloaded");
 				notifyRemoved(cwp);
-				auto snap = cwp in snapshots;
+				auto snap = cwp in snapshots[0];
 				if(cwp in modifiedChunks) {
 					chunkStates[cwp] = removed_loaded_saving;
 					saveChunkHandler(cwp, *snap);
@@ -384,10 +390,10 @@ final class ChunkManager {
 
 	// Fully removes chunk
 	private void clearChunkData(ChunkWorldPos cwp) {
-		recycleSnapshotMemory(snapshots[cwp]);
-		snapshots.remove(cwp);
-		assert(cwp !in writeBuffers);
-		assert(cwp !in chunkChanges);
+		recycleSnapshotMemory(snapshots[0][cwp]);
+		snapshots[0].remove(cwp);
+		assert(cwp !in writeBuffers[0]);
+		assert(cwp !in chunkChanges[0]);
 		assert(cwp !in modifiedChunks);
 		chunkStates.remove(cwp);
 	}
@@ -397,14 +403,14 @@ final class ChunkManager {
 	// On commit stage this is moved into new snapshot and.
 	// Adds internal user that is removed on commit to prevent unloading with uncommitted changes.
 	private BlockId[] createWriteBuffer(ChunkWorldPos cwp) {
-		assert(writeBuffers.get(cwp, null) is null);
+		assert(writeBuffers[0].get(cwp, null) is null);
 		auto old = getChunkSnapshot(cwp);
 		if (old.isNull) {
 			return null;
 		}
 		auto buffer = freeList.allocate();
 		old.blockData.copyToBuffer(buffer);
-		writeBuffers[cwp] = buffer;
+		writeBuffers[0][cwp] = buffer;
 		addInternalUser(cwp); // prevent unload until commit
 		return buffer;
 	}
@@ -440,7 +446,7 @@ final class ChunkManager {
 
 	// Returns number of current snapshot users left.
 	private uint removeCurrentSnapshotUser(ChunkWorldPos cwp) {
-		auto snap = cwp in snapshots;
+		auto snap = cwp in snapshots[0];
 		assert(snap, "Cannot remove chunk user. No such snapshot.");
 		assert(snap.numUsers > 0, "cannot remove chunk user. Snapshot has 0 users.");
 		--snap.numUsers;
@@ -450,7 +456,7 @@ final class ChunkManager {
 	// Returns that snapshot with updated numUsers.
 	// Snapshot is removed from oldSnapshots if numUsers == 0.
 	private BlockDataSnapshot removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp) {
-		BlockDataSnapshot[TimestampType]* chunkSnaps = cwp in oldSnapshots;
+		BlockDataSnapshot[TimestampType]* chunkSnaps = cwp in oldSnapshots[0];
 		assert(chunkSnaps, "old snapshot should have waited for releasing user");
 		BlockDataSnapshot* snapshot = timestamp in *chunkSnaps;
 		assert(snapshot, "cannot release snapshot user. No such snapshot");
@@ -459,7 +465,7 @@ final class ChunkManager {
 		if (snapshot.numUsers == 0) {
 			(*chunkSnaps).remove(timestamp);
 			if ((*chunkSnaps).length == 0) { // all old snaps of one chunk released
-				oldSnapshots.remove(cwp);
+				oldSnapshots[0].remove(cwp);
 			}
 		}
 		return *snapshot;
@@ -472,11 +478,11 @@ final class ChunkManager {
 		if (currentSnapshot.numUsers == 0)
 			recycleSnapshotMemory(currentSnapshot);
 		else {
-			BlockDataSnapshot[TimestampType] chunkSnaps = oldSnapshots.get(cwp, null);
+			BlockDataSnapshot[TimestampType] chunkSnaps = oldSnapshots[0].get(cwp, null);
 			assert(currentTime !in chunkSnaps);
 			chunkSnaps[currentTime] = currentSnapshot.get;
 		}
-		snapshots[cwp] = BlockDataSnapshot(BlockData(blocks, BlockId.init, false), currentTime);
+		snapshots[0][cwp] = BlockDataSnapshot(BlockData(blocks, BlockId.init, false), currentTime);
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {

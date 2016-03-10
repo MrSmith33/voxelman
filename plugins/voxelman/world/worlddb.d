@@ -50,7 +50,9 @@ final class WorldDb
 			db.execute("PRAGMA journal_mode = memory");
 		}
 		db.execute("PRAGMA count_changes = off");
+
 		db.execute("PRAGMA temp_store = memory");
+		db.execute(`PRAGMA page_size = "4096"; VACUUM`);
 
 		db.execute(perWorldTableCreate);
 		//db.execute(perDimentionTableCreate);

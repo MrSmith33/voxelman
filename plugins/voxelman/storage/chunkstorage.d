@@ -18,7 +18,6 @@ struct ChunkRemoveQueue
 	void add(Chunk* chunk)
 	{
 		assert(chunk);
-		assert(chunk !is null);
 
 		// already queued
 		if (chunk.isMarkedForDeletion) return;

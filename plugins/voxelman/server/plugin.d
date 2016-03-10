@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.server.plugin;
 
 import std.experimental.logger;
-import std.datetime : MonoTime, Duration, usecs, dur;
+import std.datetime : MonoTime, Duration, msecs, usecs, dur;
 
 import pluginlib;
 import pluginlib.pluginmanager;
@@ -82,6 +82,8 @@ public:
 		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
 		lastSaveTime = MonoTime.currTime;
 
+		GC.disable();
+
 		// Main loop
 		isRunning = true;
 		while (isRunning)
@@ -95,7 +97,11 @@ public:
 			evDispatcher.postEvent(PostUpdateEvent(delta));
 			trySave(MonoTime.currTime);
 
+			auto collectStartTime = MonoTime.currTime;
 			GC.collect();
+			auto collectDur = MonoTime.currTime - collectStartTime;
+			if (collectDur > 50.msecs)
+				warningf("GC.collect() time %s", collectDur);
 
 			Duration updateTime = MonoTime.currTime - newTime;
 			Duration sleepTime = frameTime - updateTime;
