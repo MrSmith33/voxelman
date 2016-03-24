@@ -22,8 +22,8 @@ import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
 
 
-//alias Generator = Generator2d;
-alias Generator = Generator2d3d;
+alias Generator = Generator2d;
+//alias Generator = Generator2d3d;
 //alias Generator = TestGeneratorSmallCubes;
 //alias Generator = TestGeneratorSmallCubes2;
 //alias Generator = TestGeneratorSmallCubes3;
@@ -67,12 +67,12 @@ void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
 	int wx = cwp.x, wy = cwp.y, wz = cwp.z;
 
 	BlockData bd;
-	bd.blocks = message.blockBuffer;
+	bd.blocks.length = CHUNK_SIZE_CUBE;
 	bd.convertToArray();
 	bd.uniform = false;
 	bool uniform = true;
 
-	Generator generator = Generator(cwp.vector * CHUNK_SIZE);
+	Generator generator = Generator(cwp.ivector * CHUNK_SIZE);
 	generator.genPerChunkData();
 
 	bd.blocks[0] = generator.generateBlock(0, 0, 0);
@@ -99,7 +99,7 @@ void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
 		bd.uniformType = type;
 	}
 
-	auto res = new SnapshotLoadedMessage(message.cwp, BlockDataSnapshot(bd), false);
+	auto res = new SnapshotLoadedMessage(message.cwp, [BlockDataSnapshot(bd)], false);
 	mainThread.send(cast(immutable(SnapshotLoadedMessage)*)res);
 }
 

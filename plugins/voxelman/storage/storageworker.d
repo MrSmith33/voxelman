@@ -22,7 +22,6 @@ import voxelman.world.worlddb;
 import voxelman.world.plugin : IoHandler;
 import voxelman.utils.compression;
 
-
 void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 {
 	try
@@ -45,26 +44,31 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 		Duration past = MonoTime.currTime - prevTime;
 		int seconds; short msecs; short usecs;
 		past.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-		//if (msecs > 0 || seconds > 0)
-		//	infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
+		if (msecs > 10 || seconds > 0)
+			infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
 	}
 
-	void writeChunk(ChunkWorldPos cwp, BlockData data, TimestampType timestamp) {
-		BlockData compressedData = data;
-		compressedData.blocks = compress(data.blocks, compressBuffer);
-
+	void writeChunk(ChunkWorldPos cwp, BlockDataSnapshot[] snapshots) {
 		try {
-			size_t encodedSize = encodeCborArray(buffer[], compressedData);
-			worldDb.savePerChunkData(cwp, 0, timestamp, buffer[0..encodedSize]);
+			size_t encodedSize = encodeCbor(buffer[], snapshots.length);
+
+			foreach(snap; snapshots)
+			{
+				encodedSize += encodeCbor(buffer[encodedSize..$], snap.timestamp);
+				BlockData compressedData = snap.blockData;
+				compressedData.blocks = compress(compressedData.blocks, compressBuffer);
+				encodedSize += encodeCborArray(buffer[encodedSize..$], compressedData);
+			}
+			worldDb.savePerChunkData(cwp, 0, buffer[0..encodedSize]);
 		} catch(Exception e) errorf("storage exception %s", e.to!string);
 	}
 
 	void doWrite(immutable(SaveSnapshotMessage)* message) {
 		startTaskTiming("WR");
 		auto m = cast(SaveSnapshotMessage*)message;
-		writeChunk(m.cwp, m.snapshot.blockData, m.snapshot.timestamp);
+		writeChunk(m.cwp, m.snapshots);
 
-		auto res = new SnapshotSavedMessage(m.cwp, m.snapshot);
+		auto res = new SnapshotSavedMessage(m.cwp, m.snapshots);
 		mainTid.send(cast(immutable(SnapshotSavedMessage)*)res);
 		endTaskTiming();
 	}
@@ -77,27 +81,40 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 		try
 		{
 		if (!doGen) {
-			TimestampType timestamp;
-			ubyte[] cborData = worldDb.loadPerChunkData(m.cwp, 0, timestamp);
+
+			ubyte[] cborData = worldDb.loadPerChunkData(m.cwp, 0);
 			scope(exit) worldDb.perChunkSelectStmt.reset();
 
-			if (cborData !is null) {
-				BlockData compressedData = decodeCborSingle!BlockData(cborData);
-				BlockData blockData = compressedData;
-				blockData.blocks = decompress(compressedData.blocks, compressBuffer);
+			if (cborData !is null)
+			{
+				size_t numLayers = decodeCborSingle!size_t(cborData);
+				BlockDataSnapshot[] snapshots;
+				snapshots.length = numLayers;
 
-				if (blockData.blocks.length > 0) {
-					bool validLength = blockData.blocks.length == CHUNK_SIZE_CUBE;
-					warningf(!validLength, "Wrong chunk data %s", m.cwp);
-					if (validLength) {
-						m.blockBuffer[] = blockData.blocks;
-						blockData.blocks = m.blockBuffer;
-					}
+				size_t i;
+				while(cborData.length > 0 && i < numLayers)
+				{
+					TimestampType timestamp = decodeCborSingle!size_t(cborData);
+					BlockData compressedData = decodeCborSingle!BlockData(cborData);
+					BlockData blockData = compressedData;
+					blockData.blocks = decompress(compressedData.blocks, compressBuffer);
+
+					blockData.blocks = blockData.blocks.dup;
+					//if (blockData.blocks.length > 0) {
+					//	bool validLength = blockData.blocks.length == CHUNK_SIZE_CUBE;
+					//	warningf(!validLength, "Wrong chunk data %s", m.cwp);
+					//	if (validLength) {
+					//		//m.blockBuffer[] = blockData.blocks;
+					//	}
+					//}
+					//else
+					//	blockData.blocks = null;
+
+					snapshots[i] = BlockDataSnapshot(blockData, timestamp);
+					++i;
 				}
-				else
-					blockData.blocks = m.blockBuffer;
 
-				auto res = new SnapshotLoadedMessage(m.cwp, BlockDataSnapshot(blockData, timestamp), true);
+				auto res = new SnapshotLoadedMessage(m.cwp, snapshots, true);
 				mainTid.send(cast(immutable(SnapshotLoadedMessage)*)res);
 			}
 			else doGen = true;

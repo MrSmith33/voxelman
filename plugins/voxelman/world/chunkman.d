@@ -87,7 +87,7 @@ struct ChunkMan
 	Volume calcVolume(ChunkWorldPos position)
 	{
 		auto size = viewRadius*2 + 1;
-		return Volume(cast(ivec3)(position.vector - viewRadius),
+		return Volume(cast(ivec3)(position.ivector - viewRadius),
 			ivec3(size, size, size));
 	}
 

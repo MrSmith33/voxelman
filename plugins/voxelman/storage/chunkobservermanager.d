@@ -181,7 +181,7 @@ final class ChunkObserverManager {
 		if (newVolume == oldVolume)
 			return;
 
-		info = ViewInfo(clientId, newVolume, observerPosition.vector, viewRadius);
+		info = ViewInfo(clientId, newVolume, observerPosition.ivector, viewRadius);
 
 		//infof("oldV %s newV %s", oldVolume, newVolume);
 		TrisectResult tsect = trisect(oldVolume, newVolume);

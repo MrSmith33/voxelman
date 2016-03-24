@@ -51,20 +51,20 @@ final class WorldAccess {
 	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
-		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos);
+		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos, FIRST_LAYER);
 		if (blocks is null)
 			return false;
 		blocks[blockIndex] = blockId;
 
 		import std.range : only;
-		chunkManager.onBlockChanges(chunkPos, only(BlockChange(blockIndex.index, blockId)));
+		chunkManager.onBlockChanges(chunkPos, only(BlockChange(blockIndex.index, blockId)), FIRST_LAYER);
 		return true;
 	}
 
 	BlockId getBlock(BlockWorldPos bwp) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
-		auto snap = chunkManager.getChunkSnapshot(chunkPos);
+		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER);
 		if (!snap.isNull) {
 			return snap.blockData.getBlockType(blockIndex);
 		}
@@ -173,10 +173,11 @@ public:
 	{
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
-		size_t numLayers = 1;
-		chunkManager.setup(numLayers);
 		worldAccess = new WorldAccess(&chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
+
+		size_t numLayers = 1;
+		chunkManager.setup(numLayers);
 
 		// Component connections
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
@@ -290,7 +291,7 @@ public:
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
-		auto snap = chunkManager.getChunkSnapshot(cwp);
+		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 		if (!snap.isNull) {
 			sendChunk(clientId, cwp, snap.blockData);
 		}
@@ -312,7 +313,7 @@ public:
 		import voxelman.utils.compression;
 		bd.validate();
 		if (!bd.uniform) bd.blocks = compress(bd.blocks, buf);
-		connection.sendTo(clients, ChunkDataPacket(cwp.vector, bd));
+		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, bd));
 	}
 
 	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
@@ -322,7 +323,7 @@ public:
 		{
 			connection.sendTo(
 				chunkObserverManager.getChunkObservers(pair.key),
-				MultiblockChangePacket(pair.key.vector, pair.value));
+				MultiblockChangePacket(pair.key.ivector, pair.value));
 		}
 	}
 

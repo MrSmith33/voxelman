@@ -23,27 +23,26 @@ import voxelman.utils.workergroup;
 struct SnapshotLoadedMessage
 {
 	ChunkWorldPos cwp;
-	BlockDataSnapshot snapshot;
+	BlockDataSnapshot[] snapshots;
 	bool saved;
 }
 
 struct SnapshotSavedMessage
 {
 	ChunkWorldPos cwp;
-	BlockDataSnapshot snapshot;
+	BlockDataSnapshot[] snapshots;
 }
 
 struct LoadSnapshotMessage
 {
 	ChunkWorldPos cwp;
-	BlockId[] blockBuffer;
 	Tid genWorker;
 }
 
 struct SaveSnapshotMessage
 {
 	ChunkWorldPos cwp;
-	BlockDataSnapshot snapshot;
+	BlockDataSnapshot[] snapshots;
 }
 
 struct ChunkProvider
@@ -53,8 +52,8 @@ private:
 	Tid storeWorker;
 
 public:
-	void delegate(ChunkWorldPos, BlockDataSnapshot, bool)[] onChunkLoadedHandlers;
-	void delegate(ChunkWorldPos, TimestampType)[] onChunkSavedHandlers;
+	void delegate(ChunkWorldPos, BlockDataSnapshot[], bool)[] onChunkLoadedHandlers;
+	void delegate(ChunkWorldPos, BlockDataSnapshot[])[] onChunkSavedHandlers;
 	size_t loadQueueLength;
 
 	size_t loadQueueSpaceAvaliable() @property const
@@ -83,25 +82,25 @@ public:
 					auto m = cast(SnapshotLoadedMessage*)message;
 					--loadQueueLength;
 					foreach(handler; onChunkLoadedHandlers)
-						handler(m.cwp, m.snapshot, m.saved);
+						handler(m.cwp, m.snapshots, m.saved);
 				},
 				(immutable(SnapshotSavedMessage)* message) {
 					auto m = cast(SnapshotSavedMessage*)message;
 					foreach(handler; onChunkSavedHandlers)
-						handler(m.cwp, m.snapshot.timestamp);
+						handler(m.cwp, m.snapshots);
 				}
 			);
 		}
 	}
 
-	void loadChunk(ChunkWorldPos cwp, BlockId[] blockBuffer) {
-		auto m = new LoadSnapshotMessage(cwp, blockBuffer, genWorkers.nextWorker);
+	void loadChunk(ChunkWorldPos cwp) {
+		auto m = new LoadSnapshotMessage(cwp, genWorkers.nextWorker);
 		storeWorker.send(cast(immutable(LoadSnapshotMessage)*)m);
 		++loadQueueLength;
 	}
 
-	void saveChunk(ChunkWorldPos cwp, BlockDataSnapshot snapshot) {
-		auto m = new SaveSnapshotMessage(cwp, snapshot);
+	void saveChunk(ChunkWorldPos cwp, BlockDataSnapshot[] snapshots) {
+		auto m = new SaveSnapshotMessage(cwp, snapshots);
 		storeWorker.send(cast(immutable(SaveSnapshotMessage)*)m);
 	}
 }

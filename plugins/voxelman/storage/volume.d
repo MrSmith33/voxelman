@@ -16,7 +16,7 @@ import voxelman.storage.coordinates;
 Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
-	return Volume(cast(ivec3)(cwp.vector - viewRadius),
+	return Volume(cast(ivec3)(cwp.ivector - viewRadius),
 		ivec3(size, size, size));
 }
 

@@ -129,21 +129,27 @@ final class WorldDb
 
 	//ubyte[] loadPerDimentionData(string key, int dim)
 	import voxelman.core.config;
-	void savePerChunkData(ChunkWorldPos cwp, int dim, TimestampType time, ubyte[] data)
+	void savePerChunkData(ChunkWorldPos cwp, short dim, ubyte[] data)
 	{
-		auto id = makeFormattedText("%s.%s.%s.%s", cwp.x, cwp.y, cwp.z, dim);
-		perChunkInsertStmt.inject(id, time, data);
+		perChunkInsertStmt.inject(packId(cwp, dim), data);
 	}
 
 	// Reset statement after returned data is no longer needed
-	ubyte[] loadPerChunkData(ChunkWorldPos cwp, int dim, ref TimestampType time)
+	ubyte[] loadPerChunkData(ChunkWorldPos cwp, short dim)
 	{
-		auto id = makeFormattedText("%s.%s.%s.%s", cwp.x, cwp.y, cwp.z, dim);
-		perChunkSelectStmt.bindAll(id);
+		perChunkSelectStmt.bindAll(packId(cwp, dim));
 		auto result = perChunkSelectStmt.execute();
 		if (result.empty) return null;
-		time = cast(TimestampType)result.front.peek!(long)(0);
-		return result.front.peekNoDup!(ubyte[])(1);
+		return result.front.peekNoDup!(ubyte[])(0);
+	}
+
+	static long packId(ChunkWorldPos cwp, short dim)
+	{
+		long id = cast(ulong)(cast(ushort)dim)<<48 |
+				cast(ulong)(cast(ushort)cwp.z)<<32 |
+				cast(ulong)(cast(ushort)cwp.y)<<16 |
+				cast(ulong)(cast(ushort)cwp.x);
+		return id;
 	}
 }
 
@@ -177,10 +183,9 @@ delete from per_dimention_data where dimention = :dim and id = :id`;
 
 immutable perChunkTableCreate = `
 create table if not exists per_chunk_data(
-	id text primary key,
-	tstamp integer not null,
-	data blob not null )` ~ withoutRowidStr;
+	id integer primary key,
+	data blob not null )`;
 
-immutable perChunkTableInsert = `insert or replace into per_chunk_data values (:id, :tstamp, :value)`;
-immutable perChunkTableSelect = `select tstamp, data from per_chunk_data where id = :id`;
+immutable perChunkTableInsert = `insert or replace into per_chunk_data values (:id, :value)`;
+immutable perChunkTableSelect = `select data from per_chunk_data where id = :id`;
 immutable perChunkTableDelete = `delete from per_chunk_data where id = :id`;

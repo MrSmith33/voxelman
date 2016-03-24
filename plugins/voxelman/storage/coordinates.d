@@ -110,12 +110,14 @@ struct ChunkRegionIndex
 	alias getIndex this;
 }
 
+alias Vector!(short, 3) svec3;
+
 // Position of chunk in world space. -int.max..int.max
 struct ChunkWorldPos
 {
 	this(BlockWorldPos blockWorldPos)
 	{
-		vector = ivec3(
+		vector = svec3(
 			floor(cast(float)blockWorldPos.x / CHUNK_SIZE),
 			floor(cast(float)blockWorldPos.y / CHUNK_SIZE),
 			floor(cast(float)blockWorldPos.z / CHUNK_SIZE),);
@@ -126,12 +128,23 @@ struct ChunkWorldPos
 		vector = chunkWorldPos;
 	}
 
-	this(int x, int y, int z)
+	this(svec3 chunkWorldPos)
 	{
-		vector = ivec3(x, y, z);
+		vector = chunkWorldPos;
 	}
 
-	ivec3 vector;
+	this(int x, int y, int z)
+	{
+		vector = svec3(x, y, z);
+	}
+
+	svec3 vector;
+
+	ivec3 ivector() @property
+	{
+		return ivec3(vector);
+	}
+
 	auto opDispatch(string s)()
     {
     	return mixin("vector." ~ s);
