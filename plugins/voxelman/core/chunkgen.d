@@ -35,6 +35,16 @@ struct ChunkGenResult
 	TimestampType timestamp;
 }
 
+struct SnapshotLoadedMessage {
+	ChunkWorldPos cwp;
+	BlockDataSnapshot[] snapshots;
+	bool saved;
+}
+struct LoadSnapshotMessage {
+	ChunkWorldPos cwp;
+	Tid genWorker;
+}
+
 void chunkGenWorkerThread(Tid mainTid)
 {
 	try

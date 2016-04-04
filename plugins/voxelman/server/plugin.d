@@ -100,8 +100,8 @@ public:
 			auto collectStartTime = MonoTime.currTime;
 			GC.collect();
 			auto collectDur = MonoTime.currTime - collectStartTime;
-			if (collectDur > 50.msecs)
-				warningf("GC.collect() time %s", collectDur);
+			//if (collectDur > 50.msecs)
+			//	infof("GC.collect() time %s", collectDur);
 
 			Duration updateTime = MonoTime.currTime - newTime;
 			Duration sleepTime = frameTime - updateTime;

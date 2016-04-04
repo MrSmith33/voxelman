@@ -128,6 +128,7 @@ public:
 
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
+		import core.thread;
 		chunkMan.stop();
 		thread_joinAll();
 	}

@@ -138,11 +138,26 @@ struct ChunkWorldPos
 		vector = svec3(x, y, z);
 	}
 
+	this(ulong val)
+	{
+		enum MASK16 = 0b1111_1111_1111_1111;
+		vector = svec3(val&MASK16, (val>>16)&MASK16, (val>>32)&MASK16);
+	}
+
 	svec3 vector;
 
 	ivec3 ivector() @property
 	{
 		return ivec3(vector);
+	}
+
+	ulong asUlong() @property
+	{
+		ulong id = //cast(ulong)(cast(ushort)dim)<<48 |
+				cast(ulong)(cast(ushort)vector.z)<<32 |
+				cast(ulong)(cast(ushort)vector.y)<<16 |
+				cast(ulong)(cast(ushort)vector.x);
+		return id;
 	}
 
 	auto opDispatch(string s)()

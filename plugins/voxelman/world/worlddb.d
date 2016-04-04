@@ -129,15 +129,15 @@ final class WorldDb
 
 	//ubyte[] loadPerDimentionData(string key, int dim)
 	import voxelman.core.config;
-	void savePerChunkData(ChunkWorldPos cwp, short dim, ubyte[] data)
+	void savePerChunkData(ulong cwp, short dim, ubyte[] data)
 	{
-		perChunkInsertStmt.inject(packId(cwp, dim), data);
+		perChunkInsertStmt.inject(cast(long)cwp, data);
 	}
 
 	// Reset statement after returned data is no longer needed
-	ubyte[] loadPerChunkData(ChunkWorldPos cwp, short dim)
+	ubyte[] loadPerChunkData(ulong cwp)
 	{
-		perChunkSelectStmt.bindAll(packId(cwp, dim));
+		perChunkSelectStmt.bindAll(cast(long)cwp);
 		auto result = perChunkSelectStmt.execute();
 		if (result.empty) return null;
 		return result.front.peekNoDup!(ubyte[])(0);

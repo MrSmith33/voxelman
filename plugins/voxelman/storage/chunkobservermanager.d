@@ -44,9 +44,6 @@ final class ChunkObserverManager {
 		if (viewInfos.length == 0)
 			return;
 
-		size_t chunksToLoad = loadQueueSpaceAvaliable();
-		//infof("queue space %s", chunksToLoad);
-
 		ViewInfo[] infos = viewInfos.values;
 		size_t chunksObserved;
 
@@ -115,11 +112,11 @@ final class ChunkObserverManager {
 
 					if (added) {
 						//infof("Add %s", position);
-						--chunksToLoad;
+
 						--chunksToLoadClient;
 						++chunksObserved;
 
-						if (chunksToLoad == 0)
+						if (loadQueueSpaceAvaliable() == 0)
 							break infinite_loop;
 						if (chunksToLoadClient == 0)
 							break;

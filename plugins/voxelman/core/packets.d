@@ -7,7 +7,6 @@ module voxelman.core.packets;
 
 import netlib.connection;
 import dlib.math.vector;
-import voxelman.storage.chunk : BlockChange, BlockData, BlockId;
 
 void registerPackets(Connection c)
 {
@@ -40,18 +39,21 @@ struct ViewRadiusPacket
 
 struct ChunkDataPacket
 {
+	import voxelman.storage.chunk : BlockData;
 	ivec3 chunkPos;
 	BlockData blockData;
 }
 
 struct MultiblockChangePacket
 {
+	import voxelman.storage.chunk : BlockChange;
 	ivec3 chunkPos;
 	BlockChange[] blockChanges;
 }
 
 struct PlaceBlockPacket
 {
+	import voxelman.core.config : BlockId;
 	ivec3 blockPos;
 	BlockId blockId;
 }

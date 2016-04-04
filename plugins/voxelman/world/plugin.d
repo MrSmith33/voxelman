@@ -66,7 +66,7 @@ final class WorldAccess {
 		auto chunkPos = ChunkWorldPos(bwp);
 		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER);
 		if (!snap.isNull) {
-			return snap.blockData.getBlockType(blockIndex);
+			return snap.getBlockType(blockIndex);
 		}
 		return 0;
 	}
@@ -147,6 +147,7 @@ private:
 	string worldFilename;
 
 	shared bool isSaving;
+	WorldDb worldDb;
 
 public:
 	ChunkManager chunkManager;
@@ -176,24 +177,24 @@ public:
 		worldAccess = new WorldAccess(&chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
-		size_t numLayers = 1;
+		ubyte numLayers = 1;
 		chunkManager.setup(numLayers);
 
 		// Component connections
-		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
-		chunkManager.saveChunkHandler = &chunkProvider.saveChunk;
+		chunkManager.chunkProvider = &chunkProvider;
 
-		chunkProvider.onChunkLoadedHandlers ~= &chunkManager.onSnapshotLoaded;
-		chunkProvider.onChunkSavedHandlers ~= &chunkManager.onSnapshotSaved;
+		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded;
+		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved;
 
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
 		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
 
-		chunkManager.onChunkLoadedHandlers ~= &onChunkLoaded;
+		chunkManager.onChunkLoadedHandler = &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
 
-		chunkProvider.init(ioThreadId, numGenWorkersOpt.get!uint);
+		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint);
+		worldDb = null;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -214,7 +215,8 @@ public:
 
 	void sendTask(IoHandler handler)
 	{
-		ioThreadId.send(cast(immutable)handler);
+		// TODO
+		//ioThreadId.send(cast(immutable)handler);
 	}
 
 	TimestampType currentTimestamp() @property
@@ -243,12 +245,11 @@ public:
 	private void handleIoManagerPostInit(string _worldFilename)
 	{
 		worldFilename = _worldFilename;
-		WorldDb worldDb = new WorldDb;
+		worldDb = new WorldDb;
 		worldDb.openWorld(_worldFilename);
 		readWorldInfo(worldDb);
 		foreach(h; ioManager.worldLoadHandlers)
 			h(worldDb);
-		ioThreadId = spawn(&storageWorkerThread, thisTid, cast(immutable)worldDb);
 	}
 
 	private void readWorldInfo(WorldDb worldDb)
@@ -285,15 +286,15 @@ public:
 
 	private void handleStopEvent(ref GameStopEvent event)
 	{
-		ioThreadId.send(0);
 		chunkProvider.stop();
+		chunkProvider.free();
 	}
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
 		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 		if (!snap.isNull) {
-			sendChunk(clientId, cwp, snap.blockData);
+			sendChunk(clientId, cwp, snap.toBlockData()); //TODO
 		}
 	}
 
@@ -302,9 +303,12 @@ public:
 		chunkObserverManager.removeObserver(event.clientId);
 	}
 
-	private void onChunkLoaded(ChunkWorldPos cwp, BlockDataSnapshot snap)
+	private void onChunkLoaded(ChunkWorldPos cwp)
 	{
-		sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap.blockData);
+		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER); //TODO send other layers
+		if (!snap.isNull) {
+			sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap.toBlockData());
+		}
 	}
 
 	private void sendChunk(C)(C clients, ChunkWorldPos cwp, BlockData bd)

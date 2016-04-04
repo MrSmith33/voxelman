@@ -10,7 +10,7 @@ import std.experimental.logger;
 import dlib.math.vector : vec3, ivec3, ivec4, uvec2;
 
 alias BlockId = ubyte;
-alias TimestampType = ulong;
+alias TimestampType = uint;
 
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
@@ -36,4 +36,5 @@ enum SERVER_UPDATES_PER_SECOND = 20;
 enum size_t SERVER_FRAME_TIME_USECS = 1_000_000 / SERVER_UPDATES_PER_SECOND;
 enum SERVER_PORT = 1234;
 
-enum MAX_LOAD_QUEUE_LENGTH = 1000;
+enum QUEUE_LENGTH = 1024*1024*1;
+enum MAX_LOAD_QUEUE_LENGTH = QUEUE_LENGTH / 2;

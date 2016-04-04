@@ -18,6 +18,45 @@ import voxelman.storage.coordinates;
 import voxelman.storage.region;
 import voxelman.storage.utils;
 
+struct ChunkHeaderItem {
+	ChunkWorldPos cwp;
+	uint numLayers;
+	uint metadata;
+}
+static assert(ChunkHeaderItem.sizeof == 16);
+
+struct ChunkLayerTimestampItem {
+	uint timestamp;
+	ubyte layerId;
+}
+static assert(ChunkLayerTimestampItem.sizeof == 8);
+
+/// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
+struct ChunkLayerItem
+{
+	StorageType type;
+	ubyte layerId;
+	ushort dataLength;
+	uint timestamp;
+	union {
+		ulong uniformData;
+		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
+	}
+	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ulong _uniformData) {
+		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData;
+	}
+	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ubyte* _dataPtr) {
+		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr;
+	}
+	this(ChunkLayerSnap l, ubyte _layerId) {
+		type = l.type;
+		layerId = _layerId;
+		dataLength = l.dataLength;
+		timestamp = l.timestamp;
+		uniformData = l.uniformData;
+	}
+}
+static assert(ChunkLayerItem.sizeof == 16);
 
 /// Container for chunk updates
 /// If blockChanges is null uses newBlockData
@@ -53,14 +92,7 @@ ushort[2] areaOfImpact(BlockChange[] changes)
 	return cast(ushort[2])[start, end+1];
 }
 
-enum StorageType
-{
-	uniform,
-	rle,
-	array,
-}
-
-// stores all used snapshots of the chunk. Current is blocks
+// stores all used snapshots of the chunk.
 struct BlockDataSnapshot
 {
 	BlockData blockData;
@@ -68,7 +100,77 @@ struct BlockDataSnapshot
 	uint numUsers;
 }
 
-// Stores blocks of the chunk
+enum StorageType : ubyte
+{
+	uniform,
+	//linearMap,
+	//hashMap,
+	//compressedArray,
+	fullArray,
+}
+
+/// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
+struct ChunkLayerSnap
+{
+	uint numUsers;
+	uint timestamp;
+	StorageType type;
+	//ubyte nextLayerId;
+	ushort dataLength; // unused when uniform
+	union {
+		ulong uniformData;
+		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
+	}
+	this(StorageType _type, ushort _dataLength, uint _timestamp, ulong _uniformData) {
+		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData;
+	}
+	this(StorageType _type, ushort _dataLength, uint _timestamp, void* _dataPtr) {
+		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr;
+	}
+	this(T)(StorageType _type, uint _timestamp, T[] _array) {
+		type = _type; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr;
+	}
+	this(ChunkLayerItem l) {
+		numUsers = 0;
+		timestamp = l.timestamp;
+		type = l.type;
+		dataLength = l.dataLength;
+		uniformData = l.uniformData;
+	}
+	T[] getArray(T)() {
+		assert(type != StorageType.uniform);
+		return (cast(T*)dataPtr)[0..dataLength];
+	}
+	T getUniform(T)() {
+		return cast(T)uniformData;
+	}
+	BlockId getBlockType(BlockChunkIndex index)
+	{
+		if (type == StorageType.uniform) return cast(BlockId)uniformData;
+		return getArray!BlockId[index];
+	}
+}
+
+BlockData toBlockData(ChunkLayerSnap layer) {
+	BlockData res;
+	res.uniform = layer.type == StorageType.uniform;
+	if (!res.uniform)
+		res.blocks = layer.getArray!BlockId();
+	else
+		res.uniformType = layer.getUniform!BlockId;
+	return res;
+}
+
+void copyToBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
+{
+	assert(outBuffer.length == CHUNK_SIZE_CUBE);
+	if (snap.type == StorageType.uniform)
+		outBuffer[] = cast(BlockId)snap.uniformData;
+	else
+		outBuffer[] = snap.getArray!BlockId;
+}
+
+// Stores blocks of the chunk.
 struct BlockData
 {
 	void validate()
@@ -191,7 +293,9 @@ struct BlockData
 	}
 }
 
-// Single chunk
+// Single chunk.
+// Used in client only.
+// To be replaced by layers.
 struct Chunk
 {
 	@disable this();

@@ -8,16 +8,21 @@ Authors: Andrey Penechko.
 module voxelman.utils.sharedqueue;
 
 import core.atomic;
+import core.thread : Thread;
 import std.experimental.allocator.mallocator;
+import std.experimental.logger;
 
+private enum PAGE_SIZE = 4096;
 /// Single-producer single-consumer fixed size circular buffer queue.
-shared struct SharedQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof)) {
+shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)) {
+	enum capacity = _capacity;
 	static assert(capacity > 0, "Cannot have a capacity of 0.");
 	static assert(roundPow2!capacity == capacity, "The capacity must be a power of 2");
 	static assert(T.sizeof <= 8, "Cannot atomically use provided type");
 
 	void alloc() shared {
 		_data = cast(shared T[])Mallocator.instance.allocate(capacity * T.sizeof);
+		assert(_data, "Cannot allocate memory for queue");
 	}
 
 	void free() shared {
@@ -42,7 +47,7 @@ shared struct SharedQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof))
 
 	void pushSingleItem(I)(I item) shared {
 		while (full)
-			Thread.yield();
+			yield();
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_wpos);
 		pushItem(item);
 		atomicStore!(MemoryOrder.rel)(_wpos, pos + 1);
@@ -50,33 +55,47 @@ shared struct SharedQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof))
 
 	I popItem(I)() shared {
 		static assert(I.sizeof % T.sizeof == 0);
-		enum arrSize = I.sizeof / T.sizeof;
+		enum itemSize = I.sizeof / T.sizeof;
 
 		I res;
 
-		static if (I.sizeof >=  8) (*cast(T[arrSize]*)&res)[0] = pop();
-		static if (I.sizeof >= 16) (*cast(T[arrSize]*)&res)[1] = pop();
-		static if (I.sizeof >= 24) (*cast(T[arrSize]*)&res)[2] = pop();
-		static if (I.sizeof >= 32) (*cast(T[arrSize]*)&res)[3] = pop();
-		static if (I.sizeof >= 40) (*cast(T[arrSize]*)&res)[4] = pop();
-		static if (I.sizeof >= 48) (*cast(T[arrSize]*)&res)[5] = pop();
-		static if (I.sizeof >= 56) (*cast(T[arrSize]*)&res)[6] = pop();
-		static if (I.sizeof >= 64) (*cast(T[arrSize]*)&res)[7] = pop();
+		static if (I.sizeof >=  8) (*cast(T[itemSize]*)&res)[0] = pop();
+		static if (I.sizeof >= 16) (*cast(T[itemSize]*)&res)[1] = pop();
+		static if (I.sizeof >= 24) (*cast(T[itemSize]*)&res)[2] = pop();
+		static if (I.sizeof >= 32) (*cast(T[itemSize]*)&res)[3] = pop();
+		static if (I.sizeof >= 40) (*cast(T[itemSize]*)&res)[4] = pop();
+		static if (I.sizeof >= 48) (*cast(T[itemSize]*)&res)[5] = pop();
+		static if (I.sizeof >= 56) (*cast(T[itemSize]*)&res)[6] = pop();
+		static if (I.sizeof >= 64) (*cast(T[itemSize]*)&res)[7] = pop();
 		static assert(I.sizeof <= 64);
 		return res;
 	}
 
 	void pushItem(I)(I item) shared {
 		static assert(I.sizeof % T.sizeof == 0);
-		enum arrSize = I.sizeof / T.sizeof;
-		static if (I.sizeof >=  8) pushDelayed((*cast(T[arrSize]*)&item)[0]);
-		static if (I.sizeof >= 16) pushDelayed((*cast(T[arrSize]*)&item)[1]);
-		static if (I.sizeof >= 24) pushDelayed((*cast(T[arrSize]*)&item)[2]);
-		static if (I.sizeof >= 32) pushDelayed((*cast(T[arrSize]*)&item)[3]);
-		static if (I.sizeof >= 40) pushDelayed((*cast(T[arrSize]*)&item)[4]);
-		static if (I.sizeof >= 48) pushDelayed((*cast(T[arrSize]*)&item)[5]);
-		static if (I.sizeof >= 56) pushDelayed((*cast(T[arrSize]*)&item)[6]);
-		static if (I.sizeof >= 64) pushDelayed((*cast(T[arrSize]*)&item)[7]);
+		enum itemSize = I.sizeof / T.sizeof;
+		static if (I.sizeof >=  8) pushDelayed((*cast(T[itemSize]*)&item)[0]);
+		static if (I.sizeof >= 16) pushDelayed((*cast(T[itemSize]*)&item)[1]);
+		static if (I.sizeof >= 24) pushDelayed((*cast(T[itemSize]*)&item)[2]);
+		static if (I.sizeof >= 32) pushDelayed((*cast(T[itemSize]*)&item)[3]);
+		static if (I.sizeof >= 40) pushDelayed((*cast(T[itemSize]*)&item)[4]);
+		static if (I.sizeof >= 48) pushDelayed((*cast(T[itemSize]*)&item)[5]);
+		static if (I.sizeof >= 56) pushDelayed((*cast(T[itemSize]*)&item)[6]);
+		static if (I.sizeof >= 64) pushDelayed((*cast(T[itemSize]*)&item)[7]);
+		static assert(I.sizeof <= 64);
+	}
+
+	void setItem(I)(I item, size_t at) shared {
+		static assert(I.sizeof % T.sizeof == 0);
+		enum itemSize = I.sizeof / T.sizeof;
+		static if (I.sizeof >=  8) _data[at+0 & mask] = (*cast(T[itemSize]*)&item)[0];
+		static if (I.sizeof >= 16) _data[at+1 & mask] = (*cast(T[itemSize]*)&item)[1];
+		static if (I.sizeof >= 24) _data[at+2 & mask] = (*cast(T[itemSize]*)&item)[2];
+		static if (I.sizeof >= 32) _data[at+3 & mask] = (*cast(T[itemSize]*)&item)[3];
+		static if (I.sizeof >= 40) _data[at+4 & mask] = (*cast(T[itemSize]*)&item)[4];
+		static if (I.sizeof >= 48) _data[at+5 & mask] = (*cast(T[itemSize]*)&item)[5];
+		static if (I.sizeof >= 56) _data[at+6 & mask] = (*cast(T[itemSize]*)&item)[6];
+		static if (I.sizeof >= 64) _data[at+7 & mask] = (*cast(T[itemSize]*)&item)[7];
 		static assert(I.sizeof <= 64);
 	}
 
@@ -88,11 +107,28 @@ shared struct SharedQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof))
 		atomicStore!(MemoryOrder.rel)(_wpos, wpos);
 	}
 
+	// skip to fill in later with setItem
+	size_t skipItemDelayed(I)() shared {
+		static assert(I.sizeof % T.sizeof == 0);
+		enum itemSize = I.sizeof / T.sizeof;
+		size_t temp = cast(size_t)wpos;
+
+		foreach(_; 0..itemSize)
+		{
+			while (wpos - atomicLoad!(MemoryOrder.acq)(_rpos) == capacity) {
+				yield();
+			}
+			++cast(size_t)wpos; // remove shared
+		}
+
+		return temp;
+	}
+
 	// can cause dead-lock if consumer is waiting for producer.
 	// Make sure that there is enough space. Or else keep consuming
 	private void pushDelayed(T val) {
 		while (wpos - atomicLoad!(MemoryOrder.acq)(_rpos) == capacity) {
-			Thread.yield();
+			yield();
 		}
 
 		_data[wpos & mask] = val;
@@ -110,8 +146,13 @@ shared struct SharedQueue(T, size_t capacity = roundPow2!(PAGE_SIZE / T.sizeof))
 
 	shared(T) popBlocking() shared {
 		while (empty)
-			Thread.yield();
+			yield();
 		return pop();
+	}
+
+	static void yield() {
+		Thread.yield();
+		//infof("yield");
 	}
 
 	private shared(T) pop() shared

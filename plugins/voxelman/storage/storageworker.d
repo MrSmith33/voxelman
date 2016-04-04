@@ -7,7 +7,8 @@ module voxelman.storage.storageworker;
 
 import std.experimental.logger;
 import std.conv : to;
-import std.datetime : MonoTime, Duration, usecs, dur;
+import std.datetime : MonoTime, Duration, usecs, dur, seconds;
+import core.atomic;
 
 import cbor;
 
@@ -22,8 +23,23 @@ import voxelman.world.worlddb;
 import voxelman.world.plugin : IoHandler;
 import voxelman.utils.compression;
 
-void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
+
+//version = DBG_OUT;
+void storageWorker(
+			immutable WorldDb _worldDb,
+			//uint numGenWorkers,
+			shared bool* workerRunning,
+			shared bool* workerStopped,
+			shared MessageQueue* loadResQueue,
+			shared MessageQueue* saveResQueue,
+			shared MessageQueue* loadTaskQueue,
+			shared MessageQueue* saveTaskQueue,
+			//shared MessageQueue*[] genResQueue,
+			)
 {
+	uint numReceived;
+	version(DBG_OUT)infof("Storage worker started");
+
 	try
 	{
 	ubyte[] compressBuffer = new ubyte[](4096*16);
@@ -48,102 +64,123 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 			infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
 	}
 
-	void writeChunk(ChunkWorldPos cwp, BlockDataSnapshot[] snapshots) {
-		try {
-			size_t encodedSize = encodeCbor(buffer[], snapshots.length);
-
-			foreach(snap; snapshots)
-			{
-				encodedSize += encodeCbor(buffer[encodedSize..$], snap.timestamp);
-				BlockData compressedData = snap.blockData;
-				compressedData.blocks = compress(compressedData.blocks, compressBuffer);
-				encodedSize += encodeCborArray(buffer[encodedSize..$], compressedData);
-			}
-			worldDb.savePerChunkData(cwp, 0, buffer[0..encodedSize]);
-		} catch(Exception e) errorf("storage exception %s", e.to!string);
-	}
-
-	void doWrite(immutable(SaveSnapshotMessage)* message) {
+	void writeChunk() {
 		startTaskTiming("WR");
-		auto m = cast(SaveSnapshotMessage*)message;
-		writeChunk(m.cwp, m.snapshots);
 
-		auto res = new SnapshotSavedMessage(m.cwp, m.snapshots);
-		mainTid.send(cast(immutable(SnapshotSavedMessage)*)res);
+		ChunkHeaderItem header = saveTaskQueue.popItem!ChunkHeaderItem();
+
+		saveResQueue.startPush();
+		saveResQueue.pushItem(header);
+		try {
+			size_t encodedSize = encodeCbor(buffer[], header.numLayers);
+
+			// TODO encode layerId
+			foreach(_; 0..header.numLayers) {
+				ChunkLayerItem layer = saveTaskQueue.popItem!ChunkLayerItem();
+
+				encodedSize += encodeCbor(buffer[encodedSize..$], layer.timestamp);
+				BlockData compressedData;
+				compressedData.uniform = layer.type == StorageType.uniform;
+				if (!compressedData.uniform) {
+					compressedData.blocks = (cast(BlockId*)layer.dataPtr)[0..layer.dataLength];
+					compressedData.blocks = compress(compressedData.blocks, compressBuffer);
+				} else
+					compressedData.uniformType = cast(BlockId)layer.uniformData;
+				encodedSize += encodeCborArray(buffer[encodedSize..$], compressedData);
+
+				saveResQueue.pushItem(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
+			}
+
+			worldDb.savePerChunkData(header.cwp.asUlong, 0, buffer[0..encodedSize]);
+		} catch(Exception e) errorf("storage exception %s", e.to!string);
+		saveResQueue.endPush();
 		endTaskTiming();
+		version(DBG_OUT)infof("task save %s", header.cwp);
 	}
 
-	void readChunk(immutable(LoadSnapshotMessage)* message) {
+	//BlockData {
+	//	BlockId[] blocks;
+	//	BlockId uniformType = 0;
+	//	bool uniform = true;
+	//}
+	void readChunk() {
 		startTaskTiming("RD");
-		auto m = cast(LoadSnapshotMessage*)message;
 		bool doGen;
+
+		ulong cwp = loadTaskQueue.popItem!ulong();
 
 		try
 		{
-		if (!doGen) {
-
-			ubyte[] cborData = worldDb.loadPerChunkData(m.cwp, 0);
+			ubyte[] cborData = worldDb.loadPerChunkData(cwp);
 			scope(exit) worldDb.perChunkSelectStmt.reset();
 
 			if (cborData !is null)
 			{
-				size_t numLayers = decodeCborSingle!size_t(cborData);
-				BlockDataSnapshot[] snapshots;
-				snapshots.length = numLayers;
-
-				size_t i;
-				while(cborData.length > 0 && i < numLayers)
-				{
-					TimestampType timestamp = decodeCborSingle!size_t(cborData);
+				ubyte numLayers = decodeCborSingle!ubyte(cborData);
+				// TODO check numLayers <= ubyte.max
+				bool saved = true;
+				loadResQueue.startPush();
+				loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, cast(uint)saved));
+				// TODO decode layerId
+				foreach(ubyte layerId; 0..numLayers) {
+					auto timestamp = decodeCborSingle!TimestampType(cborData);
 					BlockData compressedData = decodeCborSingle!BlockData(cborData);
-					BlockData blockData = compressedData;
-					blockData.blocks = decompress(compressedData.blocks, compressBuffer);
 
-					blockData.blocks = blockData.blocks.dup;
-					//if (blockData.blocks.length > 0) {
-					//	bool validLength = blockData.blocks.length == CHUNK_SIZE_CUBE;
-					//	warningf(!validLength, "Wrong chunk data %s", m.cwp);
-					//	if (validLength) {
-					//		//m.blockBuffer[] = blockData.blocks;
-					//	}
-					//}
-					//else
-					//	blockData.blocks = null;
-
-					snapshots[i] = BlockDataSnapshot(blockData, timestamp);
-					++i;
+					if (compressedData.uniform)
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, compressedData.uniformType));
+					else {
+						BlockId[] blocks = decompress(compressedData.blocks, compressBuffer);
+						blocks = blocks.dup;
+						ushort dataLength = cast(ushort)blocks.length;
+						ubyte* data = cast(ubyte*)blocks.ptr;
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data));
+					}
 				}
-
-				auto res = new SnapshotLoadedMessage(m.cwp, snapshots, true);
-				mainTid.send(cast(immutable(SnapshotLoadedMessage)*)res);
+				loadResQueue.endPush();
+				// if (cborData.length > 0) error; TODO
 			}
 			else doGen = true;
-		}}
+		}
 		catch(Exception e) {
-			infof("storage exception %s regenerating %s", e.to!string, m.cwp);
+			infof("storage exception %s regenerating %s", e.to!string, ChunkWorldPos(cwp));
 			doGen = true;
 		}
-		if (doGen) m.genWorker.send(message);
+		if (doGen) {
+			loadResQueue.startPush();
+			loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)1, cast(uint)true));
+			loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, 0, 0, 0, 0));
+			loadResQueue.endPush();
+			//genWorker.send(message); TODO gen
+		}
 		endTaskTiming();
+		version(DBG_OUT)infof("task load %s", ChunkWorldPos(cwp));
 	}
 
-	bool isRunning = true;
-	while (isRunning)
+	MonoTime frameStart = MonoTime.currTime;
+	size_t prevReceived = size_t.max;
+	while (*atomicLoad(workerRunning))
 	{
-		receive(
-			(immutable(LoadSnapshotMessage)* message) {
-				readChunk(message);
-			},
-			(immutable(SaveSnapshotMessage)* message) {
-				doWrite(message);
-			},
-			(immutable IoHandler h) {
-				h(worldDb);
-			},
-			(Variant v) {
-				isRunning = false;
-			}
-		);
+		while(!loadTaskQueue.empty)
+		{
+			readChunk();
+			++numReceived;
+		}
+
+		while(!saveTaskQueue.empty)
+		{
+			writeChunk();
+			++numReceived;
+		}
+		if (prevReceived != numReceived)
+			version(DBG_OUT)infof("Storage worker running %s %s", numReceived, *atomicLoad(workerRunning));
+		prevReceived = numReceived;
+
+		auto now = MonoTime.currTime;
+		auto dur = now - frameStart;
+		if (dur > 3.seconds) {
+			infof("Storage update");
+			frameStart = now;
+		}
 	}
 	}
 	catch(Throwable t)
@@ -151,4 +188,6 @@ void storageWorkerThread(Tid mainTid, immutable WorldDb _worldDb)
 		infof("%s from storage worker", t.to!string);
 		throw t;
 	}
+	version(DBG_OUT)infof("Storage worker stopped (%s, %s)", numReceived, *atomicLoad(workerRunning));
+	atomicStore!(MemoryOrder.rel)(*workerStopped, true);
 }
