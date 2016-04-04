@@ -59,6 +59,15 @@ enum JobState
 	run
 }
 
+enum Compiler
+{
+	dmd,
+	ldc,
+	gdc
+}
+
+string[] compilerExeNames = ["dmd", "ldc2", "gdc"];
+
 struct JobParams
 {
 	string pluginPack = "default";
@@ -69,6 +78,7 @@ struct JobParams
 	Flag!"nodeps" nodeps = Yes.nodeps;
 	Flag!"force" force = No.force;
 	Flag!"release" release = No.release;
+	Compiler compiler;
 	JobType jobType;
 }
 
@@ -157,6 +167,7 @@ struct Launcher
 		string workDir;
 		if (job.jobState == JobState.compile) {
 			command = makeCompileCommand(job.params);
+			writeln(command);
 			workDir = "";
 		}
 		else if (job.jobState == JobState.run) {
@@ -224,7 +235,7 @@ struct Launcher
 		jobs.each!(j => j.needsClose = false);
 	}
 
-	void setRootPath(string pluginFolder, string pluginPackFolder)
+	void setRootPath(string pluginFolder, string pluginPackFolder, string toolFolder)
 	{
 		pluginFolderPath = pluginFolder;
 		pluginPackFolderPath = pluginPackFolder;
@@ -293,7 +304,8 @@ string makeCompileCommand(JobParams params)
 	immutable deps = params.nodeps ? ` --nodeps` : ``;
 	immutable doForce = params.force ? ` --force` : ``;
 	immutable release = params.release ? `--build=release` : `--build=debug`;
-	return format("dub build -q %s %s%s%s %s\0", arch, conf, deps, doForce, release);
+	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
+	return format("dub build -q %s %s %s%s%s %s\0", arch, compiler, conf, deps, doForce, release);
 }
 
 string makeRunCommand(JobParams params)

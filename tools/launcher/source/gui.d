@@ -66,6 +66,7 @@ struct LauncherGui
 
 	string pluginFolder = `./plugins`;
 	string pluginPackFolder = `./pluginpacks`;
+	string toolFolder = `./tools`;
 	ItemList!(PluginInfo*) plugins;
 
 	void init()
@@ -133,7 +134,7 @@ struct LauncherGui
 	void refresh()
 	{
 		launcher.clear();
-		launcher.setRootPath(pluginFolder, pluginPackFolder);
+		launcher.setRootPath(pluginFolder, pluginPackFolder, toolFolder);
 		launcher.readPlugins();
 		launcher.readPluginPacks();
 		launcher.readServers();
@@ -330,7 +331,7 @@ struct PlayMenu
 		// ------------------------ PLUGINS ------------------------------------
 		if (pluginPacks.hasSelected)
 		{
-			igBeginChild("pack's plugins", ImVec2(250, -igGetItemsLineHeightWithSpacing()), true);
+			igBeginChild("pack's plugins", ImVec2(220, -igGetItemsLineHeightWithSpacing()), true);
 				foreach(int i, plugin; pluginPacks.selected.plugins)
 				{
 					igPushIdInt(cast(int)i);
@@ -391,8 +392,13 @@ void startButtons(Launcher* launcher, string pack)
 	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
 	igCheckbox("release", cast(bool*)&params.release); igSameLine();
 
-	static int curJobType = 0;
-	withWidth!(100, igCombo2)("##job type", &curJobType, "Run\0Build\0Build & Run\0\0", 3);
+	static int curCompiler = 0;
+	withWidth!(40, igCombo2)("##compiler", &curCompiler, "dmd\0ldc\0\0", 2);
+	igSameLine();
+	params.compiler = cast(Compiler)curCompiler;
+
+	static int curJobType = 2;
+	withWidth!(90, igCombo2)("##job type", &curJobType, "Run\0Build\0Build & Run\0\0", 3);
 	igSameLine();
 	params.jobType = cast(JobType)curJobType;
 
