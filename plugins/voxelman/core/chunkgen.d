@@ -20,6 +20,7 @@ import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
 import voxelman.storage.coordinates;
+import core.thread;
 
 
 alias Generator = Generator2d;
@@ -45,72 +46,78 @@ struct LoadSnapshotMessage {
 	Tid genWorker;
 }
 
-void chunkGenWorkerThread(Tid mainTid)
+version = DBG_OUT;
+void chunkGenWorkerThread(shared(Worker)* workerInfo)
 {
+	import std.array : uninitializedArray;
+
 	try
 	{
-		shared(bool)* isRunning;
-		bool isRunningLocal = true;
-		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
-
-		while (atomicLoad(*isRunning) && isRunningLocal)
+		void genChunk()
 		{
-			receive(
-				(immutable(LoadSnapshotMessage)* message){
-					chunkGenWorker(cast(LoadSnapshotMessage*)message, mainTid);
-				},
-				(Variant v){isRunningLocal = false;}
-			);
+			ulong _cwp = workerInfo.taskQueue.popItem!ulong();
+			ChunkWorldPos cwp = ChunkWorldPos(_cwp);
+			int wx = cwp.x, wy = cwp.y, wz = cwp.z;
+
+			Generator generator = Generator(cwp.ivector * CHUNK_SIZE);
+			generator.genPerChunkData();
+
+			bool uniform = true;
+			BlockId[] blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
+
+			blocks[0] = generator.generateBlock(0, 0, 0);
+			BlockId uniformBlockId = blocks[0];
+
+			int bx, by, bz;
+			foreach(i; 1..CHUNK_SIZE_CUBE)
+			{
+				bx = i & CHUNK_SIZE_BITS;
+				by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+				bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+
+				// Actual block gen
+				blocks[i] = generator.generateBlock(bx, by, bz);
+
+				if(uniform && blocks[i] != uniformBlockId)
+				{
+					uniform = false;
+				}
+			}
+
+			enum layerId = 0;
+			enum timestamp = 0;
+			enum numLayers = 1;
+			enum saved = false;
+
+			workerInfo.resultQueue.startPush();
+			workerInfo.resultQueue.pushItem(ChunkHeaderItem(cwp, numLayers, saved));
+			if(uniform)
+				workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId));
+			else
+			{
+				ushort dataLength = cast(ushort)blocks.length;
+				assert(dataLength == CHUNK_SIZE_CUBE);
+				ubyte* data = cast(ubyte*)blocks.ptr;
+				workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data));
+			}
+			workerInfo.resultQueue.endPush();
+		}
+
+		while (workerInfo.isRunning)
+		{
+			while(!workerInfo.taskQueue.empty)
+			{
+				genChunk();
+			}
+			Thread.sleep(50.usecs);
 		}
 	}
 	catch(Throwable t)
 	{
-		error(t.to!string, " from gen worker");
+		infof("%s from gen worker", t.to!string);
 		throw t;
 	}
-}
-
-// Gen single chunk
-void chunkGenWorker(LoadSnapshotMessage* message, Tid mainThread)
-{
-	ChunkWorldPos cwp = message.cwp;
-	int wx = cwp.x, wy = cwp.y, wz = cwp.z;
-
-	BlockData bd;
-	bd.blocks.length = CHUNK_SIZE_CUBE;
-	bd.convertToArray();
-	bd.uniform = false;
-	bool uniform = true;
-
-	Generator generator = Generator(cwp.ivector * CHUNK_SIZE);
-	generator.genPerChunkData();
-
-	bd.blocks[0] = generator.generateBlock(0, 0, 0);
-	BlockId type = bd.blocks[0];
-
-	int bx, by, bz;
-	foreach(i; 1..CHUNK_SIZE_CUBE)
-	{
-		bx = i & CHUNK_SIZE_BITS;
-		by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-		bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-
-		// Actual block gen
-		bd.blocks[i] = generator.generateBlock(bx, by, bz);
-
-		if(uniform && bd.blocks[i] != type)
-		{
-			uniform = false;
-		}
-	}
-
-	bd.uniform = uniform;
-	if(uniform) {
-		bd.uniformType = type;
-	}
-
-	auto res = new SnapshotLoadedMessage(message.cwp, [BlockDataSnapshot(bd)], false);
-	mainThread.send(cast(immutable(SnapshotLoadedMessage)*)res);
+	version(DBG_OUT)infof("Gen worker stopped");
 }
 
 struct Generator2d3d

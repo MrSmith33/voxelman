@@ -46,11 +46,12 @@ shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)
 	}
 
 	void pushSingleItem(I)(I item) shared {
-		while (full)
+		enum itemSize = I.sizeof / T.sizeof;
+		while (space < itemSize)
 			yield();
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_wpos);
 		pushItem(item);
-		atomicStore!(MemoryOrder.rel)(_wpos, pos + 1);
+		atomicStore!(MemoryOrder.rel)(_wpos, pos + itemSize);
 	}
 
 	I popItem(I)() shared {

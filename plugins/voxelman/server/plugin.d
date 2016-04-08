@@ -95,7 +95,7 @@ public:
 			evDispatcher.postEvent(PreUpdateEvent(delta));
 			evDispatcher.postEvent(UpdateEvent(delta));
 			evDispatcher.postEvent(PostUpdateEvent(delta));
-			trySave(MonoTime.currTime);
+			autosave(MonoTime.currTime);
 
 			auto collectStartTime = MonoTime.currTime;
 			GC.collect();
@@ -116,7 +116,7 @@ public:
 		infof("[Stopped]");
 	}
 
-	void trySave(MonoTime now)
+	void autosave(MonoTime now)
 	{
 		if (isAutosaveEnabled && now - lastSaveTime >= autosavePeriod) {
 			lastSaveTime = now;

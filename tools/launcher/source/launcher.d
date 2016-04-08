@@ -316,7 +316,7 @@ string makeRunCommand(JobParams params)
 
 void sendCommand(Job* job, string command)
 {
-	if (job.jobState != JobState.run) return;
+	if (!job.isRunning) return;
 	job.pipes.stdin.rawWrite(command);
 	job.pipes.stdin.rawWrite("\n");
 }

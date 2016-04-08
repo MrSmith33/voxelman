@@ -225,13 +225,13 @@ final class ChunkManager {
 	}
 
 	/// Internal. Called by code which loads chunks from storage.
-	void onSnapshotLoaded() {
-		assert(chunkProvider.loadResQueue.length >= 2);
-		ChunkHeaderItem header = chunkProvider.loadResQueue.popItem!ChunkHeaderItem();
+	void onSnapshotLoaded(shared(MessageQueue)* queue, bool generated) {
+		assert(queue.length >= 2);
+		ChunkHeaderItem header = queue.popItem!ChunkHeaderItem();
 		version(DBG_OUT)infof("res loaded %s", header.cwp);
-		assert(chunkProvider.loadResQueue.length >= ChunkLayerItem.sizeof/8 * header.numLayers);
+		assert(queue.length >= ChunkLayerItem.sizeof/8 * header.numLayers);
 		foreach(_; 0..header.numLayers) {
-			ChunkLayerItem layer = chunkProvider.loadResQueue.popItem!ChunkLayerItem();
+			ChunkLayerItem layer = queue.popItem!ChunkLayerItem();
 			snapshots[layer.layerId][header.cwp] = ChunkLayerSnap(layer);
 		}
 
@@ -244,14 +244,14 @@ final class ChunkManager {
 			case added_loaded:
 				assert(false, "On loaded should not occur for already loaded chunk");
 			case removed_loading:
-				if (saved) {
-					chunkStates[cwp] = non_loaded;
-					clearChunkData(cwp);
-				} else {
+				if (generated) {
 					chunkStates[cwp] = added_loaded;
 					saveChunk(cwp);
 					addCurrentSnapshotUsers(cwp);
 					chunkStates[cwp] = removed_loaded_saving;
+				} else {
+					chunkStates[cwp] = non_loaded;
+					clearChunkData(cwp);
 				}
 				break;
 			case added_loading:

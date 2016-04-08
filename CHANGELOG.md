@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add lock-free work queue. Constant memory consumption. No allocations. Works faster.
+- Add multiple layers of data for chunks.
 - Add multiblock editing. Press and drag to select a box.
 - Add fps control in debug gui.
 - Add fog.
@@ -47,6 +49,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix commands in launcher when app is not running.
 - Fix chunk free list not working.
 - Fix app crash on Alt+PrintScreen.
 - Fix generated chunks not saved, but regenerated every time.

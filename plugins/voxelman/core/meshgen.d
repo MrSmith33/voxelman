@@ -114,6 +114,9 @@ body
 	// Offset to adjacent block
 	byte[3] offset;
 
+	if (!chunk.snapshot.blockData.uniform)
+		assert(chunk.snapshot.blockData.blocks.length == CHUNK_SIZE_CUBE);
+
 	if (chunk.snapshot.blockData.uniform)
 	{
 		BlockId id = chunk.snapshot.blockData.uniformType;

@@ -27,19 +27,17 @@ import voxelman.utils.compression;
 //version = DBG_OUT;
 void storageWorker(
 			immutable WorldDb _worldDb,
-			//uint numGenWorkers,
 			shared bool* workerRunning,
 			shared bool* workerStopped,
 			shared MessageQueue* loadResQueue,
 			shared MessageQueue* saveResQueue,
 			shared MessageQueue* loadTaskQueue,
 			shared MessageQueue* saveTaskQueue,
-			//shared MessageQueue*[] genResQueue,
+			shared Worker[] genWorkers,
 			)
 {
-	uint numReceived;
 	version(DBG_OUT)infof("Storage worker started");
-
+	infof("genWorkers.length %s", genWorkers.length);
 	try
 	{
 	ubyte[] compressBuffer = new ubyte[](4096*16);
@@ -98,6 +96,25 @@ void storageWorker(
 		version(DBG_OUT)infof("task save %s", header.cwp);
 	}
 
+	size_t _nextWorker;
+	immutable size_t numWorkers = genWorkers.length;
+	assert(numWorkers > 0);
+	static struct QLen {size_t i; size_t len;}
+	QLen[] queueLengths;
+	queueLengths.length = numWorkers;
+	shared(MessageQueue)* nextGenQueue()
+	{
+		import std.algorithm : sort;
+		foreach(i; 0..numWorkers)
+		{
+			queueLengths[i].i = i;
+			queueLengths[i].len = genWorkers[i].taskQueue.length;
+		}
+		sort!((a,b) => a.len < b.len)(queueLengths);// balance worker queues
+		//_nextWorker = (_nextWorker + 1) % numWorkers;
+		return &genWorkers[queueLengths[0].i].taskQueue;
+	}
+
 	//BlockData {
 	//	BlockId[] blocks;
 	//	BlockId uniformType = 0;
@@ -146,16 +163,13 @@ void storageWorker(
 			doGen = true;
 		}
 		if (doGen) {
-			loadResQueue.startPush();
-			loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)1, cast(uint)true));
-			loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, 0, 0, 0, 0));
-			loadResQueue.endPush();
-			//genWorker.send(message); TODO gen
+			nextGenQueue().pushSingleItem!ulong(cwp);
 		}
 		endTaskTiming();
 		version(DBG_OUT)infof("task load %s", ChunkWorldPos(cwp));
 	}
 
+	uint numReceived;
 	MonoTime frameStart = MonoTime.currTime;
 	size_t prevReceived = size_t.max;
 	while (*atomicLoad(workerRunning))

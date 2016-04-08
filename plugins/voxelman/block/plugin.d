@@ -150,7 +150,7 @@ final class BlockPluginServer : IPlugin
 		auto sink = wdb.tempBuffer;
 		size_t size = 0;
 		auto blockInfos = bm.blockMapping.infoArray;
-		size = encodeCborArrayHead(sink[], blockInfos.length);
+		size = encodeCborArrayHeader(sink[], blockInfos.length);
 		foreach(info; blockInfos)
 			size += encodeCbor(sink[size..$], info.name);
 		wdb.savePerWorldData(blockMappingKey, sink[0..size]);
