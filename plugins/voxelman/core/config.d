@@ -28,7 +28,7 @@ enum MAX_VIEW_RADIUS = 100;
 enum WORLD_SIZE = 12; // chunks
 enum BOUND_WORLD = false;
 
-enum START_POS = vec3(80, -40, 0);
+enum START_POS = vec3(80, 10, 0);
 
 enum ENABLE_RLE_PACKET_COMPRESSION = false;
 

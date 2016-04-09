@@ -8,6 +8,7 @@ module voxelman.storage.chunk;
 import std.experimental.logger;
 import std.array : uninitializedArray;
 import std.string : format;
+import std.typecons : Nullable;
 
 import dlib.math.vector;
 
@@ -17,6 +18,7 @@ import voxelman.core.chunkmesh;
 import voxelman.storage.coordinates;
 import voxelman.storage.region;
 import voxelman.storage.utils;
+import voxelman.utils.compression;
 
 struct ChunkHeaderItem {
 	ChunkWorldPos cwp;
@@ -105,7 +107,7 @@ enum StorageType : ubyte
 	uniform,
 	//linearMap,
 	//hashMap,
-	//compressedArray,
+	compressedArray,
 	fullArray,
 }
 
@@ -137,21 +139,30 @@ struct ChunkLayerSnap
 		dataLength = l.dataLength;
 		uniformData = l.uniformData;
 	}
-	T[] getArray(T)() {
-		assert(type != StorageType.uniform);
-		return (cast(T*)dataPtr)[0..dataLength];
-	}
-	T getUniform(T)() {
-		return cast(T)uniformData;
-	}
 	BlockId getBlockType(BlockChunkIndex index)
 	{
 		if (type == StorageType.uniform) return cast(BlockId)uniformData;
-		return getArray!BlockId[index];
+		return getArray!BlockId(this)[index];
 	}
 }
 
-BlockData toBlockData(ChunkLayerSnap layer) {
+enum isSomeLayer(Layer) = is(Layer == ChunkLayerSnap) || is(Layer == ChunkLayerItem) || is(Layer == Nullable!ChunkLayerSnap);
+
+T[] getArray(T, Layer)(Layer layer)
+	if (isSomeLayer!Layer)
+{
+	assert(layer.type != StorageType.uniform);
+	return (cast(T*)layer.dataPtr)[0..layer.dataLength];
+}
+T getUniform(T, Layer)(Layer layer)
+	if (isSomeLayer!Layer)
+{
+	return cast(T)layer.uniformData;
+}
+
+BlockData toBlockData(Layer)(Layer layer)
+	if (isSomeLayer!Layer)
+{
 	BlockData res;
 	res.uniform = layer.type == StorageType.uniform;
 	if (!res.uniform)
@@ -166,8 +177,17 @@ void copyToBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
 	assert(outBuffer.length == CHUNK_SIZE_CUBE);
 	if (snap.type == StorageType.uniform)
 		outBuffer[] = cast(BlockId)snap.uniformData;
-	else
+	else if (snap.type == StorageType.fullArray)
 		outBuffer[] = snap.getArray!BlockId;
+	else if (snap.type == StorageType.compressedArray)
+		uncompressIntoBuffer(snap, outBuffer);
+}
+
+void uncompressIntoBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
+{
+	assert(outBuffer.length == CHUNK_SIZE_CUBE);
+	BlockId[] blocks = decompress(snap.getArray!BlockId, outBuffer);
+	assert(blocks.length == CHUNK_SIZE_CUBE);
 }
 
 // Stores blocks of the chunk.

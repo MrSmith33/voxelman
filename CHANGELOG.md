@@ -32,6 +32,9 @@
 - Add current frame number to update events.
 
 ### Changed
+- Store data in compressed form in memory of server.
+- Compress blocks on chunk gen.
+- Use new data layout for saves.
 - Make chat transparent.
 - Move ClientWorld to voxelman/world/clientworld.d.
 - Use journal_mode = WAL in sqlite.

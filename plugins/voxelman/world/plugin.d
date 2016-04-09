@@ -128,6 +128,7 @@ struct WorldInfo
 	//block mapping
 }
 
+//version = DBG_COMPR;
 final class ServerWorld : IPlugin
 {
 private:
@@ -294,7 +295,7 @@ public:
 	{
 		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 		if (!snap.isNull) {
-			sendChunk(clientId, cwp, snap.toBlockData()); //TODO
+			sendChunk(clientId, cwp, snap);
 		}
 	}
 
@@ -307,16 +308,25 @@ public:
 	{
 		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER); //TODO send other layers
 		if (!snap.isNull) {
-			sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap.toBlockData());
+			sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap);
 		}
 	}
 
-	private void sendChunk(C)(C clients, ChunkWorldPos cwp, BlockData bd)
+	private void sendChunk(C)(C clients, ChunkWorldPos cwp, ChunkLayerSnap layer)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
-		import voxelman.utils.compression;
-		bd.validate();
-		if (!bd.uniform) bd.blocks = compress(bd.blocks, buf);
+
+		version(DBG_COMPR)if (layer.type != StorageType.uniform)
+		{
+			ubyte[] compactBlocks = layer.getArray!ubyte;
+			infof("Send %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
+		}
+		BlockData bd = layer.toBlockData();
+		if (layer.type == StorageType.fullArray)
+		{
+			ubyte[] compactBlocks = compress(cast(ubyte[])layer.getArray!BlockId, buf);
+			bd.blocks = compactBlocks;
+		}
 		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, bd));
 	}
 

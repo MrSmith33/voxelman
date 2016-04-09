@@ -40,7 +40,7 @@ final class WorldDb
 	{
 		buffer = uninitializedArray!(ubyte[])(4096*32);
 
-		auto db = Database(filename);
+		db = Database(filename);
 
 		static if (USE_WAL) {
 			db.execute("PRAGMA synchronous = normal");
@@ -129,7 +129,7 @@ final class WorldDb
 
 	//ubyte[] loadPerDimentionData(string key, int dim)
 	import voxelman.core.config;
-	void savePerChunkData(ulong cwp, short dim, ubyte[] data)
+	void savePerChunkData(ulong cwp, ubyte[] data)
 	{
 		perChunkInsertStmt.inject(cast(long)cwp, data);
 	}

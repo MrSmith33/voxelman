@@ -25,6 +25,7 @@ import voxelman.utils.compression;
 
 
 //version = DBG_OUT;
+//version = DBG_COMPR;
 void storageWorker(
 			immutable WorldDb _worldDb,
 			shared bool* workerRunning,
@@ -62,35 +63,52 @@ void storageWorker(
 			infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
 	}
 
-	void writeChunk() {
+	void writeChunk()
+	{
 		startTaskTiming("WR");
 
 		ChunkHeaderItem header = saveTaskQueue.popItem!ChunkHeaderItem();
 
 		saveResQueue.startPush();
 		saveResQueue.pushItem(header);
-		try {
+		try
+		{
 			size_t encodedSize = encodeCbor(buffer[], header.numLayers);
 
 			// TODO encode layerId
-			foreach(_; 0..header.numLayers) {
+			foreach(_; 0..header.numLayers)
+			{
 				ChunkLayerItem layer = saveTaskQueue.popItem!ChunkLayerItem();
 
 				encodedSize += encodeCbor(buffer[encodedSize..$], layer.timestamp);
-				BlockData compressedData;
-				compressedData.uniform = layer.type == StorageType.uniform;
-				if (!compressedData.uniform) {
-					compressedData.blocks = (cast(BlockId*)layer.dataPtr)[0..layer.dataLength];
-					compressedData.blocks = compress(compressedData.blocks, compressBuffer);
-				} else
-					compressedData.uniformType = cast(BlockId)layer.uniformData;
-				encodedSize += encodeCborArray(buffer[encodedSize..$], compressedData);
+				encodedSize += encodeCbor(buffer[encodedSize..$], layer.layerId);
+				if (layer.type == StorageType.uniform)
+				{
+					encodedSize += encodeCbor(buffer[encodedSize..$], layer.type);
+					encodedSize += encodeCbor(buffer[encodedSize..$], cast(BlockId)layer.uniformData);
+				}
+				else if (layer.type == StorageType.fullArray)
+				{
+					encodedSize += encodeCbor(buffer[encodedSize..$], StorageType.compressedArray);
+					BlockId[] blocks = layer.getArray!BlockId;
+					ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
+					encodedSize += encodeCbor(buffer[encodedSize..$], compactBlocks);
+					version(DBG_COMPR)infof("Store1 %s %s %s\n(%(%02x%))", header.cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
+				}
+				else if (layer.type == StorageType.compressedArray)
+				{
+					encodedSize += encodeCbor(buffer[encodedSize..$], layer.type);
+					ubyte[] compactBlocks = layer.getArray!ubyte;
+					encodedSize += encodeCbor(buffer[encodedSize..$], compactBlocks);
+					version(DBG_COMPR)infof("Store2 %s %s %s\n(%(%02x%))", header.cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
+				}
 
 				saveResQueue.pushItem(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
 			}
 
-			worldDb.savePerChunkData(header.cwp.asUlong, 0, buffer[0..encodedSize]);
-		} catch(Exception e) errorf("storage exception %s", e.to!string);
+			worldDb.savePerChunkData(header.cwp.asUlong, buffer[0..encodedSize]);
+		}
+		catch(Exception e) errorf("storage exception %s", e.to!string);
 		saveResQueue.endPush();
 		endTaskTiming();
 		version(DBG_OUT)infof("task save %s", header.cwp);
@@ -120,7 +138,8 @@ void storageWorker(
 	//	BlockId uniformType = 0;
 	//	bool uniform = true;
 	//}
-	void readChunk() {
+	void readChunk()
+	{
 		startTaskTiming("RD");
 		bool doGen;
 
@@ -139,18 +158,32 @@ void storageWorker(
 				loadResQueue.startPush();
 				loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, cast(uint)saved));
 				// TODO decode layerId
-				foreach(ubyte layerId; 0..numLayers) {
+				foreach(_; 0..numLayers)
+				{
 					auto timestamp = decodeCborSingle!TimestampType(cborData);
-					BlockData compressedData = decodeCborSingle!BlockData(cborData);
+					auto layerId = decodeCborSingle!ubyte(cborData);
+					auto type = decodeCborSingle!StorageType(cborData);
 
-					if (compressedData.uniform)
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, compressedData.uniformType));
-					else {
-						BlockId[] blocks = decompress(compressedData.blocks, compressBuffer);
-						blocks = blocks.dup;
-						ushort dataLength = cast(ushort)blocks.length;
-						ubyte* data = cast(ubyte*)blocks.ptr;
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data));
+					if (type == StorageType.uniform)
+					{
+						BlockId uniformData = decodeCborSingle!BlockId(cborData);
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData));
+					}
+					else
+					{
+						import core.memory : GC;
+						assert(type == StorageType.compressedArray);
+						ubyte[] compactBlocks = decodeCborSingle!(ubyte[])(cborData);
+						compactBlocks = compactBlocks.dup;
+						ushort dataLength = cast(ushort)compactBlocks.length;
+						ubyte* data = cast(ubyte*)compactBlocks.ptr;
+
+						// Add root to data.
+						// Data can be collected by GC if no-one is referencing it.
+						// It is needed to pass array trough shared queue.
+						GC.addRoot(data); // TODO remove when moved to non-GC allocator
+						version(DBG_COMPR)infof("Load %s L %s C (%(%02x%))", ChunkWorldPos(cwp), compactBlocks.length, cast(ubyte[])compactBlocks);
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data));
 					}
 				}
 				loadResQueue.endPush();

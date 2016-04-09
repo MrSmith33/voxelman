@@ -51,6 +51,11 @@ struct ChunkFreeList {
 
 	void deallocate(BlockId[] blocks) {
 		if (blocks is null) return;
+		if (blocks.length != CHUNK_SIZE_CUBE)
+		{
+			destroy(blocks);
+			return;
+		}
 		if (numItems == maxFreeItems) {
 			delete(blocks);
 			return;
@@ -62,6 +67,7 @@ struct ChunkFreeList {
 
 enum FIRST_LAYER = 0;
 //version = DBG_OUT;
+//version = DBG_COMPR;
 
 final class ChunkManager {
 	void delegate(ChunkWorldPos)[] onChunkAddedHandlers;
@@ -233,6 +239,15 @@ final class ChunkManager {
 		foreach(_; 0..header.numLayers) {
 			ChunkLayerItem layer = queue.popItem!ChunkLayerItem();
 			snapshots[layer.layerId][header.cwp] = ChunkLayerSnap(layer);
+			version(DBG_COMPR)if (layer.type == StorageType.compressedArray)
+				infof("CM Loaded %s %s %s\n(%(%02x%))", header.cwp, layer.dataPtr, layer.dataLength, layer.getArray!ubyte);
+			if (layer.type != StorageType.uniform)
+			{
+				// Remove root, added on chunk load and gen.
+				// Data can be collected by GC if no-one is referencing it.
+				import core.memory : GC;
+				GC.removeRoot(layer.dataPtr); // TODO remove when moved to non-GC allocator
+			}
 		}
 
 		bool saved = !!header.metadata&1;

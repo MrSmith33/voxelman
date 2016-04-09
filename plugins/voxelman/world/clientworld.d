@@ -34,6 +34,7 @@ import voxelman.storage.volume;
 import voxelman.storage.worldaccess;
 
 
+//version = DBG_COMPR;
 final class ClientWorld : IPlugin
 {
 	import voxelman.graphics.plugin;
@@ -146,8 +147,19 @@ public:
 		//	packet.chunkPos, packet.blockData.blocks.length);
 		if (!packet.blockData.uniform) {
 			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
-			packet.blockData.blocks = decompress(packet.blockData.blocks, blocks);
-			packet.blockData.validate();
+			version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, packet.blockData.blocks.length, cast(ubyte[])packet.blockData.blocks);
+			auto decompressed = decompress(packet.blockData.blocks, blocks);
+			if (decompressed is null)
+			{
+				auto b = packet.blockData.blocks;
+				infof("Fail %s %s\n(%(%02x%))", packet.chunkPos, b.length, cast(ubyte[])b);
+				return;
+			}
+			else
+			{
+				packet.blockData.blocks = decompressed;
+				packet.blockData.validate();
+			}
 		}
 
 		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
