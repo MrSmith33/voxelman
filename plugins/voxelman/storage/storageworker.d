@@ -82,6 +82,7 @@ void storageWorker(
 
 				encodedSize += encodeCbor(buffer[encodedSize..$], layer.timestamp);
 				encodedSize += encodeCbor(buffer[encodedSize..$], layer.layerId);
+				encodedSize += encodeCbor(buffer[encodedSize..$], layer.metadata);
 				if (layer.type == StorageType.uniform)
 				{
 					encodedSize += encodeCbor(buffer[encodedSize..$], layer.type);
@@ -162,12 +163,13 @@ void storageWorker(
 				{
 					auto timestamp = decodeCborSingle!TimestampType(cborData);
 					auto layerId = decodeCborSingle!ubyte(cborData);
+					auto metadata = decodeCborSingle!ushort(cborData);
 					auto type = decodeCborSingle!StorageType(cborData);
 
 					if (type == StorageType.uniform)
 					{
 						BlockId uniformData = decodeCborSingle!BlockId(cborData);
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData));
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData, metadata));
 					}
 					else
 					{
@@ -183,7 +185,7 @@ void storageWorker(
 						// It is needed to pass array trough shared queue.
 						GC.addRoot(data); // TODO remove when moved to non-GC allocator
 						version(DBG_COMPR)infof("Load %s L %s C (%(%02x%))", ChunkWorldPos(cwp), compactBlocks.length, cast(ubyte[])compactBlocks);
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data));
+						loadResQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
 					}
 				}
 				loadResQueue.endPush();
@@ -225,7 +227,7 @@ void storageWorker(
 		auto now = MonoTime.currTime;
 		auto dur = now - frameStart;
 		if (dur > 3.seconds) {
-			infof("Storage update");
+			//infof("Storage update");
 			frameStart = now;
 		}
 	}

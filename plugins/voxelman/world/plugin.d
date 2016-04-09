@@ -193,9 +193,6 @@ public:
 
 		chunkManager.onChunkLoadedHandler = &onChunkLoaded;
 		chunkManager.chunkChangesHandlers ~= &sendChanges;
-
-		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint);
-		worldDb = null;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -212,6 +209,9 @@ public:
 		import voxelman.core.packets : PlaceBlockPacket;
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
+
+		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
+		worldDb = null;
 	}
 
 	void sendTask(IoHandler handler)

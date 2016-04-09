@@ -23,7 +23,7 @@ import voxelman.utils.compression;
 struct ChunkHeaderItem {
 	ChunkWorldPos cwp;
 	uint numLayers;
-	uint metadata;
+	uint metadata; // for task purposes
 }
 static assert(ChunkHeaderItem.sizeof == 16);
 
@@ -44,11 +44,15 @@ struct ChunkLayerItem
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ulong _uniformData) {
-		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData;
+	ushort metadata;
+	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ubyte* _dataPtr) {
-		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr;
+	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
+		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
+	}
+	this(T)(StorageType _type, ubyte _layerId, uint _timestamp, T[] _array, ushort _metadata = 0) {
+		type = _type; layerId = _layerId; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerSnap l, ubyte _layerId) {
 		type = l.type;
@@ -56,9 +60,10 @@ struct ChunkLayerItem
 		dataLength = l.dataLength;
 		timestamp = l.timestamp;
 		uniformData = l.uniformData;
+		metadata = l.metadata;
 	}
 }
-static assert(ChunkLayerItem.sizeof == 16);
+static assert(ChunkLayerItem.sizeof == 24);
 
 /// Container for chunk updates
 /// If blockChanges is null uses newBlockData
@@ -114,23 +119,23 @@ enum StorageType : ubyte
 /// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
 struct ChunkLayerSnap
 {
-	uint numUsers;
-	uint timestamp;
-	StorageType type;
-	//ubyte nextLayerId;
-	ushort dataLength; // unused when uniform
 	union {
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	this(StorageType _type, ushort _dataLength, uint _timestamp, ulong _uniformData) {
-		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData;
+	ushort dataLength; // unused when uniform
+	ushort numUsers;
+	ushort metadata;
+	StorageType type;
+	uint timestamp;
+	this(StorageType _type, ushort _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, ushort _dataLength, uint _timestamp, void* _dataPtr) {
-		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr;
+	this(StorageType _type, ushort _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
+		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
-	this(T)(StorageType _type, uint _timestamp, T[] _array) {
-		type = _type; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr;
+	this(T)(StorageType _type, uint _timestamp, T[] _array, ushort _metadata = 0) {
+		type = _type; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerItem l) {
 		numUsers = 0;
@@ -138,6 +143,7 @@ struct ChunkLayerSnap
 		type = l.type;
 		dataLength = l.dataLength;
 		uniformData = l.uniformData;
+		metadata = l.metadata;
 	}
 	BlockId getBlockType(BlockChunkIndex index)
 	{
@@ -165,6 +171,7 @@ BlockData toBlockData(Layer)(Layer layer)
 {
 	BlockData res;
 	res.uniform = layer.type == StorageType.uniform;
+	res.metadata = layer.metadata;
 	if (!res.uniform)
 		res.blocks = layer.getArray!BlockId();
 	else
@@ -208,6 +215,8 @@ struct BlockData
 
 	/// is chunk filled with block of the same type
 	bool uniform = true;
+
+	ushort metadata;
 
 	void convertToArray()
 	{

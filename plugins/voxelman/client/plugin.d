@@ -186,7 +186,8 @@ public:
 		with(clientWorld.chunkMan) {
 			igTextf("Chunks to remove: %s", removeQueue.length);
 			igTextf("Chunks to mesh: %s", chunkMeshMan.numMeshChunkTasks);
-			igTextf("Meshed/Meshes %s/%s", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes);
+			float percent = chunkMeshMan.totalMeshedChunks > 0 ? chunkMeshMan.totalMeshes / chunkMeshMan.totalMeshedChunks : 0.0;
+			igTextf("Meshed/Meshes %s/%s %s%%", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes, percent);
 			igTextf("View radius: %s", viewRadius);
 		}
 		igEnd();

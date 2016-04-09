@@ -31,9 +31,19 @@ class ConciseLogger : FileLogger
 
 void setupLogger(string filename)
 {
-	auto file = File(filename, "w");
+	globalLogLevel = LogLevel.trace;
+
 	auto logger = new MultiLogger;
-	logger.insertLogger("fileLogger", new FileLogger(file));
-	logger.insertLogger("stdoutLogger", new ConciseLogger(stdout));
+
+	auto file = File(filename, "w");
+	auto fileLogger = new FileLogger(file);
+	fileLogger.logLevel = LogLevel.trace;
+
+	auto conciseLogger = new ConciseLogger(stdout);
+	fileLogger.logLevel = LogLevel.info;
+
+	logger.insertLogger("fileLogger", fileLogger);
+	logger.insertLogger("stdoutLogger", conciseLogger);
+
 	sharedLog = logger;
 }

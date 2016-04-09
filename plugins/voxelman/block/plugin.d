@@ -23,36 +23,6 @@ shared static this()
 	pluginRegistry.regServerPlugin(new BlockPluginServer);
 }
 
-
-alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
-alias Meshhandler = void function(ref Appender!(ubyte[]) output,
-	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
-
-struct BlockInfo
-{
-	string name;
-	Meshhandler meshHandler = &makeNullMesh;
-	ubyte[3] color;
-	bool isVisible = true;
-	bool isTransparent = false;
-	size_t id;
-}
-
-/// Returned when registering block.
-/// Use this to set block properties.
-struct BlockInfoSetter
-{
-	private Mapping!(BlockInfo)* mapping;
-	private size_t blockId;
-	private ref BlockInfo info() {return (*mapping)[blockId]; }
-
-	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
-	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
-	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
-	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
-	ref BlockInfoSetter isTransparent(bool val) { info.isTransparent = val; return this; }
-}
-
 final class BlockManager : IResourceManager
 {
 private:
@@ -62,8 +32,8 @@ public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
 	override void preInit()
 	{
-		regBlock("unknown").color(0,0,0).isVisible(false).isTransparent(false).meshHandler(&makeNullMesh);
-		regBlock("air").color(0,0,0).isVisible(false).isTransparent(true).meshHandler(&makeNullMesh);
+		regBlock("unknown").color(0,0,0).isVisible(false).isSolid(true).meshHandler(&makeNullMesh);
+		regBlock("air").color(0,0,0).isVisible(false).isSolid(false).meshHandler(&makeNullMesh);
 	}
 
 	BlockInfoSetter regBlock(string name) {

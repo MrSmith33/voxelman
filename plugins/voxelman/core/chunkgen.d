@@ -15,7 +15,7 @@ import core.exception : Throwable;
 import dlib.math.vector : ivec3;
 
 import anchovy.simplex;
-import voxelman.block.utils;
+import voxelman.block.utils : BlockInfo, calcChunkSideMetadata;
 import voxelman.core.config;
 import voxelman.storage.chunk;
 import voxelman.storage.chunkprovider;
@@ -49,7 +49,7 @@ struct LoadSnapshotMessage {
 
 version = DBG_OUT;
 //version = DBG_COMPR;
-void chunkGenWorkerThread(shared(Worker)* workerInfo)
+void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
 {
 	import std.array : uninitializedArray;
 
@@ -95,12 +95,15 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo)
 			workerInfo.resultQueue.pushItem(ChunkHeaderItem(cwp, numLayers));
 			if(uniform)
 			{
-				workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId));
+				ubyte metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
+				workerInfo.resultQueue.pushItem(
+					ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata));
 			}
 			else
 			{
 				import core.memory : GC;
 				//infof("%s L %s B (%(%02x%))", cwp, blocks.length, cast(ubyte[])blocks);
+				ubyte metadata = calcChunkSideMetadata(blocks[], blockInfos);
 				ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
 				//infof("%s L %s C (%(%02x%))", cwp, compactBlocks.length, cast(ubyte[])compactBlocks);
 
@@ -115,7 +118,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo)
 					// Data can be collected by GC if no-one is referencing it.
 					// It is needed to pass array trough shared queue.
 					GC.addRoot(data); // TODO remove when moved to non-GC allocator
-					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data));
+					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
 				}
 				else
 				{

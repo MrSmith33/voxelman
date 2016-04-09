@@ -11,6 +11,7 @@ import core.atomic;
 
 import dlib.math.vector;
 
+import voxelman.block.utils : BlockInfo;
 import voxelman.core.chunkgen;
 import voxelman.core.config;
 import voxelman.storage.chunk;
@@ -99,7 +100,7 @@ struct ChunkProvider
 		return space >= 0 ? space : 0;
 	}
 
-	void init(WorldDb worldDb, uint numGenWorkers)
+	void init(WorldDb worldDb, uint numGenWorkers, immutable(BlockInfo)[] blocks)
 	{
 		import std.algorithm.comparison : clamp;
 		numGenWorkers = clamp(numGenWorkers, 1, 16);
@@ -107,7 +108,7 @@ struct ChunkProvider
 		foreach(i; 0..numGenWorkers)
 		{
 			genWorkers[i].alloc();
-			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i]);
+			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], blocks);
 		}
 
 		loadResQueue.alloc();

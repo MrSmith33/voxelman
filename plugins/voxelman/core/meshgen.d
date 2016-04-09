@@ -81,32 +81,32 @@ body
 		return blocks[id].isVisible;
 	}
 
-	bool getTransparency(int tx, int ty, int tz)
+	bool isSolid(int tx, int ty, int tz)
 	{
 		ubyte x = cast(ubyte)tx;
 		ubyte y = cast(ubyte)ty;
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isTransparent;
+			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isSolid;
 		else if(tx == CHUNK_SIZE) // east
-			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].isTransparent;
+			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].isSolid;
 
 		if(ty == -1) // bottom
 		{
-			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isTransparent;
+			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isSolid;
 		}
 		else if(ty == CHUNK_SIZE) // top
 		{
-			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].isTransparent;
+			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].isSolid;
 		}
 
 		if(tz == -1) // north
-			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isTransparent;
+			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isSolid;
 		else if(tz == CHUNK_SIZE) // south
-			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isTransparent;
+			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isSolid;
 
-		return blocks[ chunk.getBlockType(x, y, z) ].isTransparent;
+		return blocks[ chunk.getBlockType(x, y, z) ].isSolid;
 	}
 
 	// Bit flags of sides to render
@@ -133,7 +133,7 @@ body
 			{
 				offset = sideOffsets[cast(Side)side];
 
-				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2]))
+				if(!isSolid(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
 				}
@@ -155,7 +155,7 @@ body
 			{
 				offset = sideOffsets[cast(Side)side];
 
-				if(getTransparency(bx+offset[0], by+offset[1], bz+offset[2]))
+				if(!isSolid(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
 				}

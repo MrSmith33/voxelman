@@ -164,7 +164,7 @@ abstract class Connection
 	{
 		foreach(i, packetInfo; packetArray)
 		{
-			infof("% 2s: %s", i, packetInfo.name);
+			tracef("% 2s: %s", i, packetInfo.name);
 		}
 	}
 

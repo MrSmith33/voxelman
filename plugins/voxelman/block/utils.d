@@ -7,7 +7,11 @@ module voxelman.block.utils;
 
 import std.array : Appender;
 import dlib.math.vector : vec3, ivec3;
+
+import voxelman.core.config;
 import voxelman.storage.coordinates;
+import voxelman.storage.chunk;
+import voxelman.utils.mapping;
 
 enum Side : ubyte
 {
@@ -19,6 +23,18 @@ enum Side : ubyte
 
 	top		= 4,
 	bottom	= 5,
+}
+
+enum SideMask : ubyte
+{
+	north	= 1,
+	south	= 2,
+
+	east	= 4,
+	west	= 8,
+
+	top		= 16,
+	bottom	= 32,
 }
 
 immutable ubyte[6] oppSide = [1, 0, 3, 2, 5, 4];
@@ -84,6 +100,175 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 		} // if
 	} // for i
 }
+
+alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
+alias Meshhandler = void function(ref Appender!(ubyte[]) output,
+	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
+
+struct BlockInfo
+{
+	string name;
+	Meshhandler meshHandler = &makeNullMesh;
+	ubyte[3] color;
+	bool isVisible = true;
+	bool isSolid = true;
+	size_t id;
+}
+
+/// Returned when registering block.
+/// Use this to set block properties.
+struct BlockInfoSetter
+{
+	private Mapping!(BlockInfo)* mapping;
+	private size_t blockId;
+	private ref BlockInfo info() {return (*mapping)[blockId]; }
+
+	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
+	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
+	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
+	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
+	ref BlockInfoSetter isSolid(bool val) { info.isSolid = val; return this; }
+}
+
+ubyte calcChunkSideMetadata(ChunkLayerSnap blockLayer, immutable(BlockInfo)[] blockInfos)
+{
+	if (blockLayer.type == StorageType.uniform)
+	{
+		return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
+	}
+	else if (blockLayer.type == StorageType.fullArray)
+	{
+		BlockId[] blocks = blockLayer.getArray!BlockId;
+		return calcChunkSideMetadata(blocks, blockInfos);
+	}
+	else
+		assert(false);
+}
+
+bool isChunkSideSolid(const ubyte metadata, const Side side)
+{
+	if (metadata & 0b1_000000)
+		return !!(metadata & 1<<side);
+	else
+		return true;
+}
+
+ubyte calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockInfos)
+{
+	bool isSolid = blockInfos[uniformBlock].isSolid;
+	// 1 = metadata is present, 6 bits = transparency of 6 chunk sides
+	return isSolid ? 0b1_111111 : 0b1_000000;
+}
+
+ubyte calcChunkSideMetadata(BlockId[] blocks, immutable(BlockInfo)[] blockInfos)
+{
+	ubyte flags = 0b1_111111;
+	foreach(index; 0..CHUNK_SIZE_SQR) // bottom
+	{
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.bottom;
+			break;
+		}
+	}
+
+	outer_north:
+	foreach(y; 0..CHUNK_SIZE)
+	foreach(x; 0..CHUNK_SIZE)
+	{
+		size_t index = y*CHUNK_SIZE_SQR | x; // north
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.north;
+			break outer_north;
+		}
+	}
+
+	outer_south:
+	foreach(y; 0..CHUNK_SIZE)
+	foreach(x; 0..CHUNK_SIZE)
+	{
+		size_t index = (CHUNK_SIZE-1) * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x; // south
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.south;
+			break outer_south;
+		}
+	}
+
+	outer_east:
+	foreach(y; 0..CHUNK_SIZE)
+	foreach(z; 0..CHUNK_SIZE)
+	{
+		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | (CHUNK_SIZE-1); // east
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.east;
+			break outer_east;
+		}
+	}
+
+	outer_west:
+	foreach(y; 0..CHUNK_SIZE)
+	foreach(z; 0..CHUNK_SIZE)
+	{
+		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR; // west
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.west;
+			break outer_west;
+		}
+	}
+
+	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
+	{
+		if (!blockInfos[blocks[index]].isSolid)
+		{
+			flags ^= SideMask.top;
+			break;
+		}
+	}
+
+	return flags;
+}
+
+
+/*
+void iterateSides()
+{
+	foreach(index; 0..CHUNK_SIZE_SQR) // bottom
+
+	{// north
+		ubyte z = 0;
+		foreach(y; 0..CHUNK_SIZE)
+			foreach(x; 0..CHUNK_SIZE)
+				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
+	}
+
+	{// south
+		ubyte z = CHUNK_SIZE-1;
+		foreach(y; 0..CHUNK_SIZE)
+			foreach(x; 0..CHUNK_SIZE)
+				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
+	}
+
+	{// east
+		ubyte x = CHUNK_SIZE-1;
+		foreach(y; 0..CHUNK_SIZE)
+			foreach(z; 0..CHUNK_SIZE)
+				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
+	}
+
+	{// west
+		ubyte x = 0;
+		foreach(y; 0..CHUNK_SIZE)
+			foreach(z; 0..CHUNK_SIZE)
+				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
+	}
+
+	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
+}
+*/
 
 // mesh for single block
 immutable ubyte[18 * 6] faces =

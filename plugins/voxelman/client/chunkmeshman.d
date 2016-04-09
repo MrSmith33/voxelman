@@ -9,7 +9,7 @@ import std.experimental.logger;
 import std.concurrency : Tid, thisTid, send, receiveTimeout;
 import std.datetime : msecs;
 
-import voxelman.block.plugin;
+import voxelman.block.utils;
 import voxelman.world.chunkman;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
@@ -150,11 +150,17 @@ struct ChunkMeshMan
 	bool surroundedBySolidChunks(Chunk* chunk)
 	{
 		import voxelman.block.utils;
-		foreach(i, a; chunk.adjacent)
-		if (a !is null) {
-			bool solidSide = a.snapshot.blockData.uniform &&
-			blocks[a.snapshot.blockData.uniformType].isTransparent;
-			if (!solidSide) return false;
+		foreach(Side side, a; chunk.adjacent)
+		{
+			if (a !is null) {
+				if (a.snapshot.blockData.uniform) {
+					bool solidSide = blocks[a.snapshot.blockData.uniformType].isSolid;
+					if (!solidSide) return false;
+				} else {
+					bool solidSide = isChunkSideSolid(cast(ubyte)a.snapshot.blockData.metadata, cast(Side)oppSide[side]);
+					if (!solidSide) return false;
+				}
+			}
 		}
 		return true;
 	}
