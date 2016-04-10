@@ -32,6 +32,8 @@
 - Add current frame number to update events.
 
 ### Changed
+- Implement chunk side transparency metadata calculation => massive boost of client.
+- Put trace log messages only in file.
 - Store data in compressed form in memory of server.
 - Compress blocks on chunk gen.
 - Use new data layout for saves.
