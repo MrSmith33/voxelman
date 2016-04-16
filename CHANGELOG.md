@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add LMDB storage backend.
 - Add lock-free work queue. Constant memory consumption. No allocations. Works faster.
 - Add multiple layers of data for chunks.
 - Add multiblock editing. Press and drag to select a box.
@@ -32,6 +33,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Optimize generation of chunks above ground.
 - Implement chunk side transparency metadata calculation => massive boost of client.
 - Put trace log messages only in file.
 - Store data in compressed form in memory of server.

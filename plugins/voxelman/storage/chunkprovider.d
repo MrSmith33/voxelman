@@ -96,7 +96,7 @@ struct ChunkProvider
 	void delegate() onChunkSavedHandler;
 
 	size_t loadQueueSpaceAvaliable() @property const {
-		long space = cast(long)loadTaskQueue.capacity - loadTaskQueue.length;
+		ptrdiff_t space = cast(ptrdiff_t)loadTaskQueue.capacity - loadTaskQueue.length;
 		return space >= 0 ? space : 0;
 	}
 

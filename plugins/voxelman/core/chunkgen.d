@@ -47,6 +47,13 @@ struct LoadSnapshotMessage {
 	Tid genWorker;
 }
 
+enum AIR = 1;
+enum GRASS = 2;
+enum DIRT = 3;
+enum STONE = 4;
+enum SAND = 5;
+enum WATER = 6;
+
 version = DBG_OUT;
 //version = DBG_COMPR;
 void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
@@ -66,24 +73,33 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			generator.genPerChunkData();
 
 			bool uniform = true;
+			BlockId uniformBlockId = AIR;
 			BlockId[CHUNK_SIZE_CUBE] blocks;
 
-			blocks[0] = generator.generateBlock(0, 0, 0);
-			BlockId uniformBlockId = blocks[0];
-
-			int bx, by, bz;
-			foreach(i; 1..CHUNK_SIZE_CUBE)
+			if (generator.chunkOffset.y > generator.perColumnChunkData.maxHeight &&
+				generator.chunkOffset.y > 0)
 			{
-				bx = i & CHUNK_SIZE_BITS;
-				by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-				bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+				// optimization
+			}
+			else
+			{
+				blocks[0] = generator.generateBlock(0, 0, 0);
+				uniformBlockId = blocks[0];
 
-				// Actual block gen
-				blocks[i] = generator.generateBlock(bx, by, bz);
-
-				if(uniform && blocks[i] != uniformBlockId)
+				int bx, by, bz;
+				foreach(i; 1..CHUNK_SIZE_CUBE)
 				{
-					uniform = false;
+					bx = i & CHUNK_SIZE_BITS;
+					by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+					bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+
+					// Actual block gen
+					blocks[i] = generator.generateBlock(bx, by, bz);
+
+					if(uniform && blocks[i] != uniformBlockId)
+					{
+						uniform = false;
+					}
 				}
 			}
 
@@ -157,18 +173,18 @@ struct Generator2d3d
 {
 	ivec3 chunkOffset;
 
-	private int[CHUNK_SIZE_SQR] heightMap = void;
+	private PerColumnChunkData perColumnChunkData;
 
 	void genPerChunkData()
 	{
-		genPerChunkData2d(heightMap[], chunkOffset);
+		perColumnChunkData.generate(chunkOffset);
 	}
 
 	BlockId generateBlock(int x, int y, int z)
 	{
 		enum NOISE_SCALE_3D = 42;
 		enum NOISE_TRESHOLD_3D = -0.6;
-		int height = heightMap[z * CHUNK_SIZE + x];
+		int height = perColumnChunkData.heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
 		if (blockY > height) {
 			if (blockY > 0)
@@ -190,28 +206,27 @@ struct Generator2d3d
 struct Generator2d
 {
 	ivec3 chunkOffset;
-
-	private int[CHUNK_SIZE_SQR] heightMap = void;
+	PerColumnChunkData perColumnChunkData;
 
 	void genPerChunkData()
 	{
-		genPerChunkData2d(heightMap[], chunkOffset);
+		perColumnChunkData.generate(chunkOffset);
 	}
 
 	BlockId generateBlock(int x, int y, int z)
 	{
-		int height = heightMap[z * CHUNK_SIZE + x];
+		int height = perColumnChunkData.heightMap[z * CHUNK_SIZE + x];
 		int blockY = chunkOffset.y + y;
 		if (blockY > height) {
 			if (blockY > 0)
-				return 1;
+				return AIR;
 			else
-				return 6;
+				return WATER;
 		}
 
-		if (blockY == height) return 2;
-		else if (blockY > height - 10) return 3;
-		else return 4;
+		if (blockY == height) return GRASS;
+		else if (blockY > height - 10) return DIRT;
+		else return STONE;
 	}
 }
 
@@ -222,8 +237,8 @@ struct TestGeneratorSmallCubes
 
 	BlockId generateBlock(int x, int y, int z)
 	{
-		if (x % 2 == 0 && y % 2 == 0 && z % 2 == 0) return 2;
-		else return 1;
+		if (x % 2 == 0 && y % 2 == 0 && z % 2 == 0) return GRASS;
+		else return AIR;
 	}
 }
 
@@ -234,8 +249,8 @@ struct TestGeneratorSmallCubes2
 
 	BlockId generateBlock(int x, int y, int z)
 	{
-		if (x % 4 == 0 && y % 4 == 0 && z % 4 == 0) return 2;
-		else return 1;
+		if (x % 4 == 0 && y % 4 == 0 && z % 4 == 0) return GRASS;
+		else return AIR;
 	}
 }
 
@@ -250,8 +265,8 @@ struct TestGeneratorSmallCubes3
 	{
 		if (x % cubeOffsets < cubesSizes &&
 			y % cubeOffsets < cubesSizes &&
-			z % cubeOffsets < cubesSizes) return 2;
-		else return 1;
+			z % cubeOffsets < cubesSizes) return GRASS;
+		else return AIR;
 	}
 }
 
@@ -271,12 +286,23 @@ float noise2d(int x, int z)
 	return noise;
 }
 
-void genPerChunkData2d(int[] heightMap, ivec3 chunkOffset)
+struct PerColumnChunkData
 {
-	foreach(i, ref elem; heightMap)
+	int[CHUNK_SIZE_SQR] heightMap = void;
+	int minHeight = int.max;
+	int maxHeight = int.min;
+
+	void generate(ivec3 chunkOffset)
 	{
-		int cx = i & CHUNK_SIZE_BITS;
-		int cz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-		elem = cast(int)noise2d(chunkOffset.x + cx, chunkOffset.z + cz);
+		foreach(i, ref elem; heightMap)
+		{
+			int cx = i & CHUNK_SIZE_BITS;
+			int cz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+			elem = cast(int)noise2d(chunkOffset.x + cx, chunkOffset.z + cz);
+			if (elem > maxHeight)
+				maxHeight = elem;
+			if (elem < minHeight)
+				minHeight = elem;
+		}
 	}
 }

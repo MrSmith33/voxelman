@@ -247,7 +247,7 @@ public:
 	{
 		worldFilename = _worldFilename;
 		worldDb = new WorldDb;
-		worldDb.openWorld(_worldFilename);
+		worldDb.open(_worldFilename);
 		readWorldInfo(worldDb);
 		foreach(h; ioManager.worldLoadHandlers)
 			h(worldDb);
@@ -256,8 +256,9 @@ public:
 	private void readWorldInfo(WorldDb worldDb)
 	{
 		import std.path : absolutePath, buildNormalizedPath;
-		ubyte[] data = worldDb.loadPerWorldData(worldInfoKey);
-		scope(exit) worldDb.perWorldSelectStmt.reset();
+		worldDb.beginTxn();
+		ubyte[] data = worldDb.getPerWorldValue(worldInfoKey);
+		scope(exit) worldDb.commitTxn();
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
@@ -269,7 +270,7 @@ public:
 	private void writeWorldInfo(WorldDb worldDb)
 	{
 		size_t encodedSize = encodeCborArray(worldDb.tempBuffer, worldInfo);
-		worldDb.savePerWorldData(worldInfoKey, worldDb.tempBuffer[0..encodedSize]);
+		worldDb.putPerWorldValue(worldInfoKey, worldDb.tempBuffer[0..encodedSize]);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)

@@ -5,187 +5,97 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.worlddb;
 
-public import sqlite.d2sqlite3;
+import voxelman.world.db.lmdbworlddb;
+import voxelman.world.db.sqliteworlddb;
 
-import std.array : uninitializedArray;
-import std.conv;
-import std.stdio;
-import std.typecons : Nullable;
-import voxelman.storage.coordinates : ChunkWorldPos;
-import voxelman.utils.textformatter;
+//version = Sqlite;
+version = Lmdb;
 
-alias StatementHandle = size_t;
-enum USE_WAL = false;
+enum Table : ulong
+{
+	world,
+	dimention,
+	region,
+	chunk,
+}
 
 final class WorldDb
 {
-	private Database db;
+	version(Lmdb) LmdbWorldDb db;
+	version(Sqlite) SqliteWorldDb db;
 	private ubyte[] buffer;
 
-	Statement perWorldInsertStmt;
-	Statement perWorldSelectStmt;
-	Statement perWorldDeleteStmt;
-
-	//Statement perDimentionInsertStmt;
-	//Statement perDimentionSelectStmt;
-	//Statement perDimentionDeleteStmt;
-
-	Statement perChunkInsertStmt;
-	Statement perChunkSelectStmt;
-	Statement perChunkDeleteStmt;
-
-	private Statement[] statements;
-
-	void openWorld(string filename)
-	{
-		buffer = uninitializedArray!(ubyte[])(4096*32);
-
-		db = Database(filename);
-
-		static if (USE_WAL) {
-			db.execute("PRAGMA synchronous = normal");
-			db.execute("PRAGMA journal_mode = wal");
-		} else {
-			db.execute("PRAGMA synchronous = off");
-			db.execute("PRAGMA journal_mode = memory");
-		}
-		db.execute("PRAGMA count_changes = off");
-
-		db.execute("PRAGMA temp_store = memory");
-		db.execute(`PRAGMA page_size = "4096"; VACUUM`);
-
-		db.execute(perWorldTableCreate);
-		//db.execute(perDimentionTableCreate);
-		db.execute(perChunkTableCreate);
-
-		perWorldInsertStmt = db.prepare(perWorldTableInsert);
-		perWorldSelectStmt = db.prepare(perWorldTableSelect);
-		perWorldDeleteStmt = db.prepare(perWorldTableDelete);
-
-		//perDimentionInsertStmt = db.prepare(perDimentionTableInsert);
-		//perDimentionSelectStmt = db.prepare(perDimentionTableSelect);
-		//perDimentionDeleteStmt = db.prepare(perDimentionTableDelete);
-
-		perChunkInsertStmt = db.prepare(perChunkTableInsert);
-		perChunkSelectStmt = db.prepare(perChunkTableSelect);
-		perChunkDeleteStmt = db.prepare(perChunkTableDelete);
+	//-----------------------------------------------
+	void open(string filename) {
+		buffer = uninitializedArray!(ubyte[])(4096*64);
+		version(Lmdb) mdb_load_libs();
+		db.open(filename);
+	}
+	void close() {
+		db.close();
 	}
 
 	ubyte[] tempBuffer() @property { return buffer; }
 
-	void execute(string sql)
-	{
-		db.execute(sql);
+	//-----------------------------------------------
+	void putPerWorldValue(K)(K key, ubyte[] value) {
+		put(formKey(key), Table.world, value);
+	}
+	ubyte[] getPerWorldValue(K)(K key) {
+		return get(formKey(key), Table.world);
+	}
+	void putPerChunkValue(ulong key, ubyte[] value) {
+		put(key, Table.chunk, value);
+	}
+	ubyte[] getPerChunkValue(ulong key) {
+		return get(key, Table.chunk);
 	}
 
-	StatementHandle prepareStmt(string sql)
-	{
-		statements ~= db.prepare(sql);
-		return statements.length - 1;
+	//-----------------------------------------------
+	void beginTxn() {
+		db.beginTxn();
 	}
-
-	ref Statement stmt(StatementHandle stmtHandle)
-	{
-		return statements[stmtHandle];
+	void abortTxn() {
+		db.abortTxn();
 	}
-
-	void close()
-	{
-		destroy(perWorldInsertStmt);
-		destroy(perWorldSelectStmt);
-		destroy(perWorldDeleteStmt);
-		//destroy(perDimentionInsertStmt);
-		//destroy(perDimentionSelectStmt);
-		//destroy(perDimentionDeleteStmt);
-		destroy(perChunkInsertStmt);
-		destroy(perChunkSelectStmt);
-		destroy(perChunkDeleteStmt);
-		foreach(ref s; statements)
-			destroy(s);
-		destroy(statements);
-		//db.close();
+	void commitTxn() {
+		db.commitTxn();
 	}
-
-	// key should contain only alphanum chars and .
-	void savePerWorldData(string key, ubyte[] data)
-	{
-		perWorldInsertStmt.inject(key, data);
+	version(Lmdb) void put(ulong key, ulong table, ubyte[] value) {
+		ubyte[16] dbKey;
+		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+		db.put(dbKey, value);
 	}
-
-	// Reset statement after returned data is no longer needed
-	ubyte[] loadPerWorldData(string key)
-	{
-		perWorldSelectStmt.bindAll(key);
-		auto result = perWorldSelectStmt.execute();
-		if (result.empty) return null;
-		return result.front.peekNoDup!(ubyte[])(0);
+	version(Lmdb) ubyte[] get(ulong key, ulong table) {
+		ubyte[16] dbKey;
+		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+		return db.get(dbKey);
 	}
-	void removePerWorldData(string key)
-	{
-		perWorldDeleteStmt.inject(key);
-	}
-
-	//void savePerDimentionData(string key, int dim, ubyte[] data)
-
-	//ubyte[] loadPerDimentionData(string key, int dim)
-	import voxelman.core.config;
-	void savePerChunkData(ulong cwp, ubyte[] data)
-	{
-		perChunkInsertStmt.inject(cast(long)cwp, data);
-	}
-
-	// Reset statement after returned data is no longer needed
-	ubyte[] loadPerChunkData(ulong cwp)
-	{
-		perChunkSelectStmt.bindAll(cast(long)cwp);
-		auto result = perChunkSelectStmt.execute();
-		if (result.empty) return null;
-		return result.front.peekNoDup!(ubyte[])(0);
-	}
-
-	static long packId(ChunkWorldPos cwp, short dim)
-	{
-		long id = cast(ulong)(cast(ushort)dim)<<48 |
-				cast(ulong)(cast(ushort)cwp.z)<<32 |
-				cast(ulong)(cast(ushort)cwp.y)<<16 |
-				cast(ulong)(cast(ushort)cwp.x);
-		return id;
+	version(Lmdb) void del(ulong key, ulong table) {
+		ubyte[16] dbKey;
+		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+		return db.del(dbKey);
 	}
 }
 
-enum bool withoutRowid = true;
-enum string withoutRowidStr = withoutRowid ? ` without rowid;` : ``;
+ulong formKey(K)(K _key)
+	if (is(K == string) || is(K == ulong))
+{
+	static if (is(K == string))
+		return hashBytes(cast(ubyte[])_key);
+	else static if (is(K == ulong))
+		return _key;
+}
 
-immutable perWorldTableCreate = `
-create table if not exists per_world_data (
-  id text primary key,
-  data blob not null
-)` ~ withoutRowidStr;
+ulong hashBytes(ubyte[] bytes)
+{
+    ulong hash = 5381;
 
-immutable perWorldTableInsert = `insert or replace into per_world_data values (:id, :value)`;
-immutable perWorldTableSelect = `select data from per_world_data where id = :id`;
-immutable perWorldTableDelete = `delete from per_world_data where id = :id`;
+    foreach(c; bytes)
+        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
-immutable perDimentionTableCreate = `
-create table if not exists per_dimention_data(
-  id text,
-  dimention integer,
-  data blob not null,
-  primary key (id, dimention)
-)` ~ withoutRowidStr;
-
-immutable perDimentionTableInsert =
-`insert or replace into per_dimention_data values (:dim, :id, :value)`;
-immutable perDimentionTableSelect = `
-select data from per_dimention_data where dimention = :dim and id = :id`;
-immutable perDimentionTableDelete = `
-delete from per_dimention_data where dimention = :dim and id = :id`;
-
-immutable perChunkTableCreate = `
-create table if not exists per_chunk_data(
-	id integer primary key,
-	data blob not null )`;
-
-immutable perChunkTableInsert = `insert or replace into per_chunk_data values (:id, :value)`;
-immutable perChunkTableSelect = `select data from per_chunk_data where id = :id`;
-immutable perChunkTableDelete = `delete from per_chunk_data where id = :id`;
+    return hash;
+}

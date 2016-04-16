@@ -33,10 +33,10 @@ string color_frag_shader = `
 smooth in vec4 theColor;
 out vec4 outputColor;
 const vec4 fogcolor = vec4(0.6, 0.8, 1.0, 1.0);
-const float fogdensity = .00002;
+const float fogdensity = .00001;
 void main() {
 	float z = gl_FragCoord.z / gl_FragCoord.w;
-	float fogModifier = clamp(exp(-fogdensity * z * z)+0.3, 0.1, 1);
+	float fogModifier = clamp(exp(-fogdensity * z * z), 0.0, 1);
 	outputColor = mix(fogcolor, theColor, fogModifier);
 }
 `;

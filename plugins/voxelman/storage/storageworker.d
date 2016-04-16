@@ -24,6 +24,49 @@ import voxelman.world.plugin : IoHandler;
 import voxelman.utils.compression;
 
 
+struct TimeMeasurer
+{
+	TimeMeasurer* nested;
+	TimeMeasurer* next;
+	MonoTime startTime;
+	Duration takenTime;
+	string taskName;
+	bool wasRun = false;
+
+	void reset()
+	{
+		wasRun = false;
+		takenTime = Duration.zero;
+		if (nested) nested.reset();
+		if (next) next.reset();
+	}
+
+	void startTaskTiming(string name)
+	{
+		taskName = name;
+		startTime = MonoTime.currTime;
+	}
+
+	void endTaskTiming()
+	{
+		wasRun = true;
+		takenTime = MonoTime.currTime - startTime;
+	}
+
+	void printTime(bool isNested = false)
+	{
+		int seconds; short msecs; short usecs;
+		takenTime.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
+		if (msecs > 10 || seconds > 0 || isNested)
+		{
+			if (wasRun)
+				infof("%s%s %s.%s,%ss", isNested?"  ":"", taskName, seconds, msecs, usecs);
+			if (nested) nested.printTime(true);
+			if (next) next.printTime(isNested);
+		}
+	}
+}
+
 //version = DBG_OUT;
 //version = DBG_COMPR;
 void storageWorker(
@@ -46,26 +89,16 @@ void storageWorker(
 	WorldDb worldDb = cast(WorldDb)_worldDb;
 	scope(exit) worldDb.close();
 
-	MonoTime prevTime;
-	string taskName;
-	void startTaskTiming(string name)
-	{
-		taskName = name;
-		prevTime = MonoTime.currTime;
-	}
-
-	void endTaskTiming()
-	{
-		Duration past = MonoTime.currTime - prevTime;
-		int seconds; short msecs; short usecs;
-		past.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-		if (msecs > 10 || seconds > 0)
-			infof("%s %s.%s,%ss", taskName, seconds, msecs, usecs);
-	}
+	TimeMeasurer taskTime;
+	TimeMeasurer workTime;
+	TimeMeasurer readTime;
+	taskTime.nested = &readTime;
+	readTime.next = &workTime;
 
 	void writeChunk()
 	{
-		startTaskTiming("WR");
+		taskTime.reset();
+		taskTime.startTaskTiming("WR");
 
 		ChunkHeaderItem header = saveTaskQueue.popItem!ChunkHeaderItem();
 
@@ -75,7 +108,6 @@ void storageWorker(
 		{
 			size_t encodedSize = encodeCbor(buffer[], header.numLayers);
 
-			// TODO encode layerId
 			foreach(_; 0..header.numLayers)
 			{
 				ChunkLayerItem layer = saveTaskQueue.popItem!ChunkLayerItem();
@@ -107,11 +139,12 @@ void storageWorker(
 				saveResQueue.pushItem(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
 			}
 
-			worldDb.savePerChunkData(header.cwp.asUlong, buffer[0..encodedSize]);
+			worldDb.putPerChunkValue(header.cwp.asUlong, buffer[0..encodedSize]);
 		}
 		catch(Exception e) errorf("storage exception %s", e.to!string);
 		saveResQueue.endPush();
-		endTaskTiming();
+		taskTime.endTaskTiming();
+		taskTime.printTime();
 		version(DBG_OUT)infof("task save %s", header.cwp);
 	}
 
@@ -141,24 +174,27 @@ void storageWorker(
 	//}
 	void readChunk()
 	{
-		startTaskTiming("RD");
+		taskTime.reset();
+		taskTime.startTaskTiming("RD");
 		bool doGen;
 
 		ulong cwp = loadTaskQueue.popItem!ulong();
 
 		try
 		{
-			ubyte[] cborData = worldDb.loadPerChunkData(cwp);
-			scope(exit) worldDb.perChunkSelectStmt.reset();
+			readTime.startTaskTiming("getPerChunkValue");
+			ubyte[] cborData = worldDb.getPerChunkValue(cwp);
+			readTime.endTaskTiming();
+			//scope(exit) worldDb.perChunkSelectStmt.reset();
 
 			if (cborData !is null)
 			{
+				workTime.startTaskTiming("decode");
 				ubyte numLayers = decodeCborSingle!ubyte(cborData);
 				// TODO check numLayers <= ubyte.max
 				bool saved = true;
 				loadResQueue.startPush();
 				loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, cast(uint)saved));
-				// TODO decode layerId
 				foreach(_; 0..numLayers)
 				{
 					auto timestamp = decodeCborSingle!TimestampType(cborData);
@@ -190,6 +226,7 @@ void storageWorker(
 				}
 				loadResQueue.endPush();
 				// if (cborData.length > 0) error; TODO
+				workTime.endTaskTiming();
 			}
 			else doGen = true;
 		}
@@ -200,7 +237,8 @@ void storageWorker(
 		if (doGen) {
 			nextGenQueue().pushSingleItem!ulong(cwp);
 		}
-		endTaskTiming();
+		taskTime.endTaskTiming();
+		taskTime.printTime();
 		version(DBG_OUT)infof("task load %s", ChunkWorldPos(cwp));
 	}
 
@@ -209,17 +247,22 @@ void storageWorker(
 	size_t prevReceived = size_t.max;
 	while (*atomicLoad(workerRunning))
 	{
+		worldDb.beginTxn();
 		while(!loadTaskQueue.empty)
 		{
 			readChunk();
 			++numReceived;
 		}
+		worldDb.abortTxn();
 
+		worldDb.beginTxn();
 		while(!saveTaskQueue.empty)
 		{
 			writeChunk();
 			++numReceived;
 		}
+		worldDb.commitTxn();
+
 		if (prevReceived != numReceived)
 			version(DBG_OUT)infof("Storage worker running %s %s", numReceived, *atomicLoad(workerRunning));
 		prevReceived = numReceived;

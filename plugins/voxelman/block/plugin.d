@@ -108,8 +108,9 @@ final class BlockPluginServer : IPlugin
 
 	void handleWorldLoad(WorldDb wdb) // Main thread
 	{
-		ubyte[] data = wdb.loadPerWorldData(blockMappingKey);
-		scope(exit) wdb.perWorldSelectStmt.reset();
+		wdb.beginTxn();
+		ubyte[] data = wdb.getPerWorldValue(blockMappingKey);
+		scope(exit) wdb.commitTxn();
 
 		if (data !is null)
 		{
@@ -123,6 +124,6 @@ final class BlockPluginServer : IPlugin
 		size = encodeCborArrayHeader(sink[], blockInfos.length);
 		foreach(info; blockInfos)
 			size += encodeCbor(sink[size..$], info.name);
-		wdb.savePerWorldData(blockMappingKey, sink[0..size]);
+		wdb.putPerWorldValue(blockMappingKey, sink[0..size]);
 	}
 }
