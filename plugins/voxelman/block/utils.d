@@ -9,8 +9,8 @@ import std.array : Appender;
 import dlib.math.vector : vec3, ivec3;
 
 import voxelman.core.config;
-import voxelman.storage.coordinates;
-import voxelman.storage.chunk;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.chunk;
 import voxelman.utils.mapping;
 
 enum Side : ubyte

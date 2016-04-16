@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.chunkprovider;
+module voxelman.world.storage.chunkprovider;
 
 import std.concurrency : spawn, Tid;
 import std.experimental.logger;
@@ -14,12 +14,12 @@ import dlib.math.vector;
 import voxelman.block.utils : BlockInfo;
 import voxelman.core.chunkgen;
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.chunkstorage;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkstorage;
+import voxelman.world.storage.coordinates;
 import voxelman.world.worlddb : WorldDb;
 import voxelman.utils.sharedqueue;
-import voxelman.storage.storageworker;
+import voxelman.world.storage.storageworker;
 
 
 alias MessageQueue = SharedQueue!(ulong, QUEUE_LENGTH);

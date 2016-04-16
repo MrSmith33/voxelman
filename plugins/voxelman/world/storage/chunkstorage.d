@@ -3,12 +3,12 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.chunkstorage;
+module voxelman.world.storage.chunkstorage;
 
 import dlib.math.vector : vec3, ivec3;
 import voxelman.block.utils;
-import voxelman.storage.chunk;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.coordinates;
 
 struct ChunkRemoveQueue
 {

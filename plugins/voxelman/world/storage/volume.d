@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.volume;
+module voxelman.world.storage.volume;
 
 import std.experimental.logger;
 import std.algorithm : alg_min = min, alg_max = max;
@@ -11,7 +11,7 @@ import std.math : floor;
 import std.range : chain, only;
 import dlib.math.vector;
 
-import voxelman.storage.coordinates;
+import voxelman.world.storage.coordinates;
 
 Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 {

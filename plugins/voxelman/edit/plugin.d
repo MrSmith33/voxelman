@@ -11,8 +11,8 @@ import std.experimental.logger;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.storage.coordinates;
-import voxelman.storage.volume;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.volume;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;

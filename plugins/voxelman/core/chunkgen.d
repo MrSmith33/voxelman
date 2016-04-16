@@ -17,9 +17,9 @@ import dlib.math.vector : ivec3;
 import anchovy.simplex;
 import voxelman.block.utils : BlockInfo, calcChunkSideMetadata;
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.chunkprovider;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkprovider;
+import voxelman.world.storage.coordinates;
 import voxelman.utils.compression;
 import core.thread;
 

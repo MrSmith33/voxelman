@@ -3,18 +3,18 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.chunkmanager;
+module voxelman.world.storage.chunkmanager;
 
 import std.experimental.logger;
 import std.typecons : Nullable;
 
 import voxelman.block.utils;
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.coordinates : ChunkWorldPos;
-import voxelman.storage.utils;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.coordinates : ChunkWorldPos;
+import voxelman.world.storage.utils;
 import voxelman.utils.hashset;
-import voxelman.storage.chunkprovider;
+import voxelman.world.storage.chunkprovider;
 
 
 private enum ChunkState {

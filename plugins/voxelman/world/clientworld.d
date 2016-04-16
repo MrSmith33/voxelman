@@ -24,14 +24,14 @@ import voxelman.block.plugin;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
-import voxelman.storage.chunk;
-import voxelman.storage.chunkmanager;
-import voxelman.storage.chunkobservermanager;
-import voxelman.storage.chunkprovider;
-import voxelman.storage.chunkstorage;
-import voxelman.storage.coordinates;
-import voxelman.storage.volume;
-import voxelman.storage.worldaccess;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkmanager;
+import voxelman.world.storage.chunkobservermanager;
+import voxelman.world.storage.chunkprovider;
+import voxelman.world.storage.chunkstorage;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.volume;
+import voxelman.world.storage.worldaccess;
 
 
 //version = DBG_COMPR;

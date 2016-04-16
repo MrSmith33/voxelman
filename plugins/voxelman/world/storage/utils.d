@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.utils;
+module voxelman.world.storage.utils;
 
 import std.experimental.logger;
 import std.math : floor;
@@ -11,7 +11,6 @@ import std.range : chain, only;
 import dlib.math.vector;
 
 import voxelman.core.config;
-import voxelman.storage.region;
 
 size_t manhattanDist(ivec3 position, ivec3 other)
 {

@@ -3,13 +3,13 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.chunkobservermanager;
+module voxelman.world.storage.chunkobservermanager;
 
 import std.experimental.logger;
 import dlib.math.vector : ivec3;
 import netlib.connection : ClientId;
-import voxelman.storage.coordinates : ChunkWorldPos;
-import voxelman.storage.volume : Volume, TrisectResult, trisect, calcVolume;
+import voxelman.world.storage.coordinates : ChunkWorldPos;
+import voxelman.world.storage.volume : Volume, TrisectResult, trisect, calcVolume;
 
 enum chunkPackLoadSize = 200;
 

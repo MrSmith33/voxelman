@@ -14,7 +14,7 @@ import datadriven.api;
 import datadriven.storage;
 import voxelman.core.events;
 import voxelman.core.config : BlockId;
-import voxelman.storage.coordinates : BlockWorldPos;
+import voxelman.world.storage.coordinates : BlockWorldPos;
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 

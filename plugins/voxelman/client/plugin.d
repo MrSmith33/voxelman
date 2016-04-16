@@ -40,10 +40,10 @@ import voxelman.net.packets;
 import voxelman.config.configmanager;
 import voxelman.input.keybindingmanager;
 
-import voxelman.storage.chunk;
-import voxelman.storage.coordinates;
-import voxelman.storage.utils;
-import voxelman.storage.worldaccess;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.utils;
+import voxelman.world.storage.worldaccess;
 import voxelman.utils.math;
 import voxelman.utils.textformatter;
 

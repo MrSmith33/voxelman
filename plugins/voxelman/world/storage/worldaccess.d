@@ -3,13 +3,13 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.worldaccess;
+module voxelman.world.storage.worldaccess;
 
 import std.experimental.logger;
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.coordinates;
-import voxelman.storage.utils;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.utils;
 
 /// When modifying world through WorldAccess
 /// changes will automatically proparate to client each tick

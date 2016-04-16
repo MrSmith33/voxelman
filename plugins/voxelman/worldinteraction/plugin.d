@@ -16,7 +16,7 @@ import voxelman.utils.trace : traceRay;
 
 import voxelman.core.events;
 import voxelman.core.packets;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.coordinates;
 
 import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;

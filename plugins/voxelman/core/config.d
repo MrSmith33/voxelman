@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.core.config;
 
 public import voxelman.globalconfig;
-import std.experimental.logger;
 import dlib.math.vector : vec3, ivec3, ivec4, uvec2;
 
 alias BlockId = ubyte;
@@ -17,11 +16,12 @@ enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;
 enum CHUNK_SIZE_CUBE = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 
-// directories
-enum string WORLD_FILE_NAME = "worldinfo.cbor";
+enum REGION_SIZE = 16;
+enum REGION_SIZE_SQR = REGION_SIZE * REGION_SIZE;
+enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
+
 immutable string DEFAULT_WORLD_NAME = "world";
 
-enum NUM_WORKERS = 4;
 enum DEFAULT_VIEW_RADIUS = 5;
 enum MIN_VIEW_RADIUS = 1;
 enum MAX_VIEW_RADIUS = 100;

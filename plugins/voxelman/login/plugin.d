@@ -14,7 +14,7 @@ import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.core.packets;
 import voxelman.net.packets;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.coordinates;
 
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;

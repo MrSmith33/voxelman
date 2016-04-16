@@ -19,8 +19,8 @@ import voxelman.block.plugin;
 import voxelman.block.utils;
 
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.coordinates;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.coordinates;
 
 
 struct MeshGenResult

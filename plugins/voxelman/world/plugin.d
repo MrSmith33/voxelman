@@ -29,14 +29,14 @@ import voxelman.server.plugin : WorldSaveInternalEvent;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
-import voxelman.storage.chunk;
-import voxelman.storage.chunkmanager;
-import voxelman.storage.chunkobservermanager;
-import voxelman.storage.chunkprovider;
-import voxelman.storage.chunkstorage;
-import voxelman.storage.coordinates;
-import voxelman.storage.volume;
-import voxelman.storage.storageworker;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkmanager;
+import voxelman.world.storage.chunkobservermanager;
+import voxelman.world.storage.chunkprovider;
+import voxelman.world.storage.chunkstorage;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.volume;
+import voxelman.world.storage.storageworker;
 
 public import voxelman.world.worlddb : WorldDb;
 

@@ -3,11 +3,10 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.storage.coordinates;
+module voxelman.world.storage.coordinates;
 
 import voxelman.core.config;
-import voxelman.storage.region;
-import voxelman.storage.utils;
+import voxelman.world.storage.utils;
 import voxelman.utils.math;
 
 struct BlockChunkIndex

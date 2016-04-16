@@ -14,11 +14,11 @@ import voxelman.client.chunkmeshman;
 import voxelman.block.plugin;
 import voxelman.block.utils;
 import voxelman.core.config;
-import voxelman.storage.chunk;
-import voxelman.storage.chunkstorage;
-import voxelman.storage.coordinates;
-import voxelman.storage.utils;
-import voxelman.storage.volume;
+import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkstorage;
+import voxelman.world.storage.coordinates;
+import voxelman.world.storage.utils;
+import voxelman.world.storage.volume;
 
 ///
 struct ChunkMan

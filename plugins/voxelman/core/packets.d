@@ -39,14 +39,14 @@ struct ViewRadiusPacket
 
 struct ChunkDataPacket
 {
-	import voxelman.storage.chunk : BlockData;
+	import voxelman.world.storage.chunk : BlockData;
 	ivec3 chunkPos;
 	BlockData blockData;
 }
 
 struct MultiblockChangePacket
 {
-	import voxelman.storage.chunk : BlockChange;
+	import voxelman.world.storage.chunk : BlockChange;
 	ivec3 chunkPos;
 	BlockChange[] blockChanges;
 }

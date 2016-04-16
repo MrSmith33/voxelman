@@ -11,7 +11,7 @@ import std.array : uninitializedArray;
 import std.conv;
 import std.stdio;
 import std.typecons : Nullable;
-import voxelman.storage.coordinates : ChunkWorldPos;
+import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.utils.textformatter;
 
 alias StatementHandle = size_t;
