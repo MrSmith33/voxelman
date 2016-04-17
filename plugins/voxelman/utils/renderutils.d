@@ -32,6 +32,7 @@ enum Colors : Color3ub
 	cyan = Color3ub(0, 255, 255),
 	magenta = Color3ub(255, 0, 255),
 	yellow = Color3ub(255, 255, 0),
+	gray = Color3ub(128, 128, 128),
 }
 
 
@@ -79,6 +80,42 @@ struct Batch
 			pointBuffer.reserve(pointBuffer.capacity + 1024);
 
 		pointBuffer ~= ColoredVertex(pos, color);
+	}
+
+	void put3dGrid(vec3 pos, ivec3 count, vec3 offset, Color3ub color)
+	{
+		// x
+		foreach(i; 0..count.y)
+		foreach(j; 0..count.z)
+		{
+			float y = pos.y + i * offset.y;
+			float z = pos.z + j * offset.z;
+			vec3 start = vec3(pos.x, y, z);
+			vec3 end = vec3(pos.x + (count.x-1) * offset.x, y, z);
+			putLine(start, end, color);
+		}
+
+		// y
+		foreach(i; 0..count.x)
+		foreach(j; 0..count.z)
+		{
+			float x = pos.x + i * offset.x;
+			float z = pos.z + j * offset.z;
+			vec3 start = vec3(x, pos.y, z);
+			vec3 end = vec3(x, pos.y + (count.y-1) * offset.y, z);
+			putLine(start, end, color);
+		}
+
+		// z
+		foreach(i; 0..count.x)
+		foreach(j; 0..count.y)
+		{
+			float x = pos.x + i * offset.x;
+			float y = pos.y + j * offset.y;
+			vec3 start = vec3(x, y, pos.z);
+			vec3 end = vec3(x, y, pos.z + (count.z-1) * offset.z);
+			putLine(start, end, color);
+		}
 	}
 
 	void reset()

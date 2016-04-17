@@ -23,33 +23,21 @@ struct Attribute
 	bool normalized;
 }
 
-class ChunkMesh
+struct ChunkMesh
 {
 	vec3 position;
 	ubyte[] data;
-	bool isDataDirty = false;
+	bool isDataDirty = true;
 	GLuint vao;
 	GLuint vbo;
 
-	private shared static size_t _meshInstanceCount;
-	static size_t meshInstanceCount() @property
+	void genBuffers()
 	{
-		return atomicLoad(_meshInstanceCount);
-	}
-
-	this()
-	{
-		atomicOp!("+=")(_meshInstanceCount, 1);
 		glGenBuffers( 1, &vbo );
 		glGenVertexArrays(1, &vao);
 	}
 
-	~this()
-	{
-		atomicOp!("-=")(_meshInstanceCount, 1);
-	}
-
-	void free()
+	void deleteBuffers()
 	{
 		glDeleteBuffers(1, &vbo);
 		glDeleteVertexArrays(1, &vao);
@@ -60,7 +48,7 @@ class ChunkMesh
 
 	void loadBuffer()
 	{
-		glBindBuffer(GL_ARRAY_BUFFER, vbo );
+		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
@@ -83,17 +71,19 @@ class ChunkMesh
 		glBindVertexArray(vao);
 	}
 
-	void render()
+	void render(bool trianlges)
 	{
 		if (isDataDirty)
 		{
 			loadBuffer();
 			isDataDirty = false;
 		}
-		glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());//data.length/12);
+		if (trianlges)
+			glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());//data.length/12);
+		else
+			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());//data.length/12);
 	}
 
 	ulong numVertexes() {return data.length/VERTEX_SIZE;}
 	ulong numTris() {return data.length/(VERTEX_SIZE*3);}
-
 }

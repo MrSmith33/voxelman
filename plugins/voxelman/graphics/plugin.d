@@ -41,6 +41,19 @@ void main() {
 }
 `;
 
+string color_frag_shader_transparent = `
+#version 330
+smooth in vec4 theColor;
+out vec4 outputColor;
+const vec4 fogcolor = vec4(0.6, 0.8, 1.0, 1.0);
+const float fogdensity = .00001;
+void main() {
+	float z = gl_FragCoord.z / gl_FragCoord.w;
+	float fogModifier = clamp(exp(-fogdensity * z * z), 0.0, 1);
+	outputColor = vec4(mix(fogcolor, theColor, fogModifier).xyz, 0.5);
+}
+`;
+
 string perspective_vert_shader = `
 #version 330
 layout(location = 0) in vec4 position;
@@ -68,6 +81,8 @@ public:
 
 	ShaderProgram chunkShader;
 	GLuint modelLoc, viewLoc, projectionLoc;
+	ShaderProgram transparentShader;
+	//GLuint modelLocT, viewLocT, projectionLocT;
 
 	IRenderer renderer;
 	ConfigOption cameraSensivity;
@@ -105,6 +120,7 @@ public:
 
 		// Setup shaders
 		chunkShader = renderer.createShaderProgram(perspective_vert_shader, color_frag_shader);
+		transparentShader = renderer.createShaderProgram(perspective_vert_shader, color_frag_shader_transparent);
 
 		chunkShader.bind;
 			modelLoc = glGetUniformLocation( chunkShader.handle, "model" );//model transformation
@@ -146,14 +162,18 @@ public:
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		evDispatcher.postEvent(Render1Event(renderer));
-
 		chunkShader.bind;
 		draw(debugBatch);
 		debugBatch.reset();
 		chunkShader.unbind;
 
+		evDispatcher.postEvent(RenderSolid3dEvent(renderer));
+
 		glDisable(GL_DEPTH_TEST);
+
+		renderer.enableAlphaBlending();
+
+		evDispatcher.postEvent(RenderTransparent3dEvent(renderer));
 
 		renderer.enableAlphaBlending();
 		evDispatcher.postEvent(Render2Event(renderer));
@@ -175,6 +195,7 @@ private:
 	{
 		if (buffer.length == 0) return;
 
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);

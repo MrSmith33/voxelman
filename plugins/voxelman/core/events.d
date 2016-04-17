@@ -38,6 +38,16 @@ struct Render1Event {
 	IRenderer renderer;
 }
 
+// draw in 3d. With depth test
+struct RenderSolid3dEvent {
+	IRenderer renderer;
+}
+
+// draw in 3d. With depth test
+struct RenderTransparent3dEvent {
+	IRenderer renderer;
+}
+
 // draw 2d. without depth test. with alpha
 struct Render2Event {
 	IRenderer renderer;

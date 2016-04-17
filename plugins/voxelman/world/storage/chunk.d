@@ -408,12 +408,10 @@ struct Chunk
 
 	ChunkWorldPos position;
 	BlockDataSnapshot snapshot;
-	ChunkMesh mesh;
 	Chunk*[6] adjacent;
 
 	// updates
 	ChunkChange change;
-	ubyte[] newMeshData; // used for swapping
 
 	bool isLoaded = false;
 	bool isVisible = false;

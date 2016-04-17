@@ -19,19 +19,23 @@ import voxelman.world.storage.coordinates;
 import voxelman.utils.queue;
 import voxelman.utils.workergroup;
 import voxelman.utils.hashset;
+import voxelman.utils.renderutils;
 
-
+enum debug_wasted_meshes = true;
 ///
 struct ChunkMeshMan
 {
 	WorkerGroup!(meshWorkerThread) meshWorkers;
 
 	ChunkChange[ChunkWorldPos] chunkChanges;
+	ubyte[ChunkWorldPos] wastedMeshes;
 
 	Queue!(Chunk*) changedChunks;
 	Queue!(Chunk*) chunksToMesh;
 	Queue!(Chunk*) dirtyChunks;
-	ChunkMesh[ChunkWorldPos] visibleChunks;
+
+	ChunkMesh[ChunkWorldPos][2] chunkMeshes;
+	ubyte[][2][ChunkWorldPos] newMeshDatas;
 
 	size_t numMeshChunkTasks;
 	size_t numDirtyChunksPending;
@@ -69,19 +73,18 @@ struct ChunkMeshMan
 		processDirtyChunks();
 	}
 
+	void drawDebug(ref Batch debugBatch)
+	{
+		static if (debug_wasted_meshes)
+		foreach(cwp; wastedMeshes.byKey)
+		{
+			vec3 blockPos = cwp.vector * CHUNK_SIZE;
+			debugBatch.putCube(blockPos + CHUNK_SIZE/2-1, vec3(4,4,4), Colors.red, false);
+		}
+	}
+
 	void onChunkLoaded(Chunk* chunk, BlockData blockData)
 	{
-		// full chunk update
-		//if (chunk.isLoaded)
-		//{
-			//infof("full chunk change %s", chunk.position);
-			// if there was previous changes they do not matter anymore
-			//chunkChanges[chunk.position] = ChunkChange(null, blockData);
-		//	return;
-		//}
-
-		//infof("chunk loaded %s data %s", chunk.position, blockData.blocks);
-
 		chunk.isLoaded = true;
 
 		++chunkMan.totalLoadedChunks;
@@ -110,31 +113,33 @@ struct ChunkMeshMan
 		//infof("partial chunk change %s", chunk.position);
 		if (auto _changes = chunk.position in chunkChanges)
 		{
-			if (_changes.blockChanges is null)
-			{
-				// block changes applied on top of full chunk update
+			if (_changes.blockChanges is null) // block changes applied on top of full chunk update
 				_changes.newBlockData.applyChangesFast(changes);
-			}
-			else
-			{
-				// more changes added
+			else // more changes added
 				_changes.blockChanges ~= changes;
-			}
 		}
-		else
-		{
-			// new changes arrived
+		else // new changes arrived
 			chunkChanges[chunk.position] = ChunkChange(changes);
-		}
 	}
 
 	void onChunkRemoved(Chunk* chunk)
 	{
-		visibleChunks.remove(chunk.position);
-		chunkChanges.remove(chunk.position);
+		auto cwp = chunk.position;
+		chunkChanges.remove(cwp);
 		changedChunks.remove(chunk);
 		chunksToMesh.remove(chunk);
 		dirtyChunks.remove(chunk);
+		assert(chunk.position !in newMeshDatas);
+		foreach(meshes; chunkMeshes)
+		{
+			if (auto mesh = cwp in meshes)
+			{
+				mesh.deleteBuffers();
+				meshes.remove(cwp);
+			}
+		}
+		static if (debug_wasted_meshes)
+			wastedMeshes.remove(cwp);
 	}
 
 	void tryMeshChunk(Chunk* chunk)
@@ -150,16 +155,19 @@ struct ChunkMeshMan
 	bool surroundedBySolidChunks(Chunk* chunk)
 	{
 		import voxelman.block.utils;
-		foreach(Side side, a; chunk.adjacent)
+		Solidity thisMinSolidity = chunkMinSolidity(chunk.snapshot.blockData.metadata);
+		foreach(Side side, adj; chunk.adjacent)
 		{
-			if (a !is null) {
-				if (a.snapshot.blockData.uniform) {
-					bool solidSide = blocks[a.snapshot.blockData.uniformType].isSolid;
-					if (!solidSide) return false;
+			if (adj !is null)
+			{
+				if (chunk.snapshot.blockData.uniform) {
+					Solidity solidity = chunkSideSolidity(adj.snapshot.blockData.metadata, oppSide[side]);
+					if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
 				} else {
-					bool solidSide = isChunkSideSolid(cast(ubyte)a.snapshot.blockData.metadata, cast(Side)oppSide[side]);
+					bool solidSide = isChunkSideSolid(adj.snapshot.blockData.metadata, cast(Side)oppSide[side]);
 					if (!solidSide) return false;
 				}
+
 			}
 		}
 		return true;
@@ -203,7 +211,8 @@ struct ChunkMeshMan
 		// Chunk is already in delete queue
 		if (chunk.isMarkedForDeletion)
 		{
-			delete data.meshData;
+			delete data.meshes[0];
+			delete data.meshes[1];
 			delete data;
 			return;
 		}
@@ -215,33 +224,38 @@ struct ChunkMeshMan
 		if (chunk.isDirty)
 		{
 			chunk.isDirty = false;
-			chunk.newMeshData = data.meshData;
+			newMeshDatas[data.position] = data.meshes;
 			--numDirtyChunksPending;
 		}
 		else
-			loadMeshData(chunk, data.meshData);
+			loadMeshData(chunk, data.meshes);
 	}
 
-	void loadMeshData(Chunk* chunk, ubyte[] meshData)
+	void loadMeshData(Chunk* chunk, ubyte[][2] meshes)
 	{
 		assert(chunk);
-		// Attach mesh
-		if (chunk.mesh is null)
-			chunk.mesh = new ChunkMesh();
-		chunk.mesh.data = meshData;
-
-		ChunkWorldPos position = chunk.position;
-		chunk.mesh.position = position.vector * CHUNK_SIZE;
-		chunk.mesh.isDataDirty = true;
-		chunk.isVisible = chunk.mesh.data.length > 0;
 		chunk.hasMesh = true;
+
+		ChunkWorldPos cwp = chunk.position;
+		chunk.isVisible = false;
+		// Attach mesh
+		foreach(i, meshData; meshes)
+		{
+			if (meshData.length == 0) continue;
+			chunkMeshes[i][cwp] = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), meshData);
+			(cwp in chunkMeshes[i]).genBuffers();
+			chunk.isVisible = true;
+		}
 
 		++totalMeshedChunks;
 		if (chunk.isVisible)
+		{
 			++totalMeshes;
-
-		if (chunk.isVisible)
-			visibleChunks[chunk.position] = chunk.mesh;
+		}
+		else static if (debug_wasted_meshes)
+		{
+			wastedMeshes[cwp] = 0;
+		}
 
 		//infof("Chunk mesh loaded at %s, length %s", chunk.position, chunk.mesh.data.length);
 	}
@@ -400,8 +414,8 @@ struct ChunkMeshMan
 		{
 			foreach(chunk; dirtyChunks.valueRange)
 			{
-				loadMeshData(chunk, chunk.newMeshData);
-				chunk.newMeshData = null;
+				loadMeshData(chunk, newMeshDatas[chunk.position]);
+				newMeshDatas.remove(chunk.position);
 			}
 		}
 	}

@@ -15,7 +15,7 @@ import core.exception : Throwable;
 import dlib.math.vector : ivec3;
 
 import anchovy.simplex;
-import voxelman.block.utils : BlockInfo, calcChunkSideMetadata;
+import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider;
@@ -73,6 +73,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			generator.genPerChunkData();
 
 			bool uniform = true;
+			Solidity minSolidity = Solidity.solid;
 			BlockId uniformBlockId = AIR;
 			BlockId[CHUNK_SIZE_CUBE] blocks;
 
@@ -95,7 +96,8 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 
 					// Actual block gen
 					blocks[i] = generator.generateBlock(bx, by, bz);
-
+					Solidity solidity = blockInfos[blocks[i]].solidity;
+					minSolidity = solidity < minSolidity ? solidity : minSolidity;
 					if(uniform && blocks[i] != uniformBlockId)
 					{
 						uniform = false;
@@ -111,7 +113,9 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			workerInfo.resultQueue.pushItem(ChunkHeaderItem(cwp, numLayers));
 			if(uniform)
 			{
-				ubyte metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
+				ushort metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
+				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
+
 				workerInfo.resultQueue.pushItem(
 					ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata));
 			}
@@ -119,7 +123,9 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			{
 				import core.memory : GC;
 				//infof("%s L %s B (%(%02x%))", cwp, blocks.length, cast(ubyte[])blocks);
-				ubyte metadata = calcChunkSideMetadata(blocks[], blockInfos);
+				ushort metadata = calcChunkSideMetadata(blocks[], blockInfos);
+				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
+
 				ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
 				//infof("%s L %s C (%(%02x%))", cwp, compactBlocks.length, cast(ubyte[])compactBlocks);
 
@@ -146,7 +152,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 					// Data can be collected by GC if no-one is referencing it.
 					// It is needed to pass array trough shared queue.
 					GC.addRoot(data); // TODO remove when moved to non-GC allocator
-					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data));
+					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data, metadata));
 				}
 			}
 			workerInfo.resultQueue.endPush();

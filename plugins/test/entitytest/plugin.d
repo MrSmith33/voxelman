@@ -100,7 +100,7 @@ mixin template EntityTestPluginClient()
 		igEnd();
 	}
 
-	void drawEntities(ref Render1Event event)
+	void drawEntities(ref RenderSolid3dEvent event)
 	{
 		graphics.chunkShader.bind;
 		graphics.draw(batch);

@@ -84,19 +84,12 @@ struct ChunkMan
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
-	Volume calcVolume(ChunkWorldPos position)
-	{
-		auto size = viewRadius*2 + 1;
-		return Volume(cast(ivec3)(position.ivector - viewRadius),
-			ivec3(size, size, size));
-	}
-
 	void updateObserverPosition(vec3 cameraPos)
 	{
 		ChunkWorldPos chunkPos = BlockWorldPos(cameraPos);
 		observerPosition = chunkPos;
 
-		Volume newVolume = calcVolume(chunkPos);
+		Volume newVolume = calcVolume(chunkPos, viewRadius);
 		if (newVolume == visibleVolume) return;
 
 		updateVisibleVolume(newVolume);

@@ -95,6 +95,7 @@ public:
 
 		foreach(optionPair; options.byKeyValue)
 		{
+			if (optionPair.key !in root.tags) continue;
 			auto tags = root.tags[optionPair.key];
 
 			if (tags.length == 1)

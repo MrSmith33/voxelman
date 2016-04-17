@@ -53,6 +53,7 @@ public:
 
 	bool doUpdateObserverPosition = true;
 	vec3 updatedCameraPos;
+	bool drawDebugMetadata;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -72,6 +73,7 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_M, "key.toggleMetaData", null, &onToggleMetaData));
 	}
 
 	override void preInit()
@@ -111,6 +113,10 @@ public:
 		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
+	void onToggleMetaData(string) {
+		drawDebugMetadata = !drawDebugMetadata;
+	}
+
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		if (doUpdateObserverPosition)
@@ -119,6 +125,56 @@ public:
 		}
 		chunkMan.updateObserverPosition(updatedCameraPos);
 		chunkMan.update();
+		if (drawDebugMetadata) {
+			chunkMan.chunkMeshMan.drawDebug(graphics.debugBatch);
+			drawDebugChunkInfo();
+		}
+	}
+
+	void drawDebugChunkInfo()
+	{
+		enum nearRadius = 2;
+		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
+		Volume nearVolume = calcVolume(chunkPos, nearRadius);
+
+		drawDebugChunkMetadata(nearVolume);
+		drawDebugChunkGrid(nearVolume);
+		drawDebugChunkUniform(nearVolume);
+	}
+
+	void drawDebugChunkMetadata(Volume volume)
+	{
+		import voxelman.block.utils;
+		foreach(pos; volume.positions)
+		{
+			vec3 blockPos = pos * CHUNK_SIZE;
+			Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(pos));
+			if (chunk is null) continue;
+			foreach(ubyte side; 0..6)
+			{
+				Solidity solidity = chunkSideSolidity(chunk.snapshot.blockData.metadata, cast(Side)side);
+				static Color3ub[3] colors = [Colors.white, Colors.gray, Colors.black];
+				Color3ub color = colors[solidity];
+				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(Side)side, color, true);
+			}
+		}
+	}
+
+	void drawDebugChunkGrid(Volume volume)
+	{
+		vec3 gridPos = vec3(volume.position*CHUNK_SIZE);
+		ivec3 gridCount = volume.size+1;
+		vec3 gridOffset = vec3(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
+		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
+	}
+
+	void drawDebugChunkUniform(Volume volume)
+	{
+		foreach(pos; volume.positions)
+		{
+			vec3 chunkBlockPos = pos * CHUNK_SIZE;
+			graphics.debugBatch.putCube(chunkBlockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
+		}
 	}
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)

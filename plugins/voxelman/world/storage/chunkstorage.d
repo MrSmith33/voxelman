@@ -169,9 +169,6 @@ struct ChunkStorage
 		foreach(handler; onChunkRemovedHandlers)
 			handler(chunk);
 
-		if (chunk.mesh)
-			chunk.mesh.free();
-		delete chunk.mesh;
 		delete chunk;
 	}
 }

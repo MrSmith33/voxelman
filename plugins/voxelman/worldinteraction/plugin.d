@@ -159,7 +159,7 @@ class WorldInteractionPlugin : IPlugin
 		}
 	}
 
-	void drawDebug(ref Render1Event event)
+	void drawDebug(ref RenderSolid3dEvent event)
 	{
 		//graphics.chunkShader.bind;
 		//graphics.draw(hitBatch);

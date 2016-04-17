@@ -99,6 +99,7 @@ public:
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool isConsoleShown = false;
+	bool triangleMode = true;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.client.plugininfo);
@@ -113,6 +114,7 @@ public:
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Y, "key.toggleTriangle", null, &onToggleTriangle));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
@@ -133,7 +135,7 @@ public:
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		evDispatcher.subscribeToEvent(&drawScene);
+		evDispatcher.subscribeToEvent(&drawSolid);
 		evDispatcher.subscribeToEvent(&drawOverlay);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 
@@ -163,7 +165,7 @@ public:
 
 			igTextf("Chunks visible/rendered %s/%s %.0f%%",
 				chunksVisible, chunksRendered,
-				chunksVisible ? cast(float)chunksRendered/chunksVisible*100 : 0);
+				chunksVisible ? cast(float)chunksRendered/chunksVisible*100.0 : 0);
 			igTextf("Chunks per frame loaded: %s",
 				totalLoadedChunks - lastFrameLoadedChunks);
 			igTextf("Chunks total loaded: %s",
@@ -186,8 +188,8 @@ public:
 		with(clientWorld.chunkMan) {
 			igTextf("Chunks to remove: %s", removeQueue.length);
 			igTextf("Chunks to mesh: %s", chunkMeshMan.numMeshChunkTasks);
-			float percent = chunkMeshMan.totalMeshedChunks > 0 ? chunkMeshMan.totalMeshes / chunkMeshMan.totalMeshedChunks * 100 : 0.0;
-			igTextf("Meshed/Meshes %s/%s %s%%", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes, percent);
+			float percent = chunkMeshMan.totalMeshedChunks > 0 ? cast(float)chunkMeshMan.totalMeshes / chunkMeshMan.totalMeshedChunks * 100 : 0.0;
+			igTextf("Meshed/Meshes %s/%s %.0f%%", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes, percent);
 			igTextf("View radius: %s", viewRadius);
 		}
 		igEnd();
@@ -321,8 +323,12 @@ public:
 	{
 		isCullingEnabled = !isCullingEnabled;
 	}
+	void onToggleTriangle(string)
+	{
+		triangleMode = !triangleMode;
+	}
 
-	void drawScene(ref Render1Event event)
+	void drawSolid(ref RenderSolid3dEvent event)
 	{
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
@@ -337,7 +343,7 @@ public:
 		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
-		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.visibleChunks.byValue)
+		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.chunkMeshes[0].byValue)
 		{
 			++stats.chunksVisible;
 			if (isCullingEnabled) // Frustum culling
@@ -353,15 +359,46 @@ public:
 			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 
 			mesh.bind;
-			mesh.render;
+			mesh.render(triangleMode);
 
 			++stats.chunksRendered;
 			stats.vertsRendered += mesh.numVertexes;
 			stats.trisRendered += mesh.numTris;
 		}
 
-		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
 		graphics.chunkShader.unbind;
+
+		graphics.renderer.enableAlphaBlending();
+		graphics.transparentShader.bind;
+		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
+			graphics.camera.cameraMatrix);
+		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
+			cast(const float*)graphics.camera.perspective.arrayof);
+		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.chunkMeshes[1].byValue)
+		{
+			++stats.chunksVisible;
+			if (isCullingEnabled) // Frustum culling
+			{
+				vec3 vecMin = mesh.position;
+				vec3 vecMax = vecMin + CHUNK_SIZE;
+				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
+				auto intersects = frustum.intersectsAABB(aabb);
+				if (!intersects) continue;
+			}
+
+			modelMatrix = translationMatrix!float(mesh.position);
+			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
+
+			mesh.bind;
+			mesh.render(triangleMode);
+
+			++stats.chunksRendered;
+			stats.vertsRendered += mesh.numVertexes;
+			stats.trisRendered += mesh.numTris;
+		}
+		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+		graphics.transparentShader.unbind;
+		graphics.renderer.disableAlphaBlending();
 	}
 
 	void drawOverlay(ref Render2Event event)

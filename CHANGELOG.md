@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 ### Added
+- Add semi-transparent solidity state for blocks.
+- Add transparent meshes to chunks.
+- Add minSolidity calculation to chunk meta data.
+- Add wireframe mode [Y].
+- Add 3d grid rendering helper.
+- Add metadata drawinf to client world.
 - Add LMDB storage backend.
 - Add lock-free work queue. Constant memory consumption. No allocations. Works faster.
 - Add multiple layers of data for chunks.
@@ -33,6 +39,8 @@
 - Add current frame number to update events.
 
 ### Changed
+- Make water transparent.
+- Store chunk meshes in chunkmeshman instead of chunk.
 - Optimize generation of chunks above ground.
 - Implement chunk side transparency metadata calculation => massive boost of client.
 - Put trace log messages only in file.
@@ -56,6 +64,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix error on missing config option.
 - Fix commands in launcher when app is not running.
 - Fix chunk free list not working.
 - Fix app crash on Alt+PrintScreen.

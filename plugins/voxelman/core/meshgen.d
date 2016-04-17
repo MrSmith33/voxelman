@@ -25,7 +25,7 @@ import voxelman.world.storage.coordinates;
 
 struct MeshGenResult
 {
-	ubyte[] meshData;
+	ubyte[][2] meshes;
 	ChunkWorldPos position;
 }
 
@@ -73,40 +73,35 @@ in
 }
 body
 {
-	Appender!(ubyte[]) appender;
+	Appender!(ubyte[])[3] geometry; // 0 - solid, 1 - semiTransparent
 	ubyte bx, by, bz;
 
-	bool isVisibleBlock(uint id)
-	{
-		return blocks[id].isVisible;
-	}
-
-	bool isSolid(int tx, int ty, int tz)
+	Solidity solidity(int tx, int ty, int tz)
 	{
 		ubyte x = cast(ubyte)tx;
 		ubyte y = cast(ubyte)ty;
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].isSolid;
+			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].solidity;
 		else if(tx == CHUNK_SIZE) // east
-			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].isSolid;
+			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].solidity;
 
 		if(ty == -1) // bottom
 		{
-			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].isSolid;
+			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].solidity;
 		}
 		else if(ty == CHUNK_SIZE) // top
 		{
-			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].isSolid;
+			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].solidity;
 		}
 
 		if(tz == -1) // north
-			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].isSolid;
+			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].solidity;
 		else if(tz == CHUNK_SIZE) // south
-			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].isSolid;
+			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].solidity;
 
-		return blocks[ chunk.getBlockType(x, y, z) ].isSolid;
+		return blocks[ chunk.getBlockType(x, y, z) ].solidity;
 	}
 
 	// Bit flags of sides to render
@@ -122,6 +117,9 @@ body
 		BlockId id = chunk.snapshot.blockData.uniformType;
 		auto meshHandler = blocks[id].meshHandler;
 		auto color = blocks[id].color;
+		auto curSolidity = blocks[id].solidity;
+
+		if (curSolidity != Solidity.transparent)
 		foreach (uint index; 0..CHUNK_SIZE_CUBE)
 		{
 			bx = index & CHUNK_SIZE_BITS;
@@ -131,14 +129,14 @@ body
 
 			foreach(ubyte side; 0..6)
 			{
-				offset = sideOffsets[cast(Side)side];
+				offset = sideOffsets[side];
 
-				if(!isSolid(bx+offset[0], by+offset[1], bz+offset[2]))
+				if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
 				}
 			}
-			meshHandler(appender, color, bx, by, bz, sides);
+			meshHandler(geometry[curSolidity], color, bx, by, bz, sides);
 		} // foreach
 	}
 	else
@@ -151,21 +149,29 @@ body
 			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 			sides = 0;
 
+			auto curSolidity = blocks[val].solidity;
+			if (curSolidity == Solidity.transparent)
+				continue;
+
 			foreach(ubyte side; 0..6)
 			{
-				offset = sideOffsets[cast(Side)side];
+				offset = sideOffsets[side];
 
-				if(!isSolid(bx+offset[0], by+offset[1], bz+offset[2]))
+				if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
 				{
 					sides |= 2^^(side);
 				}
 			}
 
-			blocks[val].meshHandler(appender, blocks[val].color, bx, by, bz, sides);
+			blocks[val].meshHandler(geometry[curSolidity], blocks[val].color, bx, by, bz, sides);
 		} // if(val != 0)
 	} // foreach
 
+	ubyte[][2] meshes;
+	meshes[0] = geometry[2].data;
+	meshes[1] = geometry[1].data;
+
 	auto result = cast(immutable(MeshGenResult)*)
-		new MeshGenResult(cast(ubyte[])appender.data, chunk.position);
+		new MeshGenResult(meshes, chunk.position);
 	mainThread.send(result);
 }

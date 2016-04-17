@@ -27,17 +27,35 @@ enum Side : ubyte
 
 enum SideMask : ubyte
 {
-	north	= 1,
-	south	= 2,
+	north	= 0b_00_0001,
+	south	= 0b_00_0010,
 
-	east	= 4,
-	west	= 8,
+	east	= 0b_00_0100,
+	west	= 0b_00_1000,
 
-	top		= 16,
-	bottom	= 32,
+	top		= 0b_01_0000,
+	bottom	= 0b_10_0000,
 }
 
-immutable ubyte[6] oppSide = [1, 0, 3, 2, 5, 4];
+enum MetadataSideMask : ushort
+{
+	north	= 0b_11,
+	south	= 0b_11_00,
+
+	east	= 0b_11_00_00,
+	west	= 0b_11_00_00_00,
+
+	top		= 0b_11_00_00_00_00,
+	bottom	= 0b_11_00_00_00_00_00,
+}
+
+immutable Side[6] oppSide =
+[Side.south,
+ Side.north,
+ Side.west,
+ Side.east,
+ Side.bottom,
+ Side.top];
 
 immutable byte[3][6] sideOffsets = [
 	[ 0, 0,-1],
@@ -105,13 +123,22 @@ alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
 alias Meshhandler = void function(ref Appender!(ubyte[]) output,
 	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
 
+// solidity number increases with solidity
+enum Solidity : ubyte
+{
+	transparent,
+	semiTransparent,
+	solid,
+}
+
 struct BlockInfo
 {
 	string name;
 	Meshhandler meshHandler = &makeNullMesh;
 	ubyte[3] color;
 	bool isVisible = true;
-	bool isSolid = true;
+	Solidity solidity = Solidity.solid;
+	//bool isSolid() @property const { return solidity == Solidity.solid; }
 	size_t id;
 }
 
@@ -127,10 +154,10 @@ struct BlockInfoSetter
 	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
 	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
-	ref BlockInfoSetter isSolid(bool val) { info.isSolid = val; return this; }
+	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
 }
 
-ubyte calcChunkSideMetadata(ChunkLayerSnap blockLayer, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkSideMetadata(ChunkLayerSnap blockLayer, immutable(BlockInfo)[] blockInfos)
 {
 	if (blockLayer.type == StorageType.uniform)
 	{
@@ -145,89 +172,128 @@ ubyte calcChunkSideMetadata(ChunkLayerSnap blockLayer, immutable(BlockInfo)[] bl
 		assert(false);
 }
 
-bool isChunkSideSolid(const ubyte metadata, const Side side)
+bool isChunkSideSolid(const ushort metadata, const Side side)
 {
-	if (metadata & 0b1_000000)
-		return !!(metadata & 1<<side);
+	return chunkSideSolidity(metadata, side) == Solidity.solid;
+}
+
+Solidity chunkSideSolidity(const ushort metadata, const Side side)
+{
+	if (metadata & 0b1_00_00_00_00_00_00) // if metadata is presented
+		return cast(Solidity)((metadata>>(side*2)) & 0b11);
 	else
-		return true;
+		return Solidity.transparent; // otherwise non-solid
 }
 
-ubyte calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockInfos)
+Solidity chunkMinSolidity(const ushort metadata)
 {
-	bool isSolid = blockInfos[uniformBlock].isSolid;
-	// 1 = metadata is present, 6 bits = transparency of 6 chunk sides
-	return isSolid ? 0b1_111111 : 0b1_000000;
+	if (metadata & 0b1_00_00_00_00_00_00) // if metadata is presented
+		return cast(Solidity)((metadata>>CHUNK_SIDE_METADATA_BITS) & 0b11);
+	else
+		return Solidity.transparent; // otherwise non-solid
 }
 
-ubyte calcChunkSideMetadata(BlockId[] blocks, immutable(BlockInfo)[] blockInfos)
+bool isMoreSolidThan(Solidity first, Solidity second)
 {
-	ubyte flags = 0b1_111111;
+	return first > second;
+}
+
+ushort calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockInfos)
+{
+	Solidity solidity = blockInfos[uniformBlock].solidity;
+	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
+	static ushort[3] metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
+	return metadatas[solidity];
+}
+
+enum CHUNK_SIDE_METADATA_BITS = 13;
+
+ushort calcChunkSideMetadata(BlockId[] blocks, immutable(BlockInfo)[] blockInfos)
+{
+	ushort flags = 0b1_00_00_00_00_00_00; // all sides are solid
+	Solidity sideSolidity = Solidity.solid;
 	foreach(index; 0..CHUNK_SIZE_SQR) // bottom
 	{
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.bottom;
-			break;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.bottom*2)));
 
+	sideSolidity = Solidity.solid;
 	outer_north:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(x; 0..CHUNK_SIZE)
 	{
 		size_t index = y*CHUNK_SIZE_SQR | x; // north
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.north;
-			break outer_north;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break outer_north;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.north*2)));
 
+	sideSolidity = Solidity.solid;
 	outer_south:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(x; 0..CHUNK_SIZE)
 	{
 		size_t index = (CHUNK_SIZE-1) * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x; // south
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.south;
-			break outer_south;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break outer_south;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.south*2)));
 
+	sideSolidity = Solidity.solid;
 	outer_east:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(z; 0..CHUNK_SIZE)
 	{
 		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | (CHUNK_SIZE-1); // east
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.east;
-			break outer_east;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break outer_east;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.east*2)));
 
+	sideSolidity = Solidity.solid;
 	outer_west:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(z; 0..CHUNK_SIZE)
 	{
 		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR; // west
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.west;
-			break outer_west;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break outer_west;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.west*2)));
 
+	sideSolidity = Solidity.solid;
 	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
 	{
-		if (!blockInfos[blocks[index]].isSolid)
+		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
-			flags ^= SideMask.top;
-			break;
+			sideSolidity -= 1;
+			if (sideSolidity == Solidity.transparent)
+				break;
 		}
 	}
+	flags = cast(ushort)(flags | (sideSolidity << (Side.top*2)));
 
 	return flags;
 }
