@@ -330,6 +330,9 @@ public:
 
 	void drawSolid(ref RenderSolid3dEvent event)
 	{
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+
 		graphics.chunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
@@ -369,6 +372,8 @@ public:
 		graphics.chunkShader.unbind;
 
 		graphics.renderer.enableAlphaBlending();
+		glDepthMask(GL_FALSE);
+
 		graphics.transparentShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
@@ -398,6 +403,8 @@ public:
 		}
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
 		graphics.transparentShader.unbind;
+		glDisable(GL_CULL_FACE);
+		glDepthMask(GL_TRUE);
 		graphics.renderer.disableAlphaBlending();
 	}
 

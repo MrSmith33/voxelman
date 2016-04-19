@@ -29,6 +29,7 @@ struct ClientPositionPacket
 {
 	vec3 pos = vec3(0, 0, 0);
 	vec2 heading = vec2(0, 0);
+	ushort dimention;
 }
 
 // sent by client after receiving SessionInfoPacket

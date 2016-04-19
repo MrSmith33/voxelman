@@ -225,8 +225,12 @@ final class ChunkObserverManager {
 
 // Describes observers for a single chunk
 private struct ChunkObservers {
+	import std.algorithm : canFind, countUntil;
+
 	// clients observing this chunk
 	private ClientId[] _clients;
+	// Each client can observe a chunk multiple times via multiple volumes.
+	private size_t[] numObservations;
 	// ref counts for keeping chunk loaded
 	size_t numServerObservers;
 
@@ -243,22 +247,46 @@ private struct ChunkObservers {
 	}
 
 	bool contains(ClientId clientId) const {
-		import std.algorithm : canFind;
 		return canFind(_clients, clientId);
 	}
 
-	bool add(ClientId clientId) {
-		if (!contains(clientId)) {
+	// returns true if clientId was not in clients already
+	bool add(ClientId clientId)	{
+		auto index = countUntil(_clients, clientId);
+		if (index == -1) {
 			_clients ~= clientId;
+			numObservations ~= 1;
 			return true;
-		} else
+		} else {
+			++numObservations[index];
 			return false;
+		}
 	}
 
-	bool remove(ClientId clientId) {
-		import std.algorithm : remove, SwapStrategy;
-		size_t startLength = _clients.length;
-		_clients = remove!((a) => a == clientId, SwapStrategy.unstable)(_clients);
-		return (startLength - _clients.length) > 0;
+	// returns true if clientId is no longer in list (has zero observations)
+	bool remove(ClientId clientId)
+	{
+		auto index = countUntil(_clients, clientId);
+		if (index == -1)
+		{
+			return false;
+		}
+		else
+		{
+			--numObservations[index];
+			if (numObservations[index] == 0)
+			{
+				numObservations[index] = numObservations[$-1];
+				numObservations = numObservations[0..$-1];
+				_clients[index] = _clients[$-1];
+				_clients = _clients[0..$-1];
+
+				return true;
+			}
+			else
+			{
+				return false;
+			}
+		}
 	}
 }

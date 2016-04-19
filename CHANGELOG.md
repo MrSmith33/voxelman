@@ -39,6 +39,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Allow one client to observe single chunk multiple times.
 - Make water transparent.
 - Store chunk meshes in chunkmeshman instead of chunk.
 - Optimize generation of chunks above ground.

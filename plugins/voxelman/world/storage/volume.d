@@ -13,17 +13,18 @@ import dlib.math.vector;
 
 import voxelman.world.storage.coordinates;
 
-Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
+Volume calcVolume(ChunkWorldPos cwp, int viewRadius, ushort dimention = 0)
 {
 	int size = viewRadius*2 + 1;
 	return Volume(cast(ivec3)(cwp.ivector - viewRadius),
-		ivec3(size, size, size));
+		ivec3(size, size, size), dimention);
 }
 
-Volume volumeFromCorners(ivec3 a, ivec3 b)
+Volume volumeFromCorners(ivec3 a, ivec3 b, ushort dimention = 0)
 {
 	Volume vol;
 	vol.position = min(a, b);
+	vol.dimention = dimention;
 	vol.size = max(a, b) - vol.position + ivec3(1,1,1);
 	return vol;
 }
@@ -49,6 +50,7 @@ struct Volume
 {
 	ivec3 position;
 	ivec3 size;
+	ushort dimention;
 
 	int volume()
 	{
@@ -60,17 +62,26 @@ struct Volume
 		return size.x == 0 && size.y == 0 && size.z == 0;
 	}
 
-	bool contains(ivec3 otherPosition)
+	bool contains(ivec3 point)
 	{
-		if (otherPosition.x < position.x || otherPosition.x >= position.x + size.x) return false;
-		if (otherPosition.y < position.y || otherPosition.y >= position.y + size.y) return false;
-		if (otherPosition.z < position.z || otherPosition.z >= position.z + size.z) return false;
+		if (point.x < position.x || point.x >= position.x + size.x) return false;
+		if (point.y < position.y || point.y >= position.y + size.y) return false;
+		if (point.z < position.z || point.z >= position.z + size.z) return false;
+		return true;
+	}
+
+	bool contains(ivec3 point, ushort dimention)
+	{
+		if (this.dimention != dimention) return false;
+		if (point.x < position.x || point.x >= position.x + size.x) return false;
+		if (point.y < position.y || point.y >= position.y + size.y) return false;
+		if (point.z < position.z || point.z >= position.z + size.z) return false;
 		return true;
 	}
 
 	bool opEquals()(auto ref const Volume other) const
 	{
-		return position == other.position && size == other.size;
+		return position == other.position && size == other.size && dimention == other.dimention;
 	}
 
 	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;

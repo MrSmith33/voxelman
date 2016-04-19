@@ -47,6 +47,8 @@ private:
 
 	ConfigOption numWorkersOpt;
 
+	ushort currentDimention;
+
 public:
 	ChunkMan chunkMan;
 	WorldAccess worldAccess;
@@ -105,7 +107,7 @@ public:
 
 	override void postInit()
 	{
-		chunkMan.updateObserverPosition(graphics.camera.position);
+		chunkMan.updateObserverPosition(graphics.camera.position, currentDimention);
 	}
 
 	void onTogglePositionUpdate(string)
@@ -123,7 +125,7 @@ public:
 		{
 			updatedCameraPos = graphics.camera.position;
 		}
-		chunkMan.updateObserverPosition(updatedCameraPos);
+		chunkMan.updateObserverPosition(updatedCameraPos, currentDimention);
 		chunkMan.update();
 		if (drawDebugMetadata) {
 			chunkMan.chunkMeshMan.drawDebug(graphics.debugBatch);
@@ -243,7 +245,8 @@ public:
 			{
 				connection.send(ClientPositionPacket(
 					graphics.camera.position,
-					graphics.camera.heading));
+					graphics.camera.heading,
+					currentDimention));
 
 				if (sendPositionTimer < sendPositionInterval)
 					sendPositionTimer = 0;

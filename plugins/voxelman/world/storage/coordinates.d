@@ -144,6 +144,7 @@ struct ChunkWorldPos
 	}
 
 	svec3 vector;
+	ushort dimention;
 
 	ivec3 ivector() @property
 	{
@@ -152,7 +153,7 @@ struct ChunkWorldPos
 
 	ulong asUlong() @property
 	{
-		ulong id = //cast(ulong)(cast(ushort)dim)<<48 |
+		ulong id = cast(ulong)dimention<<48 |
 				cast(ulong)(cast(ushort)vector.z)<<32 |
 				cast(ulong)(cast(ushort)vector.y)<<16 |
 				cast(ulong)(cast(ushort)vector.x);

@@ -202,7 +202,7 @@ ushort calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockI
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
 	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
-	static ushort[3] metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
+	static immutable ushort[3] metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
 	return metadatas[solidity];
 }
 
@@ -340,44 +340,44 @@ void iterateSides()
 immutable ubyte[18 * 6] faces =
 [
 	0, 0, 0, // triangle 1 : begin // north
-	1, 0, 0,
-	1, 1, 0, // triangle 1 : end
-	0, 0, 0, // triangle 2 : begin
 	1, 1, 0,
-	0, 1, 0, // triangle 2 : end
+	1, 0, 0, // triangle 1 : end
+	0, 0, 0, // triangle 2 : begin
+	0, 1, 0,
+	1, 1, 0, // triangle 2 : end
 
 	1, 0, 1, // south
+	0, 1, 1,
 	0, 0, 1,
-	0, 1, 1,
 	1, 0, 1,
-	0, 1, 1,
 	1, 1, 1,
+	0, 1, 1,
 
 	1, 0, 0, // east
+	1, 1, 1,
 	1, 0, 1,
-	1, 1, 1,
 	1, 0, 0,
-	1, 1, 1,
 	1, 1, 0,
+	1, 1, 1,
 
 	0, 0, 1, // west
+	0, 1, 0,
 	0, 0, 0,
-	0, 1, 0,
 	0, 0, 1,
-	0, 1, 0,
 	0, 1, 1,
+	0, 1, 0,
 
 	1, 1, 1, // top
+	0, 1, 0,
 	0, 1, 1,
-	0, 1, 0,
 	1, 1, 1,
-	0, 1, 0,
 	1, 1, 0,
+	0, 1, 0,
 
 	0, 0, 1, // bottom
+	1, 0, 0,
 	1, 0, 1,
-	1, 0, 0,
 	0, 0, 1,
-	1, 0, 0,
 	0, 0, 0,
+	1, 0, 0,
 ];

@@ -84,12 +84,12 @@ struct ChunkMan
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
-	void updateObserverPosition(vec3 cameraPos)
+	void updateObserverPosition(vec3 cameraPos, ushort dimention)
 	{
 		ChunkWorldPos chunkPos = BlockWorldPos(cameraPos);
 		observerPosition = chunkPos;
 
-		Volume newVolume = calcVolume(chunkPos, viewRadius);
+		Volume newVolume = calcVolume(chunkPos, viewRadius, dimention);
 		if (newVolume == visibleVolume) return;
 
 		updateVisibleVolume(newVolume);
