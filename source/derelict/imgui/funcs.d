@@ -35,7 +35,7 @@ private
 {
     import derelict.util.system;
     import derelict.imgui.types;
-    import std.c.stdarg:va_list;
+    import core.stdc.stdarg:va_list;
 }
 
 extern(C) @nogc nothrow

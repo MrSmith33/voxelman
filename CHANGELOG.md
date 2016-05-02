@@ -39,6 +39,9 @@
 - Add current frame number to update events.
 
 ### Changed
+- [Launcher] Move app settings to job.
+- [Launcher] Make separate buttons for Run, Build and Run-and-build.
+- [Launcher] Change job items to take equal amount of height.
 - Allow one client to observe single chunk multiple times.
 - Make water transparent.
 - Store chunk meshes in chunkmeshman instead of chunk.

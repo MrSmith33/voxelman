@@ -70,7 +70,7 @@ string[] compilerExeNames = ["dmd", "ldc2", "gdc"];
 
 struct JobParams
 {
-	string pluginPack = "default";
+	string[string] runParameters;
 	AppType appType = AppType.client;
 	Flag!"start" start = Yes.start;
 	Flag!"build" build = Yes.build;
@@ -90,6 +90,7 @@ struct Job
 	ProcessPipes pipes;
 
 	JobState jobState = JobState.compile;
+	string title;
 	bool isRunning;
 	bool needsClose;
 	bool needsRestart;
@@ -120,18 +121,24 @@ struct Launcher
 	size_t numRunningJobs;
 	LineBuffer appLog;
 
-	void setupJob(JobParams params = JobParams.init)
+	void createJob(JobParams params = JobParams.init)
 	{
 		auto job = new Job(params);
 		job.messageWindow.init();
 		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
 		updateJobType(job);
 		restartJobState(job);
-		startJob(job);
+		updateTitle(job);
 		jobs ~= job;
 	}
 
-	void updateJobType(Job* job)
+	static void updateTitle(Job* job)
+	{
+		string title = job.params.appType == AppType.client ? `Client` : `Server`;
+		job.title = title;
+	}
+
+	static void updateJobType(Job* job)
 	{
 		final switch(job.params.jobType) with(JobType) {
 			case run:
@@ -149,7 +156,7 @@ struct Launcher
 		}
 	}
 
-	void restartJobState(Job* job)
+	static void restartJobState(Job* job)
 	{
 		final switch(job.params.jobType) with(JobType) {
 			case run: job.jobState = JobState.run; break;
@@ -162,6 +169,9 @@ struct Launcher
 	{
 		assert(!job.isRunning);
 		++numRunningJobs;
+
+		updateJobType(job);
+		updateTitle(job);
 
 		string command;
 		string workDir;
@@ -177,7 +187,7 @@ struct Launcher
 
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
 
-		(*job) = Job(job.params, command, job.messageWindow, pipes, job.jobState);
+		(*job) = Job(job.params, command, job.messageWindow, pipes, job.jobState, job.title);
 		job.isRunning = true;
 	}
 
@@ -305,13 +315,17 @@ string makeCompileCommand(JobParams params)
 	immutable doForce = params.force ? ` --force` : ``;
 	immutable release = params.release ? `--build=release` : `--build=debug`;
 	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
-	return format("dub build -q %s %s %s%s%s %s\0", arch, compiler, conf, deps, doForce, release);
+	return format("dub build -q %s %s %s%s%s %s\0", arch, compiler, conf, deps, doForce, release)[0..$-1];
 }
 
 string makeRunCommand(JobParams params)
 {
 	string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
-	return format("%s --pack=%s\0", conf, params.pluginPack);
+	string command = conf;
+	foreach(paramName, paramValue; params.runParameters)
+		command ~= format(" --%s=%s", paramName, paramValue);
+	command ~= '\0';
+	return command[0..$-1];
 }
 
 void sendCommand(Job* job, string command)
@@ -325,6 +339,8 @@ void logPipes(Job* job)
 {
 	import std.exception : ErrnoException;
 	import std.utf : UTFException;
+	if (!job.isRunning) return;
+
 	try
 	{
 		foreach(pipe; only(job.pipes.stdout, job.pipes.stderr))
@@ -349,7 +365,6 @@ void logPipes(Job* job)
 	catch(UTFException e)
 	{	// Ignore e
 	}
-
 }
 
 PluginInfo* readPluginInfo(string fileData)

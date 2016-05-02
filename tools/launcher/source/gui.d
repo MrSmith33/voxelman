@@ -149,6 +149,7 @@ struct LauncherGui
 		window.processEvents();
 		igState.newFrame();
 		doGui();
+
 		import core.thread;
 		Thread.sleep(15.msecs);
 	}
@@ -382,33 +383,6 @@ auto withWidth(float width, alias func)(auto ref Parameters!func args)
 	return func(args);
 }
 
-void startButtons(Launcher* launcher, string pack)
-{
-	static JobParams params;
-	params.pluginPack = pack;
-
-	igCheckbox("nodeps", cast(bool*)&params.nodeps); igSameLine();
-	igCheckbox("force", cast(bool*)&params.force); igSameLine();
-	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
-	igCheckbox("release", cast(bool*)&params.release); igSameLine();
-
-	static int curCompiler = 0;
-	withWidth!(40, igCombo2)("##compiler", &curCompiler, "dmd\0ldc\0\0", 2);
-	igSameLine();
-	params.compiler = cast(Compiler)curCompiler;
-
-	static int curJobType = 2;
-	withWidth!(90, igCombo2)("##job type", &curJobType, "Run\0Build\0Build & Run\0\0", 3);
-	igSameLine();
-	params.jobType = cast(JobType)curJobType;
-
-	params.appType = AppType.client;
-	if (igButton("Client")) launcher.setupJob(params); igSameLine();
-
-	params.appType = AppType.server;
-	if (igButton("Server")) launcher.setupJob(params);
-}
-
 struct CodeMenu
 {
 	Launcher* launcher;
@@ -433,7 +407,7 @@ struct CodeMenu
 	void draw()
 	{
 		igBeginGroup();
-		withWidth!(200, igCombo3)(
+		withWidth!(150, igCombo3)(
 			"Pack",
 			cast(int*)&pluginPacks.currentItem,
 			&getter, &this,
@@ -441,7 +415,11 @@ struct CodeMenu
 		igSameLine();
 		startButtons(launcher, pluginPacks.selected.id);
 
-		foreach(job; launcher.jobs) drawJobLog(job);
+		float areaHeight = igGetWindowHeight() - igGetCursorPosY() - 10;
+
+		size_t numJobs = launcher.jobs.length;
+		float itemHeight = (numJobs) ? areaHeight / numJobs : 200;
+		foreach(job; launcher.jobs) drawJobLog(job, itemHeight);
 
 		igEndGroup();
 	}
@@ -454,30 +432,68 @@ struct CodeMenu
 	}
 }
 
-void drawJobLog(J)(J job)
+void startButtons(Launcher* launcher, string pack)
+{
+	static JobParams params;
+	params.runParameters["pack"] = pack;
+
+	params.appType = AppType.client;
+	if (igButton("Client")) launcher.createJob(params); igSameLine();
+
+	params.appType = AppType.server;
+	if (igButton("Server")) launcher.createJob(params);
+}
+
+void jobParams(JobParams* params)
+{
+	igCheckbox("nodeps", cast(bool*)&params.nodeps); igSameLine();
+	igCheckbox("force", cast(bool*)&params.force); igSameLine();
+	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
+	igCheckbox("release", cast(bool*)&params.release); igSameLine();
+
+	withWidth!(40, igCombo2)("##compiler", cast(int*)&params.compiler, "dmd\0ldc\0\0", 2);
+}
+
+void drawJobLog(J)(J* job, float height)
 {
 	igPushIdPtr(job);
-	assert(job.command.ptr);
+	assert(job.title.ptr);
 	auto state = job.isRunning ? "[RUNNING] " : "[STOPPED] ";
-	auto textPtrs = makeFormattedTextPtrs("%s%s\0", state, job.command);
+	auto textPtrs = makeFormattedTextPtrs("%s%s\0", state, job.title);
 
-	if (igCollapsingHeader(textPtrs.start, null, true, true)) {
-		if (igButton("Clear")) job.messageWindow.lineBuffer.clear();
-		if (!job.isRunning) {
-			igSameLine();
-			if (igButton("Close")) job.needsClose = true;
-			igSameLine();
-			if (igButton("Restart")) job.needsRestart = true;
-		} else {
-			igSameLine();
-			if (igButton("Stop")) job.sendCommand("stop");
-		}
-		igBeginChildEx(igGetIdPtr(job.command.ptr), ImVec2(0,350), true, ImGuiWindowFlags_HorizontalScrollbar);
-		job.messageWindow.draw();
-		igEndChild();
-	}
+	igBeginChildEx(igGetIdPtr(job), ImVec2(0, height), true, ImGuiWindowFlags_HorizontalScrollbar);
+	igTextUnformatted(textPtrs.start, textPtrs.end-1);
+	igSameLine();
+	jobParams(&job.params);
+	igSameLine();
+	drawActionButtons(job);
+	job.messageWindow.draw();
+	igEndChild();
 
 	igPopId();
+}
+
+void drawActionButtons(J)(J* job)
+{
+	if (igButton("Clear")) job.messageWindow.lineBuffer.clear();
+	if (!job.isRunning) {
+		igSameLine();
+		if (igButton("Close")) job.needsClose = true;
+		igSameLine();
+
+		int jobType = 3;
+		if (igButton(" Run ")) jobType = JobType.run; igSameLine();
+		if (igButton("Build")) jobType = JobType.compile; igSameLine();
+		if (igButton(" B&R ")) jobType = JobType.compileAndRun;
+		if (jobType != 3)
+		{
+			job.needsRestart = true;
+			job.params.jobType = cast(JobType)jobType;
+		}
+	} else {
+		igSameLine();
+		if (igButton("Stop")) job.sendCommand("stop");
+	}
 }
 
 void setStyle()

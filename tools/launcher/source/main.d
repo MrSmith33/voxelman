@@ -23,7 +23,7 @@ void main(string[] args)
 		import std.process;
 		import std.stdio;
 		JobParams params;
-		params.pluginPack = "default";
+		params.runParameters["pack"] = "default";
 		params.appType = AppType.client;
 		params.arch64 = releaseBuild == 64 ? Yes.arch64 : No.arch64;
 		params.nodeps = Yes.nodeps;

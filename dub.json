@@ -11,7 +11,7 @@
 		"derelict-enet": "==2.0.0",
 		"derelict-glfw3" : "==2.0.0",
 		"derelict-gl3" : "==1.0.18",
-		"sdlang-d" : "==0.9.4"
+		"sdlang-d" : "==0.9.5"
 	},
 
 	"targetPath" : "builds/default",
