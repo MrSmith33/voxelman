@@ -39,6 +39,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- [Launcher] Add server list add/remove ability.
 - [Launcher] Move app settings to job.
 - [Launcher] Make separate buttons for Run, Build and Run-and-build.
 - [Launcher] Change job items to take equal amount of height.

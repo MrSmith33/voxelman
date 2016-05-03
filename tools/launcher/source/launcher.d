@@ -22,6 +22,8 @@ import voxelman.utils.messagewindow;
 import voxelman.utils.linebuffer;
 import gui;
 
+enum DEFAULT_PORT = 1234;
+
 struct PluginInfo
 {
 	string id;
@@ -305,6 +307,37 @@ struct Launcher
 			servers ~= sinfo;
 		}
 	}
+
+	void addServer(ServerInfo server)
+	{
+		auto info = new ServerInfo();
+		*info = server;
+		servers ~= info;
+		saveServers();
+	}
+
+	void removeServer(size_t serverIndex)
+	{
+		servers = remove(servers, serverIndex);
+		saveServers();
+	}
+
+	void saveServers()
+	{
+		import std.exception;
+		try
+		{
+			auto f = File(serversFname, "w");
+			foreach(server; servers)
+			{
+				f.writefln("%s:%s %s", server.ip, server.port, server.name);
+			}
+		}
+		catch(ErrnoException e)
+		{
+			error(e);
+		}
+	}
 }
 
 string makeCompileCommand(JobParams params)
@@ -322,8 +355,13 @@ string makeRunCommand(JobParams params)
 {
 	string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
 	string command = conf;
+
 	foreach(paramName, paramValue; params.runParameters)
+	if (paramValue)
 		command ~= format(" --%s=%s", paramName, paramValue);
+	else
+		command ~= format(" --%s", paramName);
+
 	command ~= '\0';
 	return command[0..$-1];
 }
@@ -419,6 +457,12 @@ string toCString(in const(char)[] s)
 	import std.exception : assumeUnique;
 	auto copy = new char[s.length + 1];
 	copy[0..s.length] = s[];
-	copy[s.length] = 0;
+	copy[s.length] = '\0';
 	return assumeUnique(copy[0..s.length]);
+}
+
+string fromCString(char[] str)
+{
+	char[] chars = str.ptr.fromStringz();
+	return chars.ptr[0..chars.length+1].idup[0..$-1];
 }

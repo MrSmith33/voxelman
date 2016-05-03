@@ -13,7 +13,7 @@ import std.format;
 import std.process;
 import std.range;
 import std.stdio;
-import std.string : format;
+import std.string : format, fromStringz;
 import std.typecons : Flag, Yes, No;
 
 import dlib.math.vector;
@@ -271,10 +271,12 @@ struct PlayMenu
 	SelectedMenu selectedMenu;
 	ItemList!(PluginPack*) pluginPacks;
 	ItemList!(ServerInfo*) servers;
+	AddServerDialog addServerDlg;
 
 	void init(Launcher* launcher)
 	{
 		this.launcher = launcher;
+		addServerDlg.launcher = launcher;
 	}
 
 	void refresh()
@@ -296,8 +298,6 @@ struct PlayMenu
 		igSameLine();
 		if (igButton("Load"))
 			selectedMenu = SelectedMenu.load;
-
-		//igSeparator();
 
 		if (selectedMenu == SelectedMenu.newGame)
 			drawNewGame();
@@ -367,11 +367,78 @@ struct PlayMenu
 				igPopId();
 			}
 		igEndChild();
+
+		if (addServerDlg.show())
+		{
+			refresh();
+		}
+
+		if (servers.items.length > 0)
+		{
+			igSameLine();
+			if (igButton("Remove"))
+				launcher.removeServer(servers.currentItem);
+			igSameLine();
+			if (igButton("Connect"))
+				connect();
+		}
+	}
+
+	void connect()
+	{
+
 	}
 
 	void pluginPackPlugins()
 	{
 
+	}
+}
+
+struct AddServerDialog
+{
+	char[128] serverInputBuffer;
+	char[16] ipAddress;
+	int port = DEFAULT_PORT;
+	Launcher* launcher;
+
+	bool show()
+	{
+		if (igButton("Add"))
+			igOpenPopup("add");
+		if (igBeginPopupModal("add", null, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			igInputText("Server name", serverInputBuffer.ptr, serverInputBuffer.length);
+			igInputText("IP/port", ipAddress.ptr, ipAddress.length, ImGuiInputTextFlags_CharsDecimal);
+			igSameLine();
+			igInputInt("##port", &port);
+			port = clamp(port, 0, ushort.max);
+
+			if (igButton("Add"))
+			{
+				launcher.addServer(ServerInfo(
+					serverInputBuffer.fromCString(),
+					ipAddress.fromCString(),
+					cast(ushort)port));
+				resetFields();
+
+				igCloseCurrentPopup();
+				return true;
+			}
+			igSameLine();
+			if (igButton("Cancel"))
+				igCloseCurrentPopup();
+
+			igEndPopup();
+		}
+		return false;
+	}
+
+	void resetFields()
+	{
+		Launcher* l = launcher;
+		this = AddServerDialog();
+		launcher = l;
 	}
 }
 
@@ -417,8 +484,10 @@ struct CodeMenu
 
 		float areaHeight = igGetWindowHeight() - igGetCursorPosY() - 10;
 
+		enum minItemHeight = 160;
 		size_t numJobs = launcher.jobs.length;
-		float itemHeight = (numJobs) ? areaHeight / numJobs : 200;
+		float itemHeight = (numJobs) ? areaHeight / numJobs : minItemHeight;
+		if (itemHeight < minItemHeight) itemHeight = minItemHeight;
 		foreach(job; launcher.jobs) drawJobLog(job, itemHeight);
 
 		igEndGroup();
@@ -517,7 +586,7 @@ void setStyle()
 	style.Colors[ImGuiCol_ButtonHovered]         = ImVec4(0.43f, 0.46f, 0.82f, 0.60f);
 	style.Colors[ImGuiCol_ButtonActive]          = ImVec4(0.37f, 0.40f, 0.71f, 0.60f);
 	style.Colors[ImGuiCol_TooltipBg]             = ImVec4(0.86f, 0.86f, 0.86f, 0.90f);
-	style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	//style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
 	style.WindowFillAlphaDefault = 1.0f;
 }
 
