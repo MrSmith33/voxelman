@@ -106,8 +106,7 @@ final class ChatPluginServer : IPlugin
 
 	void messageCommand(CommandParams params)
 	{
-		import std.string : strip;
-		auto stripped = params.rawArgs.strip;
+		auto stripped = params.rawStrippedArgs;
 		connection.sendToAll(MessagePacket(0, stripped));
 		infof("> %s", stripped);
 	}

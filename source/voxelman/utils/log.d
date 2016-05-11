@@ -31,16 +31,16 @@ class ConciseLogger : FileLogger
 
 void setupLogger(string filename)
 {
-	globalLogLevel = LogLevel.trace;
+	globalLogLevel = LogLevel.all;
 
 	auto logger = new MultiLogger;
 
 	auto file = File(filename, "w");
 	auto fileLogger = new FileLogger(file);
-	fileLogger.logLevel = LogLevel.trace;
+	fileLogger.logLevel = LogLevel.all;
 
 	auto conciseLogger = new ConciseLogger(stdout);
-	fileLogger.logLevel = LogLevel.info;
+	conciseLogger.logLevel = LogLevel.info;
 
 	logger.insertLogger("fileLogger", fileLogger);
 	logger.insertLogger("stdoutLogger", conciseLogger);

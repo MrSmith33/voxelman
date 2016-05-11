@@ -125,7 +125,6 @@ struct WorldInfo
 	string name = DEFAULT_WORLD_NAME;
 	TimestampType simulationTick;
 	ivec3 spawnPosition;
-	//block mapping
 }
 
 //version = DBG_COMPR;

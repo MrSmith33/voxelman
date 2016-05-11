@@ -75,6 +75,7 @@ final class ChunkManager {
 	void delegate(ChunkWorldPos) onChunkLoadedHandler;
 	void delegate(BlockChange[][ChunkWorldPos])[] chunkChangesHandlers;
 	ChunkProvider* chunkProvider;
+	bool cancelLoad = false; /// Set to true on client to cancel load on unload
 
 	private ChunkFreeList freeList;
 	private ChunkLayerSnap[ChunkWorldPos][] snapshots;
@@ -140,6 +141,7 @@ final class ChunkManager {
 		}
 		chunkProvider.saveTaskQueue.setItem(ChunkHeaderItem(cwp, numChunkLayers, 0), headerPos);
 		chunkProvider.saveTaskQueue.endPush();
+		chunkProvider.notify();
 	}
 
 	/// Sets number of users of chunk at cwp.
@@ -383,6 +385,7 @@ final class ChunkManager {
 			case non_loaded:
 				chunkStates[cwp] = added_loading;
 				chunkProvider.loadTaskQueue.pushSingleItem!ulong(cwp.asUlong);
+				chunkProvider.notify();
 				notifyAdded(cwp);
 				break;
 			case added_loaded:
@@ -431,9 +434,17 @@ final class ChunkManager {
 				break;
 			case removed_loading:
 				assert(false, "Unload should not occur when chunk is already removed");
-			case added_loading:
+			case added_loading://TODO
 				notifyRemoved(cwp);
-				chunkStates[cwp] = removed_loading;
+				if (cancelLoad)
+				{
+					chunkStates[cwp] = non_loaded;
+					clearChunkData(cwp);
+				}
+				else
+				{
+					chunkStates[cwp] = removed_loading;
+				}
 				break;
 			case removed_loaded_saving:
 				assert(false, "Unload should not occur when chunk is already removed");

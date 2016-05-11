@@ -20,6 +20,7 @@ import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.world.plugin;
+import voxelman.world.clientworld;
 import voxelman.graphics.plugin;
 
 import voxelman.login.clientinfo;
@@ -40,6 +41,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
+	ClientWorld clientWorld;
 
 	ConfigOption nicknameOpt;
 
@@ -64,6 +66,8 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
 		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
+
+		clientWorld = pluginman.getPlugin!ClientWorld;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
@@ -121,14 +125,16 @@ public:
 		import voxelman.utils.math : nansToZero;
 
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
-		tracef("Received ClientPositionPacket(%s, %s)",
-			packet.pos, packet.heading);
+		tracef("Received ClientPositionPacket(%s, %s, %s)",
+			packet.pos, packet.heading, packet.dimention);
 
 		nansToZero(packet.pos);
 		graphics.camera.position = packet.pos;
 
 		nansToZero(packet.heading);
 		graphics.camera.setHeading(packet.heading);
+
+		clientWorld.setCurrentDimention(packet.dimention);
 	}
 
 	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
@@ -172,6 +178,7 @@ public:
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawn);
+		commandPlugin.registerCommand("dim", &changeDimentionCommand);
 	}
 
 	void onSpawn(CommandParams params)
@@ -180,7 +187,8 @@ public:
 		if(info is null) return;
 		info.pos = START_POS;
 		info.heading = vec2(0,0);
-		connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading));
+		info.dimention = 0;
+		connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading, info.dimention));
 		updateObserverVolume(info);
 	}
 
@@ -219,12 +227,13 @@ public:
 		return clients.byKeyValue.filter!(a=>a.value.isLoggedIn).map!(a=>a.value.id);
 	}
 
-	void spawnClient(vec3 pos, vec2 heading, ClientId clientId)
+	void spawnClient(vec3 pos, vec2 heading, ushort dimention, ClientId clientId)
 	{
 		ClientInfo* info = clients[clientId];
 		info.pos = pos;
 		info.heading = heading;
-		connection.sendTo(clientId, ClientPositionPacket(pos, heading));
+		info.dimention = dimention;
+		connection.sendTo(clientId, ClientPositionPacket(pos, heading, dimention));
 		connection.sendTo(clientId, SpawnPacket());
 		updateObserverVolume(info);
 	}
@@ -243,11 +252,30 @@ public:
 		clients.remove(event.clientId);
 	}
 
+	void changeDimentionCommand(CommandParams params)
+	{
+		import std.conv : to, ConvException;
+
+		ClientInfo* info = clients[params.source];
+		if (info.isSpawned)
+		{
+			if (params.args.length > 1)
+			{
+				auto dim = to!DimentionId(params.args[1]);
+				info.dimention = dim;
+				tracef("change dimention to %s for %s", dim, clientName(params.source));
+				connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading, info.dimention));
+				//updateObserverVolume(info);
+				// BUG: old positions will come from client until ClientPositionPacket is delivered.
+			}
+		}
+	}
+
 	void updateObserverVolume(ClientInfo* info)
 	{
 		if (info.isSpawned) {
-			ChunkWorldPos chunkPos = BlockWorldPos(info.pos);
-			serverWorld.chunkObserverManager.changeObserverVolume(info.id, chunkPos, info.viewRadius);
+			ChunkWorldPos cwp = BlockWorldPos(info.pos, info.dimention);
+			serverWorld.chunkObserverManager.changeObserverVolume(info.id, cwp, info.viewRadius);
 		}
 	}
 
@@ -273,7 +301,7 @@ public:
 		{
 			ClientInfo* info = clients[clientId];
 			info.isSpawned = true;
-			spawnClient(info.pos, info.heading, clientId);
+			spawnClient(info.pos, info.heading, info.dimention, clientId);
 		}
 	}
 

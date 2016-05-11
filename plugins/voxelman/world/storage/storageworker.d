@@ -9,6 +9,7 @@ import std.experimental.logger;
 import std.conv : to;
 import std.datetime : MonoTime, Duration, usecs, dur, seconds;
 import core.atomic;
+import core.sync.condition;
 
 import cbor;
 
@@ -59,7 +60,7 @@ struct TimeMeasurer
 		if (msecs > 10 || seconds > 0 || isNested)
 		{
 			if (wasRun)
-				infof("%s%s %s.%s,%ss", isNested?"  ":"", taskName, seconds, msecs, usecs);
+				tracef("%s%s %s.%s,%ss", isNested?"  ":"", taskName, seconds, msecs, usecs);
 			if (nested) nested.printTime(true);
 			if (next) next.printTime(isNested);
 		}
@@ -72,6 +73,8 @@ void storageWorker(
 			immutable WorldDb _worldDb,
 			shared bool* workerRunning,
 			shared bool* workerStopped,
+			shared Mutex workAvaliableMutex,
+			shared Condition workAvaliable,
 			shared MessageQueue* loadResQueue,
 			shared MessageQueue* saveResQueue,
 			shared MessageQueue* loadTaskQueue,
@@ -153,7 +156,7 @@ void storageWorker(
 	static struct QLen {size_t i; size_t len;}
 	QLen[] queueLengths;
 	queueLengths.length = numWorkers;
-	shared(MessageQueue)* nextGenQueue()
+	shared(Worker)* nextGenWorker()
 	{
 		import std.algorithm : sort;
 		foreach(i; 0..numWorkers)
@@ -163,7 +166,7 @@ void storageWorker(
 		}
 		sort!((a,b) => a.len < b.len)(queueLengths);// balance worker queues
 		//_nextWorker = (_nextWorker + 1) % numWorkers;
-		return &genWorkers[queueLengths[0].i].taskQueue;
+		return &genWorkers[queueLengths[0].i];
 	}
 
 	//BlockData {
@@ -234,7 +237,9 @@ void storageWorker(
 			doGen = true;
 		}
 		if (doGen) {
-			nextGenQueue().pushSingleItem!ulong(cwp);
+			auto worker = nextGenWorker();
+			worker.taskQueue.pushSingleItem!ulong(cwp);
+			worker.notify();
 		}
 		taskTime.endTaskTiming();
 		taskTime.printTime();
@@ -244,10 +249,15 @@ void storageWorker(
 	uint numReceived;
 	MonoTime frameStart = MonoTime.currTime;
 	size_t prevReceived = size_t.max;
-	while (*atomicLoad(workerRunning))
+	while (*atomicLoad!(MemoryOrder.acq)(workerRunning))
 	{
+		synchronized (workAvaliableMutex)
+		{
+			(cast(Condition)workAvaliable).wait();
+		}
+
 		worldDb.beginTxn();
-		while(!loadTaskQueue.empty)
+		while (!loadTaskQueue.empty)
 		{
 			readChunk();
 			++numReceived;
@@ -255,7 +265,7 @@ void storageWorker(
 		worldDb.abortTxn();
 
 		worldDb.beginTxn();
-		while(!saveTaskQueue.empty)
+		while (!saveTaskQueue.empty)
 		{
 			writeChunk();
 			++numReceived;

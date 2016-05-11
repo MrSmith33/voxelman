@@ -176,10 +176,11 @@ public:
 			igTextf("Pos: X %.2f, Y %.2f, Z %.2f", pos.x, pos.y, pos.z);
 		}
 
-		ChunkWorldPos chunkPos = clientWorld.chunkMan.observerPosition;
-		auto regionPos = RegionWorldPos(chunkPos);
-		auto localChunkPosition = ChunkRegionPos(chunkPos);
+		ChunkWorldPos chunkPos = clientWorld.observerPosition;
 		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+		igTextf("Dimention: %s", chunkPos.w); igSameLine();
+			if (igButton("-##decDimention")) clientWorld.decDimention(); igSameLine();
+			if (igButton("+##incDimention")) clientWorld.incDimention();
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;
@@ -190,7 +191,10 @@ public:
 			igTextf("Chunks to mesh: %s", chunkMeshMan.numMeshChunkTasks);
 			float percent = chunkMeshMan.totalMeshedChunks > 0 ? cast(float)chunkMeshMan.totalMeshes / chunkMeshMan.totalMeshedChunks * 100 : 0.0;
 			igTextf("Meshed/Meshes %s/%s %.0f%%", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes, percent);
-			igTextf("View radius: %s", viewRadius);
+			igTextf("View radius: %s", viewRadius); igSameLine();
+			if (igButton("-##decVRadius")) clientWorld.decViewRadius(); igSameLine();
+			if (igButton("+##incVRadius")) clientWorld.incViewRadius();
+
 		}
 		igEnd();
 	}
@@ -251,7 +255,9 @@ public:
 
 				++frame;
 		}
+		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
+		infof("[Stopped]");
 	}
 
 	void updateFrameTime()

@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.core.chunkgen;
 
 import std.experimental.logger;
-import std.concurrency : Tid, send, receive;
+import core.sync.semaphore;
 import std.variant : Variant;
 import core.atomic : atomicLoad;
 import std.conv : to;
@@ -30,22 +30,6 @@ alias Generator = Generator2d;
 //alias Generator = TestGeneratorSmallCubes2;
 //alias Generator = TestGeneratorSmallCubes3;
 
-struct ChunkGenResult
-{
-	BlockData blockData;
-	ChunkWorldPos position;
-	TimestampType timestamp;
-}
-
-struct SnapshotLoadedMessage {
-	ChunkWorldPos cwp;
-	BlockDataSnapshot[] snapshots;
-	bool saved;
-}
-struct LoadSnapshotMessage {
-	ChunkWorldPos cwp;
-	Tid genWorker;
-}
 
 enum AIR = 1;
 enum GRASS = 2;
@@ -69,7 +53,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			ChunkWorldPos cwp = ChunkWorldPos(_cwp);
 			int wx = cwp.x, wy = cwp.y, wz = cwp.z;
 
-			Generator generator = Generator(cwp.ivector * CHUNK_SIZE);
+			Generator generator = Generator(cwp.ivector3 * CHUNK_SIZE);
 			generator.genPerChunkData();
 
 			bool uniform = true;
@@ -160,11 +144,12 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 
 		while (workerInfo.isRunning)
 		{
-			while(!workerInfo.taskQueue.empty)
+			(cast(Semaphore)workerInfo.workAvaliable).wait();
+
+			if (!workerInfo.taskQueue.empty)
 			{
 				genChunk();
 			}
-			Thread.sleep(50.usecs);
 		}
 	}
 	catch(Throwable t)

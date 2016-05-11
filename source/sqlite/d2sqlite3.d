@@ -29,7 +29,7 @@ import std.traits;
 import std.typecons;
 import std.typetuple;
 import std.variant;
-import std.c.string : memcpy;
+import core.stdc.string : memcpy;
 import core.memory : GC;
 
 

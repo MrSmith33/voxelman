@@ -16,6 +16,8 @@ struct ClientInfo
 	string name;
 	vec3 pos = START_POS;
 	vec2 heading = vec2(-90, 0);
+	DimentionId dimention;
+
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 	Volume visibleVolume;
 

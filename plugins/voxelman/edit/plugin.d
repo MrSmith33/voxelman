@@ -65,7 +65,11 @@ class EditPlugin : IPlugin
 
 	void onUpdateEvent(ref UpdateEvent event)
 	{
-		selection = volumeFromCorners(startingPos.vector, currentCursorPos.vector);
+		if (currentCursorPos.w != startingPos.w)
+		{
+			startingPos = currentCursorPos;
+		}
+		selection = volumeFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimentionId)currentCursorPos.w);
 		drawSelection();
 	}
 
@@ -109,7 +113,7 @@ class EditPlugin : IPlugin
 		if (state != EditState.removing) return;
 		state = EditState.none;
 		foreach(pos; selection.positions)
-			worldInteraction.placeBlockAt(1, BlockWorldPos(pos));
+			worldInteraction.placeBlockAt(1, BlockWorldPos(pos, selection.dimention));
 		worldInteraction.showCursor = true;
 	}
 
@@ -128,7 +132,7 @@ class EditPlugin : IPlugin
 		if (state != EditState.placing) return;
 		state = EditState.none;
 		foreach(pos; selection.positions)
-			worldInteraction.placeBlockAt(currentBlock, BlockWorldPos(pos));
+			worldInteraction.placeBlockAt(currentBlock, BlockWorldPos(pos, selection.dimention));
 		worldInteraction.showCursor = true;
 	}
 

@@ -3,3 +3,4 @@ world_name "world"
 num_workers 4
 
 port 1234
+max_players 32

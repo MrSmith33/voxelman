@@ -531,12 +531,16 @@ void drawJobLog(J)(J* job, float height)
 	auto textPtrs = makeFormattedTextPtrs("%s%s\0", state, job.title);
 
 	igBeginChildEx(igGetIdPtr(job), ImVec2(0, height), true, ImGuiWindowFlags_HorizontalScrollbar);
-	igTextUnformatted(textPtrs.start, textPtrs.end-1);
-	igSameLine();
-	jobParams(&job.params);
-	igSameLine();
-	drawActionButtons(job);
-	job.messageWindow.draw();
+		igTextUnformatted(textPtrs.start, textPtrs.end-1);
+		igSameLine();
+		jobParams(&job.params);
+		igSameLine();
+		drawActionButtons(job);
+		if (job.command)
+		{
+			igInputText("", cast(char*)job.command.ptr, job.command.length, ImGuiInputTextFlags_ReadOnly);
+		}
+		job.messageWindow.draw();
 	igEndChild();
 
 	igPopId();

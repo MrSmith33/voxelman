@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add max_players option for server config.
+- Add cancelLoad option for chunkmanager. Unloads 'loading' chunk immidiately. Makes chunkmanager usable by client.
+- Add multiple dimentions.
 - Add semi-transparent solidity state for blocks.
 - Add transparent meshes to chunks.
 - Add minSolidity calculation to chunk meta data.
@@ -39,6 +42,8 @@
 - Add current frame number to update events.
 
 ### Changed
+- Merge client and server configuration in a single executable. Config is choosen with --app flag.
+- Make threads use proper sync primitives. Worker threads are not wasting CPU anymore.
 - [Launcher] Add server list add/remove ability.
 - [Launcher] Move app settings to job.
 - [Launcher] Make separate buttons for Run, Build and Run-and-build.

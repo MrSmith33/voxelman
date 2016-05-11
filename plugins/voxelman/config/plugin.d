@@ -10,25 +10,30 @@ import pluginlib;
 import voxelman.core.config;
 public import voxelman.config.configmanager;
 
-version(SIDE_CLIENT)
-	enum string CONFIG_FILE_NAME = "../../config/client.sdl";
-else version(SIDE_SERVER)
-	enum string CONFIG_FILE_NAME = "../../config/server.sdl";
-else
-	enum string CONFIG_FILE_NAME = "../../config/config.sdl";
+enum string CONFIG_FILE_NAME_CLIENT = "../../config/client.sdl";
+enum string CONFIG_FILE_NAME_SERVER = "../../config/server.sdl";
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new ConfigPlugin);
-	pluginRegistry.regServerPlugin(new ConfigPlugin);
+	pluginRegistry.regClientPlugin(new ConfigPlugin(true));
+	pluginRegistry.regServerPlugin(new ConfigPlugin(false));
 }
 
 final class ConfigPlugin : IPlugin
 {
 	mixin IdAndSemverFrom!(voxelman.config.plugininfo);
+	string configFileName;
+
+	this(bool client)
+	{
+		if (client)
+			configFileName = CONFIG_FILE_NAME_CLIENT;
+		else
+			configFileName = CONFIG_FILE_NAME_SERVER;
+	}
 
 	override void registerResourceManagers(void delegate(IResourceManager) reg)
 	{
-		reg(new ConfigManager(CONFIG_FILE_NAME));
+		reg(new ConfigManager(configFileName));
 	}
 }

@@ -20,6 +20,9 @@ import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.command.plugin;
 
 
+//version = manualGC;
+version(manualGC) import core.memory;
+
 shared static this()
 {
 	auto s = new ServerPlugin;
@@ -82,7 +85,7 @@ public:
 		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
 		lastSaveTime = MonoTime.currTime;
 
-		GC.disable();
+		version(manualGC) GC.disable();
 
 		// Main loop
 		isRunning = true;
@@ -97,11 +100,14 @@ public:
 			evDispatcher.postEvent(PostUpdateEvent(delta));
 			autosave(MonoTime.currTime);
 
-			auto collectStartTime = MonoTime.currTime;
-			GC.collect();
-			auto collectDur = MonoTime.currTime - collectStartTime;
-			//if (collectDur > 50.msecs)
-			//	infof("GC.collect() time %s", collectDur);
+			version(manualGC)
+			{
+				auto collectStartTime = MonoTime.currTime;
+				GC.collect();
+				auto collectDur = MonoTime.currTime - collectStartTime;
+				//if (collectDur > 50.msecs)
+				//	infof("GC.collect() time %s", collectDur);
+			}
 
 			Duration updateTime = MonoTime.currTime - newTime;
 			Duration sleepTime = frameTime - updateTime;

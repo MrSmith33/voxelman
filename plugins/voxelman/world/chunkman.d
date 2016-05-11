@@ -20,7 +20,8 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.world.storage.volume;
 
-///
+/// This needs to be replaced by world.storage.chunkmanager
+/// Currently used in client
 struct ChunkMan
 {
 	ChunkStorage chunkStorage;
@@ -30,7 +31,6 @@ struct ChunkMan
 	size_t totalLoadedChunks;
 
 	Volume visibleVolume;
-	ChunkWorldPos observerPosition;
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 
 	ChunkMeshMan chunkMeshMan;
@@ -84,12 +84,9 @@ struct ChunkMan
 		chunkMeshMan.onChunkChanged(chunk, changes);
 	}
 
-	void updateObserverPosition(vec3 cameraPos, ushort dimention)
+	void updateObserverPosition(ChunkWorldPos cwp)
 	{
-		ChunkWorldPos chunkPos = BlockWorldPos(cameraPos);
-		observerPosition = chunkPos;
-
-		Volume newVolume = calcVolume(chunkPos, viewRadius, dimention);
+		Volume newVolume = calcVolume(cwp, viewRadius);
 		if (newVolume == visibleVolume) return;
 
 		updateVisibleVolume(newVolume);
@@ -115,19 +112,19 @@ struct ChunkMan
 		{
 			chunkStorage
 				.removeQueue
-				.add(chunkStorage.getChunk(ChunkWorldPos(chunkPos)));
+				.add(chunkStorage.getChunk(ChunkWorldPos(chunkPos, oldVolume.dimention)));
 		}
 
 		// load chunks
 		foreach(chunkPos; chunksToLoad)
 		{
-			chunkStorage.loadChunk(ChunkWorldPos(chunkPos));
+			chunkStorage.loadChunk(ChunkWorldPos(chunkPos, newVolume.dimention));
 		}
 	}
 
 	void loadVolume(Volume volume)
 	{
 		import std.algorithm : each;
-		volume.positions.each!(pos => chunkStorage.loadChunk(ChunkWorldPos(pos)));
+		volume.positions.each!(pos => chunkStorage.loadChunk(ChunkWorldPos(pos, volume.dimention)));
 	}
 }

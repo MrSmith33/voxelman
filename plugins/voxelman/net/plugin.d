@@ -9,6 +9,7 @@ module voxelman.net.plugin;
 import std.experimental.logger;
 import derelict.enet.enet;
 import std.datetime : MonoTime, Duration, usecs, dur;
+import core.thread;
 
 import pluginlib;
 public import netlib;
@@ -190,8 +191,6 @@ final class NetClientPlugin : IPlugin
 
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
-		import core.thread;
-
 		if (!connection.isConnected) return;
 
 		connection.disconnect();
@@ -220,6 +219,7 @@ final class NetServerPlugin : IPlugin
 {
 private:
 	ConfigOption portOpt;
+	ConfigOption maxPlayers;
 	EventDispatcherPlugin evDispatcher;
 	string[][string] idMaps;
 
@@ -233,6 +233,7 @@ public:
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		portOpt = config.registerOption!ushort("port", 1234);
+		maxPlayers = config.registerOption!uint("max_players", 32);
 	}
 
 	this()
@@ -262,7 +263,7 @@ public:
 
 	void handleGameStartEvent(ref GameStartEvent event)
 	{
-		ConnectionSettings settings = {null, 32, 2, 0, 0};
+		ConnectionSettings settings = {null, maxPlayers.get!uint, 2, 0, 0};
 		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
@@ -302,10 +303,24 @@ public:
 	{
 		connection.sendToAll(MessagePacket(0, "Stopping server"));
 		connection.disconnectAll();
-		while (connection.clientStorage.length)
+
+		bool isDisconnecting = true;
+		MonoTime start = MonoTime.currTime;
+
+		size_t counter;
+		while (connection.clientStorage.length && counter < 100)
 		{
 			connection.update();
+			Thread.sleep(1.msecs);
+			++counter;
 		}
 		connection.stop();
+
+		isDisconnecting = false;
+		Duration disconTime = MonoTime.currTime - start;
+		infof("disconnected in %s seconds",
+			disconTime.total!"seconds" +
+			0.001 * disconTime.total!"msecs" +
+			0.000_001 * disconTime.total!"usecs");
 	}
 }

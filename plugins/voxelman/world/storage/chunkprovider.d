@@ -8,6 +8,9 @@ module voxelman.world.storage.chunkprovider;
 import std.concurrency : spawn, Tid;
 import std.experimental.logger;
 import core.atomic;
+import core.sync.semaphore;
+import core.sync.condition;
+import core.sync.mutex;
 
 import dlib.math.vector;
 
@@ -30,21 +33,28 @@ shared struct Worker
 	bool running = true;
 	MessageQueue taskQueue;
 	MessageQueue resultQueue;
+	Semaphore workAvaliable;
 
 	// for owner
 	void alloc() shared {
 		taskQueue.alloc();
 		resultQueue.alloc();
+		workAvaliable = cast(shared) new Semaphore();
 	}
 
 	// for owner
 	void stop() shared {
-		atomicStore!(MemoryOrder.rel)(running, false);
+		atomicStore(running, false);
+		(cast(Semaphore)workAvaliable).notify();
+	}
+
+	void notify() shared {
+		(cast(Semaphore)workAvaliable).notify();
 	}
 
 	// for worker
 	void signalStopped() shared {
-		atomicStore!(MemoryOrder.rel)(running, false);
+		atomicStore(running, false);
 	}
 
 	bool isRunning() shared @property {
@@ -85,6 +95,8 @@ struct ChunkProvider
 
 	size_t numReceived;
 
+	Mutex workAvaliableMutex;
+	Condition workAvaliable;
 	shared MessageQueue loadResQueue;
 	shared MessageQueue saveResQueue;
 	shared MessageQueue loadTaskQueue;
@@ -100,6 +112,14 @@ struct ChunkProvider
 		return space >= 0 ? space : 0;
 	}
 
+	void notify()
+	{
+		synchronized (workAvaliableMutex)
+		{
+			workAvaliable.notify();
+		}
+	}
+
 	void init(WorldDb worldDb, uint numGenWorkers, immutable(BlockInfo)[] blocks)
 	{
 		import std.algorithm.comparison : clamp;
@@ -111,12 +131,18 @@ struct ChunkProvider
 			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], blocks);
 		}
 
+		workAvaliableMutex = new Mutex;
+		workAvaliable = new Condition(workAvaliableMutex);
 		loadResQueue.alloc();
 		saveResQueue.alloc();
 		loadTaskQueue.alloc();
 		saveTaskQueue.alloc();
-		storeWorker = spawn(&storageWorker, cast(immutable)worldDb, &workerRunning, &workerStopped,
-			&loadResQueue, &saveResQueue, &loadTaskQueue, &saveTaskQueue, genWorkers);
+		storeWorker = spawn(
+			&storageWorker, cast(immutable)worldDb,
+			&workerRunning, &workerStopped,
+			cast(shared)workAvaliableMutex, cast(shared)workAvaliable,
+			&loadResQueue, &saveResQueue, &loadTaskQueue, &saveTaskQueue,
+			genWorkers);
 	}
 
 	void stop() {
@@ -136,11 +162,12 @@ struct ChunkProvider
 		}
 
 		atomicStore!(MemoryOrder.rel)(workerRunning, false);
+		notify();
 		foreach(ref w; genWorkers) w.stop();
 
 		while (!allWorkersStopped())
 		{
-			Thread.sleep(50.usecs);
+			Thread.yield();
 		}
 	}
 

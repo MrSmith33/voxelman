@@ -77,16 +77,17 @@ class WorldInteractionPlugin : IPlugin
 
 	void placeBlock(BlockId blockId)
 	{
+		BlockWorldPos editedBlock = blockPos;
 		if (blockPlugin.getBlocks()[blockId].isVisible)
 		{
-			blockPos.vector += hitNormal;
+			editedBlock = sideBlockPos;
 		}
 
 		//infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
 		//	cursorHit, blockPos, hitPosition, hitNormal,
 		//	cursorTraceTime.formatDuration);
 
-		cursorPos = vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005);
+		cursorPos = vec3(editedBlock.vector) - vec3(0.005, 0.005, 0.005);
 		lineStart = graphics.camera.position;
 		lineEnd = graphics.camera.position + graphics.camera.target * 40;
 
@@ -96,7 +97,7 @@ class WorldInteractionPlugin : IPlugin
 			traceBatch = Batch();
 
 			traceVisible = true;
-			connection.send(PlaceBlockPacket(blockPos.vector, blockId));
+			connection.send(PlaceBlockPacket(editedBlock.vector, blockId));
 		}
 		else
 		{
@@ -120,7 +121,8 @@ class WorldInteractionPlugin : IPlugin
 		sw.start();
 
 		auto isBlockSolid = (ivec3 blockWorldPos) {
-			auto block = clientWorld.worldAccess.getBlock(BlockWorldPos(blockWorldPos));
+			auto block = clientWorld.worldAccess.getBlock(
+				BlockWorldPos(blockWorldPos, clientWorld.currentDimention));
 			return blockPlugin.getBlocks()[block].isVisible;
 		};
 
@@ -135,8 +137,8 @@ class WorldInteractionPlugin : IPlugin
 			hitNormal,
 			traceBatch);
 
-		blockPos = BlockWorldPos(hitPosition);
-		sideBlockPos = BlockWorldPos(blockPos.vector + hitNormal);
+		blockPos = BlockWorldPos(hitPosition, clientWorld.currentDimention);
+		sideBlockPos = BlockWorldPos(blockPos.xyz + hitNormal, clientWorld.currentDimention);
 		cursorTraceTime = cast(Duration)sw.peek;
 	}
 
@@ -151,10 +153,10 @@ class WorldInteractionPlugin : IPlugin
 		if (showCursor)
 		{
 			graphics.debugBatch.putCube(
-				vec3(blockPos.vector) - vec3(0.005, 0.005, 0.005),
+				vec3(blockPos.xyz) - vec3(0.005, 0.005, 0.005),
 				cursorSize, Colors.red, false);
 			graphics.debugBatch.putCube(
-				vec3(blockPos.vector+hitNormal) - vec3(0.005, 0.005, 0.005),
+				vec3(sideBlockPos.xyz) - vec3(0.005, 0.005, 0.005),
 				cursorSize, Colors.blue, false);
 		}
 	}

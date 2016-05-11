@@ -18,7 +18,7 @@ struct ViewInfo
 	ClientId clientId;
 	Volume viewVolume;
 	//ivec3 viewRadius;
-	ivec3 observerPosition;
+	ChunkWorldPos observerPosition;
 	int viewRadius;
 
 	size_t numObservedRings;
@@ -172,26 +172,25 @@ final class ChunkObserverManager {
 		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
 
 		Volume oldVolume = info.viewVolume;
-		immutable int size = viewRadius*2 + 1;
 		Volume newVolume = calcVolume(observerPosition, viewRadius);
 
 		if (newVolume == oldVolume)
 			return;
 
-		info = ViewInfo(clientId, newVolume, observerPosition.ivector, viewRadius);
+		info = ViewInfo(clientId, newVolume, observerPosition, viewRadius);
 
 		//infof("oldV %s newV %s", oldVolume, newVolume);
 		TrisectResult tsect = trisect(oldVolume, newVolume);
 
 		// remove observer
 		foreach(a; tsect.aPositions) {
-			removeChunkObserver(ChunkWorldPos(a), clientId);
+			removeChunkObserver(ChunkWorldPos(a, oldVolume.dimention), clientId);
 			//infof("Rem %s", a);
 		}
 
 		// add observer
 		foreach(b; tsect.bPositions) {
-			addChunkObserver(ChunkWorldPos(b), clientId);
+			addChunkObserver(ChunkWorldPos(b, newVolume.dimention), clientId);
 		}
 
 		if (newVolume.empty)

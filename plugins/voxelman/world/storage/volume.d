@@ -13,19 +13,19 @@ import dlib.math.vector;
 
 import voxelman.world.storage.coordinates;
 
-Volume calcVolume(ChunkWorldPos cwp, int viewRadius, ushort dimention = 0)
+Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
-	return Volume(cast(ivec3)(cwp.ivector - viewRadius),
-		ivec3(size, size, size), dimention);
+	return Volume(cast(ivec3)(cwp.ivector3 - viewRadius),
+		ivec3(size, size, size), cwp.w);
 }
 
-Volume volumeFromCorners(ivec3 a, ivec3 b, ushort dimention = 0)
+Volume volumeFromCorners(ivec3 a, ivec3 b, DimentionId dimention = 0)
 {
 	Volume vol;
 	vol.position = min(a, b);
-	vol.dimention = dimention;
 	vol.size = max(a, b) - vol.position + ivec3(1,1,1);
+	vol.dimention = dimention;
 	return vol;
 }
 
@@ -52,17 +52,17 @@ struct Volume
 	ivec3 size;
 	ushort dimention;
 
-	int volume()
+	int volume() @property const
 	{
 		return size.x * size.y * size.z;
 	}
 
-	bool empty() @property
+	bool empty() const @property
 	{
 		return size.x == 0 && size.y == 0 && size.z == 0;
 	}
 
-	bool contains(ivec3 point)
+	bool contains(ivec3 point) const
 	{
 		if (point.x < position.x || point.x >= position.x + size.x) return false;
 		if (point.y < position.y || point.y >= position.y + size.y) return false;
@@ -70,18 +70,10 @@ struct Volume
 		return true;
 	}
 
-	bool contains(ivec3 point, ushort dimention)
+	bool contains(ivec3 point, ushort dimention) const
 	{
 		if (this.dimention != dimention) return false;
-		if (point.x < position.x || point.x >= position.x + size.x) return false;
-		if (point.y < position.y || point.y >= position.y + size.y) return false;
-		if (point.z < position.z || point.z >= position.z + size.z) return false;
-		return true;
-	}
-
-	bool opEquals()(auto ref const Volume other) const
-	{
-		return position == other.position && size == other.size && dimention == other.dimention;
+		return contains(point);
 	}
 
 	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;
@@ -89,7 +81,7 @@ struct Volume
 	import std.array : array;
 
 	// generates all positions within volume.
-	auto positions() @property
+	auto positions() const @property
 	{
 		return cartesianProduct(
 			iota(position.x, position.x + size.x),
@@ -121,9 +113,9 @@ struct TrisectResult
 }
 
 // Finds intersection between two boxes
-// [0] a - b  == a if no intersection
-// [1] a intersects b
-// [2] b - a  == b if no intersection
+// TrisectResult[0] a - b  == a if no intersection
+// TrisectResult[1] a intersects b
+// TrisectResult[2] b - a  == b if no intersection
 TrisectResult trisect(Volume a, Volume b)
 {
 	// no intersection
@@ -249,6 +241,12 @@ TrisectAxisResult trisectAxis(int aStart, int aEnd, int bStart, int bEnd)
 Volume rangeIntersection(Volume a, Volume b)
 {
 	Volume result;
+
+	if (a.dimention != b.dimention)
+	{
+		return Volume();
+	}
+
 	if (a.position.x < b.position.x)
 	{
 		if (a.position.x + a.size.x < b.position.x) return Volume();

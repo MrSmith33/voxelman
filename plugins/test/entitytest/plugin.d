@@ -77,7 +77,7 @@ mixin template EntityTestPluginClient()
 	void onMainActionRelease(string key)
 	{
 		if (worldInteraction.cursorHit) {
-			ivec3 pos = worldInteraction.blockPos.vector + worldInteraction.hitNormal;
+			ivec4 pos = worldInteraction.sideBlockPos.vector;
 			connection.send(EntityCreatePacket(pos));
 		}
 	}
@@ -134,28 +134,28 @@ mixin template EntityTestPluginServer()
 		auto query = componentQuery(transformStorage);
 		foreach(row; query)
 		{
-			ivec3 pos = row.transform.pos;
-			if (wa.isFree(BlockWorldPos(pos+ivec3(0, -1, 0)))) // lower
-				row.transform.pos += ivec3(0,-1,0);
-			else if (wa.isFree(BlockWorldPos(pos+ivec3( 0, 0, -1))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec3( 0, -1, -1))))
+			ivec4 pos = row.transform.pos;
+			if (wa.isFree(BlockWorldPos(pos+ivec4(0, -1, 0, 0)))) // lower
+				row.transform.pos += ivec4(0,-1,0, 0);
+			else if (wa.isFree(BlockWorldPos(pos+ivec4( 0, 0, -1, 0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec4( 0, -1, -1, 0))))
 			{
-				row.transform.pos = pos+ivec3( 0, 0, -1);
+				row.transform.pos = pos+ivec4( 0, 0, -1, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec3( 0, 0,  1))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec3( 0, -1,  1))))
+			else if (wa.isFree(BlockWorldPos(pos+ivec4( 0, 0,  1, 0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec4( 0, -1,  1, 0))))
 			{
-				row.transform.pos = pos+ivec3( 0, 0,  1);
+				row.transform.pos = pos+ivec4( 0, 0,  1, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec3(-1, 0,  0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec3(-1, -1,  0))))
+			else if (wa.isFree(BlockWorldPos(pos+ivec4(-1, 0,  0, 0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec4(-1, -1,  0, 0))))
 			{
-				row.transform.pos = pos+ivec3(-1, 0,  0);
+				row.transform.pos = pos+ivec4(-1, 0,  0, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec3( 1, 0,  0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec3( 1, -1,  0))))
+			else if (wa.isFree(BlockWorldPos(pos+ivec4( 1, 0,  0, 0))) && // side and lower
+					wa.isFree(BlockWorldPos(pos+ivec4( 1, -1,  0, 0))))
 			{
-				row.transform.pos = pos+ivec3( 1, 0,  0);
+				row.transform.pos = pos+ivec4( 1, 0,  0, 0);
 			}
 			else // set sand
 			{
@@ -183,10 +183,10 @@ mixin template EntityTestPluginServer()
 
 struct Transform
 {
-	ivec3 pos;
+	ivec4 pos;
 }
 
 struct EntityCreatePacket
 {
-	ivec3 pos;
+	ivec4 pos;
 }

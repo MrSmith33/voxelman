@@ -60,45 +60,54 @@ class PluginManager : IPluginManager, IResourceManagerRegistry
 		// Register resources
 		foreach(IPlugin p; plugins)
 		{
+			tracef("registerResourceManagers %s", p.id);
 			p.registerResourceManagers(&registerResourceManager);
 		}
 
 		foreach(IResourceManager rm; resourceManagers)
 		{
+			tracef("preInit %s", rm.id);
 			rm.preInit();
 		}
 		foreach(IResourceManager rm; resourceManagers)
 		{
+			tracef("init %s", rm.id);
 			rm.init(this);
 		}
 
 		foreach(IPlugin p; plugins)
 		{
+			tracef("registerResources %s", p.id);
 			p.registerResources(this);
 		}
 
 		// Load resources
 		foreach(IResourceManager rm; resourceManagers)
 		{
+			tracef("loadResources %s", rm.id);
 			rm.loadResources();
 		}
 		foreach(IResourceManager rm; resourceManagers)
 		{
+			tracef("postInit %s", rm.id);
 			rm.postInit();
 		}
 
 		// Load plugins
 		foreach(IPlugin p; plugins)
 		{
+			tracef("preInit %s", p.id);
 			p.preInit();
 		}
 		foreach(IPlugin p; plugins)
 		{
+			tracef("init %s", p.id);
 			p.init(this);
 		}
 
 		foreach(IPlugin p; plugins)
 		{
+			tracef("postInit %s", p.id);
 			p.postInit();
 		}
 

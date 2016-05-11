@@ -15,7 +15,12 @@ import std.string : format;
 struct CommandParams
 {
 	string rawArgs; // without command name
-	string[] args; // first arg is command name
+	auto rawStrippedArgs() @property
+	{
+		import std.string : strip;
+		return rawArgs.strip;
+	}
+	string[] args; // first arg is command name. Use with getopt.
 	ClientId source;
 }
 

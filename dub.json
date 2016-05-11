@@ -29,32 +29,20 @@
 
 	"configurations": [
 		{
-			"name" : "client",
-			"targetName" : "client",
+			"name" : "exe",
+			"targetName" : "voxelman",
 			"targetType" : "executable",
-			"excludedSourceFiles" : ["source/servermain.d"],
-			"mainSourceFile" : "source/clientmain.d",
-			"versions" : ["SIDE_CLIENT"],
-			"sourcePaths" : [ "source", "plugins" ],
-			"importPaths" : [ "source", "plugins" ]
-		},
-		{
-			"name": "server",
-			"targetName" : "server",
-			"targetType": "executable",
-			"excludedSourceFiles" : ["source/clientmain.d"],
-			"mainSourceFile" : "source/servermain.d",
-			"versions" : ["SIDE_SERVER"],
+			"mainSourceFile" : "source/main.d",
 			"sourcePaths" : [ "source", "plugins" ],
 			"importPaths" : [ "source", "plugins" ]
 		},
 		{
 			"name": "lib",
 			"targetType": "library",
-			"excludedSourceFiles" : ["source/clientmain.d", "source/servermain.d"],
+			"excludedSourceFiles" : ["source/main.d"],
 			"targetPath" : "./",
-			"sourcePaths" : [ "source" ],
-			"importPaths" : [ "source" ]
+			"sourcePaths" : [ "source", "plugins" ],
+			"importPaths" : [ "source", "plugins" ]
 		}
 	]
 }

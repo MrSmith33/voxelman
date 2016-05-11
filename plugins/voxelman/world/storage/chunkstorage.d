@@ -121,9 +121,10 @@ struct ChunkStorage
 		void attachAdjacent(ubyte side)()
 		{
 			byte[3] offset = sideOffsets[side];
-			ChunkWorldPos otherPosition = ivec3(cast(int)(position.x + offset[0]),
+			auto otherPosition = ChunkWorldPos(cast(int)(position.x + offset[0]),
 												cast(int)(position.y + offset[1]),
-												cast(int)(position.z + offset[2]));
+												cast(int)(position.z + offset[2]),
+												position.w);
 			Chunk* other = getChunk(otherPosition);
 
 			if (other !is null)

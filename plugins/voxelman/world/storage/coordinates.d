@@ -8,6 +8,7 @@ module voxelman.world.storage.coordinates;
 import voxelman.core.config;
 import voxelman.world.storage.utils;
 import voxelman.utils.math;
+public import voxelman.core.config : DimentionId;
 
 struct BlockChunkIndex
 {
@@ -42,21 +43,26 @@ struct BlockChunkIndex
 // Position of block in world space. -int.max..int.max
 struct BlockWorldPos
 {
-	this(ivec3 blockWorldPos)
+	this(ivec3 blockWorldPos, int dim)
+	{
+		vector = ivec4(blockWorldPos.x, blockWorldPos.y, blockWorldPos.z, dim);
+	}
+
+	this(ivec4 blockWorldPos)
 	{
 		vector = blockWorldPos;
 	}
 
-	this(vec3 blockWorldPos)
+	this(vec3 blockWorldPos, int dim)
 	{
-		vector = blockWorldPos;
+		vector = ivec4(blockWorldPos.x, blockWorldPos.y, blockWorldPos.z, dim);
 	}
 
-	ivec3 vector;
+	ivec4 vector;
 	auto opDispatch(string s)()
-    {
-    	return mixin("vector." ~ s);
-    }
+	{
+		return mixin("vector." ~ s);
+	}
 }
 
 static assert(!is(typeof({
@@ -89,9 +95,9 @@ struct BlockChunkPos
 
 	ivec3 vector;
 	auto opDispatch(string s)()
-    {
-    	return mixin("vector." ~ s);
-    }
+	{
+		return mixin("vector." ~ s);
+	}
 }
 
 struct ChunkRegionIndex
@@ -109,61 +115,71 @@ struct ChunkRegionIndex
 	alias getIndex this;
 }
 
-alias Vector!(short, 3) svec3;
+alias Vector!(short, 4) svec4;
 
 // Position of chunk in world space. -int.max..int.max
 struct ChunkWorldPos
 {
 	this(BlockWorldPos blockWorldPos)
 	{
-		vector = svec3(
+		vector = svec4(
 			floor(cast(float)blockWorldPos.x / CHUNK_SIZE),
 			floor(cast(float)blockWorldPos.y / CHUNK_SIZE),
-			floor(cast(float)blockWorldPos.z / CHUNK_SIZE),);
+			floor(cast(float)blockWorldPos.z / CHUNK_SIZE),
+			blockWorldPos.w);
 	}
 
-	this(ivec3 chunkWorldPos)
+	this(ivec4 chunkWorldPos)
 	{
 		vector = chunkWorldPos;
 	}
 
-	this(svec3 chunkWorldPos)
+	this(ivec3 chunkWorldPos, DimentionId dim)
+	{
+		vector = svec4(chunkWorldPos.x, chunkWorldPos.y, chunkWorldPos.z, dim);
+	}
+
+	this(svec4 chunkWorldPos)
 	{
 		vector = chunkWorldPos;
 	}
 
-	this(int x, int y, int z)
+	this(int x, int y, int z, int dim)
 	{
-		vector = svec3(x, y, z);
+		vector = svec4(x, y, z, dim);
 	}
 
 	this(ulong val)
 	{
 		enum MASK16 = 0b1111_1111_1111_1111;
-		vector = svec3(val&MASK16, (val>>16)&MASK16, (val>>32)&MASK16);
+		vector = svec4(val&MASK16, (val>>16)&MASK16, (val>>32)&MASK16, (val>>48)&MASK16);
 	}
 
-	svec3 vector;
-	ushort dimention;
+	svec4 vector;
 
-	ivec3 ivector() @property
+	ivec4 ivector() @property
+	{
+		return ivec4(vector);
+	}
+
+	ivec3 ivector3() @property
 	{
 		return ivec3(vector);
 	}
 
 	ulong asUlong() @property
 	{
-		ulong id = cast(ulong)dimention<<48 |
+		ulong id = cast(ulong)vector.w<<48 |
 				cast(ulong)(cast(ushort)vector.z)<<32 |
 				cast(ulong)(cast(ushort)vector.y)<<16 |
 				cast(ulong)(cast(ushort)vector.x);
 		return id;
 	}
 
-	auto opDispatch(string s)()
-    {
-    	return mixin("vector." ~ s);
-    }
+	auto ref opDispatch(string s)()
+	{
+		return mixin("vector." ~ s);
+	}
 }
 
 // Position of chunk in region space. 0..RegionSize
@@ -186,9 +202,9 @@ struct ChunkRegionPos
 
 	ivec3 vector;
 	auto opDispatch(string s)()
-    {
-    	return mixin("vector." ~ s);
-    }
+	{
+		return mixin("vector." ~ s);
+	}
 }
 
 // Position of region in world space. -int.max..int.max
@@ -209,7 +225,7 @@ struct RegionWorldPos
 
 	ivec3 vector;
 	auto opDispatch(string s)()
-    {
-    	return mixin("vector." ~ s);
-    }
+	{
+		return mixin("vector." ~ s);
+	}
 }

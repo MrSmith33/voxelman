@@ -343,24 +343,25 @@ struct Launcher
 string makeCompileCommand(JobParams params)
 {
 	immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
-	immutable conf = params.appType == AppType.client ? `--config=client` : `--config=server`;
 	immutable deps = params.nodeps ? ` --nodeps` : ``;
 	immutable doForce = params.force ? ` --force` : ``;
 	immutable release = params.release ? `--build=release` : `--build=debug`;
 	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
-	return format("dub build -q %s %s %s%s%s %s\0", arch, compiler, conf, deps, doForce, release)[0..$-1];
+	return format("dub build -q %s %s --config=exe%s%s %s\0", arch, compiler, deps, doForce, release)[0..$-1];
 }
 
 string makeRunCommand(JobParams params)
 {
-	string conf = params.appType == AppType.client ? `client.exe` : `server.exe`;
+	string conf = params.appType == AppType.client ? `voxelman.exe --app=client` : `voxelman.exe --app=server`;
 	string command = conf;
 
 	foreach(paramName, paramValue; params.runParameters)
-	if (paramValue)
-		command ~= format(" --%s=%s", paramName, paramValue);
-	else
-		command ~= format(" --%s", paramName);
+	{
+		if (paramValue)
+			command ~= format(" --%s=%s", paramName, paramValue);
+		else
+			command ~= format(" --%s", paramName);
+	}
 
 	command ~= '\0';
 	return command[0..$-1];

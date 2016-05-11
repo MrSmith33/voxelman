@@ -27,9 +27,10 @@ void registerPackets(Connection c)
 // sent by client when position/heading changes.
 struct ClientPositionPacket
 {
+	import voxelman.core.config : DimentionId;
 	vec3 pos = vec3(0, 0, 0);
 	vec2 heading = vec2(0, 0);
-	ushort dimention;
+	DimentionId dimention;
 }
 
 // sent by client after receiving SessionInfoPacket
@@ -41,21 +42,21 @@ struct ViewRadiusPacket
 struct ChunkDataPacket
 {
 	import voxelman.world.storage.chunk : BlockData;
-	ivec3 chunkPos;
+	ivec4 chunkPos;
 	BlockData blockData;
 }
 
 struct MultiblockChangePacket
 {
 	import voxelman.world.storage.chunk : BlockChange;
-	ivec3 chunkPos;
+	ivec4 chunkPos;
 	BlockChange[] blockChanges;
 }
 
 struct PlaceBlockPacket
 {
 	import voxelman.core.config : BlockId;
-	ivec3 blockPos;
+	ivec4 blockPos;
 	BlockId blockId;
 }
 

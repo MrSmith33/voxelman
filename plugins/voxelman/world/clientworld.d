@@ -47,14 +47,13 @@ private:
 
 	ConfigOption numWorkersOpt;
 
-	ushort currentDimention;
-
 public:
 	ChunkMan chunkMan;
 	WorldAccess worldAccess;
 
 	bool doUpdateObserverPosition = true;
 	vec3 updatedCameraPos;
+	ChunkWorldPos observerPosition;
 	bool drawDebugMetadata;
 
 	// Send position interval
@@ -102,12 +101,10 @@ public:
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
-		updatedCameraPos = graphics.camera.position;
 	}
 
 	override void postInit()
 	{
-		chunkMan.updateObserverPosition(graphics.camera.position, currentDimention);
 	}
 
 	void onTogglePositionUpdate(string)
@@ -123,9 +120,10 @@ public:
 	{
 		if (doUpdateObserverPosition)
 		{
-			updatedCameraPos = graphics.camera.position;
+			observerPosition = ChunkWorldPos(
+				BlockWorldPos(graphics.camera.position, observerPosition.w));
 		}
-		chunkMan.updateObserverPosition(updatedCameraPos, currentDimention);
+		updateObserverPosition();
 		chunkMan.update();
 		if (drawDebugMetadata) {
 			chunkMan.chunkMeshMan.drawDebug(graphics.debugBatch);
@@ -136,7 +134,7 @@ public:
 	void drawDebugChunkInfo()
 	{
 		enum nearRadius = 2;
-		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
+		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimention);
 		Volume nearVolume = calcVolume(chunkPos, nearRadius);
 
 		drawDebugChunkMetadata(nearVolume);
@@ -150,7 +148,7 @@ public:
 		foreach(pos; volume.positions)
 		{
 			vec3 blockPos = pos * CHUNK_SIZE;
-			Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(pos));
+			Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(pos, volume.dimention));
 			if (chunk is null) continue;
 			foreach(ubyte side; 0..6)
 			{
@@ -235,18 +233,16 @@ public:
 
 	void sendPosition(double dt)
 	{
-		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position);
-
 		if (clientDb.isSpawned)
 		{
 			sendPositionTimer += dt;
 			if (sendPositionTimer > sendPositionInterval ||
-				chunkPos != prevChunkPos)
+				observerPosition != prevChunkPos)
 			{
 				connection.send(ClientPositionPacket(
 					graphics.camera.position,
 					graphics.camera.heading,
-					currentDimention));
+					observerPosition.w));
 
 				if (sendPositionTimer < sendPositionInterval)
 					sendPositionTimer = 0;
@@ -255,7 +251,26 @@ public:
 			}
 		}
 
-		prevChunkPos = chunkPos;
+		prevChunkPos = observerPosition;
+	}
+
+	void setCurrentDimention(DimentionId dimention)
+	{
+		observerPosition.w = dimention;
+		updateObserverPosition();
+	}
+
+	DimentionId currentDimention() @property
+	{
+		return observerPosition.w;
+	}
+
+	void incDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() + 1)); }
+	void decDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() - 1)); }
+
+	void updateObserverPosition()
+	{
+		chunkMan.updateObserverPosition(observerPosition);
 	}
 
 	void onIncViewRadius(string)
