@@ -19,6 +19,8 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.utils.compression;
 
+enum FIRST_LAYER = 0;
+
 struct ChunkHeaderItem {
 	ChunkWorldPos cwp;
 	uint numLayers;
@@ -51,7 +53,7 @@ struct ChunkLayerItem
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
 	this(T)(StorageType _type, ubyte _layerId, uint _timestamp, T[] _array, ushort _metadata = 0) {
-		type = _type; layerId = _layerId; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
+		type = _type; layerId = _layerId; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = cast(void*)_array.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerSnap l, ubyte _layerId) {
 		type = l.type;
@@ -60,6 +62,12 @@ struct ChunkLayerItem
 		timestamp = l.timestamp;
 		uniformData = l.uniformData;
 		metadata = l.metadata;
+	}
+
+	string toString() const
+	{
+		return format("ChunkLayerItem(%s, %s, %s, %s, {%s, %s}, %s)",
+			type, layerId, dataLength, timestamp, uniformData, dataPtr, metadata);
 	}
 }
 static assert(ChunkLayerItem.sizeof == 24);
@@ -144,28 +152,43 @@ struct ChunkLayerSnap
 		uniformData = l.uniformData;
 		metadata = l.metadata;
 	}
-	BlockId getBlockType(BlockChunkIndex index)
-	{
-		if (type == StorageType.uniform) return cast(BlockId)uniformData;
-		return getArray!BlockId(this)[index];
-	}
 }
 
 enum isSomeLayer(Layer) = is(Layer == ChunkLayerSnap) || is(Layer == ChunkLayerItem) || is(Layer == Nullable!ChunkLayerSnap);
 
-T[] getArray(T, Layer)(Layer layer)
+T[] getArray(T, Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
 	assert(layer.type != StorageType.uniform);
 	return (cast(T*)layer.dataPtr)[0..layer.dataLength];
 }
-T getUniform(T, Layer)(Layer layer)
+T getUniform(T, Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
 	return cast(T)layer.uniformData;
 }
 
-BlockData toBlockData(Layer)(Layer layer)
+BlockId getBlockId(Layer)(const ref Layer layer, BlockChunkIndex index)
+	if (isSomeLayer!Layer)
+{
+	if (layer.type == StorageType.uniform) return cast(BlockId)layer.uniformData;
+	return getArray!BlockId(layer)[index];
+}
+
+BlockId getBlockId(Layer)(const ref Layer layer, int x, int y, int z)
+	if (isSomeLayer!Layer)
+{
+	if (layer.type == StorageType.uniform) return cast(BlockId)layer.uniformData;
+	return getArray!BlockId(layer)[BlockChunkIndex(x, y, z)];
+}
+
+bool isUniform(Layer)(const ref Layer layer) @property
+	if (isSomeLayer!Layer)
+{
+	return layer.type == StorageType.uniform;
+}
+
+BlockData toBlockData(Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
 	BlockData res;
@@ -178,6 +201,14 @@ BlockData toBlockData(Layer)(Layer layer)
 	return res;
 }
 
+ChunkLayerItem fromBlockData(const ref BlockData bd)
+{
+	if (bd.uniform)
+		return ChunkLayerItem(StorageType.uniform, FIRST_LAYER, 0, 0, bd.uniformType, bd.metadata);
+	else
+		return ChunkLayerItem(StorageType.fullArray, FIRST_LAYER, 0, bd.blocks, bd.metadata);
+}
+
 void copyToBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
 {
 	assert(outBuffer.length == CHUNK_SIZE_CUBE);
@@ -187,6 +218,15 @@ void copyToBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
 		outBuffer[] = snap.getArray!BlockId;
 	else if (snap.type == StorageType.compressedArray)
 		uncompressIntoBuffer(snap, outBuffer);
+}
+
+void applyChanges(BlockId[] writeBuffer, BlockChange[] changes)
+{
+	assert(writeBuffer.length == CHUNK_SIZE_CUBE);
+	foreach(change; changes)
+	{
+		writeBuffer[BlockChunkIndex(change.index)] = change.blockId;
+	}
 }
 
 void uncompressIntoBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
@@ -216,222 +256,4 @@ struct BlockData
 	bool uniform = true;
 
 	ushort metadata;
-
-	void convertToArray()
-	{
-		if (uniform)
-		{
-			blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
-			blocks[] = uniformType;
-			uniform = false;
-		}
-	}
-
-	void copyToBuffer(BlockId[] outBuffer)
-	{
-		assert(outBuffer.length == CHUNK_SIZE_CUBE);
-		if (uniform)
-			outBuffer[] = uniformType;
-		else
-			outBuffer[] = blocks;
-	}
-
-	void convertToUniform(BlockId _uniformType)
-	{
-		uniform = true;
-		uniformType = _uniformType;
-		deleteBlocks();
-	}
-
-	void deleteBlocks()
-	{
-		blocks = null;
-	}
-
-	BlockId getBlockType(BlockChunkIndex index)
-	{
-		if (uniform) return uniformType;
-		return blocks[index];
-	}
-
-	// returns true if data was changed
-	bool setBlockType(BlockChunkIndex index, BlockId blockId)
-	{
-		if (uniform)
-		{
-			if (uniformType != blockId)
-			{
-				convertToArray();
-				blocks[index] = blockId;
-				return true;
-			}
-		}
-		else
-		{
-			if (blocks[index] == blockId)
-				return false;
-
-			blocks[index] = blockId;
-			return true;
-		}
-
-		return false;
-	}
-
-	// returns [first changed index, last changed index + 1]
-	// if they match, then no changes occured
-	// for use on client, when handling MultiblockChangePacket
-	ushort[2] applyChanges(BlockChange[] changes)
-	{
-		ushort start;
-		ushort end;
-
-		foreach(change; changes)
-		{
-			if (setBlockType(BlockChunkIndex(change.index), change.blockId))
-			{
-				if (change.index < start)
-					start = change.index;
-				if (change.index > end)
-					end = change.index;
-			}
-		}
-
-		return cast(ushort[2])[start, end+1];
-	}
-
-	// Same as applyChanges, but does only
-	// change application, no area of impact is calculated
-	void applyChangesFast(BlockChange[] changes)
-	{
-		foreach(change; changes)
-		{
-			setBlockType(BlockChunkIndex(change.index), change.blockId);
-		}
-	}
-
-	//
-	void applyChangesChecked(BlockChange[] changes)
-	{
-		foreach(change; changes)
-		{
-			if (change.index <= CHUNK_SIZE_CUBE)
-				setBlockType(BlockChunkIndex(change.index), change.blockId);
-		}
-	}
-}
-
-// Single chunk.
-// Used in client only.
-// To be replaced by layers.
-struct Chunk
-{
-	@disable this();
-
-	this(ChunkWorldPos position)
-	{
-		this.position = position;
-	}
-
-	BlockId getBlockType(int x, int y, int z)
-	{
-		return getBlockType(BlockChunkIndex(x, y, z));
-	}
-
-	BlockId getBlockType(BlockChunkIndex blockChunkIndex)
-	{
-		return snapshot.blockData.getBlockType(blockChunkIndex);
-	}
-
-	bool allAdjacentLoaded() @property
-	{
-		foreach(a; adjacent)
-		{
-			if (a is null || !a.isLoaded) return false;
-		}
-
-		return true;
-	}
-
-	bool canBeMeshed() @property
-	{
-		return isLoaded && allAdjacentLoaded;
-	}
-
-	bool needsMesh() @property
-	{
-		return isLoaded && isVisible && !hasMesh && !isMeshing;
-	}
-
-	bool isUsed() @property
-	{
-		return numReaders > 0 || hasWriter;
-	}
-
-	bool adjacentUsed() @property
-	{
-		foreach(a; adjacent)
-			if (a !is null && a.isUsed) return true;
-		return false;
-	}
-
-	bool adjacentHasUnappliedChanges() @property
-	{
-		foreach(a; adjacent)
-			if (a !is null && a.hasUnappliedChanges) return true;
-		return false;
-	}
-
-	bool isMarkedForDeletion() @property
-	{
-		return next || prev;
-	}
-
-	BlockDataSnapshot* getReadableSnapshot(TimestampType timestamp)
-	{
-		if (isLoaded)
-			return &snapshot;
-		else
-			return null;
-	}
-
-	BlockDataSnapshot* getWriteableSnapshot(TimestampType timestamp)
-	{
-		if (isLoaded)
-		{
-			snapshot.timestamp = timestamp;
-			return &snapshot;
-		}
-		else
-			return null;
-	}
-
-	ChunkWorldPos position;
-	BlockDataSnapshot snapshot;
-	Chunk*[6] adjacent;
-
-	// updates
-	ChunkChange change;
-
-	bool isLoaded = false;
-	bool isVisible = false;
-	bool hasMesh = false;
-	bool isMeshing = false;
-
-
-	// If marked, then chunk is awaiting remesh.
-	// Do not add chunk to mesh if already dirty
-	bool isDirty = false;
-
-	// Used when remeshing.
-	// true if chunk is in changedChunks queue and has unapplied changes
-	bool hasUnappliedChanges = false;
-
-	// How many tasks are reading or writing this chunk
-	bool hasWriter = false;
-	ushort numReaders = 0;
-
-	// In deletion queue.
-	Chunk* next;
-	Chunk* prev;
 }

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add remesh command.
 - Add max_players option for server config.
 - Add cancelLoad option for chunkmanager. Unloads 'loading' chunk immidiately. Makes chunkmanager usable by client.
 - Add multiple dimentions.
@@ -42,6 +43,13 @@
 - Add current frame number to update events.
 
 ### Changed
+- Rewrite client to use new chunk manager.
+- Rewrite chunk mesh manager to new algo of chunk meshing. Meshing passes that use snapshot system of chunk manager.
+- Implement new worker and worker group.
+- Use shared queue for chunk gen and mesh gen.
+- Improve sharedqueue. Allow any message sizes. Improve naming.
+- Merge world access types.
+- Finish layer support in chunk manager.
 - Merge client and server configuration in a single executable. Config is choosen with --app flag.
 - Make threads use proper sync primitives. Worker threads are not wasting CPU anymore.
 - [Launcher] Add server list add/remove ability.
@@ -68,6 +76,9 @@
 - Move network handling to `net` from `client`.
 
 ### Removed
+- Remove chunk change managerment from chunk manager.
+- Remove old chunk manager and chunk storage.
+- Remove old chunk.
 - Remove `continuePropagation` from events.
 - Remove tharsis-prof dependency.
 - Remove old `blockman` and merge utilities into `voxelman.block.utils` module.

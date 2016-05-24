@@ -8,9 +8,11 @@ import netlib;
 import pluginlib;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
+import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.graphics.plugin;
 import voxelman.login.plugin;
+import voxelman.world.clientworld;
 
 shared static this()
 {
@@ -28,9 +30,11 @@ final class AvatarClient : IPlugin
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
 	ClientDbClient clientDb;
+	ClientWorld clientWorld;
 
 	override void init(IPluginManager pluginman)
 	{
+		clientWorld = pluginman.getPlugin!ClientWorld;
 		clientDb = pluginman.getPlugin!ClientDbClient;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
@@ -51,9 +55,11 @@ final class AvatarClient : IPlugin
 		auto packet = unpackPacket!UpdateAvatarsPacket(packetData);
 		batch.reset();
 		foreach (avatar; packet.avatars)
-		if (avatar.clientId != clientDb.thisClientId)
 		{
-			batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
+			if (avatar.clientId != clientDb.thisClientId && avatar.dimention == clientWorld.currentDimention)
+			{
+				batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
+			}
 		}
 	}
 }
@@ -82,7 +88,7 @@ final class AvatarServer : IPlugin
 		Appender!(Avatar[]) avatars;
 		avatars.reserve(clientDb.clients.length);
 		foreach (cinfo; clientDb.clients.byValue.filter!(a=>a.isLoggedIn))
-			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.heading));
+			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.dimention, cinfo.heading));
 
 		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
@@ -95,6 +101,7 @@ struct Avatar
 {
 	ClientId clientId;
 	vec3 position;
+	DimentionId dimention;
 	vec2 heading;
 }
 

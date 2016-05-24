@@ -11,6 +11,7 @@ struct AppStatistics
 	// counters. They are resetted every frame.
 	ulong chunksVisible;
 	ulong chunksRendered;
+	ulong chunksRenderedSemitransparent;
 	ulong vertsRendered;
 	ulong trisRendered;
 
@@ -22,6 +23,7 @@ struct AppStatistics
 	{
 		chunksVisible = 0;
 		chunksRendered = 0;
+		chunksRenderedSemitransparent = 0;
 		vertsRendered = 0;
 		trisRendered = 0;
 		lastFrameLoadedChunks = totalLoadedChunks;

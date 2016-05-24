@@ -104,6 +104,7 @@ public:
 			{
 				auto collectStartTime = MonoTime.currTime;
 				GC.collect();
+				GC.minimize();
 				auto collectDur = MonoTime.currTime - collectStartTime;
 				//if (collectDur > 50.msecs)
 				//	infof("GC.collect() time %s", collectDur);

@@ -32,6 +32,7 @@ import voxelman.world.clientworld;
 import voxelman.dbg.plugin;
 
 import voxelman.core.config;
+import voxelman.core.chunkmesh;
 import voxelman.net.events;
 import voxelman.core.events;
 import voxelman.core.packets;
@@ -163,9 +164,10 @@ public:
 			maxFpsOpt.set!uint(fpsLimitVal);
 			updateFrameTime();
 
-			igTextf("Chunks visible/rendered %s/%s %.0f%%",
-				chunksVisible, chunksRendered,
-				chunksVisible ? cast(float)chunksRendered/chunksVisible*100.0 : 0);
+			ulong totalRendered = chunksRenderedSemitransparent + chunksRendered;
+			igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
+				chunksRendered, chunksRenderedSemitransparent, totalRendered, chunksVisible,
+				chunksVisible ? cast(float)totalRendered/chunksVisible*100.0 : 0);
 			igTextf("Chunks per frame loaded: %s",
 				totalLoadedChunks - lastFrameLoadedChunks);
 			igTextf("Chunks total loaded: %s",
@@ -186,16 +188,27 @@ public:
 		vec2 heading = graphics.camera.heading;
 		igTextf("Heading: %.2f %.2f", heading.x, heading.y);
 		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
-		with(clientWorld.chunkMan) {
-			igTextf("Chunks to remove: %s", removeQueue.length);
-			igTextf("Chunks to mesh: %s", chunkMeshMan.numMeshChunkTasks);
-			float percent = chunkMeshMan.totalMeshedChunks > 0 ? cast(float)chunkMeshMan.totalMeshes / chunkMeshMan.totalMeshedChunks * 100 : 0.0;
-			igTextf("Meshed/Meshes %s/%s %.0f%%", chunkMeshMan.totalMeshedChunks, chunkMeshMan.totalMeshes, percent);
-			igTextf("View radius: %s", viewRadius); igSameLine();
-			if (igButton("-##decVRadius")) clientWorld.decViewRadius(); igSameLine();
-			if (igButton("+##incVRadius")) clientWorld.incViewRadius();
 
+		with(clientWorld.chunkMeshMan) {
+			igTextf("Buffers: %s", ChunkMesh.numBuffersAllocated);
+			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
+			igTextf("New meshes: %s", newChunkMeshes.length);
+			size_t sum;
+			foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
+			igTextf("Task Queues: %s", sum);
+			sum = 0;
+			foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
+			igTextf("Res Queues: %s", sum);
+			float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
+			igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
 		}
+
+		with(clientWorld) {
+			igTextf("View radius: %s", viewRadius); igSameLine();
+			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
+			if (igButton("+##incVRadius")) incViewRadius();
+		}
+
 		igEnd();
 	}
 
@@ -244,7 +257,10 @@ public:
 				evDispatcher.postEvent(DoGuiEvent(frame));
 				evDispatcher.postEvent(RenderEvent());
 
-				version(manualGC) GC.collect();
+				version(manualGC) {
+					GC.collect();
+					GC.minimize();
+				}
 
 				if (limitFps) {
 					Duration updateTime = MonoTime.currTime - newTime;
@@ -257,6 +273,7 @@ public:
 		}
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
+		thread_joinAll();
 		infof("[Stopped]");
 	}
 
@@ -281,7 +298,7 @@ public:
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		stats.fps = fpsHelper.fps;
-		stats.totalLoadedChunks = clientWorld.chunkMan.totalLoadedChunks;
+		stats.totalLoadedChunks = clientWorld.totalLoadedChunks;
 
 		printDebug();
 		stats.resetCounters();
@@ -352,7 +369,8 @@ public:
 		frustum.fromMVP(vp);
 
 		Matrix4f modelMatrix;
-		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.chunkMeshes[0].byValue)
+
+		foreach(ref mesh; clientWorld.chunkMeshMan.chunkMeshes[0].byValue)
 		{
 			++stats.chunksVisible;
 			if (isCullingEnabled) // Frustum culling
@@ -385,7 +403,7 @@ public:
 			graphics.camera.cameraMatrix);
 		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
 			cast(const float*)graphics.camera.perspective.arrayof);
-		foreach(mesh; clientWorld.chunkMan.chunkMeshMan.chunkMeshes[1].byValue)
+		foreach(ref mesh; clientWorld.chunkMeshMan.chunkMeshes[1].byValue)
 		{
 			++stats.chunksVisible;
 			if (isCullingEnabled) // Frustum culling
@@ -403,7 +421,7 @@ public:
 			mesh.bind;
 			mesh.render(triangleMode);
 
-			++stats.chunksRendered;
+			++stats.chunksRenderedSemitransparent;
 			stats.vertsRendered += mesh.numVertexes;
 			stats.trisRendered += mesh.numTris;
 		}

@@ -180,6 +180,26 @@ struct ChunkWorldPos
 	{
 		return mixin("vector." ~ s);
 	}
+
+	void toString()(scope void delegate(const(char)[]) sink)
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("cwp(%(%s %))", vector.arrayof);
+	}
+}
+
+T[6] adjacentPositions(T)(T center)
+{
+	import voxelman.block.utils : sideOffsets;
+	T[6] positions;
+	foreach(i, offset; sideOffsets)
+	{
+		positions[i] = T(center.x + offset[0],
+			center.y + offset[1],
+			center.z + offset[2],
+			center.w);
+	}
+	return positions;
 }
 
 // Position of chunk in region space. 0..RegionSize

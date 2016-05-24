@@ -8,73 +8,43 @@ module voxelman.world.storage.worldaccess;
 import std.experimental.logger;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.utils;
 
-/// When modifying world through WorldAccess
-/// changes will automatically proparate to client each tick
-struct WorldAccess
+final class WorldAccess
 {
-	void init(Chunk* delegate(ChunkWorldPos) chunkGetter,
-		TimestampType delegate() timestampGetter)
-	{
-		this.chunkGetter = chunkGetter;
-		assert(chunkGetter);
-		this.timestampGetter = timestampGetter;
-		assert(timestampGetter);
+	private ChunkManager chunkManager;
+	private ChunkChangeManager chunkChangeManager;
+
+	this(ChunkManager chunkManager, ChunkChangeManager chunkChangeManager) {
+		this.chunkManager = chunkManager;
+		this.chunkChangeManager = chunkChangeManager;
 	}
 
-	BlockId getBlock(BlockWorldPos blockPos)
-	{
-		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
-		Chunk* chunk = chunkGetter(chunkPos);
-		if (chunk)
-		{
-			BlockDataSnapshot* snapshot = chunk.getReadableSnapshot(timestampGetter());
-			if (snapshot)
-			{
-				auto blockIndex = BlockChunkIndex(blockPos);
-				return snapshot.blockData.getBlockType(blockIndex);
-			}
-		}
-
-		return 0; // unknown block. Indicates that chunk is not loaded.
-	}
-
-	bool setBlock(BlockWorldPos blockPos, BlockId blockId)
-	{
-		ChunkWorldPos chunkPos = ChunkWorldPos(blockPos);
-		Chunk* chunk = chunkGetter(chunkPos);
-
-		if (chunk)
-		{
-			BlockDataSnapshot* snapshot = chunk.getWriteableSnapshot(timestampGetter());
-
-			// chunk was not loaded yet
-			if (snapshot is null)
-				return false;
-
-			auto blockIndex = BlockChunkIndex(blockPos);
-			snapshot.blockData.setBlockType(blockIndex, blockId);
-
-			foreach(handler; onChunkModifiedHandlers)
-				handler(chunk, [BlockChange(blockIndex.index, blockId)]);
-
-			return true;
-		}
-		else
+	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
+		auto blockIndex = BlockChunkIndex(bwp);
+		auto chunkPos = ChunkWorldPos(bwp);
+		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos, FIRST_LAYER);
+		if (blocks is null)
 			return false;
+		blocks[blockIndex] = blockId;
+
+		import std.range : only;
+		chunkChangeManager.onBlockChanges(chunkPos, only(BlockChange(blockIndex.index, blockId)), FIRST_LAYER);
+		return true;
 	}
 
-	//bool isBlockLoaded(BlockWorldPos blockPos);
-	//bool loadBlockRange(AABB aabb);
-	TimestampType currentTimestamp() @property
-	{
-		return timestampGetter();
+	BlockId getBlock(BlockWorldPos bwp) {
+		auto blockIndex = BlockChunkIndex(bwp);
+		auto chunkPos = ChunkWorldPos(bwp);
+		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER);
+		if (!snap.isNull) {
+			return snap.getBlockId(blockIndex);
+		}
+		return 0;
 	}
 
-	void delegate(Chunk*, BlockChange[])[] onChunkModifiedHandlers;
-private:
-	Chunk* delegate(ChunkWorldPos) chunkGetter;
-	TimestampType delegate() timestampGetter;
+	bool isFree(BlockWorldPos bwp) {
+		 return getBlock(bwp) < 2; // air or unknown
+	}
 }

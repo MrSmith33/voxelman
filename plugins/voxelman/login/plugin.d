@@ -8,6 +8,7 @@ module voxelman.login.plugin;
 import std.experimental.logger;
 import netlib;
 import pluginlib;
+import dlib.math.vector : vec2, vec3;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -16,6 +17,7 @@ import voxelman.core.packets;
 import voxelman.net.packets;
 import voxelman.world.storage.coordinates;
 
+import voxelman.config.configmanager : ConfigManager, ConfigOption;
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
@@ -145,6 +147,7 @@ public:
 
 	string clientName(ClientId clientId)
 	{
+		import std.string : format;
 		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
 	}
 }

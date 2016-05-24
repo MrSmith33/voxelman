@@ -5,88 +5,90 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunkprovider;
 
-import std.concurrency : spawn, Tid;
 import std.experimental.logger;
-import core.atomic;
-import core.sync.semaphore;
 import core.sync.condition;
-import core.sync.mutex;
+import core.atomic;
+import std.concurrency : Tid, spawn;
+import core.thread : Thread;
 
 import dlib.math.vector;
 
 import voxelman.block.utils : BlockInfo;
 import voxelman.core.chunkgen;
 import voxelman.core.config;
+import voxelman.utils.worker;
 import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkstorage;
 import voxelman.world.storage.coordinates;
-import voxelman.world.worlddb : WorldDb;
-import voxelman.utils.sharedqueue;
 import voxelman.world.storage.storageworker;
+import voxelman.world.worlddb : WorldDb;
 
-
-alias MessageQueue = SharedQueue!(ulong, QUEUE_LENGTH);
-
-shared struct Worker
+/// Used to pass data to chunkmanager's onSnapshotLoaded.
+struct LoadedChunkData
 {
-	Thread thread;
-	bool running = true;
-	MessageQueue taskQueue;
-	MessageQueue resultQueue;
-	Semaphore workAvaliable;
-
-	// for owner
-	void alloc() shared {
-		taskQueue.alloc();
-		resultQueue.alloc();
-		workAvaliable = cast(shared) new Semaphore();
-	}
-
-	// for owner
-	void stop() shared {
-		atomicStore(running, false);
-		(cast(Semaphore)workAvaliable).notify();
-	}
-
-	void notify() shared {
-		(cast(Semaphore)workAvaliable).notify();
-	}
-
-	// for worker
-	void signalStopped() shared {
-		atomicStore(running, false);
-	}
-
-	bool isRunning() shared @property {
-		return atomicLoad!(MemoryOrder.acq)(running) && (cast(Thread)thread).isRunning;
-	}
-
-	bool isStopped() shared @property const {
-		return !(cast(Thread)thread).isRunning;
-	}
-
-	bool queuesEmpty() shared @property const {
-		return taskQueue.empty && resultQueue.empty;
-	}
-
-	// for owner
-	void free() shared {
-		taskQueue.free();
-		resultQueue.free();
-	}
-}
-
-Thread spawnWorker(F, T...)(F fn, T args)
-{
-	void exec()
+	private shared(MessageQueue)* queue;
+	ChunkHeaderItem getHeader()
 	{
-		fn( args );
+		assert(queue.length >= ChunkHeaderItem.sizeof);
+		ChunkHeaderItem header;
+		queue.popItem(header);
+		assert(queue.length >= ChunkLayerItem.sizeof * header.numLayers);
+		return header;
 	}
-	auto t = new Thread(&exec);
-    t.start();
-    return t;
+	ChunkLayerItem getLayer()
+	{
+		ChunkLayerItem layer;
+		queue.popItem(layer);
+		if (layer.type != StorageType.uniform)
+		{
+			// Remove root, added on chunk load and gen.
+			// Data can be collected by GC if no-one is referencing it.
+			import core.memory : GC;
+			GC.removeRoot(layer.dataPtr); // TODO remove when moved to non-GC allocator
+		}
+		return layer;
+	}
 }
 
+/// Used to pass data to chunkmanager's onSnapshotLoaded.
+struct SavedChunkData
+{
+	private shared(MessageQueue)* queue;
+	ChunkHeaderItem getHeader()
+	{
+		assert(queue.length >= 2);
+		ChunkHeaderItem header;
+		queue.popItem(header);
+		assert(queue.length >= ChunkLayerItem.sizeof/8 * header.numLayers);
+		return header;
+	}
+	ChunkLayerTimestampItem getLayerTimestamp()
+	{
+		ChunkLayerTimestampItem layer;
+		queue.popItem(layer);
+		return layer;
+	}
+}
+
+/// Used to save chunk from chunkmanager.
+struct ChunkSaver
+{
+	size_t headerPos;
+	ChunkProvider* chunkProvider;
+
+	void pushLayer(ChunkLayerItem layer)
+	{
+		chunkProvider.saveTaskQueue.pushMessagePart(layer);
+	}
+
+	void endChunkSave(ChunkHeaderItem header)
+	{
+		chunkProvider.saveTaskQueue.setItem(header, headerPos);
+		chunkProvider.saveTaskQueue.endMessage();
+		chunkProvider.notify();
+	}
+}
+
+//version = DBG_OUT;
 struct ChunkProvider
 {
 	private Tid storeWorker;
@@ -104,8 +106,8 @@ struct ChunkProvider
 
 	shared Worker[] genWorkers;
 
-	void delegate(shared(MessageQueue)* queue, bool generated) onChunkLoadedHandler;
-	void delegate() onChunkSavedHandler;
+	void delegate(LoadedChunkData loadedChunk, bool generated) onChunkLoadedHandler;
+	void delegate(SavedChunkData savedChunk) onChunkSavedHandler;
 
 	size_t loadQueueSpaceAvaliable() @property const {
 		ptrdiff_t space = cast(ptrdiff_t)loadTaskQueue.capacity - loadTaskQueue.length;
@@ -127,16 +129,16 @@ struct ChunkProvider
 		genWorkers.length = numGenWorkers;
 		foreach(i; 0..numGenWorkers)
 		{
-			genWorkers[i].alloc();
+			genWorkers[i].alloc("GEN_W");
 			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], blocks);
 		}
 
 		workAvaliableMutex = new Mutex;
 		workAvaliable = new Condition(workAvaliableMutex);
-		loadResQueue.alloc();
-		saveResQueue.alloc();
-		loadTaskQueue.alloc();
-		saveTaskQueue.alloc();
+		loadResQueue.alloc("loadResQ");
+		saveResQueue.alloc("saveResQ");
+		loadTaskQueue.alloc("loadTaskQ");
+		saveTaskQueue.alloc("saveTaskQ");
 		storeWorker = spawn(
 			&storageWorker, cast(immutable)worldDb,
 			&workerRunning, &workerStopped,
@@ -169,9 +171,11 @@ struct ChunkProvider
 		{
 			Thread.yield();
 		}
+
+		free();
 	}
 
-	void free() {
+	private void free() {
 		loadResQueue.free();
 		saveResQueue.free();
 		loadTaskQueue.free();
@@ -186,13 +190,13 @@ struct ChunkProvider
 		//		loadTaskQueue.length, saveTaskQueue.length);
 		while(loadResQueue.length > 0)
 		{
-			onChunkLoadedHandler(&loadResQueue, true);
+			onChunkLoadedHandler(LoadedChunkData(&loadResQueue), true);
 			++numReceived;
 		}
 		while(!saveResQueue.empty)
 		{
 			//infof("Save res received");
-			onChunkSavedHandler();
+			onChunkSavedHandler(SavedChunkData(&saveResQueue));
 			++numReceived;
 		}
 		foreach(ref w; genWorkers)
@@ -200,7 +204,7 @@ struct ChunkProvider
 			while(!w.resultQueue.empty)
 			{
 				//infof("Save res received");
-				onChunkLoadedHandler(&w.resultQueue, false);
+				onChunkLoadedHandler(LoadedChunkData(&w.resultQueue), false);
 				++numReceived;
 			}
 		}
@@ -208,5 +212,19 @@ struct ChunkProvider
 		if (prevReceived != numReceived)
 			version(DBG_OUT)infof("ChunkProvider running %s", numReceived);
 		prevReceived = numReceived;
+	}
+
+	void loadChunk(ChunkWorldPos cwp)
+	{
+		loadTaskQueue.pushItem!ulong(cwp.asUlong);
+		notify();
+	}
+
+	ChunkSaver startChunkSave()
+	{
+		saveTaskQueue.startMessage();
+		size_t headerPos = saveTaskQueue.skipMessageItem!ChunkHeaderItem();
+
+		return ChunkSaver(headerPos, &this);
 	}
 }

@@ -21,6 +21,7 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.utils.compression;
+import voxelman.utils.worker;
 import core.thread;
 
 
@@ -93,19 +94,19 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			enum timestamp = 0;
 			enum numLayers = 1;
 
-			workerInfo.resultQueue.startPush();
-			workerInfo.resultQueue.pushItem(ChunkHeaderItem(cwp, numLayers));
+			workerInfo.resultQueue.startMessage();
+			auto header = ChunkHeaderItem(cwp, numLayers);
+			workerInfo.resultQueue.pushMessagePart(header);
 			if(uniform)
 			{
 				ushort metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
 				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
 
-				workerInfo.resultQueue.pushItem(
-					ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata));
+				auto layer = ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata);
+				workerInfo.resultQueue.pushMessagePart(layer);
 			}
 			else
 			{
-				import core.memory : GC;
 				//infof("%s L %s B (%(%02x%))", cwp, blocks.length, cast(ubyte[])blocks);
 				ushort metadata = calcChunkSideMetadata(blocks[], blockInfos);
 				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
@@ -113,33 +114,38 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 				ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
 				//infof("%s L %s C (%(%02x%))", cwp, compactBlocks.length, cast(ubyte[])compactBlocks);
 
+				StorageType storageType;
+				ushort dataLength;
+				ubyte* data;
+
 				if (compactBlocks.length <= ushort.max)
 				{
 					version(DBG_COMPR)infof("Gen1 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
 					compactBlocks = compactBlocks.dup;
 					version(DBG_COMPR)infof("Gen2 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
-					ushort dataLength = cast(ushort)compactBlocks.length;
-					ubyte* data = cast(ubyte*)compactBlocks.ptr;
-					// Add root to data.
-					// Data can be collected by GC if no-one is referencing it.
-					// It is needed to pass array trough shared queue.
-					GC.addRoot(data); // TODO remove when moved to non-GC allocator
-					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
+					dataLength = cast(ushort)compactBlocks.length;
+					data = cast(ubyte*)compactBlocks.ptr;
+					storageType = StorageType.compressedArray;
 				}
 				else
 				{
 					infof("Gen non-compressed %s", cwp);
-					ushort dataLength = cast(ushort)blocks.length;
+					dataLength = cast(ushort)blocks.length;
 					assert(dataLength == CHUNK_SIZE_CUBE);
-					ubyte* data = cast(ubyte*)blocks.dup.ptr;
-					// Add root to data.
-					// Data can be collected by GC if no-one is referencing it.
-					// It is needed to pass array trough shared queue.
-					GC.addRoot(data); // TODO remove when moved to non-GC allocator
-					workerInfo.resultQueue.pushItem(ChunkLayerItem(StorageType.fullArray, layerId, dataLength, timestamp, data, metadata));
+					data = cast(ubyte*)blocks.dup.ptr;
+					storageType = StorageType.fullArray;
 				}
+
+				// Add root to data.
+				// Data can be collected by GC if no-one is referencing it.
+				// It is needed to pass array trough shared queue.
+				// Root is removed inside ChunkProvider
+				import core.memory : GC;
+				GC.addRoot(data); // TODO remove when moved to non-GC allocator
+				auto layer = ChunkLayerItem(storageType, layerId, dataLength, timestamp, data, metadata);
+				workerInfo.resultQueue.pushMessagePart(layer);
 			}
-			workerInfo.resultQueue.endPush();
+			workerInfo.resultQueue.endMessage();
 		}
 
 		while (workerInfo.isRunning)

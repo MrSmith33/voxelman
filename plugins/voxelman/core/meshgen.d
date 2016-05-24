@@ -7,13 +7,10 @@ module voxelman.core.meshgen;
 
 import std.experimental.logger;
 import std.array : Appender;
-import std.concurrency : Tid, send, receive;
 import std.conv : to;
-import std.variant : Variant;
-import core.atomic : atomicLoad;
 import core.exception : Throwable;
+import core.sync.semaphore;
 
-import dlib.math.vector : ivec3;
 
 import voxelman.block.plugin;
 import voxelman.block.utils;
@@ -21,60 +18,59 @@ import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
+import voxelman.utils.worker;
 
 
 struct MeshGenResult
 {
+	size_t meshGroupId;
+	ChunkWorldPos cwp;
 	ubyte[][2] meshes;
-	ChunkWorldPos position;
+	ChunkLayerItem[7] layers;
 }
 
-void meshWorkerThread(Tid mainTid, immutable(BlockInfo)[] blocks)
+struct MeshGenTask
+{
+	size_t meshGroupId;
+	ChunkWorldPos cwp;
+	ChunkLayerItem[7] layers;
+}
+
+//version = DBG_OUT;
+void meshWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
 {
 	try
 	{
-		shared(bool)* isRunning;
-		bool isRunningLocal = true;
-		receive( (shared(bool)* _isRunning){isRunning = _isRunning;} );
-
-		while (atomicLoad(*isRunning) && isRunningLocal)
+		while (workerInfo.isRunning)
 		{
-			receive(
-				(shared(Chunk)* chunk)
-				{
-					//infof("worker: mesh chunk %s", chunk.position);
-					chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
-				},
-				(shared(Chunk)* chunk, ushort[2] changedBlocksRange)
-				{
-					//chunkMeshWorker(cast(Chunk*)chunk, (cast(Chunk*)chunk).adjacent, blocks, mainTid);
-				},
-				(Variant v){isRunningLocal = false;}
-			);
+			(cast(Semaphore)workerInfo.workAvaliable).wait();
+
+			if (!workerInfo.taskQueue.empty)
+			{
+				MeshGenTask task = workerInfo.taskQueue.popItem!MeshGenTask();
+				ubyte[][2] meshes = chunkMeshWorker(task.layers[6], task.layers[0..6], blockInfos);
+				auto result = MeshGenResult(task.meshGroupId, task.cwp, meshes, task.layers);
+				workerInfo.resultQueue.pushItem!MeshGenResult(result);
+			}
 		}
 	}
 	catch(Throwable t)
 	{
-		error(t.to!string, " from mesh worker");
+		infof("%s from mesh worker", t.to!string);
 		throw t;
 	}
+	version(DBG_OUT)infof("Mesh worker stopped");
 }
 
-void chunkMeshWorker(Chunk* chunk, Chunk*[6] adjacent, immutable(BlockInfo)[] blocks, Tid mainThread)
-in
+ubyte[][2] chunkMeshWorker(ChunkLayerItem layer, ChunkLayerItem[6] adjacent, immutable(BlockInfo)[] blockInfos)
 {
-	assert(chunk);
-	assert(!chunk.hasWriter);
-	foreach(a; adjacent)
+	Appender!(ubyte[])[3] geometry; // 2 - solid, 1 - semiTransparent
+
+	assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");
+	foreach (adj; adjacent)
 	{
-		assert(a !is null);
-		assert(!a.hasWriter);
+		assert(adj.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");
 	}
-}
-body
-{
-	Appender!(ubyte[])[3] geometry; // 0 - solid, 1 - semiTransparent
-	ubyte bx, by, bz;
 
 	Solidity solidity(int tx, int ty, int tz)
 	{
@@ -83,95 +79,118 @@ body
 		ubyte z = cast(ubyte)tz;
 
 		if(tx == -1) // west
-			return blocks[ adjacent[Side.west].getBlockType(CHUNK_SIZE-1, y, z) ].solidity;
+		{
+			return blockInfos[ adjacent[Side.west].getBlockId(CHUNK_SIZE-1, y, z) ].solidity;
+		}
 		else if(tx == CHUNK_SIZE) // east
-			return blocks[ adjacent[Side.east].getBlockType(0, y, z) ].solidity;
+		{
+			return blockInfos[ adjacent[Side.east].getBlockId(0, y, z) ].solidity;
+		}
 
 		if(ty == -1) // bottom
 		{
-			return blocks[ adjacent[Side.bottom].getBlockType(x, CHUNK_SIZE-1, z) ].solidity;
+			return blockInfos[ adjacent[Side.bottom].getBlockId(x, CHUNK_SIZE-1, z) ].solidity;
 		}
 		else if(ty == CHUNK_SIZE) // top
 		{
-			return blocks[ adjacent[Side.top].getBlockType(x, 0, z) ].solidity;
+			return blockInfos[ adjacent[Side.top].getBlockId(x, 0, z) ].solidity;
 		}
 
 		if(tz == -1) // north
-			return blocks[ adjacent[Side.north].getBlockType(x, y, CHUNK_SIZE-1) ].solidity;
+		{
+			return blockInfos[ adjacent[Side.north].getBlockId(x, y, CHUNK_SIZE-1) ].solidity;
+		}
 		else if(tz == CHUNK_SIZE) // south
-			return blocks[ adjacent[Side.south].getBlockType(x, y, 0) ].solidity;
+		{
+			return blockInfos[ adjacent[Side.south].getBlockId(x, y, 0) ].solidity;
+		}
 
-		return blocks[ chunk.getBlockType(x, y, z) ].solidity;
+		return blockInfos[ layer.getBlockId(x, y, z) ].solidity;
 	}
 
-	// Bit flags of sides to render
-	ubyte sides = 0;
-	// Offset to adjacent block
-	byte[3] offset;
-
-	if (!chunk.snapshot.blockData.uniform)
-		assert(chunk.snapshot.blockData.blocks.length == CHUNK_SIZE_CUBE);
-
-	if (chunk.snapshot.blockData.uniform)
+	if (layer.isUniform)
 	{
-		BlockId id = chunk.snapshot.blockData.uniformType;
-		auto meshHandler = blocks[id].meshHandler;
-		auto color = blocks[id].color;
-		auto curSolidity = blocks[id].solidity;
+		BlockId id = layer.getUniform!BlockId;
+		Meshhandler meshHandler = blockInfos[id].meshHandler;
+		ubyte[3] color = blockInfos[id].color;
+		Solidity curSolidity = blockInfos[id].solidity;
 
 		if (curSolidity != Solidity.transparent)
-		foreach (uint index; 0..CHUNK_SIZE_CUBE)
 		{
-			bx = index & CHUNK_SIZE_BITS;
-			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-			sides = 0;
-
-			foreach(ubyte side; 0..6)
+			foreach (uint index; 0..CHUNK_SIZE_CUBE)
 			{
-				offset = sideOffsets[side];
+				ubyte bx = index & CHUNK_SIZE_BITS;
+				ubyte by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+				ubyte bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 
-				if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
+				// Bit flags of sides to render
+				ubyte sides = 0;
+
+				ubyte flag = 1;
+				foreach(ubyte side; 0..6)
 				{
-					sides |= 2^^(side);
+					// Offset to adjacent block
+					byte[3] offset = sideOffsets[side];
+
+					if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
+					{
+						sides |= flag;
+					}
+
+					flag <<= 1;
 				}
+				meshHandler(geometry[curSolidity], color, bx, by, bz, sides);
 			}
-			meshHandler(geometry[curSolidity], color, bx, by, bz, sides);
-		} // foreach
+		}
 	}
 	else
-	foreach (uint index, ubyte val; chunk.snapshot.blockData.blocks)
 	{
-		if (blocks[val].isVisible)
+		auto blocks = layer.getArray!BlockId();
+		assert(blocks.length == CHUNK_SIZE_CUBE);
+		foreach (uint index, ubyte blockId; blocks)
 		{
-			bx = index & CHUNK_SIZE_BITS;
-			by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-			bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-			sides = 0;
-
-			auto curSolidity = blocks[val].solidity;
-			if (curSolidity == Solidity.transparent)
-				continue;
-
-			foreach(ubyte side; 0..6)
+			if (blockInfos[blockId].isVisible)
 			{
-				offset = sideOffsets[side];
+				ubyte bx = index & CHUNK_SIZE_BITS;
+				ubyte by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+				ubyte bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 
-				if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
+				ubyte sides = 0; // Bit flags of sides to render
+
+				auto curSolidity = blockInfos[blockId].solidity;
+				if (curSolidity == Solidity.transparent)
+					continue;
+
+				ubyte flag = 1;
+				foreach(ubyte side; 0..6)
 				{
-					sides |= 2^^(side);
-				}
-			}
+					// Offset to adjacent block
+					byte[3] offset = sideOffsets[side];
 
-			blocks[val].meshHandler(geometry[curSolidity], blocks[val].color, bx, by, bz, sides);
-		} // if(val != 0)
-	} // foreach
+					if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2]))
+					{
+						sides |= flag;
+					}
+
+					flag <<= 1;
+				}
+
+				blockInfos[blockId].meshHandler(geometry[curSolidity], blockInfos[blockId].color, bx, by, bz, sides);
+			}
+		}
+	}
 
 	ubyte[][2] meshes;
-	meshes[0] = geometry[2].data;
-	meshes[1] = geometry[1].data;
+	meshes[0] = geometry[2].data; // solid geometry
+	meshes[1] = geometry[1].data; // semi-transparent geometry
 
-	auto result = cast(immutable(MeshGenResult)*)
-		new MeshGenResult(meshes, chunk.position);
-	mainThread.send(result);
+	// Add root to data.
+	// Data can be collected by GC if no-one is referencing it.
+	// It is needed to pass array trough shared queue.
+	// Root is removed inside ChunkMeshMan
+	import core.memory : GC;
+	if (meshes[0]) GC.addRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
+	if (meshes[1]) GC.addRoot(meshes[1].ptr); //
+
+	return meshes;
 }

@@ -33,48 +33,12 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.chunkobservermanager;
 import voxelman.world.storage.chunkprovider;
-import voxelman.world.storage.chunkstorage;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
 import voxelman.world.storage.storageworker;
+import voxelman.world.storage.volume;
+import voxelman.world.storage.worldaccess;
 
 public import voxelman.world.worlddb : WorldDb;
-
-
-final class WorldAccess {
-	private ChunkManager* chunkManager;
-
-	this(ChunkManager* chunkManager) {
-		this.chunkManager = chunkManager;
-	}
-
-	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
-		auto blockIndex = BlockChunkIndex(bwp);
-		auto chunkPos = ChunkWorldPos(bwp);
-		BlockId[] blocks = chunkManager.getWriteBuffer(chunkPos, FIRST_LAYER);
-		if (blocks is null)
-			return false;
-		blocks[blockIndex] = blockId;
-
-		import std.range : only;
-		chunkManager.onBlockChanges(chunkPos, only(BlockChange(blockIndex.index, blockId)), FIRST_LAYER);
-		return true;
-	}
-
-	BlockId getBlock(BlockWorldPos bwp) {
-		auto blockIndex = BlockChunkIndex(bwp);
-		auto chunkPos = ChunkWorldPos(bwp);
-		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER);
-		if (!snap.isNull) {
-			return snap.getBlockType(blockIndex);
-		}
-		return 0;
-	}
-
-	bool isFree(BlockWorldPos bwp) {
-		 return getBlock(bwp) < 2; // air or unknown
-	}
-}
 
 
 alias IoHandler = void delegate(WorldDb);
@@ -88,7 +52,6 @@ private:
 
 	IoHandler[] worldLoadHandlers;
 	IoHandler[] worldSaveHandlers;
-	Tid ioThreadId;
 
 public:
 	this(void delegate(string) onPostInit)
@@ -137,7 +100,6 @@ private:
 	BlockPluginServer blockPlugin;
 
 	IoManager ioManager;
-	Tid ioThreadId;
 
 	ConfigOption numGenWorkersOpt;
 
@@ -151,6 +113,7 @@ private:
 
 public:
 	ChunkManager chunkManager;
+	ChunkChangeManager chunkChangeManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
 
@@ -174,24 +137,27 @@ public:
 	{
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
-		worldAccess = new WorldAccess(&chunkManager);
+		chunkChangeManager = new ChunkChangeManager();
+		worldAccess = new WorldAccess(chunkManager, chunkChangeManager);
 		chunkObserverManager = new ChunkObserverManager();
 
 		ubyte numLayers = 1;
 		chunkManager.setup(numLayers);
 
 		// Component connections
-		chunkManager.chunkProvider = &chunkProvider;
+		chunkManager.startChunkSave = &chunkProvider.startChunkSave;
+		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
 
-		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded;
-		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved;
+		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
+		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
 
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkUsers;
+		chunkChangeManager.setup(numLayers);
+
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
 		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
 
 		chunkManager.onChunkLoadedHandler = &onChunkLoaded;
-		chunkManager.chunkChangesHandlers ~= &sendChanges;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -274,26 +240,26 @@ public:
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
+		++worldInfo.simulationTick;
 		chunkProvider.update();
 		chunkObserverManager.update();
-		++worldInfo.simulationTick;
 	}
 
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
-		chunkManager.sendChanges();
+		sendChanges(chunkChangeManager.chunkChanges[FIRST_LAYER]);
+		chunkChangeManager.chunkChanges[FIRST_LAYER] = null;
 	}
 
 	private void handleStopEvent(ref GameStopEvent event)
 	{
 		chunkProvider.stop();
-		chunkProvider.free();
 	}
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
-		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
+		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER); //TODO send other layers
 		if (!snap.isNull) {
 			sendChunk(clientId, cwp, snap);
 		}
@@ -315,7 +281,6 @@ public:
 	private void sendChunk(C)(C clients, ChunkWorldPos cwp, ChunkLayerSnap layer)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
-
 		version(DBG_COMPR)if (layer.type != StorageType.uniform)
 		{
 			ubyte[] compactBlocks = layer.getArray!ubyte;

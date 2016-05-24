@@ -18,7 +18,6 @@ version(Windows)
 	{
 		int res = LZ4_compress_default(data.ptr, outBuffer.ptr, cast(int)data.length, cast(int)outBuffer.length);
 		return outBuffer[0..res];
-
 	}
 	ubyte[] decompress(in ubyte[] data, ubyte[] outBuffer)
 	{

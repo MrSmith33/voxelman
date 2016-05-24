@@ -12,6 +12,7 @@ import std.conv : to;
 import derelict.enet.enet;
 import cbor;
 public import derelict.enet.enet : ENetPeer;
+import std.string : format;
 
 
 // Client id type. Used in server to identify clients.

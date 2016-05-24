@@ -168,6 +168,11 @@ final class ChunkObserverManager {
 			warningf("removing observer %s, that was not added", clientId);
 	}
 
+	Volume getObserverVolume(ClientId clientId) {
+		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
+		return info.viewVolume;
+	}
+
 	void changeObserverVolume(ClientId clientId, ChunkWorldPos observerPosition, int viewRadius) {
 		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
 

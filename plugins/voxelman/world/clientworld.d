@@ -13,6 +13,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.utils.compression;
+import voxelman.utils.hashset;
 
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
@@ -20,6 +21,7 @@ import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
 import voxelman.login.plugin;
 import voxelman.block.plugin;
+import voxelman.graphics.plugin;
 
 import voxelman.net.packets;
 import voxelman.core.packets;
@@ -28,33 +30,42 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.chunkobservermanager;
 import voxelman.world.storage.chunkprovider;
-import voxelman.world.storage.chunkstorage;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
 
+import voxelman.client.chunkmeshman;
 
 //version = DBG_COMPR;
 final class ClientWorld : IPlugin
 {
-	import voxelman.graphics.plugin;
-	import voxelman.world.chunkman;
 private:
 	EventDispatcherPlugin evDispatcher;
 	NetClientPlugin connection;
 	GraphicsPlugin graphics;
 	ClientDbClient clientDb;
+	BlockPluginClient blockPlugin;
 
 	ConfigOption numWorkersOpt;
 
 public:
-	ChunkMan chunkMan;
+	ChunkManager chunkManager;
+	ChunkChangeManager chunkChangeManager;
+	ChunkObserverManager chunkObserverManager;
 	WorldAccess worldAccess;
+	ChunkMeshMan chunkMeshMan;
+	TimestampType currentTimestamp;
+	HashSet!ChunkWorldPos chunksToRemesh;
 
+	// toggles/debug
 	bool doUpdateObserverPosition = true;
+	bool drawDebugMetadata;
+	size_t totalLoadedChunks;
+
+	// Observer data
 	vec3 updatedCameraPos;
 	ChunkWorldPos observerPosition;
-	bool drawDebugMetadata;
+	int viewRadius = DEFAULT_VIEW_RADIUS;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -75,26 +86,42 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_M, "key.toggleMetaData", null, &onToggleMetaData));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewVolume));
 	}
 
 	override void preInit()
 	{
-		worldAccess.init(&chunkMan.chunkStorage.getChunk, () => 0);
-		worldAccess.onChunkModifiedHandlers ~= &chunkMan.onChunkChanged;
+		chunkManager = new ChunkManager();
+		chunkChangeManager = new ChunkChangeManager();
+		worldAccess = new WorldAccess(chunkManager, chunkChangeManager);
+
+		ubyte numLayers = 1;
+		chunkManager.setup(numLayers);
+		chunkManager.loadChunkHandler = &handleLoadChunk;
+		chunkManager.isLoadCancelingEnabled = true;
+		chunkManager.isChunkSavingEnabled = false;
+		chunkManager.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
+
+		chunkChangeManager.setup(numLayers);
+
+		chunkObserverManager = new ChunkObserverManager();
+		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
+		chunkObserverManager.chunkObserverAdded = &handleChunkObserverAdded;
+		chunkObserverManager.loadQueueSpaceAvaliable = () => size_t.max;
 	}
 
 	override void init(IPluginManager pluginman)
 	{
 		clientDb = pluginman.getPlugin!ClientDbClient;
 
-		auto blockPlugin = pluginman.getPlugin!BlockPluginClient;
-		chunkMan.init(numWorkersOpt.get!uint, blockPlugin.getBlocks());
+		blockPlugin = pluginman.getPlugin!BlockPluginClient;
+		chunkMeshMan.init(chunkManager, blockPlugin.getBlocks(), numWorkersOpt.get!uint);
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
-		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		evDispatcher.subscribeToEvent(&onGameStopEvent);
-		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
+		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
+		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
+		evDispatcher.subscribeToEvent(&handleGameStopEvent);
+		evDispatcher.subscribeToEvent(&handleSendClientSettingsEvent);
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
@@ -116,17 +143,27 @@ public:
 		drawDebugMetadata = !drawDebugMetadata;
 	}
 
-	void onPreUpdateEvent(ref PreUpdateEvent event)
+	void onRemeshViewVolume(string) {
+		Volume volume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
+		remeshVolume(volume);
+	}
+
+	void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
+		++currentTimestamp;
+
 		if (doUpdateObserverPosition)
 		{
 			observerPosition = ChunkWorldPos(
 				BlockWorldPos(graphics.camera.position, observerPosition.w));
 		}
+
 		updateObserverPosition();
-		chunkMan.update();
+		chunkObserverManager.update();
+		chunkMeshMan.update();
+
 		if (drawDebugMetadata) {
-			chunkMan.chunkMeshMan.drawDebug(graphics.debugBatch);
+			chunkMeshMan.drawDebug(graphics.debugBatch);
 			drawDebugChunkInfo();
 		}
 	}
@@ -139,7 +176,6 @@ public:
 
 		drawDebugChunkMetadata(nearVolume);
 		drawDebugChunkGrid(nearVolume);
-		drawDebugChunkUniform(nearVolume);
 	}
 
 	void drawDebugChunkMetadata(Volume volume)
@@ -148,14 +184,21 @@ public:
 		foreach(pos; volume.positions)
 		{
 			vec3 blockPos = pos * CHUNK_SIZE;
-			Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(pos, volume.dimention));
-			if (chunk is null) continue;
+
+			auto snap = chunkManager.getChunkSnapshot(
+				ChunkWorldPos(pos, volume.dimention), FIRST_LAYER);
+
+			if (snap.isNull) continue;
 			foreach(ubyte side; 0..6)
 			{
-				Solidity solidity = chunkSideSolidity(chunk.snapshot.blockData.metadata, cast(Side)side);
+				Solidity solidity = chunkSideSolidity(snap.metadata, cast(Side)side);
 				static Color3ub[3] colors = [Colors.white, Colors.gray, Colors.black];
 				Color3ub color = colors[solidity];
 				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(Side)side, color, true);
+			}
+
+			if (snap.isUniform) {
+				graphics.debugBatch.putCube(blockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
 			}
 		}
 	}
@@ -168,31 +211,35 @@ public:
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
 
-	void drawDebugChunkUniform(Volume volume)
-	{
-		foreach(pos; volume.positions)
-		{
-			vec3 chunkBlockPos = pos * CHUNK_SIZE;
-			graphics.debugBatch.putCube(chunkBlockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
-		}
-	}
+	void handleChunkObserverAdded(ChunkWorldPos, ClientId) {}
 
-	void onPostUpdateEvent(ref PostUpdateEvent event)
+	void handleLoadChunk(ChunkWorldPos) {}
+
+	void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
+		chunkManager.commitSnapshots(currentTimestamp);
+		//chunkMeshMan.remeshChangedChunks(chunkManager.getModifiedChunks());
+		chunkManager.clearModifiedChunks();
+		chunkMeshMan.remeshChangedChunks(chunksToRemesh);
+		chunksToRemesh.clear();
+
 		if (doUpdateObserverPosition)
 			sendPosition(event.deltaTime);
 	}
 
-	void onGameStopEvent(ref GameStopEvent gameStopEvent)
+	void handleGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
 		import core.thread;
-		chunkMan.stop();
-		thread_joinAll();
+		while(chunkMeshMan.numMeshChunkTasks > 0)
+		{
+			chunkMeshMan.update();
+		}
+		chunkMeshMan.stop();
 	}
 
-	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
+	void handleSendClientSettingsEvent(ref SendClientSettingsEvent event)
 	{
-		connection.send(ViewRadiusPacket(chunkMan.viewRadius));
+		connection.send(ViewRadiusPacket(viewRadius));
 	}
 
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
@@ -202,6 +249,7 @@ public:
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
 		if (!packet.blockData.uniform) {
+			import std.array : uninitializedArray;
 			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
 			version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, packet.blockData.blocks.length, cast(ubyte[])packet.blockData.blocks);
 			auto decompressed = decompress(packet.blockData.blocks, blocks);
@@ -218,17 +266,67 @@ public:
 			}
 		}
 
-		chunkMan.onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
+		onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
+	}
+
+	void onChunkLoaded(ChunkWorldPos cwp, BlockData blockData)
+	{
+		++totalLoadedChunks;
+		static struct LoadedChunkData
+		{
+			ChunkWorldPos cwp;
+			ChunkLayerItem layer;
+			ChunkHeaderItem getHeader() { return ChunkHeaderItem(cwp, 1, 0); }
+			ChunkLayerItem getLayer() { return layer; }
+		}
+
+		ChunkLayerItem layer = fromBlockData(blockData);
+		if (layer.isUniform)
+		{
+			assert(layer.getUniform!BlockId < blockPlugin.getBlocks().length);
+		}
+
+		chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layer), false);
+
+		chunksToRemesh.put(cwp);
+		foreach(adj; adjacentPositions(cwp))
+			chunksToRemesh.put(adj);
 	}
 
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		Chunk* chunk = chunkMan.chunkStorage.getChunk(ChunkWorldPos(packet.chunkPos));
-		// We can receive data for chunk that is already deleted.
-		if (chunk is null || chunk.isMarkedForDeletion)
-			return;
-		chunkMan.onChunkChanged(chunk, packet.blockChanges);
+		onChunkChanged(ChunkWorldPos(packet.chunkPos), packet.blockChanges);
+	}
+
+	void onChunkChanged(ChunkWorldPos cwp, BlockChange[] changes)
+	{
+		BlockId[] writeBuffer = chunkManager.getWriteBuffer(cwp, FIRST_LAYER);
+		if (writeBuffer is null) return;
+		applyChanges(writeBuffer, changes);
+
+		chunksToRemesh.put(cwp);
+		foreach(adj; adjacentPositions(cwp))
+			chunksToRemesh.put(adj);
+	}
+
+	void remeshVolume(Volume volume)
+	{
+		import std.datetime : MonoTime, Duration, usecs, dur;
+		MonoTime startTime = MonoTime.currTime;
+
+		void onRemeshDone(size_t chunksRemeshed) {
+			auto duration = MonoTime.currTime - startTime;
+			int seconds; short msecs; short usecs;
+			duration.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
+			infof("Remeshed %s chunks in % 3s.%03s,%03ss", chunksRemeshed, seconds, msecs, usecs);
+		}
+
+		HashSet!ChunkWorldPos remeshedChunks;
+		foreach(pos; volume.positions) {
+			remeshedChunks.put(ChunkWorldPos(pos, volume.dimention));
+		}
+		chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
 	}
 
 	void sendPosition(double dt)
@@ -254,60 +352,51 @@ public:
 		prevChunkPos = observerPosition;
 	}
 
-	void setCurrentDimention(DimentionId dimention)
-	{
+	void setCurrentDimention(DimentionId dimention) {
 		observerPosition.w = dimention;
 		updateObserverPosition();
 	}
 
-	DimentionId currentDimention() @property
-	{
+	DimentionId currentDimention() @property {
 		return observerPosition.w;
 	}
 
 	void incDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() + 1)); }
 	void decDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() - 1)); }
 
-	void updateObserverPosition()
-	{
-		chunkMan.updateObserverPosition(observerPosition);
+	void updateObserverPosition() {
+		if (clientDb.isSpawned)
+			chunkObserverManager.changeObserverVolume(clientDb.thisClientId, observerPosition, viewRadius);
 	}
 
-	void onIncViewRadius(string)
-	{
+	void onIncViewRadius(string) {
 		incViewRadius();
 	}
 
-	void onDecViewRadius(string)
-	{
+	void onDecViewRadius(string) {
 		decViewRadius();
 	}
 
-	void incViewRadius()
-	{
+	void incViewRadius() {
 		setViewRadius(getViewRadius() + 1);
 	}
 
-	void decViewRadius()
-	{
+	void decViewRadius() {
 		setViewRadius(getViewRadius() - 1);
 	}
 
-	int getViewRadius()
-	{
-		return chunkMan.viewRadius;
+	int getViewRadius() {
+		return viewRadius;
 	}
 
-	void setViewRadius(int newViewRadius)
-	{
+	void setViewRadius(int newViewRadius) {
 		import std.algorithm : clamp;
-		auto oldViewRadius = chunkMan.viewRadius;
-		chunkMan.viewRadius = clamp(newViewRadius,
-			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+		auto oldViewRadius = viewRadius;
+		viewRadius = clamp(newViewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 
-		if (oldViewRadius != chunkMan.viewRadius)
+		if (oldViewRadius != viewRadius)
 		{
-			connection.send(ViewRadiusPacket(chunkMan.viewRadius));
+			connection.send(ViewRadiusPacket(viewRadius));
 		}
 	}
 }

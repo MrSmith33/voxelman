@@ -157,6 +157,12 @@ struct BlockInfoSetter
 	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
 }
 
+// Chunk metadata
+// 00 1 22_22_22_22_22_22
+// 00 - 2 bits representing chunk's minimal solidity
+// 1 - 1 bit representing if metadata is presented
+// 2 - 12 bits -- solidity of each side
+
 ushort calcChunkSideMetadata(ChunkLayerSnap blockLayer, immutable(BlockInfo)[] blockInfos)
 {
 	if (blockLayer.type == StorageType.uniform)

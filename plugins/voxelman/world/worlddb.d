@@ -27,6 +27,7 @@ final class WorldDb
 
 	//-----------------------------------------------
 	void open(string filename) {
+		import std.array : uninitializedArray;
 		buffer = uninitializedArray!(ubyte[])(4096*64);
 		version(Lmdb) mdb_load_libs();
 		db.open(filename);

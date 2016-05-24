@@ -12,6 +12,7 @@ import std.concurrency : thisTid;
 import dlib.math.vector;
 import dlib.math.quaternion;
 import derelict.opengl3.gl3;
+import voxelman.core.config : DimentionId;
 
 struct Attribute
 {
@@ -26,27 +27,36 @@ struct Attribute
 struct ChunkMesh
 {
 	vec3 position;
+	DimentionId dimention;
 	ubyte[] data;
-	bool isDataDirty = true;
-	GLuint vao;
-	GLuint vbo;
 
-	void genBuffers()
+	bool isDataDirty = true;
+	static int numBuffersAllocated;
+
+	private GLuint vao;
+	private GLuint vbo;
+	private bool hasBuffers = false;
+
+	private void genBuffers()
 	{
-		glGenBuffers( 1, &vbo );
+		glGenBuffers(1, &vbo);
 		glGenVertexArrays(1, &vao);
+		++numBuffersAllocated;
+		hasBuffers = true;
 	}
 
 	void deleteBuffers()
 	{
+		if (!hasBuffers) return;
 		glDeleteBuffers(1, &vbo);
 		glDeleteVertexArrays(1, &vao);
+		--numBuffersAllocated;
+		hasBuffers = false;
 	}
 
-	alias ElemType = ubyte;
 	enum VERTEX_SIZE = ubyte.sizeof * 8;
 
-	void loadBuffer()
+	private void loadBuffer()
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
@@ -56,23 +66,25 @@ struct ChunkMesh
 		glVertexAttribPointer(0, 3, GL_UNSIGNED_BYTE, GL_FALSE, VERTEX_SIZE, null);
 		// color
 		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, VERTEX_SIZE, cast(void*)(VERTEX_SIZE / 2));
-		glBindBuffer(GL_ARRAY_BUFFER,0);
-	}
-
-	void load()
-	{
-		glBindVertexArray(vao);
-		loadBuffer();
-		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
 	void bind()
 	{
+		if (!hasBuffers)
+			genBuffers();
 		glBindVertexArray(vao);
+	}
+
+	static void unbind()
+	{
+		glBindVertexArray(0);
 	}
 
 	void render(bool trianlges)
 	{
+		assert(hasBuffers);
+
 		if (isDataDirty)
 		{
 			loadBuffer();

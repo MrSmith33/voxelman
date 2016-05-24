@@ -13,15 +13,16 @@ import core.sync.condition;
 
 import cbor;
 
-import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.core.chunkgen;
+import voxelman.core.config;
+import voxelman.utils.compression;
+import voxelman.utils.worker;
+import voxelman.world.plugin : IoHandler;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.world.worlddb;
-import voxelman.world.plugin : IoHandler;
-import voxelman.utils.compression;
 
 
 struct TimeMeasurer
@@ -104,8 +105,8 @@ void storageWorker(
 
 		ChunkHeaderItem header = saveTaskQueue.popItem!ChunkHeaderItem();
 
-		saveResQueue.startPush();
-		saveResQueue.pushItem(header);
+		saveResQueue.startMessage();
+		saveResQueue.pushMessagePart(header);
 		try
 		{
 			size_t encodedSize = encodeCbor(buffer[], header.numLayers);
@@ -138,13 +139,13 @@ void storageWorker(
 					version(DBG_COMPR)infof("Store2 %s %s %s\n(%(%02x%))", header.cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
 				}
 
-				saveResQueue.pushItem(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
+				saveResQueue.pushMessagePart(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
 			}
 
 			worldDb.putPerChunkValue(header.cwp.asUlong, buffer[0..encodedSize]);
 		}
 		catch(Exception e) errorf("storage exception %s", e.to!string);
-		saveResQueue.endPush();
+		saveResQueue.endMessage();
 		taskTime.endTaskTiming();
 		taskTime.printTime();
 		version(DBG_OUT)infof("task save %s", header.cwp);
@@ -169,11 +170,6 @@ void storageWorker(
 		return &genWorkers[queueLengths[0].i];
 	}
 
-	//BlockData {
-	//	BlockId[] blocks;
-	//	BlockId uniformType = 0;
-	//	bool uniform = true;
-	//}
 	void readChunk()
 	{
 		taskTime.reset();
@@ -194,9 +190,8 @@ void storageWorker(
 				workTime.startTaskTiming("decode");
 				ubyte numLayers = decodeCborSingle!ubyte(cborData);
 				// TODO check numLayers <= ubyte.max
-				bool saved = true;
-				loadResQueue.startPush();
-				loadResQueue.pushItem(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, cast(uint)saved));
+				loadResQueue.startMessage();
+				loadResQueue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, 0));
 				foreach(_; 0..numLayers)
 				{
 					auto timestamp = decodeCborSingle!TimestampType(cborData);
@@ -207,7 +202,7 @@ void storageWorker(
 					if (type == StorageType.uniform)
 					{
 						BlockId uniformData = decodeCborSingle!BlockId(cborData);
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData, metadata));
+						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData, metadata));
 					}
 					else
 					{
@@ -223,10 +218,10 @@ void storageWorker(
 						// It is needed to pass array trough shared queue.
 						GC.addRoot(data); // TODO remove when moved to non-GC allocator
 						version(DBG_COMPR)infof("Load %s L %s C (%(%02x%))", ChunkWorldPos(cwp), compactBlocks.length, cast(ubyte[])compactBlocks);
-						loadResQueue.pushItem(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
+						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
 					}
 				}
-				loadResQueue.endPush();
+				loadResQueue.endMessage();
 				// if (cborData.length > 0) error; TODO
 				workTime.endTaskTiming();
 			}
@@ -238,7 +233,7 @@ void storageWorker(
 		}
 		if (doGen) {
 			auto worker = nextGenWorker();
-			worker.taskQueue.pushSingleItem!ulong(cwp);
+			worker.taskQueue.pushItem!ulong(cwp);
 			worker.notify();
 		}
 		taskTime.endTaskTiming();

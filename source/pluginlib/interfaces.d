@@ -10,9 +10,9 @@ import std.experimental.logger;
 import std.conv : to;
 import pluginlib;
 
-import std.traits : moduleName;
 mixin template IdAndSemverFrom(alias pinfoModule)
 {
+	import std.traits : moduleName;
 	mixin("import pinfo = " ~ moduleName!pinfoModule ~ ";");
 	override string id() @property { return pinfo.id; }
 	override string semver() @property { return pinfo.semver; }

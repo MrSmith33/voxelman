@@ -12,16 +12,17 @@ import core.thread : Thread;
 import std.experimental.allocator.mallocator;
 import std.experimental.logger;
 
+//version = DBG_QUEUE;
 private enum PAGE_SIZE = 4096;
 /// Single-producer single-consumer fixed size circular buffer queue.
-shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)) {
+shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	enum capacity = _capacity;
 	static assert(capacity > 0, "Cannot have a capacity of 0.");
 	static assert(roundPow2!capacity == capacity, "The capacity must be a power of 2");
-	static assert(T.sizeof <= 8, "Cannot atomically use provided type");
 
-	void alloc() shared {
-		_data = cast(shared T[])Mallocator.instance.allocate(capacity * T.sizeof);
+	void alloc(string debugName = null) shared {
+		_debugName = debugName;
+		_data = cast(shared ubyte[])Mallocator.instance.allocate(capacity);
 		assert(_data, "Cannot allocate memory for queue");
 	}
 
@@ -34,7 +35,7 @@ shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)
 	}
 
 	@property size_t length() shared const {
-		return atomicLoad!(MemoryOrder.acq)(_wpos) - atomicLoad!(MemoryOrder.acq)(_rpos);
+		return atomicLoad!(MemoryOrder.acq)(_writePos) - atomicLoad!(MemoryOrder.acq)(_readPos);
 	}
 
 	@property size_t space() shared const {
@@ -45,110 +46,149 @@ shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)
 		return length == capacity;
 	}
 
-	void pushSingleItem(I)(I item) shared {
-		enum itemSize = I.sizeof / T.sizeof;
-		while (space < itemSize)
+	void pushItem(I)(I item) shared {
+		immutable writePosition = atomicLoad!(MemoryOrder.acq)(_writePos);
+		// space < I.sizeof
+		while (capacity - writePosition + atomicLoad!(MemoryOrder.acq)(_readPos) < I.sizeof) {
 			yield();
-		immutable pos = atomicLoad!(MemoryOrder.acq)(_wpos);
-		pushItem(item);
-		atomicStore!(MemoryOrder.rel)(_wpos, pos + itemSize);
+		}
+		setItem(item, writePosition);
+		atomicStore!(MemoryOrder.rel)(_writePos, writePosition + I.sizeof);
+		version(DBG_QUEUE) printTrace!"pushItem"(item);
 	}
 
 	I popItem(I)() shared {
-		static assert(I.sizeof % T.sizeof == 0);
-		enum itemSize = I.sizeof / T.sizeof;
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
+		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		I res;
-
-		static if (I.sizeof >=  8) (*cast(T[itemSize]*)&res)[0] = pop();
-		static if (I.sizeof >= 16) (*cast(T[itemSize]*)&res)[1] = pop();
-		static if (I.sizeof >= 24) (*cast(T[itemSize]*)&res)[2] = pop();
-		static if (I.sizeof >= 32) (*cast(T[itemSize]*)&res)[3] = pop();
-		static if (I.sizeof >= 40) (*cast(T[itemSize]*)&res)[4] = pop();
-		static if (I.sizeof >= 48) (*cast(T[itemSize]*)&res)[5] = pop();
-		static if (I.sizeof >= 56) (*cast(T[itemSize]*)&res)[6] = pop();
-		static if (I.sizeof >= 64) (*cast(T[itemSize]*)&res)[7] = pop();
-		static assert(I.sizeof <= 64);
+		getItem(res, pos);
+		atomicStore!(MemoryOrder.rel)(_readPos, pos + I.sizeof);
+		version(DBG_QUEUE) printTrace!"popItem"(res);
 		return res;
 	}
 
-	void pushItem(I)(I item) shared {
-		static assert(I.sizeof % T.sizeof == 0);
-		enum itemSize = I.sizeof / T.sizeof;
-		static if (I.sizeof >=  8) pushDelayed((*cast(T[itemSize]*)&item)[0]);
-		static if (I.sizeof >= 16) pushDelayed((*cast(T[itemSize]*)&item)[1]);
-		static if (I.sizeof >= 24) pushDelayed((*cast(T[itemSize]*)&item)[2]);
-		static if (I.sizeof >= 32) pushDelayed((*cast(T[itemSize]*)&item)[3]);
-		static if (I.sizeof >= 40) pushDelayed((*cast(T[itemSize]*)&item)[4]);
-		static if (I.sizeof >= 48) pushDelayed((*cast(T[itemSize]*)&item)[5]);
-		static if (I.sizeof >= 56) pushDelayed((*cast(T[itemSize]*)&item)[6]);
-		static if (I.sizeof >= 64) pushDelayed((*cast(T[itemSize]*)&item)[7]);
-		static assert(I.sizeof <= 64);
+	void popItem(I)(out I item) shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+
+		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
+		getItem(item, pos);
+		atomicStore!(MemoryOrder.rel)(_readPos, pos + I.sizeof);
+		version(DBG_QUEUE) printTrace!"popItem"(item);
 	}
 
-	void setItem(I)(I item, size_t at) shared {
-		static assert(I.sizeof % T.sizeof == 0);
-		enum itemSize = I.sizeof / T.sizeof;
-		static if (I.sizeof >=  8) _data[at+0 & mask] = (*cast(T[itemSize]*)&item)[0];
-		static if (I.sizeof >= 16) _data[at+1 & mask] = (*cast(T[itemSize]*)&item)[1];
-		static if (I.sizeof >= 24) _data[at+2 & mask] = (*cast(T[itemSize]*)&item)[2];
-		static if (I.sizeof >= 32) _data[at+3 & mask] = (*cast(T[itemSize]*)&item)[3];
-		static if (I.sizeof >= 40) _data[at+4 & mask] = (*cast(T[itemSize]*)&item)[4];
-		static if (I.sizeof >= 48) _data[at+5 & mask] = (*cast(T[itemSize]*)&item)[5];
-		static if (I.sizeof >= 56) _data[at+6 & mask] = (*cast(T[itemSize]*)&item)[6];
-		static if (I.sizeof >= 64) _data[at+7 & mask] = (*cast(T[itemSize]*)&item)[7];
-		static assert(I.sizeof <= 64);
+	I peekItem(I)() shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+
+		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
+		I res;
+		getItem(res, pos);
+		version(DBG_QUEUE) printTrace!"peekItem"(res);
+		return res;
 	}
 
-	void startPush() shared {
-		wpos = atomicLoad!(MemoryOrder.acq)(_wpos);
+	void peekItem(I)(out I item) shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+
+		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
+		getItem(item, pos);
+		version(DBG_QUEUE) printTrace!"peekItem"(item);
 	}
 
-	void endPush() shared {
-		atomicStore!(MemoryOrder.rel)(_wpos, wpos);
+	void dropItem(I)() shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+
+		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
+		atomicStore!(MemoryOrder.rel)(_readPos, pos + I.sizeof);
+		version(DBG_QUEUE) printTrace!"dropItem"();
 	}
 
-	// skip to fill in later with setItem
-	size_t skipItemDelayed(I)() shared {
-		static assert(I.sizeof % T.sizeof == 0);
-		enum itemSize = I.sizeof / T.sizeof;
-		size_t temp = cast(size_t)wpos;
+	private void getItem(I)(out I item, const size_t at) shared const {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		ubyte[] itemData = (*cast(ubyte[I.sizeof]*)&item);
 
-		foreach(_; 0..itemSize)
+		size_t start = at & mask;
+		size_t end = (at + I.sizeof) & mask;
+		if (end > start)
 		{
-			while (wpos - atomicLoad!(MemoryOrder.acq)(_rpos) == capacity) {
-				yield();
-			}
-			++cast(size_t)wpos; // remove shared
+			//             item[0] v          v item[$]
+			//         ...........|...item...|..........
+			// data[0] ^     start ^          ^ end     ^ data[$]
+			itemData[0..$] = _data[start..end];
 		}
+		else
+		{
+			//                 item[$] v       item[0] v
+			//          |...itemEnd...|...............|...itemStart...|
+			//  _data[0] ^         end ^         start ^               ^ _data[$]
+			size_t firstPart = I.sizeof - end;
+			itemData[0..firstPart] = _data[start..$];
+			itemData[firstPart..$] = _data[0..end];
+		}
+	}
 
-		return temp;
+	void setItem(I)(auto const ref I item, const size_t at) shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		ubyte[] itemData = (*cast(ubyte[I.sizeof]*)&item);
+
+		size_t start = at & mask;
+		size_t end = (at + I.sizeof) & mask;
+		if (end > start)
+		{
+			//             item[0] v          v item[$]
+			//         ...........|...item...|..........
+			// data[0] ^     start ^          ^ end     ^ data[$]
+			_data[start..end] = itemData[0..$];
+		}
+		else
+		{
+			//               item[$] v       item[0] v
+			//        |...itemEnd...|...............|...itemStart...|
+			// data[0] ^         end ^         start ^       data[$] ^
+			size_t firstPart = I.sizeof - end;
+			_data[start..$] = itemData[0..firstPart];
+			_data[0..end] = itemData[firstPart..$];
+		}
+		atomicFence();
+	}
+
+	// enter multipart message mode
+	void startMessage() shared {
+		_msgWritePos = atomicLoad!(MemoryOrder.acq)(_writePos);
+		version(DBG_QUEUE) printTrace!"startMessage"();
+	}
+
+	// exit multipart message mode
+	void endMessage() shared {
+		atomicStore!(MemoryOrder.rel)(_writePos, _msgWritePos);
+		version(DBG_QUEUE) printTrace!"endMessage"();
+	}
+
+	// skip to fill in later with setItem in multipart message mode
+	size_t skipMessageItem(I)() shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		size_t skippedItemPos = cast(size_t)_msgWritePos;
+		// space < I.sizeof
+		while (capacity - _msgWritePos + atomicLoad!(MemoryOrder.acq)(_readPos) < I.sizeof) {
+			yield();
+		}
+		cast(size_t)_msgWritePos += I.sizeof;
+		version(DBG_QUEUE) printTrace!"skipMessageItem"();
+		return skippedItemPos;
 	}
 
 	// can cause dead-lock if consumer is waiting for producer.
 	// Make sure that there is enough space. Or else keep consuming
-	private void pushDelayed(T val) {
-		while (wpos - atomicLoad!(MemoryOrder.acq)(_rpos) == capacity) {
+	// push in multipart message mode
+	void pushMessagePart(I)(auto const ref I item) shared {
+		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		// space < I.sizeof
+		while (capacity - _msgWritePos + atomicLoad!(MemoryOrder.acq)(_readPos) < I.sizeof) {
 			yield();
 		}
-
-		_data[wpos & mask] = val;
-		++cast(size_t)wpos; // remove shared
-	}
-
-	private void push(shared(T) t) shared
-	in { assert(!full); }
-	body
-	{
-		immutable pos = atomicLoad!(MemoryOrder.acq)(_wpos);
-		_data[pos & mask] = t;
-		atomicStore!(MemoryOrder.rel)(_wpos, pos + 1);
-	}
-
-	shared(T) popBlocking() shared {
-		while (empty)
-			yield();
-		return pop();
+		setItem(item, _msgWritePos);
+		cast(size_t)_msgWritePos += I.sizeof;
+		version(DBG_QUEUE) printTrace!"pushMessagePart"(item);
 	}
 
 	static void yield() {
@@ -156,23 +196,24 @@ shared struct SharedQueue(T, size_t _capacity = roundPow2!(PAGE_SIZE / T.sizeof)
 		//infof("yield");
 	}
 
-	private shared(T) pop() shared
-	in { assert(!empty); }
-	body
-	{
-		immutable pos = atomicLoad!(MemoryOrder.acq)(_rpos);
-		auto res = _data[pos & mask];
-		atomicStore!(MemoryOrder.rel)(_rpos, pos + 1);
-		return res;
-	}
-
 private:
 	enum mask = capacity - 1;
 
-	size_t wpos;
-	size_t _wpos;
-	size_t _rpos;
-	T[] _data;
+	size_t _msgWritePos;
+	size_t _writePos;
+	size_t _readPos;
+	ubyte[] _data;
+	string _debugName;
+
+	import std.concurrency : thisTid;
+	void printTrace(string funname, D)(D data) {
+		version(DBG_QUEUE) tracef("%s.%s."~funname~"(%s)\n\tmwp %s, wp %s, rp %s\n",
+			thisTid, _debugName, data, _msgWritePos, cast(size_t)_writePos, cast(size_t)_readPos);
+	}
+	void printTrace(string funname)() {
+		version(DBG_QUEUE) tracef("%s.%s."~funname~"()\n\tmwp %s, wp %s, rp %s\n",
+			thisTid, _debugName, _msgWritePos, cast(size_t)_writePos, cast(size_t)_readPos);
+	}
 }
 
 private:

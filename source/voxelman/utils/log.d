@@ -10,6 +10,8 @@ import std.stdio : stdout, File;
 
 class ConciseLogger : FileLogger
 {
+	import std.datetime : SysTime;
+	import std.concurrency : Tid;
 	this(File file, const LogLevel lv = LogLevel.info) @safe
 	{
 		super(file, lv);
@@ -36,7 +38,7 @@ void setupLogger(string filename)
 	auto logger = new MultiLogger;
 
 	auto file = File(filename, "w");
-	auto fileLogger = new FileLogger(file);
+	auto fileLogger = new ConciseLogger(file);
 	fileLogger.logLevel = LogLevel.all;
 
 	auto conciseLogger = new ConciseLogger(stdout);

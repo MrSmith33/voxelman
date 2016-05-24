@@ -6,71 +6,141 @@ Authors: Andrey Penechko.
 module voxelman.client.chunkmeshman;
 
 import std.experimental.logger;
-import std.concurrency : Tid, thisTid, send, receiveTimeout;
-import std.datetime : msecs;
 
 import voxelman.block.utils;
-import voxelman.world.chunkman;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
 import voxelman.core.meshgen;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
-import voxelman.utils.queue;
-import voxelman.utils.workergroup;
+import voxelman.world.storage.chunkmanager;
+import voxelman.utils.worker;
 import voxelman.utils.hashset;
 import voxelman.utils.renderutils;
 
+
+struct MeshingPass
+{
+	size_t chunksToMesh;
+	size_t meshGroupId;
+	void delegate(size_t chunksRemeshed) onDone;
+	size_t chunksMeshed;
+}
+
 enum debug_wasted_meshes = true;
+enum WAIT_FOR_EMPTY_QUEUES = false;
+//version = DBG;
+
 ///
 struct ChunkMeshMan
 {
-	WorkerGroup!(meshWorkerThread) meshWorkers;
+	shared WorkerGroup meshWorkers;
 
-	ChunkChange[ChunkWorldPos] chunkChanges;
 	ubyte[ChunkWorldPos] wastedMeshes;
 
-	Queue!(Chunk*) changedChunks;
-	Queue!(Chunk*) chunksToMesh;
-	Queue!(Chunk*) dirtyChunks;
-
 	ChunkMesh[ChunkWorldPos][2] chunkMeshes;
-	ubyte[][2][ChunkWorldPos] newMeshDatas;
+
+	MeshGenResult[] newChunkMeshes;
+	MeshingPass[] meshingPasses;
+	size_t currentMeshGroupId;
 
 	size_t numMeshChunkTasks;
-	size_t numDirtyChunksPending;
 	size_t totalMeshedChunks;
 	size_t totalMeshes;
 
-	ChunkMan* chunkMan;
+	ChunkManager chunkManager;
 	immutable(BlockInfo)[] blocks;
 
-	void init(ChunkMan* _chunkMan, immutable(BlockInfo)[] _blocks, uint numWorkers)
+	void init(ChunkManager _chunkManager, immutable(BlockInfo)[] _blocks, uint numMeshWorkers)
 	{
-		chunkMan = _chunkMan;
+		chunkManager = _chunkManager;
 		blocks = _blocks;
-		meshWorkers.startWorkers(numWorkers, thisTid, blocks);
+		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks);
 	}
 
 	void stop()
 	{
-		meshWorkers.stopWorkers();
+		static if (WAIT_FOR_EMPTY_QUEUES)
+		{
+			while (!meshWorkers.queuesEmpty())
+			{
+				update();
+			}
+		}
+		meshWorkers.stop();
+	}
+
+	void remeshChangedChunks(HashSet!ChunkWorldPos modifiedChunks,
+		void delegate(size_t chunksRemeshed) onDone = null)
+	{
+		if (modifiedChunks.length == 0) return;
+
+		size_t numMeshed;
+		foreach(cwp; modifiedChunks.items)
+		{
+			if (meshChunk(cwp))
+				++numMeshed;
+		}
+
+		if (numMeshed == 0) return;
+
+		meshingPasses ~= MeshingPass(numMeshed, currentMeshGroupId, onDone);
+		//infof("meshingPasses ~= %s", meshingPasses[$-1]);
+		++currentMeshGroupId;
+		//infof("currentMeshGroupId %s", currentMeshGroupId);
 	}
 
 	void update()
 	{
-		bool message = true;
-		while (message)
+		if (meshingPasses.length == 0) return;
+
+		foreach(ref w; meshWorkers.workers)
 		{
-			message = receiveTimeout(0.msecs,
-				(immutable(MeshGenResult)* data){onMeshLoaded(cast(MeshGenResult*)data);}
-				);
+			while(!w.resultQueue.empty)
+			{
+				auto result = w.resultQueue.peekItem!MeshGenResult();
+
+				// Process only current meshing pass. Leave next passes for later.
+				if (result.meshGroupId != meshingPasses[0].meshGroupId)
+				{
+					//infof("meshGroup %s != %s", result.meshGroupId, meshingPasses[0].meshGroupId);
+					break;
+				}
+
+				++meshingPasses[0].chunksMeshed;
+
+				w.resultQueue.dropItem!MeshGenResult();
+
+				--numMeshChunkTasks;
+
+				newChunkMeshes ~= result;
+
+				// Remove root, added on chunk load and gen.
+				// Data can be collected by GC if no-one is referencing it.
+				import core.memory : GC;
+				if (result.meshes[0].ptr) GC.removeRoot(result.meshes[0].ptr); // TODO remove when moved to non-GC allocator
+				if (result.meshes[1].ptr) GC.removeRoot(result.meshes[1].ptr); //
+			}
 		}
 
-		startMeshUpdateCycle();
-		applyChunkChanges();
-		meshChunks();
-		processDirtyChunks();
+		commitMeshes();
+	}
+
+	void commitMeshes()
+	{
+		import std.algorithm : remove, SwapStrategy;
+		if (meshingPasses[0].chunksMeshed != meshingPasses[0].chunksToMesh) return;
+
+		foreach(meshResult; newChunkMeshes)
+		{
+			loadMeshData(meshResult.cwp, meshResult.meshes, meshResult.layers);
+		}
+		newChunkMeshes.length = 0;
+		//newChunkMeshes.assumeSafeAppend();
+		if (meshingPasses[0].onDone)
+			meshingPasses[0].onDone(meshingPasses[0].chunksToMesh);
+		meshingPasses = remove!(SwapStrategy.stable)(meshingPasses, 0);
+		//meshingPasses.assumeSafeAppend();
 	}
 
 	void drawDebug(ref Batch debugBatch)
@@ -83,340 +153,193 @@ struct ChunkMeshMan
 		}
 	}
 
-	void onChunkLoaded(Chunk* chunk, BlockData blockData)
+	void onChunkRemoved(ChunkWorldPos cwp)
 	{
-		chunk.isLoaded = true;
-
-		++chunkMan.totalLoadedChunks;
-
-		setChunkData(chunk, blockData);
-
-		if (chunk.isVisible)
-			tryMeshChunk(chunk);
-
-		foreach(a; chunk.adjacent)
-			if (a !is null) tryMeshChunk(a);
-	}
-
-	void setChunkData(Chunk* chunk, ref BlockData blockData)
-	{
-		chunk.isVisible = true;
-		if (blockData.uniform)
+		unloadChunkMesh(cwp);
+		static if (debug_wasted_meshes)
 		{
-			chunk.isVisible = blocks[blockData.uniformType].isVisible;
+			wastedMeshes.remove(cwp);
 		}
-		chunk.snapshot.blockData = blockData;
 	}
 
-	void onChunkChanged(Chunk* chunk, BlockChange[] changes)
+	bool surroundedBySolidChunks(ChunkSnapWithAdjacent snapWithAdjacent)
 	{
-		//infof("partial chunk change %s", chunk.position);
-		if (auto _changes = chunk.position in chunkChanges)
-		{
-			if (_changes.blockChanges is null) // block changes applied on top of full chunk update
-				_changes.newBlockData.applyChangesFast(changes);
-			else // more changes added
-				_changes.blockChanges ~= changes;
-		}
-		else // new changes arrived
-			chunkChanges[chunk.position] = ChunkChange(changes);
-	}
+		/+
+		import voxelman.block.utils;
+		assert(snapWithAdjacent.allLoaded);
 
-	void onChunkRemoved(Chunk* chunk)
-	{
-		auto cwp = chunk.position;
-		chunkChanges.remove(cwp);
-		changedChunks.remove(chunk);
-		chunksToMesh.remove(chunk);
-		dirtyChunks.remove(chunk);
-		assert(chunk.position !in newMeshDatas);
-		foreach(meshes; chunkMeshes)
+		Solidity thisMinSolidity = chunkMinSolidity(snapWithAdjacent.centralSnapshot.metadata);
+
+		if (thisMinSolidity == Solidity.transparent) return true;
+
+		foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
 		{
-			if (auto mesh = cwp in meshes)
+			/*
+			if (adj.isUniform)
 			{
-				mesh.deleteBuffers();
-				meshes.remove(cwp);
+				Solidity solidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+				if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
+			}
+			else
+			{
+				bool solidSide = isChunkSideSolid(adj.metadata, oppSide[side]);
+				if (!solidSide) return false;
+			}
+			*/
+			Solidity adjSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+			Solidity thisSideSolidity = chunkSideSolidity(snapWithAdjacent.centralSnapshot.metadata, side);
+			if (thisSideSolidity.isMoreSolidThan(adjSolidity)) return false;
+		}
+
+		return true;+/
+
+		import voxelman.block.utils;
+		Solidity thisMinSolidity = chunkMinSolidity(snapWithAdjacent.centralSnapshot.metadata);
+
+		if (snapWithAdjacent.centralSnapshot.isUniform) {
+			if (thisMinSolidity == Solidity.transparent) {
+				return true;
 			}
 		}
-		static if (debug_wasted_meshes)
-			wastedMeshes.remove(cwp);
-	}
 
-	void tryMeshChunk(Chunk* chunk)
-	{
-		assert(chunk);
-		if (chunk.needsMesh && chunk.canBeMeshed)
+		foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
 		{
-			if (!surroundedBySolidChunks(chunk))
-				meshChunk(chunk);
-		}
-	}
-
-	bool surroundedBySolidChunks(Chunk* chunk)
-	{
-		import voxelman.block.utils;
-		Solidity thisMinSolidity = chunkMinSolidity(chunk.snapshot.blockData.metadata);
-		foreach(Side side, adj; chunk.adjacent)
-		{
-			if (adj !is null)
-			{
-				if (chunk.snapshot.blockData.uniform) {
-					Solidity solidity = chunkSideSolidity(adj.snapshot.blockData.metadata, oppSide[side]);
-					if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
-				} else {
-					bool solidSide = isChunkSideSolid(adj.snapshot.blockData.metadata, cast(Side)oppSide[side]);
-					if (!solidSide) return false;
-				}
-
+			if (snapWithAdjacent.centralSnapshot.isUniform) {
+				Solidity solidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+				if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
+			} else {
+				bool solidSide = isChunkSideSolid(adj.metadata, oppSide[side]);
+				if (!solidSide) return false;
 			}
 		}
 		return true;
 	}
 
-	void meshChunk(Chunk* chunk)
+	// returns true if was sent to mesh
+	bool meshChunk(ChunkWorldPos cwp)
 	{
-		assert(chunk);
+		ChunkSnapWithAdjacent snapWithAdjacent = chunkManager.getSnapWithAdjacentAddUsers(cwp, FIRST_LAYER);
 
-		++chunk.numReaders;
-		foreach(a; chunk.adjacent)
-			if (a !is null) ++a.numReaders;
-
-		assert(chunk);
-		assert(!chunk.hasWriter);
-		foreach(a; chunk.adjacent)
+		if (!snapWithAdjacent.allLoaded)
 		{
-			assert(a !is null);
-			assert(!a.hasWriter);
+			version(DBG) tracef("meshChunk %s !allLoaded", cwp);
+			return false;
 		}
 
-		chunk.isMeshing = true;
+		if (surroundedBySolidChunks(snapWithAdjacent))
+		{
+			version(DBG) tracef("meshChunk %s surrounded by solid chunks", cwp);
+			return false;
+		}
+
+		version(DBG) tracef("meshChunk %s", cwp);
+
+		foreach(pos; snapWithAdjacent.positions)
+		{
+			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
+		}
+
 		++numMeshChunkTasks;
-		meshWorkers.nextWorker.send(cast(shared(Chunk)*)chunk);
+
+		ChunkLayerItem[7] layers;
+		foreach(i; 0..7)
+		{
+			layers[i] = ChunkLayerItem(snapWithAdjacent.snapshots[i].get(), FIRST_LAYER);
+		}
+
+		auto task = MeshGenTask(currentMeshGroupId, cwp, layers);
+		//infof("push %s", task);
+		with(meshWorkers.nextWorker) {
+			taskQueue.pushItem(task);
+			notify();
+		}
+
+		return true;
 	}
 
-	void onMeshLoaded(MeshGenResult* data)
+	void loadMeshData(ChunkWorldPos cwp, ubyte[][2] meshes, ChunkLayerItem[7] layers)
 	{
-		Chunk* chunk = chunkMan.getChunk(data.position);
-		assert(chunk);
-
-		chunk.isMeshing = false;
-
-		// Allow chunk to be written or deleted.
-		// TODO: that can break if chunks where added during meshing
-		--chunk.numReaders;
-		foreach(a; chunk.adjacent)
-				if (a !is null) --a.numReaders;
-		--numMeshChunkTasks;
-
-		// Chunk is already in delete queue
-		if (chunk.isMarkedForDeletion)
+		ChunkWorldPos[7] positions;
+		positions[0..6] = adjacentPositions(cwp);
+		positions[6] = cwp;
+		foreach(i, pos; positions)
 		{
-			delete data.meshes[0];
-			delete data.meshes[1];
-			delete data;
+			chunkManager.removeSnapshotUser(pos, layers[i].timestamp, FIRST_LAYER);
+		}
+
+		if (!chunkManager.isChunkLoaded(cwp))
+		{
+			import core.memory : GC;
+
+			version(DBG) tracef("loadMeshData %s chunk unloaded", cwp);
+			GC.free(meshes[0].ptr);
+			GC.free(meshes[1].ptr);
 			return;
 		}
 
-		//infof("mesh data loaded %s %s", data.position, data.meshData.length);
-
-		// chunk was remeshed after change.
-		// Mesh will be uploaded for all changed chunks at once in processDirtyChunks.
-		if (chunk.isDirty)
-		{
-			chunk.isDirty = false;
-			newMeshDatas[data.position] = data.meshes;
-			--numDirtyChunksPending;
-		}
-		else
-			loadMeshData(chunk, data.meshes);
-	}
-
-	void loadMeshData(Chunk* chunk, ubyte[][2] meshes)
-	{
-		assert(chunk);
-		chunk.hasMesh = true;
-
-		ChunkWorldPos cwp = chunk.position;
-		chunk.isVisible = false;
 		// Attach mesh
+		bool hasMesh = false;
 		foreach(i, meshData; meshes)
 		{
-			if (meshData.length == 0) continue;
-			chunkMeshes[i][cwp] = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), meshData);
-			(cwp in chunkMeshes[i]).genBuffers();
-			chunk.isVisible = true;
+			if (meshData.length == 0) {
+				unloadChunkSubmesh(cwp, i);
+				continue;
+			}
+
+			auto mesh = cwp in chunkMeshes[i];
+			if (mesh)
+			{
+				assert(mesh.data);
+				import core.memory : GC;
+				GC.free(mesh.data.ptr);
+
+				mesh.data = meshData;
+				mesh.isDataDirty = true;
+			}
+			else
+			{
+				chunkMeshes[i][cwp] = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w, meshData);
+			}
+
+			hasMesh = true;
 		}
 
 		++totalMeshedChunks;
-		if (chunk.isVisible)
+		if (hasMesh)
 		{
+			version(DBG) tracef("loadMeshData %s [%s %s]",
+				cwp, cast(int)(meshes[0] !is null), cast(int)(meshes[1] !is null));
 			++totalMeshes;
 		}
-		else static if (debug_wasted_meshes)
+		else
 		{
-			wastedMeshes[cwp] = 0;
-		}
+			version(DBG) tracef("loadMeshData %s no mesh", cwp);
+			unloadChunkMesh(cwp);
 
-		//infof("Chunk mesh loaded at %s, length %s", chunk.position, chunk.mesh.data.length);
-	}
-
-	/// Checks if there is any chunks that have changes
-	/// Starts new mesh update cycle if previous one was completed.
-	/// Adds changed chunks to changedChunks queue on new cycle start
-	void startMeshUpdateCycle()
-	{
-		auto queuesEmpty = changedChunks.empty &&
-			chunksToMesh.empty && dirtyChunks.empty;
-
-		if (!queuesEmpty || chunkChanges.length == 0)
-			return;
-
-		trace("startMeshUpdateCycle");
-
-		foreach(pair; chunkChanges.byKeyValue)
-		{
-			Chunk** chunkPtr = pair.key in chunkMan.chunks;
-			if (chunkPtr is null || (**chunkPtr).isMarkedForDeletion || (*chunkPtr) is null)
+			static if (debug_wasted_meshes)
 			{
-				chunkChanges.remove(pair.key);
-				continue;
-			}
-
-			Chunk* chunk = *chunkPtr;
-			assert(chunk);
-
-			chunk.change = pair.value;
-			chunk.hasUnappliedChanges = true;
-			changedChunks.put(chunk);
-			chunkChanges.remove(pair.key);
-		}
-
-		chunkChanges = null;
-	}
-
-	/// Applies changes to chunks
-	/// Calculates affected chunks and adds them to chunksToMesh queue
-	void applyChunkChanges()
-	{
-		foreach(queueItem; changedChunks)
-		{
-			Chunk* chunk = queueItem.value;
-			if (chunk is null)
-			{
-				queueItem.remove();
-				continue;
-			}
-			assert(chunk);
-
-			void addAdjacentChunks()
-			{
-				foreach(a; chunk.adjacent)
-				{
-					if (a && a.canBeMeshed)
-						chunksToMesh.put(a);
-				}
-			}
-
-			if (!chunk.isUsed)
-			{
-				bool blocksChanged = false;
-				// apply changes
-				if (chunk.change.blockChanges is null)
-				{
-					// full chunk update
-					setChunkData(chunk, chunk.change.newBlockData);
-					// TODO remove mesh if not visible
-					addAdjacentChunks();
-					blocksChanged = true;
-
-					infof("applying full update to %s", chunk.position);
-				}
-				else
-				{
-					// partial update
-					ushort[2] changedBlocksRange = chunk
-						.snapshot
-						.blockData
-						.applyChanges(chunk.change.blockChanges);
-
-					// blocks was changed
-					if (changedBlocksRange[0] != changedBlocksRange[1])
-					{
-						addAdjacentChunks();
-						blocksChanged = true;
-					}
-					//infof("applying block changes to %s", chunk.position);
-					ubyte bx, by, bz;
-					foreach(change; chunk.change.blockChanges)
-					{
-						bx = change.index & CHUNK_SIZE_BITS;
-						by = (change.index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-						bz = (change.index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
-						tracef("i %s | x %s y %s z %s | wx %s wy %s wz %s | b %s; ",
-							change.index,
-							bx,
-							by,
-							bz,
-							bx + chunk.position.x * CHUNK_SIZE,
-							by + chunk.position.y * CHUNK_SIZE,
-							bz + chunk.position.z * CHUNK_SIZE,
-							change.blockId);
-					}
-				}
-
-				chunk.change = ChunkChange.init;
-
-				//infof("canBeMeshed %s, blocksChanged %s", chunk.canBeMeshed, blocksChanged);
-				if (chunk.canBeMeshed && blocksChanged)
-				{
-					assert(chunk);
-					chunksToMesh.put(chunk);
-				}
-
-				chunk.hasUnappliedChanges = false;
-
-				queueItem.remove();
+				wastedMeshes[cwp] = 0;
 			}
 		}
 	}
 
-	/// Sends chunks from chunksToMesh queue to mesh worker and moves them
-	/// to dirtyChunks queue
-	void meshChunks()
+	void unloadChunkMesh(ChunkWorldPos cwp)
 	{
-		foreach(queueItem; chunksToMesh)
+		version(DBG) tracef("unloadChunkMesh %s", cwp);
+		foreach(i; 0..chunkMeshes.length)
 		{
-			Chunk* chunk = queueItem.value;
-			if (chunk is null)
-			{
-				queueItem.remove();
-				continue;
-			}
-			assert(chunk);
-
-			// chunks adjacent to the modified one may still be in use
-			if (!chunk.isUsed && !chunk.adjacentHasUnappliedChanges)
-			{
-				meshChunk(chunk);
-				++numDirtyChunksPending;
-				queueItem.remove();
-			}
+			unloadChunkSubmesh(cwp, i);
 		}
 	}
 
-	///
-	void processDirtyChunks()
+	void unloadChunkSubmesh(ChunkWorldPos cwp, size_t index)
 	{
-		auto queuesEmpty = changedChunks.empty && chunksToMesh.empty;
-
-		// swap meshes when all chunks are meshed
-		if (queuesEmpty && numDirtyChunksPending == 0)
+		if (auto mesh = cwp in chunkMeshes[index])
 		{
-			foreach(chunk; dirtyChunks.valueRange)
-			{
-				loadMeshData(chunk, newMeshDatas[chunk.position]);
-				newMeshDatas.remove(chunk.position);
-			}
+			import core.memory : GC;
+			mesh.deleteBuffers();
+			GC.free(mesh.data.ptr);
+			chunkMeshes[index].remove(cwp);
 		}
 	}
 }
