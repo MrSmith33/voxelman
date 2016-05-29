@@ -130,9 +130,7 @@ struct ChunkProvider
 
 	void stop() {
 		bool queuesEmpty() {
-			bool empty = loadResQueue.empty && saveResQueue.empty && loadTaskQueue.empty && saveTaskQueue.empty;
-			foreach(ref w; genWorkers) empty = empty && w.queuesEmpty;
-			return empty;
+			return loadResQueue.empty && saveResQueue.empty && loadTaskQueue.empty && saveTaskQueue.empty;
 		}
 		bool allWorkersStopped() {
 			bool stopped = atomicLoad!(MemoryOrder.acq)(workerStopped);
@@ -161,8 +159,9 @@ struct ChunkProvider
 		saveResQueue.free();
 		loadTaskQueue.free();
 		saveTaskQueue.free();
-		foreach(ref w; genWorkers)
+		foreach(ref w; genWorkers) {
 			w.free();
+		}
 	}
 
 	size_t prevReceived = size_t.max;
