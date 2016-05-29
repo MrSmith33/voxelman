@@ -209,15 +209,16 @@ ChunkLayerItem fromBlockData(const ref BlockData bd)
 		return ChunkLayerItem(StorageType.fullArray, FIRST_LAYER, 0, bd.blocks, bd.metadata);
 }
 
-void copyToBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
+void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
+	if (isSomeLayer!Layer)
 {
 	assert(outBuffer.length == CHUNK_SIZE_CUBE);
-	if (snap.type == StorageType.uniform)
-		outBuffer[] = cast(BlockId)snap.uniformData;
-	else if (snap.type == StorageType.fullArray)
-		outBuffer[] = snap.getArray!BlockId;
-	else if (snap.type == StorageType.compressedArray)
-		uncompressIntoBuffer(snap, outBuffer);
+	if (layer.type == StorageType.uniform)
+		outBuffer[] = cast(BlockId)layer.uniformData;
+	else if (layer.type == StorageType.fullArray)
+		outBuffer[] = layer.getArray!BlockId;
+	else if (layer.type == StorageType.compressedArray)
+		uncompressIntoBuffer(layer, outBuffer);
 }
 
 void applyChanges(BlockId[] writeBuffer, BlockChange[] changes)
@@ -229,10 +230,10 @@ void applyChanges(BlockId[] writeBuffer, BlockChange[] changes)
 	}
 }
 
-void uncompressIntoBuffer(ChunkLayerSnap snap, BlockId[] outBuffer)
+void uncompressIntoBuffer(Layer)(Layer layer, BlockId[] outBuffer)
 {
 	assert(outBuffer.length == CHUNK_SIZE_CUBE);
-	BlockId[] blocks = decompress(snap.getArray!BlockId, outBuffer);
+	BlockId[] blocks = decompress(layer.getArray!ubyte, outBuffer);
 	assert(blocks.length == CHUNK_SIZE_CUBE);
 }
 

@@ -13,7 +13,7 @@ import std.conv : to;
 import server;
 import chunkmanager : ChunkManager;
 import voxelman.utils.queue;
-import voxelman.storage.utils;
+import voxelman.world.storage.utils;
 
 // Storage made to test delays in read and write.
 struct ChunkInMemoryStorage {

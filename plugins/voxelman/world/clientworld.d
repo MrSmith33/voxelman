@@ -286,7 +286,15 @@ public:
 			assert(layer.getUniform!BlockId < blockPlugin.getBlocks().length);
 		}
 
-		chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layer), false);
+		if (chunkManager.isChunkLoaded(cwp))
+		{
+			BlockId[] writeBuffer = chunkManager.getWriteBuffer(cwp, FIRST_LAYER);
+			copyToBuffer(layer, writeBuffer);
+		}
+		else
+		{
+			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layer), false);
+		}
 
 		chunksToRemesh.put(cwp);
 		foreach(adj; adjacentPositions(cwp))

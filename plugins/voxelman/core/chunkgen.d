@@ -185,18 +185,26 @@ struct Generator2d3d
 		int blockY = chunkOffset.y + y;
 		if (blockY > height) {
 			if (blockY > 0)
-				return 1;
+				return AIR;
 			else
-				return 6;
+				return WATER;
 		}
 
 		float noise3d = Simplex.noise(cast(float)(chunkOffset.x+x)/NOISE_SCALE_3D,
 			cast(float)(chunkOffset.y+y)/NOISE_SCALE_3D, cast(float)(chunkOffset.z+z)/NOISE_SCALE_3D);
-		if (noise3d < NOISE_TRESHOLD_3D) return 1;
+		if (noise3d < NOISE_TRESHOLD_3D) return AIR;
 
-		if (blockY == height) return 2;
-		else if (blockY > height - 10) return 3;
-		else return 4;
+		if (height + 5 < 0)
+		{
+			if (height - blockY < 10) return SAND;
+			else return STONE;
+		}
+		else
+		{
+			if (blockY == height) return GRASS;
+			else if (blockY > height - 10) return DIRT;
+			else return STONE;
+		}
 	}
 }
 
@@ -221,9 +229,17 @@ struct Generator2d
 				return WATER;
 		}
 
-		if (blockY == height) return GRASS;
-		else if (blockY > height - 10) return DIRT;
-		else return STONE;
+		if (height - 5 < 0)
+		{
+			if (height - blockY < 10) return SAND;
+			else return STONE;
+		}
+		else
+		{
+			if (blockY == height) return GRASS;
+			else if (blockY > height - 10) return DIRT;
+			else return STONE;
+		}
 	}
 }
 
