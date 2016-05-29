@@ -69,25 +69,6 @@ struct SavedChunkData
 	}
 }
 
-/// Used to save chunk from chunkmanager.
-struct ChunkSaver
-{
-	size_t headerPos;
-	ChunkProvider* chunkProvider;
-
-	void pushLayer(ChunkLayerItem layer)
-	{
-		chunkProvider.saveTaskQueue.pushMessagePart(layer);
-	}
-
-	void endChunkSave(ChunkHeaderItem header)
-	{
-		chunkProvider.saveTaskQueue.setItem(header, headerPos);
-		chunkProvider.saveTaskQueue.endMessage();
-		chunkProvider.notify();
-	}
-}
-
 //version = DBG_OUT;
 struct ChunkProvider
 {
@@ -220,11 +201,20 @@ struct ChunkProvider
 		notify();
 	}
 
-	ChunkSaver startChunkSave()
+	size_t startChunkSave()
 	{
 		saveTaskQueue.startMessage();
 		size_t headerPos = saveTaskQueue.skipMessageItem!ChunkHeaderItem();
-
-		return ChunkSaver(headerPos, &this);
+		return headerPos;
+	}
+	void pushLayer(ChunkLayerItem layer)
+	{
+		saveTaskQueue.pushMessagePart(layer);
+	}
+	void endChunkSave(size_t headerPos, ChunkHeaderItem header)
+	{
+		saveTaskQueue.setItem(header, headerPos);
+		saveTaskQueue.endMessage();
+		notify();
 	}
 }

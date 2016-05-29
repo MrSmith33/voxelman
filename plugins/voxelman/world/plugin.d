@@ -146,6 +146,8 @@ public:
 
 		// Component connections
 		chunkManager.startChunkSave = &chunkProvider.startChunkSave;
+		chunkManager.pushLayer = &chunkProvider.pushLayer;
+		chunkManager.endChunkSave = &chunkProvider.endChunkSave;
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
 
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;

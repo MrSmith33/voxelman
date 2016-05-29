@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add chunk manager unittests. Decouple chunk provider from chunk manager.
 - Add remesh command.
 - Add max_players option for server config.
 - Add cancelLoad option for chunkmanager. Unloads 'loading' chunk immidiately. Makes chunkmanager usable by client.
@@ -85,6 +86,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix old snapshot added with wrong timestamp on commit.
 - Fix error on missing config option.
 - Fix commands in launcher when app is not running.
 - Fix chunk free list not working.
