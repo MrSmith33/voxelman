@@ -162,57 +162,35 @@ struct ChunkMeshMan
 		}
 	}
 
-	bool surroundedBySolidChunks(ChunkSnapWithAdjacent snapWithAdjacent)
+	bool producesMesh(ChunkSnapWithAdjacent snapWithAdjacent)
 	{
-		/+
 		import voxelman.block.utils;
-		assert(snapWithAdjacent.allLoaded);
 
-		Solidity thisMinSolidity = chunkMinSolidity(snapWithAdjacent.centralSnapshot.metadata);
+		Solidity solidity;
+		bool singleSolidity = hasSingleSolidity(snapWithAdjacent.centralSnapshot.metadata, solidity);
 
-		if (thisMinSolidity == Solidity.transparent) return true;
-
-		foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
+		if (singleSolidity)
 		{
-			/*
-			if (adj.isUniform)
+			// completely transparent chunks do not produce meshes.
+			if (solidity == Solidity.transparent) {
+				return false;
+			}
+
+			foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
 			{
-				Solidity solidity = chunkSideSolidity(adj.metadata, oppSide[side]);
-				if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
+				Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+				if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
 			}
-			else
-			{
-				bool solidSide = isChunkSideSolid(adj.metadata, oppSide[side]);
-				if (!solidSide) return false;
-			}
-			*/
-			Solidity adjSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
-			Solidity thisSideSolidity = chunkSideSolidity(snapWithAdjacent.centralSnapshot.metadata, side);
-			if (thisSideSolidity.isMoreSolidThan(adjSolidity)) return false;
+
+			// uniformly solid chunk is surrounded by blocks with the same of higher solidity.
+			// so mesh will not be produced.
+			return false;
 		}
-
-		return true;+/
-
-		import voxelman.block.utils;
-		Solidity thisMinSolidity = chunkMinSolidity(snapWithAdjacent.centralSnapshot.metadata);
-
-		if (snapWithAdjacent.centralSnapshot.isUniform) {
-			if (thisMinSolidity == Solidity.transparent) {
-				return true;
-			}
-		}
-
-		foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
+		else
 		{
-			if (snapWithAdjacent.centralSnapshot.isUniform) {
-				Solidity solidity = chunkSideSolidity(adj.metadata, oppSide[side]);
-				if (thisMinSolidity.isMoreSolidThan(solidity)) return false;
-			} else {
-				bool solidSide = isChunkSideSolid(adj.metadata, oppSide[side]);
-				if (!solidSide) return false;
-			}
+			// on borders between different solidities mesh is present.
+			return true;
 		}
-		return true;
 	}
 
 	// returns true if was sent to mesh
@@ -226,9 +204,9 @@ struct ChunkMeshMan
 			return false;
 		}
 
-		if (surroundedBySolidChunks(snapWithAdjacent))
+		if (!producesMesh(snapWithAdjacent))
 		{
-			version(DBG) tracef("meshChunk %s surrounded by solid chunks", cwp);
+			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
 			return false;
 		}
 

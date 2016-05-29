@@ -15,10 +15,10 @@
 
 -? remove _saving states on chunk manager
 - for each layer register handlers for allocation, save, load
-- fix metadata usage in chunk mesh manager.
 - fix problem with dimention change when old position confuses server and volume is not updated.
-- fix crash on recieving data for already loaded chunks.
 
++ fix metadata usage in chunk mesh manager.
++ fix crash on recieving data for already loaded chunks.
 + fix snapshot users not correctly added on commit. 
 + change clientworld
 + remove chunkman

@@ -58,7 +58,8 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			generator.genPerChunkData();
 
 			bool uniform = true;
-			Solidity minSolidity = Solidity.solid;
+			bool[3] presentSolidities;
+
 			BlockId uniformBlockId = AIR;
 			BlockId[CHUNK_SIZE_CUBE] blocks;
 
@@ -66,11 +67,14 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 				generator.chunkOffset.y > 0)
 			{
 				// optimization
+				presentSolidities[Solidity.transparent] = true;
 			}
 			else
 			{
 				blocks[0] = generator.generateBlock(0, 0, 0);
 				uniformBlockId = blocks[0];
+				Solidity solidity0 = blockInfos[blocks[0]].solidity;
+				presentSolidities[solidity0] = true;
 
 				int bx, by, bz;
 				foreach(i; 1..CHUNK_SIZE_CUBE)
@@ -82,7 +86,8 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 					// Actual block gen
 					blocks[i] = generator.generateBlock(bx, by, bz);
 					Solidity solidity = blockInfos[blocks[i]].solidity;
-					minSolidity = solidity < minSolidity ? solidity : minSolidity;
+					presentSolidities[solidity] = true;
+
 					if(uniform && blocks[i] != uniformBlockId)
 					{
 						uniform = false;
@@ -94,13 +99,22 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			enum timestamp = 0;
 			enum numLayers = 1;
 
+			// bit is set if there are blocks with corresponding solidity is in the chunk
+			ubyte solidityBits;
+			ubyte solidityFlag = 1;
+			foreach(sol; presentSolidities)
+			{
+				if (sol) solidityBits |= solidityFlag;
+				solidityFlag <<= 1;
+			}
+
 			workerInfo.resultQueue.startMessage();
 			auto header = ChunkHeaderItem(cwp, numLayers);
 			workerInfo.resultQueue.pushMessagePart(header);
 			if(uniform)
 			{
 				ushort metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
-				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
+				metadata |= cast(ushort)(solidityBits<<CHUNK_SIDE_METADATA_BITS);
 
 				auto layer = ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata);
 				workerInfo.resultQueue.pushMessagePart(layer);
@@ -109,7 +123,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			{
 				//infof("%s L %s B (%(%02x%))", cwp, blocks.length, cast(ubyte[])blocks);
 				ushort metadata = calcChunkSideMetadata(blocks[], blockInfos);
-				metadata |= cast(ushort)(minSolidity<<CHUNK_SIDE_METADATA_BITS);
+				metadata |= cast(ushort)(solidityBits<<CHUNK_SIDE_METADATA_BITS);
 
 				ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
 				//infof("%s L %s C (%(%02x%))", cwp, compactBlocks.length, cast(ubyte[])compactBlocks);

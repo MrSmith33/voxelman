@@ -87,6 +87,7 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_M, "key.toggleMetaData", null, &onToggleMetaData));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewVolume));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
 	}
 
 	override void preInit()
@@ -146,6 +147,18 @@ public:
 	void onRemeshViewVolume(string) {
 		Volume volume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
 		remeshVolume(volume);
+	}
+
+	void onPrintChunkMeta(string) {
+		import voxelman.block.utils : printChunkMetadata;
+		auto cwp = observerPosition;
+		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
+
+		if (snap.isNull) {
+			infof("No snapshot for %s", cwp);
+			return;
+		}
+		printChunkMetadata(snap.metadata);
 	}
 
 	void handlePreUpdateEvent(ref PreUpdateEvent event)
