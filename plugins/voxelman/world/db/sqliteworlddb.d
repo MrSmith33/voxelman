@@ -10,7 +10,6 @@ public import sqlite.d2sqlite3;
 import std.array : uninitializedArray;
 import std.conv;
 import std.stdio;
-import std.typecons : Nullable;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.utils.textformatter;
 
@@ -24,6 +23,7 @@ struct SqliteWorldDb
 	Statement perWorldInsertStmt;
 	Statement perWorldSelectStmt;
 	Statement perWorldDeleteStmt;
+	Statement* statementToReset;
 
 	//Statement perDimentionInsertStmt;
 	//Statement perDimentionSelectStmt;
@@ -71,6 +71,7 @@ struct SqliteWorldDb
 
 	void close()
 	{
+		if (statementToReset) statementToReset.reset();
 		destroy(perWorldInsertStmt);
 		destroy(perWorldSelectStmt);
 		destroy(perWorldDeleteStmt);
@@ -96,6 +97,8 @@ struct SqliteWorldDb
 	// Reset statement after returned data is no longer needed
 	ubyte[] loadPerWorldData(string key)
 	{
+		if (statementToReset) statementToReset.reset();
+		statementToReset = &perWorldSelectStmt;
 		perWorldSelectStmt.bindAll(key);
 		auto result = perWorldSelectStmt.execute();
 		if (result.empty) return null;
@@ -118,6 +121,8 @@ struct SqliteWorldDb
 	// Reset statement after returned data is no longer needed
 	ubyte[] loadPerChunkData(ulong cwp)
 	{
+		if (statementToReset) statementToReset.reset();
+		statementToReset = &perChunkSelectStmt;
 		perChunkSelectStmt.bindAll(cast(long)cwp);
 		auto result = perChunkSelectStmt.execute();
 		if (result.empty) return null;
@@ -145,15 +150,6 @@ struct SqliteWorldDb
 	ref Statement stmt(StatementHandle stmtHandle)
 	{
 		return statements[stmtHandle];
-	}
-
-	static long packId(ChunkWorldPos cwp, short dim)
-	{
-		long id = cast(ulong)(cast(ushort)dim)<<48 |
-				cast(ulong)(cast(ushort)cwp.z)<<32 |
-				cast(ulong)(cast(ushort)cwp.y)<<16 |
-				cast(ulong)(cast(ushort)cwp.x);
-		return id;
 	}
 }
 

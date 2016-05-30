@@ -8,15 +8,10 @@ module voxelman.world.worlddb;
 import voxelman.world.db.lmdbworlddb;
 import voxelman.world.db.sqliteworlddb;
 
-//version = Sqlite;
-version = Lmdb;
-
-enum Table : ulong
-{
-	world,
-	dimention,
-	region,
-	chunk,
+version(Windows) {
+	version = Lmdb;
+} else {
+	version = Sqlite;
 }
 
 final class WorldDb
@@ -39,17 +34,60 @@ final class WorldDb
 	ubyte[] tempBuffer() @property { return buffer; }
 
 	//-----------------------------------------------
-	void putPerWorldValue(K)(K key, ubyte[] value) {
-		put(formKey(key), Table.world, value);
+	version(Lmdb) {
+		private enum Table : ulong
+		{
+			world,
+			dimention,
+			region,
+			chunk,
+		}
+		void putPerWorldValue(K)(K key, ubyte[] value) {
+			put(formKey(key), Table.world, value);
+		}
+		ubyte[] getPerWorldValue(K)(K key) {
+			return get(formKey(key), Table.world);
+		}
+		void putPerChunkValue(ulong key, ubyte[] value) {
+			put(key, Table.chunk, value);
+		}
+		ubyte[] getPerChunkValue(ulong key) {
+			return get(key, Table.chunk);
+		}
+
+		private void put(ulong key, ulong table, ubyte[] value) {
+			ubyte[16] dbKey;
+			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+			db.put(dbKey, value);
+		}
+		private ubyte[] get(ulong key, ulong table) {
+			ubyte[16] dbKey;
+			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+			return db.get(dbKey);
+		}
+		private void del(ulong key, ulong table) {
+			ubyte[16] dbKey;
+			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
+			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
+			return db.del(dbKey);
+		}
 	}
-	ubyte[] getPerWorldValue(K)(K key) {
-		return get(formKey(key), Table.world);
-	}
-	void putPerChunkValue(ulong key, ubyte[] value) {
-		put(key, Table.chunk, value);
-	}
-	ubyte[] getPerChunkValue(ulong key) {
-		return get(key, Table.chunk);
+
+	version(Sqlite) {
+		void putPerWorldValue(K)(K key, ubyte[] value) {
+			db.savePerWorldData(key, value);
+		}
+		ubyte[] getPerWorldValue(K)(K key) {
+			return db.loadPerWorldData(key);
+		}
+		void putPerChunkValue(ulong key, ubyte[] value) {
+			db.savePerChunkData(key, value);
+		}
+		ubyte[] getPerChunkValue(ulong key) {
+			return db.loadPerChunkData(key);
+		}
 	}
 
 	//-----------------------------------------------
@@ -61,24 +99,6 @@ final class WorldDb
 	}
 	void commitTxn() {
 		db.commitTxn();
-	}
-	version(Lmdb) void put(ulong key, ulong table, ubyte[] value) {
-		ubyte[16] dbKey;
-		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-		db.put(dbKey, value);
-	}
-	version(Lmdb) ubyte[] get(ulong key, ulong table) {
-		ubyte[16] dbKey;
-		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-		return db.get(dbKey);
-	}
-	version(Lmdb) void del(ulong key, ulong table) {
-		ubyte[16] dbKey;
-		(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-		(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-		return db.del(dbKey);
 	}
 }
 

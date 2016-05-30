@@ -7,8 +7,7 @@ module voxelman.world.db.lmdbworlddb;
 
 import std.experimental.logger;
 
-//pragma(lib, "lmdb.lib");
-//pragma(lib, "Advapi32.lib");
+version(Windows):
 
 import std.string : fromStringz, toStringz;
 struct LmdbWorldDb
