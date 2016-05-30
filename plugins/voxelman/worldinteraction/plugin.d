@@ -41,6 +41,7 @@ class WorldInteractionPlugin : IPlugin
 
 	// Cursor
 	bool cursorHit;
+	bool cameraInSolidBlock;
 	BlockWorldPos blockPos;
 	BlockWorldPos sideBlockPos; // blockPos + hitNormal
 	ivec3 hitNormal;
@@ -137,6 +138,15 @@ class WorldInteractionPlugin : IPlugin
 			hitNormal,
 			traceBatch);
 
+		if (cursorHit) {
+			import std.math : floor;
+			auto camPos = graphics.camera.position;
+			auto camBlock = ivec3(cast(int)floor(camPos.x), cast(int)floor(camPos.y), cast(int)floor(camPos.z));
+			cameraInSolidBlock = BlockWorldPos(camBlock, 0) == BlockWorldPos(hitPosition, 0);
+		} else {
+			cameraInSolidBlock = false;
+		}
+
 		blockPos = BlockWorldPos(hitPosition, clientWorld.currentDimention);
 		sideBlockPos = BlockWorldPos(blockPos.xyz + hitNormal, clientWorld.currentDimention);
 		cursorTraceTime = cast(Duration)sw.peek;
@@ -150,7 +160,7 @@ class WorldInteractionPlugin : IPlugin
 			traceBatch.putLine(lineStart, lineEnd, Colors.black);
 		}
 
-		if (showCursor)
+		if (showCursor && !cameraInSolidBlock)
 		{
 			graphics.debugBatch.putCube(
 				vec3(blockPos.xyz) - vec3(0.005, 0.005, 0.005),

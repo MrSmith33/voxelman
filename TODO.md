@@ -17,9 +17,11 @@
 - for each layer register handlers for allocation, save, load
 - fix problem with dimention change when old position confuses server and volume is not updated.
 
-+ fix metadata usage in chunk mesh manager.
-+ fix crash on recieving data for already loaded chunks.
-+ fix snapshot users not correctly added on commit. 
++ fix chunks not loading sometimes [Chunks were not added early enough, so first snapshots were loaded for not added chunks => holes]
++ remove old observer on client when (re)connecting
++ fix metadata usage in chunk mesh manager. [Bug in hasSingleSolidity]
++ fix crash on recieving data for already loaded chunks. [isLoaded was not checked. Now chunks are loaded through modification]
++ fix snapshot users not correctly added on commit. [snapshot was added to oldSnapshots with wrong timestamp (currentTime instead of snap.timestamp)]
 + change clientworld
 + remove chunkman
 + remove chunkstorage

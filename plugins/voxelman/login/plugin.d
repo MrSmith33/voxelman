@@ -143,6 +143,7 @@ public:
 	{
 		auto packet = unpackPacket!SpawnPacket(packetData);
 		isSpawned = true;
+		clientWorld.updateObserverPosition();
 	}
 
 	string clientName(ClientId clientId)

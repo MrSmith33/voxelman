@@ -65,6 +65,7 @@ public:
 	// Observer data
 	vec3 updatedCameraPos;
 	ChunkWorldPos observerPosition;
+	ClientId observerClientId;
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 
 	// Send position interval
@@ -284,6 +285,7 @@ public:
 
 	void onChunkLoaded(ChunkWorldPos cwp, BlockData blockData)
 	{
+		tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
 		static struct LoadedChunkData
 		{
@@ -386,8 +388,14 @@ public:
 	void decDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() - 1)); }
 
 	void updateObserverPosition() {
-		if (clientDb.isSpawned)
+		if (clientDb.isSpawned) {
+			if (observerClientId != clientDb.thisClientId) {
+				chunkObserverManager.removeObserver(observerClientId);
+				observerClientId = clientDb.thisClientId;
+			}
+
 			chunkObserverManager.changeObserverVolume(clientDb.thisClientId, observerPosition, viewRadius);
+		}
 	}
 
 	void onIncViewRadius(string) {

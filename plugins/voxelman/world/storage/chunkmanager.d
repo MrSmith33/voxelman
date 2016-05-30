@@ -219,6 +219,14 @@ final class ChunkManager {
 		return state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving;
 	}
 
+	bool isChunkAdded(ChunkWorldPos cwp)
+	{
+		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
+		with(ChunkState) {
+			return state == added_loaded || state == added_loading || state == added_loaded_saving;
+		}
+	}
+
 	private void saveChunk(ChunkWorldPos cwp)
 	{
 		assert(startChunkSave, "startChunkSave is null");
