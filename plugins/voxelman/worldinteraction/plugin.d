@@ -76,41 +76,6 @@ class WorldInteractionPlugin : IPlugin
 		drawDebugCursor();
 	}
 
-	void placeBlock(BlockId blockId)
-	{
-		BlockWorldPos editedBlock = blockPos;
-		if (blockPlugin.getBlocks()[blockId].isVisible)
-		{
-			editedBlock = sideBlockPos;
-		}
-
-		//infof("hit %s, blockPos %s, hitPosition %s, hitNormal %s\ntime %s",
-		//	cursorHit, blockPos, hitPosition, hitNormal,
-		//	cursorTraceTime.formatDuration);
-
-		cursorPos = vec3(editedBlock.vector) - vec3(0.005, 0.005, 0.005);
-		lineStart = graphics.camera.position;
-		lineEnd = graphics.camera.position + graphics.camera.target * 40;
-
-		if (cursorHit)
-		{
-			hitBatch = traceBatch;
-			traceBatch = Batch();
-
-			traceVisible = true;
-			connection.send(PlaceBlockPacket(editedBlock.vector, blockId));
-		}
-		else
-		{
-			traceVisible = false;
-		}
-	}
-
-	void placeBlockAt(BlockId blockId, BlockWorldPos bwp)
-	{
-		connection.send(PlaceBlockPacket(bwp.vector, blockId));
-	}
-
 	BlockId pickBlock()
 	{
 		return clientWorld.worldAccess.getBlock(blockPos);
@@ -133,7 +98,7 @@ class WorldInteractionPlugin : IPlugin
 			isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
-			200.0, // max distance
+			600.0, // max distance
 			hitPosition,
 			hitNormal,
 			traceBatch);

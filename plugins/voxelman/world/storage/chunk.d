@@ -17,9 +17,19 @@ import voxelman.block.utils;
 import voxelman.core.chunkmesh;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
+import voxelman.world.storage.volume;
 import voxelman.utils.compression;
 
 enum FIRST_LAYER = 0;
+
+BlockId[] allocBlockLayerArray() {
+	return uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
+}
+
+void freeBlockLayerArray(BlockId[] buffer) {
+	import core.memory : GC;
+	GC.free(buffer.ptr);
+}
 
 struct ChunkHeaderItem {
 	ChunkWorldPos cwp;
@@ -72,12 +82,50 @@ struct ChunkLayerItem
 }
 static assert(ChunkLayerItem.sizeof == 24);
 
+struct WriteBuffer
+{
+	bool isUniform = true;
+	bool isModified = true;
+	union {
+		BlockId[] blocks;
+		BlockId uniformBlockId;
+	}
+	ushort metadata;
+
+	void makeUniform(BlockId blockId, ushort _metadata = 0) {
+		if (!isUniform) {
+			freeBlockLayerArray(blocks);
+			isUniform = true;
+		}
+		uniformBlockId = blockId;
+		metadata = _metadata;
+	}
+
+	// Allocates buffer and copies layer data.
+	void makeArray(Layer)(Layer layer) {
+		if (isUniform) {
+			blocks = allocBlockLayerArray();
+			isUniform = false;
+		}
+		layer.copyToBuffer(blocks); // uncompresses automatically
+		metadata = layer.metadata;
+	}
+
+	void copyFromLayer(Layer)(Layer layer) {
+		if (layer.type == StorageType.uniform) {
+			makeUniform(layer.getUniform!BlockId(), layer.metadata);
+		} else {
+			makeArray(layer);
+		}
+	}
+}
+
 /// Container for chunk updates
 /// If blockChanges is null uses newBlockData
 struct ChunkChange
 {
-	BlockChange[] blockChanges;
-	BlockData newBlockData;
+	uvec3 a, b; // volume
+	BlockId blockId;
 }
 
 // container of single block change.
@@ -221,12 +269,71 @@ void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
 		uncompressIntoBuffer(layer, outBuffer);
 }
 
-void applyChanges(BlockId[] writeBuffer, BlockChange[] changes)
+void applyChanges(WriteBuffer* writeBuffer, BlockChange[] changes)
 {
-	assert(writeBuffer.length == CHUNK_SIZE_CUBE);
+	assert(!writeBuffer.isUniform);
 	foreach(change; changes)
 	{
-		writeBuffer[BlockChunkIndex(change.index)] = change.blockId;
+		writeBuffer.blocks[BlockChunkIndex(change.index)] = change.blockId;
+	}
+}
+
+void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
+{
+	assert(!writeBuffer.isUniform);
+	foreach(change; changes)
+	{
+		setSubArray(writeBuffer.blocks, Volume(ivec3(change.a), ivec3(change.b)), change.blockId);
+	}
+}
+
+void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
+{
+	assert(buffer.length == CHUNK_SIZE_CUBE);
+
+	if (volume.position.x == 0 && volume.size.x == CHUNK_SIZE)
+	{
+		if (volume.position.z == 0 && volume.size.z == CHUNK_SIZE)
+		{
+			if (volume.position.y == 0 && volume.size.y == CHUNK_SIZE)
+			{
+				//infof("buf 1[%s..%s]");
+				buffer[] = blockId;
+			}
+			else
+			{
+				auto from = volume.position.y * CHUNK_SIZE_SQR;
+				auto to = (volume.position.y + volume.size.y) * CHUNK_SIZE_SQR;
+				//infof("buf 2[%s..%s]", from, to);
+				buffer[from..to] = blockId;
+			}
+		}
+		else
+		{
+			foreach(y; volume.position.y..(volume.position.y + volume.size.y))
+			{
+				auto from = y * CHUNK_SIZE_SQR + volume.position.z * CHUNK_SIZE;
+				auto to = y * CHUNK_SIZE_SQR + (volume.position.z + volume.size.z) * CHUNK_SIZE;
+				//infof("buf 3[%s..%s]", from, to);
+				buffer[from..to] = blockId;
+			}
+		}
+	}
+	else
+	{
+		int posx = volume.position.x;
+		int endx = volume.position.x + volume.size.x;
+		int endy = volume.position.y + volume.size.y;
+		int endz = volume.position.z + volume.size.z;
+		foreach(y; volume.position.y..endy)
+		foreach(z; volume.position.z..endz)
+		{
+			auto offset = y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
+			auto from = posx + offset;
+			auto to = endx + offset;
+			//infof("buf 4[%s..%s]", from, to);
+			buffer[from..to] = blockId;
+		}
 	}
 }
 

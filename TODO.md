@@ -7,16 +7,18 @@
 	(double buffering?)
 	- Fix world save on game stop.
 
+- Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
+- Add configurable meshing range.
+- Remove meshes outside of mesh range.
 - Implement graphics pipeline.
-
-- Big-scale editing.
-	- Send edit commands instead of per-block changes
-
-
--? remove _saving states on chunk manager
+- Generic Volume type
+- remove _saving states on chunk manager
 - for each layer register handlers for allocation, save, load
 - fix problem with dimention change when old position confuses server and volume is not updated.
 
++ Complex write buffer with delayed allocation and uniform type support.
++ Big-scale editing. Send edit commands instead of per-block changes.
++ Fix mesh deletion when chunk does not produce mesh. Use special "delete mesh" tasks to queue mesh deletions. This allows to upload new chunk meshes together with deleting meshes of chunks that do not produce meshes anymore.
 + fix chunks not loading sometimes [Chunks were not added early enough, so first snapshots were loaded for not added chunks => holes]
 + remove old observer on client when (re)connecting
 + fix metadata usage in chunk mesh manager. [Bug in hasSingleSolidity]

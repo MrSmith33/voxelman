@@ -21,19 +21,17 @@ import voxelman.world.storage.coordinates;
 import voxelman.utils.worker;
 
 
-struct MeshGenResult
+enum MeshGenTaskType : ubyte
 {
-	size_t meshGroupId;
-	ChunkWorldPos cwp;
-	ubyte[][2] meshes;
-	ChunkLayerItem[7] layers;
+	genMesh,
+	unloadMesh
 }
 
-struct MeshGenTask
+struct MeshGenTaskHeader
 {
+	MeshGenTaskType type;
 	size_t meshGroupId;
 	ChunkWorldPos cwp;
-	ChunkLayerItem[7] layers;
 }
 
 //version = DBG_OUT;
@@ -45,12 +43,43 @@ void meshWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockIn
 		{
 			(cast(Semaphore)workerInfo.workAvaliable).wait();
 
+			// receive
+			//   MeshGenTaskHeader taskHeader;
+			//   ChunkLayerItem[7] layers;
+			// or
+			//   MeshGenTaskHeader taskHeader;
+			//
+			// send
+			//   MeshGenTaskHeader taskHeader;
+			//   ubyte[][2] meshes;
+			//   uint[7] timestamps;
+			// or
+			//   MeshGenTaskHeader taskHeader;
 			if (!workerInfo.taskQueue.empty)
 			{
-				MeshGenTask task = workerInfo.taskQueue.popItem!MeshGenTask();
-				ubyte[][2] meshes = chunkMeshWorker(task.layers[6], task.layers[0..6], blockInfos);
-				auto result = MeshGenResult(task.meshGroupId, task.cwp, meshes, task.layers);
-				workerInfo.resultQueue.pushItem!MeshGenResult(result);
+				auto taskHeader = workerInfo.taskQueue.popItem!MeshGenTaskHeader();
+
+				if (taskHeader.type == MeshGenTaskType.genMesh)
+				{
+					// mesh task.
+					ChunkLayerItem[7] layers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
+
+					ubyte[][2] meshes = chunkMeshWorker(layers[6], layers[0..6], blockInfos);
+
+					uint[7] timestamps;
+					foreach(i; 0..7) timestamps[i] = layers[i].timestamp;
+
+					workerInfo.resultQueue.startMessage();
+					workerInfo.resultQueue.pushMessagePart(taskHeader);
+					workerInfo.resultQueue.pushMessagePart(meshes);
+					workerInfo.resultQueue.pushMessagePart(timestamps);
+					workerInfo.resultQueue.endMessage();
+				}
+				else
+				{
+					// remove mesh task. Resend it to main thread.
+					workerInfo.resultQueue.pushItem(taskHeader);
+				}
 			}
 		}
 	}

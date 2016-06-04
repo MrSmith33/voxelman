@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Complex write buffer with delayed allocation and uniform type support.
+- Big-scale editing. Send edit commands instead of per-block changes.
 - Add chunk manager unittests. Decouple chunk provider from chunk manager.
 - Add remesh command.
 - Add max_players option for server config.
@@ -86,6 +88,8 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix volume intersection.
+- Fix mesh deletion when chunk does not produce mesh. Use special "delete mesh" tasks to queue mesh deletions. This allows to upload new chunk meshes together with deleting meshes of chunks that do not produce meshes anymore.
 - Fix old snapshot added with wrong timestamp on commit.
 - Fix error on missing config option.
 - Fix commands in launcher when app is not running.

@@ -11,12 +11,14 @@ import std.experimental.logger;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.core.events;
+import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;
 import voxelman.graphics.plugin;
+import voxelman.net.plugin;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.input.keybindingmanager;
@@ -40,6 +42,7 @@ class EditPlugin : IPlugin
 	ClientPlugin clientPlugin;
 	WorldInteractionPlugin worldInteraction;
 	GraphicsPlugin graphics;
+	NetClientPlugin connection;
 
 	BlockId currentBlock = 4;
 	BlockWorldPos startingPos;
@@ -56,6 +59,7 @@ class EditPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
+		connection = pluginman.getPlugin!NetClientPlugin;
 		clientPlugin = pluginman.getPlugin!ClientPlugin;
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
@@ -102,6 +106,7 @@ class EditPlugin : IPlugin
 	{
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.none) return;
+		if (!worldInteraction.cursorHit) return;
 		state = EditState.removing;
 		startingPos = currentCursorPos;
 		worldInteraction.showCursor = false;
@@ -112,15 +117,19 @@ class EditPlugin : IPlugin
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.removing) return;
 		state = EditState.none;
-		foreach(pos; selection.positions)
-			worldInteraction.placeBlockAt(1, BlockWorldPos(pos, selection.dimention));
 		worldInteraction.showCursor = true;
+
+		if (worldInteraction.cursorHit)
+		{
+			fillVolume(selection, 1);
+		}
 	}
 
 	void onSecondaryActionPress(string key)
 	{
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.none) return;
+		if (!worldInteraction.cursorHit) return;
 		state = EditState.placing;
 		startingPos = currentCursorPos;
 		worldInteraction.showCursor = false;
@@ -131,14 +140,22 @@ class EditPlugin : IPlugin
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.placing) return;
 		state = EditState.none;
-		foreach(pos; selection.positions)
-			worldInteraction.placeBlockAt(currentBlock, BlockWorldPos(pos, selection.dimention));
 		worldInteraction.showCursor = true;
+
+		if (worldInteraction.cursorHit)
+		{
+			fillVolume(selection, currentBlock);
+		}
 	}
 
 	void onTertiaryActionRelease(string key)
 	{
 		if (!clientPlugin.mouseLocked) return;
 		currentBlock = worldInteraction.pickBlock();
+	}
+
+	void fillVolume(Volume volume, BlockId blockId)
+	{
+		connection.send(FillBlockVolumePacket(volume, blockId));
 	}
 }

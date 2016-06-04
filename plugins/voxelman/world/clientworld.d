@@ -50,7 +50,6 @@ private:
 
 public:
 	ChunkManager chunkManager;
-	ChunkChangeManager chunkChangeManager;
 	ChunkObserverManager chunkObserverManager;
 	WorldAccess worldAccess;
 	ChunkMeshMan chunkMeshMan;
@@ -94,8 +93,7 @@ public:
 	override void preInit()
 	{
 		chunkManager = new ChunkManager();
-		chunkChangeManager = new ChunkChangeManager();
-		worldAccess = new WorldAccess(chunkManager, chunkChangeManager);
+		worldAccess = new WorldAccess(chunkManager);
 
 		ubyte numLayers = 1;
 		chunkManager.setup(numLayers);
@@ -103,8 +101,6 @@ public:
 		chunkManager.isLoadCancelingEnabled = true;
 		chunkManager.isChunkSavingEnabled = false;
 		chunkManager.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
-
-		chunkChangeManager.setup(numLayers);
 
 		chunkObserverManager = new ChunkObserverManager();
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
@@ -127,7 +123,7 @@ public:
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
-		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 	}
@@ -147,7 +143,7 @@ public:
 
 	void onRemeshViewVolume(string) {
 		Volume volume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
-		remeshVolume(volume);
+		remeshVolume(volume, true);
 	}
 
 	void onPrintChunkMeta(string) {
@@ -258,8 +254,7 @@ public:
 
 	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
 	{
-		import cbor;
-		auto packet = decodeCborSingle!ChunkDataPacket(packetData);
+		auto packet = unpackPacketNoDup!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
 		if (!packet.blockData.uniform) {
@@ -285,7 +280,7 @@ public:
 
 	void onChunkLoaded(ChunkWorldPos cwp, BlockData blockData)
 	{
-		tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
+		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
 		static struct LoadedChunkData
 		{
@@ -303,8 +298,9 @@ public:
 
 		if (chunkManager.isChunkLoaded(cwp))
 		{
-			BlockId[] writeBuffer = chunkManager.getWriteBuffer(cwp, FIRST_LAYER);
-			copyToBuffer(layer, writeBuffer);
+			WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
+			writeBuffer.makeArray(layer);
+			writeBuffer.isModified = true;
 		}
 		else
 		{
@@ -316,24 +312,21 @@ public:
 			chunksToRemesh.put(adj);
 	}
 
-	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
+	void handleFillBlockVolumePacket(ubyte[] packetData, ClientId peer)
 	{
-		auto packet = unpackPacket!MultiblockChangePacket(packetData);
-		onChunkChanged(ChunkWorldPos(packet.chunkPos), packet.blockChanges);
+		auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
+
+		worldAccess.fillVolume(packet.volume, packet.blockId, blockPlugin.getBlocks());
+
+		Volume observedVolume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
+		Volume modifiedVolume = calcModifiedMeshesVolume(packet.volume);
+		Volume vol = volumeIntersection(observedVolume, modifiedVolume);
+
+		foreach(pos; vol.positions)
+			chunksToRemesh.put(ChunkWorldPos(pos, vol.dimention));
 	}
 
-	void onChunkChanged(ChunkWorldPos cwp, BlockChange[] changes)
-	{
-		BlockId[] writeBuffer = chunkManager.getWriteBuffer(cwp, FIRST_LAYER);
-		if (writeBuffer is null) return;
-		applyChanges(writeBuffer, changes);
-
-		chunksToRemesh.put(cwp);
-		foreach(adj; adjacentPositions(cwp))
-			chunksToRemesh.put(adj);
-	}
-
-	void remeshVolume(Volume volume)
+	void remeshVolume(Volume volume, bool printTime = false)
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		MonoTime startTime = MonoTime.currTime;
@@ -349,7 +342,10 @@ public:
 		foreach(pos; volume.positions) {
 			remeshedChunks.put(ChunkWorldPos(pos, volume.dimention));
 		}
-		chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
+		if (printTime)
+			chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
+		else
+			chunkMeshMan.remeshChangedChunks(remeshedChunks);
 	}
 
 	void sendPosition(double dt)

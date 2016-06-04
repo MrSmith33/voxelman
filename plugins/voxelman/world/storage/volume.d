@@ -11,6 +11,7 @@ import std.math : floor;
 import std.range : chain, only;
 import dlib.math.vector;
 
+import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 
 Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
@@ -27,6 +28,35 @@ Volume volumeFromCorners(ivec3 a, ivec3 b, DimentionId dimention = 0)
 	vol.size = max(a, b) - vol.position + ivec3(1,1,1);
 	vol.dimention = dimention;
 	return vol;
+}
+
+Volume blockVolumeToChunkVolume(Volume blockVolume)
+{
+	auto startPosition = blockToChunkPosition(blockVolume.position);
+	auto endPosition = blockToChunkPosition(blockVolume.endPosition);
+	return volumeFromCorners(startPosition, endPosition, blockVolume.dimention);
+}
+
+/// Returns chunks if their mesh may have changed after specified modification
+/// Volume is specified in block space
+Volume calcModifiedMeshesVolume(Volume modificationVolume)
+{
+	// We increase size by 1 in every direction.
+	// After rounding chunks on the border of modification will be included
+	Volume expandedVolume = modificationVolume;
+	expandedVolume.position -= ivec3(1,1,1);
+	expandedVolume.size += ivec3(2,2,2);
+	Volume chunkVolume = blockVolumeToChunkVolume(expandedVolume);
+	return chunkVolume;
+}
+
+Volume chunkToBlockVolume(ChunkWorldPos cwp) {
+	return chunkToBlockVolume(cwp.ivector3, cwp.dimention);
+}
+
+Volume chunkToBlockVolume(ivec3 cwp, ushort dimention) {
+	ivec3 startPosition = chunkToBlockPosition(cwp);
+	return Volume(startPosition, CHUNK_SIZE_VECTOR, dimention);
 }
 
 Vector!(T, size) min(T, int size)(Vector!(T, size) a, Vector!(T, size) b)
@@ -55,6 +85,11 @@ struct Volume
 	int volume() @property const
 	{
 		return size.x * size.y * size.z;
+	}
+
+	ivec3 endPosition() @property const
+	{
+		return position + size - ivec3(1,1,1);
 	}
 
 	bool empty() const @property
@@ -118,8 +153,11 @@ struct TrisectResult
 // TrisectResult[2] b - a  == b if no intersection
 TrisectResult trisect(Volume a, Volume b)
 {
+	TrisectResult result;
+	result.intersection = volumeIntersection(a, b);
+
 	// no intersection
-	if (rangeIntersection(a, b).empty)
+	if (result.intersection.empty)
 	{
 		return TrisectResult([a], Volume(), [b]);
 	}
@@ -127,8 +165,6 @@ TrisectResult trisect(Volume a, Volume b)
 	auto xTrisect = trisectAxis(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
 	auto yTrisect = trisectAxis(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
 	auto zTrisect = trisectAxis(a.position.z, a.position.z + a.size.z, b.position.z, b.position.z + b.size.z);
-
-	TrisectResult result;
 
 	foreach(xa; xTrisect.aranges[0..xTrisect.numRangesA].chain(only(xTrisect.irange)))
 	foreach(ya; yTrisect.aranges[0..yTrisect.numRangesA].chain(only(yTrisect.irange)))
@@ -148,10 +184,6 @@ TrisectResult trisect(Volume a, Volume b)
 				ivec3(xb.length, yb.length, zb.length));
 	}
 
-	result.intersection = Volume(
-		ivec3(xTrisect.irange.start, yTrisect.irange.start, zTrisect.irange.start),
-		ivec3(xTrisect.irange.length, yTrisect.irange.length, zTrisect.irange.length));
-
 	return result;
 }
 
@@ -161,11 +193,6 @@ struct AxisRange
 	int end;
 	bool isIntersection;
 	int length() @property
-	out (result)
-	{
-		assert(result >= 0);
-	}
-	body
 	{
 		return end - start;
 	}
@@ -238,81 +265,54 @@ TrisectAxisResult trisectAxis(int aStart, int aEnd, int bStart, int bEnd)
 	return res;
 }
 
-Volume rangeIntersection(Volume a, Volume b)
+Volume volumeIntersection(Volume a, Volume b)
 {
-	Volume result;
-
 	if (a.dimention != b.dimention)
 	{
 		return Volume();
 	}
 
-	if (a.position.x < b.position.x)
-	{
-		if (a.position.x + a.size.x < b.position.x) return Volume();
-		result.position.x = b.position.x;
-		result.size.x = a.size.x - (b.position.x - a.position.x);
-	}
-	else
-	{
-		if (b.position.x + b.size.x < a.position.x) return Volume();
-		result.position.x = a.position.x;
-		result.size.x = b.size.x - (a.position.x - b.position.x);
-	}
+	auto xTrisect = trisectAxis(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
+	auto yTrisect = trisectAxis(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
+	auto zTrisect = trisectAxis(a.position.z, a.position.z + a.size.z, b.position.z, b.position.z + b.size.z);
 
-	if (a.position.y < b.position.y)
-	{
-		if (a.position.y + a.size.y < b.position.y) return Volume();
-		result.position.y = b.position.y;
-		result.size.y = a.size.y - (b.position.y - a.position.y);
-	}
-	else
-	{
-		if (b.position.y + b.size.y < a.position.y) return Volume();
-		result.position.y = a.position.y;
-		result.size.y = b.size.y - (a.position.y - b.position.y);
-	}
+	Volume result = Volume(
+			ivec3(xTrisect.irange.start, yTrisect.irange.start, zTrisect.irange.start),
+			ivec3(xTrisect.irange.length, yTrisect.irange.length, zTrisect.irange.length),
+			a.dimention);
 
-	if (a.position.z < b.position.z)
-	{
-		if (a.position.z + a.size.z < b.position.z) return Volume();
-		result.position.z = b.position.z;
-		result.size.z = a.size.z - (b.position.z - a.position.z);
+	foreach(elem; result.size.arrayof) {
+		if (elem <= 0)
+			return Volume();
 	}
-	else
-	{
-		if (b.position.z + b.size.z < a.position.z) return Volume();
-		result.position.z = a.position.z;
-		result.size.z = b.size.z - (a.position.z - b.position.z);
-	}
-
-	result.size.x = result.size.x > 0 ? result.size.x : -result.size.x;
-	result.size.y = result.size.y > 0 ? result.size.y : -result.size.y;
-	result.size.z = result.size.z > 0 ? result.size.z : -result.size.z;
 
 	return result;
 }
 
 unittest
 {
-	assert(rangeIntersection(
+	assert(volumeIntersection(
 		Volume(ivec3(0,0,0), ivec3(2,2,2)),
 		Volume(ivec3(1,1,1), ivec3(2,2,2))) ==
 		Volume(ivec3(1,1,1), ivec3(1,1,1)));
-	assert(rangeIntersection(
+	assert(volumeIntersection(
 		Volume(ivec3(0,0,0), ivec3(2,2,2)),
 		Volume(ivec3(3,3,3), ivec3(4,4,4))) ==
 		Volume(ivec3()));
-	assert(rangeIntersection(
+	assert(volumeIntersection(
 		Volume(ivec3(1,1,1), ivec3(2,2,2)),
 		Volume(ivec3(0,0,0), ivec3(2,2,2))) ==
 		Volume(ivec3(1,1,1), ivec3(1,1,1)));
-	assert(rangeIntersection(
+	assert(volumeIntersection(
 		Volume(ivec3(1,1,1), ivec3(1,1,1)),
 		Volume(ivec3(1,1,1), ivec3(1,1,1))) ==
 		Volume(ivec3(1,1,1), ivec3(1,1,1)));
-	assert(rangeIntersection(
+	assert(volumeIntersection(
 		Volume(ivec3(0,0,0), ivec3(2,2,2)),
 		Volume(ivec3(0,0,-1), ivec3(2,2,2))) ==
 		Volume(ivec3(0,0,0), ivec3(2,2,1)));
+	assert(volumeIntersection(
+		Volume(ivec3(1,0,0), ivec3(1,1,1)),
+		Volume(ivec3(0,0,0), ivec3(32,32,32))) ==
+		Volume(ivec3(1,0,0), ivec3(1,1,1)));
 }

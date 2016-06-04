@@ -33,41 +33,6 @@ private enum traceStateStr = q{
 	//	chunkStates.get(cwp, ChunkState.non_loaded));
 };
 
-enum maxFreeItems = 200;
-struct ChunkFreeList {
-	BlockId[][maxFreeItems] items;
-	size_t numItems;
-
-	BlockId[] allocate() {
-		import std.array : uninitializedArray;
-		if (numItems > 0) {
-			--numItems;
-			BlockId[] item = items[numItems];
-			items[numItems] = null;
-			return item;
-		} else {
-			return uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
-		}
-	}
-
-	void deallocate(BlockId[] blocks) {
-		import core.memory : GC;
-
-		if (blocks is null) return;
-		if (blocks.length != CHUNK_SIZE_CUBE)
-		{
-			GC.free(blocks.ptr);
-			return;
-		}
-		if (numItems == maxFreeItems) {
-			GC.free(blocks.ptr);
-			return;
-		}
-		items[numItems] = blocks;
-		++numItems;
-	}
-}
-
 struct ChunkSnapWithAdjacent
 {
 	union
@@ -115,27 +80,10 @@ ChunkSnapWithAdjacent getSnapWithAdjacentAddUsers(ChunkManager cm, ChunkWorldPos
 //version = DBG_OUT;
 //version = DBG_COMPR;
 
-final class ChunkChangeManager
+enum WriteBufferPolicy
 {
-	BlockChange[][ChunkWorldPos][] chunkChanges;
-	ubyte numLayers;
-
-	void setup(ubyte _numLayers) {
-		numLayers = _numLayers;
-		chunkChanges.length = numLayers;
-	}
-
-	import std.range : isInputRange, array;
-	/// Call this whenewer changes to write buffer are done.
-	void onBlockChanges(R)(ChunkWorldPos cwp, R blockChanges, size_t layer)
-		if (isInputRange!(R))
-	{
-		chunkChanges[layer][cwp] = chunkChanges[layer].get(cwp, null) ~ blockChanges.array;
-	}
-
-	//void clearChunkData(ChunkWorldPos cwp) {
-	//	assert(cwp !in chunkChanges[layer]);
-	//}
+	createUniform,
+	copySnapshotArray,
 }
 
 final class ChunkManager {
@@ -153,10 +101,9 @@ final class ChunkManager {
 	bool isLoadCancelingEnabled = false; /// Set to true on client to cancel load on unload
 	bool isChunkSavingEnabled = true;
 
-	private ChunkFreeList freeList;
 	private ChunkLayerSnap[ChunkWorldPos][] snapshots;
 	private ChunkLayerSnap[TimestampType][ChunkWorldPos][] oldSnapshots;
-	private BlockId[][ChunkWorldPos][] writeBuffers;
+	private WriteBuffer[ChunkWorldPos][] writeBuffers;
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
 	private size_t[ChunkWorldPos] numInternalChunkObservers;
@@ -281,12 +228,19 @@ final class ChunkManager {
 	/// This buffer is valid until commit.
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
-	BlockId[] getWriteBuffer(ChunkWorldPos cwp, size_t layer) {
-		auto newData = writeBuffers[layer].get(cwp, null);
-		if (newData is null) {
-			newData = createWriteBuffer(cwp, layer);
+	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, size_t layer, WriteBufferPolicy policy = WriteBufferPolicy.init) {
+		if (!isChunkLoaded(cwp)) return null;
+		auto writeBuffer = cwp in writeBuffers[layer];
+		if (writeBuffer is null) {
+			writeBuffer = createWriteBuffer(cwp, layer);
 		}
-		return newData;
+		if (writeBuffer && policy == WriteBufferPolicy.copySnapshotArray) {
+			auto old = getChunkSnapshot(cwp, layer);
+			if (!old.isNull) {
+				writeBuffer.makeArray(old);
+			}
+		}
+		return writeBuffer;
 	}
 
 	/// Returns timestamp of current chunk snapshot.
@@ -440,11 +394,21 @@ final class ChunkManager {
 			// Clear it here because commit can unload chunk.
 			// And unload asserts that chunk is not in writeBuffers.
 			writeBuffers[layer] = null;
-			foreach(snapshot; writeBuffersCopy.byKeyValue) {
+			foreach(snapshot; writeBuffersCopy.byKeyValue)
+			{
 				auto cwp = snapshot.key;
-				auto blockData = snapshot.value;
-				modifiedChunks.put(cwp);
-				commitChunkSnapshot(cwp, blockData, currentTime, layer);
+				WriteBuffer writeBuffer = snapshot.value;
+				if (writeBuffer.isModified)
+				{
+					modifiedChunks.put(cwp);
+					commitChunkSnapshot(cwp, writeBuffer, currentTime, layer);
+				}
+				else
+				{
+					if (!writeBuffer.isUniform)
+						freeBlockLayerArray(writeBuffer.blocks);
+				}
+				removeInternalObserver(cwp); // remove user added in createWriteBuffer
 			}
 		}
 	}
@@ -572,20 +536,16 @@ final class ChunkManager {
 	}
 
 	// Creates write buffer for writing changes in it.
-	// Latest snapshot's data is copied in it.
-	// On commit stage this is moved into new snapshot and.
-	// Adds internal user that is removed on commit to prevent unloading with uncommitted changes.
-	private BlockId[] createWriteBuffer(ChunkWorldPos cwp, size_t layer) {
-		assert(writeBuffers[layer].get(cwp, null) is null);
-		auto old = getChunkSnapshot(cwp, layer);
-		if (old.isNull) {
-			return null;
-		}
-		auto buffer = freeList.allocate();
-		old.copyToBuffer(buffer);
-		writeBuffers[layer][cwp] = buffer;
+	// Latest snapshot's data is not copied in it.
+	// Write buffer is then avaliable through getWriteBuffer/getOrCreateWriteBuffer.
+	// On commit stage this is moved into new snapshot if write buffer is modified.
+	// Adds internal user that is removed on commit to prevent unloading chunk with uncommitted changes.
+	// Returns pointer to created write buffer.
+	private WriteBuffer* createWriteBuffer(ChunkWorldPos cwp, size_t layer) {
+		assert(cwp !in writeBuffers[layer]);
+		writeBuffers[layer][cwp] = WriteBuffer.init;
 		addInternalObserver(cwp); // prevent unload until commit
-		return buffer;
+		return cwp in writeBuffers[layer];
 	}
 
 	// Here comes sum of all internal and external chunk users which results in loading or unloading of specific chunk.
@@ -657,9 +617,10 @@ final class ChunkManager {
 	}
 
 	// Commit for single chunk.
-	private void commitChunkSnapshot(ChunkWorldPos cwp, BlockId[] blocks, TimestampType currentTime, size_t layer) {
+	private void commitChunkSnapshot(ChunkWorldPos cwp, WriteBuffer writeBuffer, TimestampType currentTime, size_t layer) {
 		auto currentSnapshot = getChunkSnapshot(cwp, layer);
 		assert(!currentSnapshot.isNull);
+		assert(writeBuffer.isModified);
 
 		if (currentSnapshot.numUsers == 0) {
 			version(TRACE_SNAP_USERS) tracef("#%s:%s (commit:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
@@ -683,7 +644,12 @@ final class ChunkManager {
 				version(TRACE_SNAP_USERS) tracef("oldSnapshots[%s][%s] == %s", layer, cwp, oldSnapshots[layer][cwp]);
 			}
 		}
-		snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime, blocks);
+
+		if (writeBuffer.isUniform) {
+			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.uniform, 0, currentTime, writeBuffer.uniformBlockId, writeBuffer.metadata);
+		} else {
+			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime, writeBuffer.blocks, writeBuffer.metadata);
+		}
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) final switch(state) {
@@ -708,7 +674,6 @@ final class ChunkManager {
 				chunkStates[cwp] = added_loaded;
 				break;
 		}
-		removeInternalObserver(cwp); // remove user added in getWriteBuffer
 
 		mixin(traceStateStr);
 	}
@@ -716,7 +681,7 @@ final class ChunkManager {
 	// Called when snapshot data can be recycled.
 	private void recycleSnapshotMemory(ChunkLayerSnap snap) {
 		if (snap.type == StorageType.fullArray) {
-			freeList.deallocate(snap.getArray!BlockId());
+			freeBlockLayerArray(snap.getArray!BlockId());
 		} else if (snap.type == StorageType.compressedArray) {
 			import core.memory : GC;
 			GC.free(snap.getArray!ubyte().ptr);
@@ -835,7 +800,7 @@ version(unittest) {
 					break;
 				case removed_loaded_used:
 					gotoState(cm, ChunkState.added_loaded);
-					cm.getWriteBuffer(ZERO_CWP, FIRST_LAYER);
+					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 					cm.commitSnapshots(1);
 					TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
 					cm.save();
@@ -844,7 +809,7 @@ version(unittest) {
 					break;
 				case added_loaded_saving:
 					gotoState(cm, ChunkState.added_loaded);
-					cm.getWriteBuffer(ZERO_CWP, FIRST_LAYER);
+					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 					cm.commitSnapshots(1);
 					cm.save();
 					break;
@@ -954,7 +919,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
 	// added_loaded -> removed_loaded_saving
-	cm.getWriteBuffer(ZERO_CWP, 0);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
 	cm.commitSnapshots(TimestampType(1));
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
 	assertState(ChunkState.removed_loaded_saving);
@@ -964,7 +929,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
 	// added_loaded -> added_loaded_saving
-	cm.getWriteBuffer(ZERO_CWP, 0);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
 	cm.commitSnapshots(TimestampType(1));
 	cm.save();
 	assertState(ChunkState.added_loaded_saving);
@@ -974,7 +939,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded_saving);
 	// added_loaded_saving -> added_loaded with commit
-	cm.getWriteBuffer(ZERO_CWP, 0);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
 	cm.commitSnapshots(TimestampType(2));
 	assertState(ChunkState.added_loaded);
 	h.assertCalled(0b0000_0000);
@@ -1044,7 +1009,7 @@ unittest {
 	setupState(ChunkState.added_loaded);
 	TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
 	assert(timestamp == TimestampType(0));
-	cm.getWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(1);
 	assert(timestamp in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
 	cm.removeSnapshotUser(ZERO_CWP, timestamp, FIRST_LAYER);
@@ -1055,12 +1020,12 @@ unittest {
 	setupState(ChunkState.added_loaded);
 
 	TimestampType timestamp0 = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
-	cm.getWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(1); // commit adds timestamp 0 to oldSnapshots
 	assert(timestamp0 in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
 
 	TimestampType timestamp1 = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
-	cm.getWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(2); // commit adds timestamp 1 to oldSnapshots
 	assert(timestamp1 in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
 

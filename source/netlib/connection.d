@@ -66,6 +66,11 @@ P unpackPacket(P)(ubyte[] packetData)
 	return decodeCborSingleDup!P(packetData);
 }
 
+P unpackPacketNoDup(P)(ubyte[] packetData)
+{
+	return decodeCborSingle!P(packetData);
+}
+
 abstract class Connection
 {
 	// True if connection is still open.
@@ -234,6 +239,7 @@ abstract class Connection
 		{
 			error(e.to!string);
 			errorf("packet:%s length:%s data:%(%x%)", packetName(packetId), event.packet.dataLength, fullPacketData);
+			printCborStream(fullPacketData);
 		}
 	}
 

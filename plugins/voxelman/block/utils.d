@@ -164,6 +164,25 @@ struct BlockInfoSetter
 // 1 - 1 bit representing if metadata is presented
 // 2 - 12 bits -- solidity of each side
 
+ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
+{
+	if (writeBuffer.isUniform) {
+		ushort sideMeta = calcChunkSideMetadata(writeBuffer.uniformBlockId, blockInfos);
+		ushort solidityBits = calcSolidityBits(writeBuffer.uniformBlockId, blockInfos);
+		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
+	} else {
+		ushort sideMeta = calcChunkSideMetadata(writeBuffer.blocks, blockInfos);
+		ushort solidityBits = calcSolidityBits(writeBuffer.blocks, blockInfos);
+		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
+	}
+}
+
+ushort calcChunkSideMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
+{
+	if (writeBuffer.isUniform) return calcChunkSideMetadata(writeBuffer.uniformBlockId, blockInfos);
+	else return calcChunkSideMetadata(writeBuffer.blocks, blockInfos);
+}
+
 ushort calcChunkSideMetadata(Layer)(Layer blockLayer, immutable(BlockInfo)[] blockInfos)
 	if (isSomeLayer!Layer)
 {

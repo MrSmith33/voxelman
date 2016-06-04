@@ -31,6 +31,13 @@ enum debug_wasted_meshes = true;
 enum WAIT_FOR_EMPTY_QUEUES = false;
 //version = DBG;
 
+struct MeshGenResult
+{
+	MeshGenTaskType type;
+	ChunkWorldPos cwp;
+	ubyte[][2] meshes;
+}
+
 ///
 struct ChunkMeshMan
 {
@@ -85,9 +92,7 @@ struct ChunkMeshMan
 		if (numMeshed == 0) return;
 
 		meshingPasses ~= MeshingPass(numMeshed, currentMeshGroupId, onDone);
-		//infof("meshingPasses ~= %s", meshingPasses[$-1]);
 		++currentMeshGroupId;
-		//infof("currentMeshGroupId %s", currentMeshGroupId);
 	}
 
 	void update()
@@ -98,28 +103,48 @@ struct ChunkMeshMan
 		{
 			while(!w.resultQueue.empty)
 			{
-				auto result = w.resultQueue.peekItem!MeshGenResult();
+				auto taskHeader = w.resultQueue.peekItem!MeshGenTaskHeader();
 
 				// Process only current meshing pass. Leave next passes for later.
-				if (result.meshGroupId != meshingPasses[0].meshGroupId)
+				if (taskHeader.meshGroupId != meshingPasses[0].meshGroupId)
 				{
-					//infof("meshGroup %s != %s", result.meshGroupId, meshingPasses[0].meshGroupId);
+					//infof("meshGroup %s != %s", taskHeader.meshGroupId, meshingPasses[0].meshGroupId);
 					break;
 				}
 
 				++meshingPasses[0].chunksMeshed;
-
-				w.resultQueue.dropItem!MeshGenResult();
-
 				--numMeshChunkTasks;
 
-				newChunkMeshes ~= result;
+				w.resultQueue.dropItem!MeshGenTaskHeader();
 
-				// Remove root, added on chunk load and gen.
-				// Data can be collected by GC if no-one is referencing it.
-				import core.memory : GC;
-				if (result.meshes[0].ptr) GC.removeRoot(result.meshes[0].ptr); // TODO remove when moved to non-GC allocator
-				if (result.meshes[1].ptr) GC.removeRoot(result.meshes[1].ptr); //
+				if (taskHeader.type == MeshGenTaskType.genMesh)
+				{
+					ubyte[][2] meshes = w.resultQueue.popItem!(ubyte[][2])();
+					uint[7] timestamps = w.resultQueue.popItem!(uint[7])();
+
+					// Remove users
+					ChunkWorldPos[7] positions;
+					positions[0..6] = adjacentPositions(taskHeader.cwp);
+					positions[6] = taskHeader.cwp;
+					foreach(i, pos; positions)
+					{
+						chunkManager.removeSnapshotUser(pos, timestamps[i], FIRST_LAYER);
+					}
+
+					// save result for later. All new meshes are loaded at once to prevent holes in geometry.
+					newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
+
+					// Remove root, added on chunk load and gen.
+					// Data can be collected by GC if no-one is referencing it.
+					import core.memory : GC;
+					if (meshes[0].ptr) GC.removeRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
+					if (meshes[1].ptr) GC.removeRoot(meshes[1].ptr); //
+				}
+				else // taskHeader.type == MeshGenTaskType.unloadMesh
+				{
+					// even mesh deletions are saved in a queue.
+					newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp);
+				}
 			}
 		}
 
@@ -133,14 +158,21 @@ struct ChunkMeshMan
 
 		foreach(meshResult; newChunkMeshes)
 		{
-			loadMeshData(meshResult.cwp, meshResult.meshes, meshResult.layers);
+			if (meshResult.type == MeshGenTaskType.genMesh)
+			{
+				loadMeshData(meshResult.cwp, meshResult.meshes);
+			}
+			else // taskHeader.type == MeshGenTaskType.unloadMesh
+			{
+				unloadChunkMesh(meshResult.cwp);
+			}
 		}
 		newChunkMeshes.length = 0;
-		//newChunkMeshes.assumeSafeAppend();
+		newChunkMeshes.assumeSafeAppend();
 		if (meshingPasses[0].onDone)
 			meshingPasses[0].onDone(meshingPasses[0].chunksToMesh);
 		meshingPasses = remove!(SwapStrategy.stable)(meshingPasses, 0);
-		//meshingPasses.assumeSafeAppend();
+		meshingPasses.assumeSafeAppend();
 	}
 
 	void drawDebug(ref Batch debugBatch)
@@ -204,10 +236,21 @@ struct ChunkMeshMan
 			return false;
 		}
 
+		++numMeshChunkTasks;
+
 		if (!producesMesh(snapWithAdjacent))
 		{
 			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
-			return false;
+
+			// send remove mesh task
+			with(meshWorkers.nextWorker) {
+				auto header = MeshGenTaskHeader(MeshGenTaskType.unloadMesh, currentMeshGroupId, cwp);
+				taskQueue.pushItem(header);
+				notify();
+			}
+
+			//unloadChunkMesh(cwp);
+			return true;
 		}
 
 		version(DBG) tracef("meshChunk %s", cwp);
@@ -217,34 +260,27 @@ struct ChunkMeshMan
 			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
 		}
 
-		++numMeshChunkTasks;
-
 		ChunkLayerItem[7] layers;
 		foreach(i; 0..7)
 		{
 			layers[i] = ChunkLayerItem(snapWithAdjacent.snapshots[i].get(), FIRST_LAYER);
 		}
 
-		auto task = MeshGenTask(currentMeshGroupId, cwp, layers);
-		//infof("push %s", task);
+		// send mesh task
+		auto header = MeshGenTaskHeader(MeshGenTaskType.genMesh, currentMeshGroupId, cwp);
 		with(meshWorkers.nextWorker) {
-			taskQueue.pushItem(task);
+			taskQueue.startMessage();
+			taskQueue.pushMessagePart(header);
+			taskQueue.pushMessagePart(layers);
+			taskQueue.endMessage();
 			notify();
 		}
 
 		return true;
 	}
 
-	void loadMeshData(ChunkWorldPos cwp, ubyte[][2] meshes, ChunkLayerItem[7] layers)
+	void loadMeshData(ChunkWorldPos cwp, ubyte[][2] meshes)
 	{
-		ChunkWorldPos[7] positions;
-		positions[0..6] = adjacentPositions(cwp);
-		positions[6] = cwp;
-		foreach(i, pos; positions)
-		{
-			chunkManager.removeSnapshotUser(pos, layers[i].timestamp, FIRST_LAYER);
-		}
-
 		if (!chunkManager.isChunkLoaded(cwp))
 		{
 			import core.memory : GC;
@@ -292,7 +328,6 @@ struct ChunkMeshMan
 		else
 		{
 			version(DBG) tracef("loadMeshData %s no mesh", cwp);
-			unloadChunkMesh(cwp);
 
 			static if (debug_wasted_meshes)
 			{

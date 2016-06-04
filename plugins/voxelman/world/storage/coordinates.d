@@ -10,6 +10,19 @@ import voxelman.world.storage.utils;
 import voxelman.utils.math;
 public import voxelman.core.config : DimentionId;
 
+ivec3 blockToChunkPosition(ivec3 blockPos)
+{
+	return ivec3(
+		floor(cast(float)blockPos.x / CHUNK_SIZE),
+		floor(cast(float)blockPos.y / CHUNK_SIZE),
+		floor(cast(float)blockPos.z / CHUNK_SIZE));
+}
+
+ivec3 chunkToBlockPosition(ivec3 cp)
+{
+	return ivec3(cp.x*CHUNK_SIZE, cp.y*CHUNK_SIZE, cp.z * CHUNK_SIZE);
+}
+
 struct BlockChunkIndex
 {
 	this(BlockChunkPos blockChunkPos)
@@ -116,6 +129,7 @@ struct ChunkRegionIndex
 }
 
 alias Vector!(short, 4) svec4;
+alias Vector!(short, 3) svec3;
 
 // Position of chunk in world space. -int.max..int.max
 struct ChunkWorldPos
@@ -165,6 +179,11 @@ struct ChunkWorldPos
 	ivec3 ivector3() @property
 	{
 		return ivec3(vector);
+	}
+
+	ushort dimention() @property
+	{
+		return vector.w;
 	}
 
 	ulong asUlong() @property

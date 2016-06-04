@@ -113,7 +113,6 @@ private:
 
 public:
 	ChunkManager chunkManager;
-	ChunkChangeManager chunkChangeManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
 
@@ -137,12 +136,12 @@ public:
 	{
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
-		chunkChangeManager = new ChunkChangeManager();
-		worldAccess = new WorldAccess(chunkManager, chunkChangeManager);
+		worldAccess = new WorldAccess(chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
 		ubyte numLayers = 1;
 		chunkManager.setup(numLayers);
+		chunkManager.isChunkSavingEnabled = true;
 
 		// Component connections
 		chunkManager.startChunkSave = &chunkProvider.startChunkSave;
@@ -152,8 +151,6 @@ public:
 
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
 		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
-
-		chunkChangeManager.setup(numLayers);
 
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
@@ -173,9 +170,8 @@ public:
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
 		evDispatcher.subscribeToEvent(&handleSaveEvent);
 
-		import voxelman.core.packets : PlaceBlockPacket;
 		connection = pluginman.getPlugin!NetServerPlugin;
-		connection.registerPacketHandler!PlaceBlockPacket(&handlePlaceBlockPacket);
+		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
 
 		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
 		worldDb = null;
@@ -250,8 +246,7 @@ public:
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
-		sendChanges(chunkChangeManager.chunkChanges[FIRST_LAYER]);
-		chunkChangeManager.chunkChanges[FIRST_LAYER] = null;
+		//sendChanges
 	}
 
 	private void handleStopEvent(ref GameStopEvent event)
@@ -297,24 +292,14 @@ public:
 		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, bd));
 	}
 
-	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
+	private void handleFillBlockVolumePacket(ubyte[] packetData, ClientId clientId)
 	{
-		import voxelman.core.packets : MultiblockChangePacket;
-		foreach(pair; changes.byKeyValue)
-		{
-			connection.sendTo(
-				chunkObserverManager.getChunkObservers(pair.key),
-				MultiblockChangePacket(pair.key.ivector, pair.value));
-		}
-	}
-
-	private void handlePlaceBlockPacket(ubyte[] packetData, ClientId clientId)
-	{
-		import voxelman.core.packets : PlaceBlockPacket;
+		import voxelman.core.packets : FillBlockVolumePacket;
 		if (clientDb.isSpawned(clientId))
 		{
-			auto packet = unpackPacket!PlaceBlockPacket(packetData);
-			worldAccess.setBlock(BlockWorldPos(packet.blockPos), packet.blockId);
+			auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
+			worldAccess.fillVolume(packet.volume, packet.blockId, blockPlugin.getBlocks());
+			connection.sendToAll(packet);
 		}
 	}
 }
