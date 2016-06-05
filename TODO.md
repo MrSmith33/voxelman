@@ -1,43 +1,43 @@
-[ ] Isolate client position, view volume and dimention.
-	[x] draw avatar based on dimention.
-	[x] send dimention with avatar.
-[ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view volume.
+- [ ] Isolate client position, view volume and dimention.
+	- [x] draw avatar based on dimention.
+	- [x] send dimention with avatar.
+- [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view volume.
 
-[ ] Implement generic solution for saving/loading data for use in plugins.
+- [ ] Implement generic solution for saving/loading data for use in plugins.
 	(double buffering?)
-	[ ] Fix world save on game stop.
+	- [ ] Fix world save on game stop.
 
-[ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
-[ ] Add configurable meshing range.
-[ ] Remove meshes outside of mesh range.
-[ ] Implement graphics pipeline.
-[ ] Generic Volume type
-[ ] remove _saving states on chunk manager
-[ ] for each layer register handlers for allocation, save, load
-[ ] fix problem with dimention change when old position confuses server and volume is not updated.
+- [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
+- [ ] Add configurable meshing range.
+- [ ] Remove meshes outside of mesh range.
+- [ ] Implement graphics pipeline.
+- [ ] Generic Volume type
+- [ ] remove _saving states on chunk manager
+- [ ] for each layer register handlers for allocation, save, load
+- [ ] fix problem with dimention change when old position confuses server and volume is not updated.
 
-[x] Complex write buffer with delayed allocation and uniform type support.
-[x] Big-scale editing. Send edit commands instead of per-block changes.
-[x] Fix mesh deletion when chunk does not produce mesh. Use special "delete mesh" tasks to queue mesh deletions. This allows to upload new chunk meshes together with deleting meshes of chunks that do not produce meshes anymore.
-[x] fix chunks not loading sometimes [Chunks were not added early enough, so first snapshots were loaded for not added chunks => holes]
-[x] remove old observer on client when (re)connecting
-[x] fix metadata usage in chunk mesh manager. [Bug in hasSingleSolidity]
-[x] fix crash on recieving data for already loaded chunks. [isLoaded was not checked. Now chunks are loaded through modification]
-[x] fix snapshot users not correctly added on commit. [snapshot was added to oldSnapshots with wrong timestamp (currentTime instead of snap.timestamp)]
-[x] change clientworld
-[x] remove chunkman
-[x] remove chunkstorage
-[x] chunkmanager usage of chunkProvider
-[x] rework chunkmeshman
-[x] mesh gen new queue
-- remove observer on stop in client
-[x] set received data in chunk manager on client
-[x] remove chunk changes from chunk manager
-[x] remove mesh when mesh is not generated on remesh
-[x] remove limit on message size in shared queue
-[x] remove chunk
-[x] add remesh button
-[x] fix memory leak. Meshes was iterated by value and was loaded each frame again. Fix: change foreach(mesh) to foreach(ref mesh)
-[x] fix transparent drawing
-[x] implement total number of snapshot users
-[x] fix excess addCurrentSnapshotUser call on save in onSnapshotLoaded (chunks were not unloaded earlier?)
+- [x] Complex write buffer with delayed allocation and uniform type support.
+- [x] Big-scale editing. Send edit commands instead of per-block changes.
+- [x] Fix mesh deletion when chunk does not produce mesh. Use special "delete mesh" tasks to queue mesh deletions. This allows to upload new chunk meshes together with deleting meshes of chunks that do not produce meshes anymore.
+- [x] fix chunks not loading sometimes [Chunks were not added early enough, so first snapshots were loaded for not added chunks => holes]
+- [x] remove old observer on client when (re)connecting
+- [x] fix metadata usage in chunk mesh manager. [Bug in hasSingleSolidity]
+- [x] fix crash on recieving data for already loaded chunks. [isLoaded was not checked. Now chunks are loaded through modification]
+- [x] fix snapshot users not correctly added on commit. [snapshot was added to oldSnapshots with wrong timestamp (currentTime instead of snap.timestamp)]
+- [x] change clientworld
+- [x] remove chunkman
+- [x] remove chunkstorage
+- [x] chunkmanager usage of chunkProvider
+- [x] rework chunkmeshman
+- [x] mesh gen new queue
+- [x] remove observer on stop in client
+- [x] set received data in chunk manager on client
+- [x] remove chunk changes from chunk manager
+- [x] remove mesh when mesh is not generated on remesh
+- [x] remove limit on message size in shared queue
+- [x] remove chunk
+- [x] add remesh button
+- [x] fix memory leak. Meshes was iterated by value and was loaded each frame again. Fix: change foreach(mesh) to foreach(ref mesh)
+- [x] fix transparent drawing
+- [x] implement total number of snapshot users
+- [x] fix excess addCurrentSnapshotUser call on save in onSnapshotLoaded (chunks were not unloaded earlier?)
