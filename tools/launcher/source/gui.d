@@ -71,6 +71,8 @@ struct LauncherGui
 
 	void init()
 	{
+		import std.datetime : SysTime;
+		import std.concurrency : Tid;
 		class ConciseLogger : FileLogger {
 			this(File file, const LogLevel lv = LogLevel.info) @safe {
 				super(file, lv);
@@ -92,7 +94,7 @@ struct LauncherGui
 		refresh();
 
 		window = new GlfwWindow();
-		window.init(uvec2(800, 600), "Voxelman launcher");
+		window.init(uvec2(810, 600), "Voxelman launcher");
 		igState.init(window.handle);
 		window.keyPressed.connect(&igState.onKeyPressed);
 		window.keyReleased.connect(&igState.onKeyReleased);
@@ -527,8 +529,8 @@ void drawJobLog(J)(J* job, float height)
 {
 	igPushIdPtr(job);
 	assert(job.title.ptr);
-	auto state = job.isRunning ? "[RUNNING] " : "[STOPPED] ";
-	auto textPtrs = makeFormattedTextPtrs("%s%s\0", state, job.title);
+	auto state = jobStateString(job);
+	auto textPtrs = makeFormattedTextPtrs("%s %s\0", state, job.title);
 
 	igBeginChildEx(igGetIdPtr(job), ImVec2(0, height), true, ImGuiWindowFlags_HorizontalScrollbar);
 		igTextUnformatted(textPtrs.start, textPtrs.end-1);
@@ -549,16 +551,17 @@ void drawJobLog(J)(J* job, float height)
 void drawActionButtons(J)(J* job)
 {
 	if (igButton("Clear")) job.messageWindow.lineBuffer.clear();
-	if (!job.isRunning) {
+	if (!job.isRunning && !job.needsRestart) {
 		igSameLine();
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
 
-		int jobType = 3;
+		int jobType = 4;
 		if (igButton(" Run ")) jobType = JobType.run; igSameLine();
+		if (igButton("Test")) jobType = JobType.test; igSameLine();
 		if (igButton("Build")) jobType = JobType.compile; igSameLine();
 		if (igButton(" B&R ")) jobType = JobType.compileAndRun;
-		if (jobType != 3)
+		if (jobType != 4)
 		{
 			job.needsRestart = true;
 			job.params.jobType = cast(JobType)jobType;

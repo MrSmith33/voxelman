@@ -56,15 +56,15 @@ struct TimeMeasurer
 
 	void printTime(bool isNested = false)
 	{
-		int seconds; short msecs; short usecs;
-		takenTime.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-		if (msecs > 10 || seconds > 0 || isNested)
-		{
-			if (wasRun)
-				tracef("%s%s %s.%s,%ss", isNested?"  ":"", taskName, seconds, msecs, usecs);
-			if (nested) nested.printTime(true);
-			if (next) next.printTime(isNested);
-		}
+		//int seconds; short msecs; short usecs;
+		//takenTime.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
+		//if (msecs > 10 || seconds > 0 || isNested)
+		//{
+		//	if (wasRun)
+		//		tracef("%s%s %s.%s,%ss", isNested?"  ":"", taskName, seconds, msecs, usecs);
+		//	if (nested) nested.printTime(true);
+		//	if (next) next.printTime(isNested);
+		//}
 	}
 }
 

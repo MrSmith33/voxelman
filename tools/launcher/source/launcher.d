@@ -13,7 +13,7 @@ import std.algorithm;
 import std.stdio;
 import std.array;
 import std.range;
-import std.typecons : Flag, Yes, No;
+public import std.typecons : Flag, Yes, No;
 import std.file;
 import std.path;
 import std.conv : to;
@@ -52,12 +52,13 @@ enum JobType : int
 {
 	run,
 	compile,
-	compileAndRun
+	compileAndRun,
+	test
 }
 
 enum JobState
 {
-	compile,
+	build,
 	run
 }
 
@@ -91,12 +92,31 @@ struct Job
 	MessageWindow messageWindow;
 	ProcessPipes pipes;
 
-	JobState jobState = JobState.compile;
+	JobState jobState = JobState.build;
 	string title;
 	bool isRunning;
 	bool needsClose;
 	bool needsRestart;
 	int status;
+}
+
+string jobStateString(Job* job)
+{
+	if (!job.isRunning) return "[STOPPED]";
+	final switch(job.jobState) with(JobState)
+	{
+		case build: break;
+		case run: return "[RUNNING]";
+	}
+
+	final switch(job.params.jobType) with(JobType)
+	{
+		case run: return "[INVALID]";
+		case compile: return "[BUILDING]";
+		case compileAndRun: return "[BUILDING]";
+		case test: return "[TESTING]";
+	}
+	assert(false);
 }
 
 struct ServerInfo
@@ -155,6 +175,10 @@ struct Launcher
 				job.params.build = Yes.build;
 				job.params.start = Yes.start;
 				break;
+			case test:
+				job.params.build = Yes.build;
+				job.params.start = No.start;
+				break;
 		}
 	}
 
@@ -162,8 +186,9 @@ struct Launcher
 	{
 		final switch(job.params.jobType) with(JobType) {
 			case run: job.jobState = JobState.run; break;
-			case compile: job.jobState = JobState.compile; break;
-			case compileAndRun: job.jobState = JobState.compile; break;
+			case compile: job.jobState = JobState.build; break;
+			case compileAndRun: job.jobState = JobState.build; break;
+			case test: job.jobState = JobState.build; break;
 		}
 	}
 
@@ -177,10 +202,21 @@ struct Launcher
 
 		string command;
 		string workDir;
-		if (job.jobState == JobState.compile) {
-			command = makeCompileCommand(job.params);
-			writeln(command);
-			workDir = "";
+
+		if (job.jobState == JobState.build)
+		{
+			final switch(job.params.jobType) with(JobType) {
+				case run: return;
+				case compile: goto case;
+				case compileAndRun:
+					command = makeCompileCommand(job.params);
+					workDir = "";
+					break;
+				case test:
+					command = makeTestCommand(job.params);
+					workDir = "";
+					break;
+			}
 		}
 		else if (job.jobState == JobState.run) {
 			command = makeRunCommand(job.params);
@@ -221,7 +257,7 @@ struct Launcher
 					job.status = res.status;
 
 					bool success = job.status == 0;
-					bool doneCompilation = job.jobState == JobState.compile;
+					bool doneCompilation = job.jobState == JobState.build;
 					bool needsStart = job.params.start;
 					if (doneCompilation)
 						job.messageWindow.putln(job.status == 0 ? "Compilation successful" : "Compilation failed");
@@ -365,6 +401,15 @@ string makeRunCommand(JobParams params)
 
 	command ~= '\0';
 	return command[0..$-1];
+}
+
+string makeTestCommand(JobParams params)
+{
+	immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+	immutable deps = params.nodeps ? ` --nodeps` : ``;
+	immutable doForce = params.force ? ` --force` : ``;
+	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
+	return format("dub test -q %s %s %s %s\0", arch, compiler, deps, doForce)[0..$-1];
 }
 
 void sendCommand(Job* job, string command)
