@@ -69,6 +69,13 @@ struct SavedChunkData
 	}
 }
 
+alias IoHandler = void delegate(WorldDb);
+
+enum SaveItemType : ubyte {
+	chunk,
+	saveHandler
+}
+
 //version = DBG_OUT;
 struct ChunkProvider
 {
@@ -200,9 +207,20 @@ struct ChunkProvider
 		notify();
 	}
 
+	// sends a delegate to IO thread
+	void pushSaveHandler(IoHandler ioHandler)
+	{
+		saveTaskQueue.startMessage();
+		saveTaskQueue.pushMessagePart(SaveItemType.saveHandler);
+		saveTaskQueue.pushMessagePart(ioHandler);
+		saveTaskQueue.endMessage();
+		notify();
+	}
+
 	size_t startChunkSave()
 	{
 		saveTaskQueue.startMessage();
+		saveTaskQueue.pushMessagePart(SaveItemType.chunk);
 		size_t headerPos = saveTaskQueue.skipMessageItem!ChunkHeaderItem();
 		return headerPos;
 	}

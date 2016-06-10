@@ -269,6 +269,24 @@ void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
 		uncompressIntoBuffer(layer, outBuffer);
 }
 
+size_t getLayerDataBytes(Layer)(const ref Layer layer)
+	if (isSomeLayer!Layer)
+{
+	if (layer.type == StorageType.fullArray)
+		return layer.getArray!BlockId.length * BlockId.sizeof;
+	else if (layer.type == StorageType.compressedArray)
+		return layer.getArray!ubyte.length;
+	return 0;
+}
+
+size_t getLayerDataBytes(WriteBuffer* writeBuffer)
+{
+	if (!writeBuffer.isUniform) {
+		return writeBuffer.blocks.length * BlockId.sizeof;
+	}
+	return 0;
+}
+
 void applyChanges(WriteBuffer* writeBuffer, BlockChange[] changes)
 {
 	assert(!writeBuffer.isUniform);

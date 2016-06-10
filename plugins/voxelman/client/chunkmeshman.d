@@ -54,6 +54,7 @@ struct ChunkMeshMan
 	size_t numMeshChunkTasks;
 	size_t totalMeshedChunks;
 	size_t totalMeshes;
+	long totalMeshDataBytes;
 
 	ChunkManager chunkManager;
 	immutable(BlockInfo)[] blocks;
@@ -299,6 +300,7 @@ struct ChunkMeshMan
 				unloadChunkSubmesh(cwp, i);
 				continue;
 			}
+			totalMeshDataBytes += meshData.length;
 
 			auto mesh = cwp in chunkMeshes[i];
 			if (mesh)
@@ -350,6 +352,7 @@ struct ChunkMeshMan
 		if (auto mesh = cwp in chunkMeshes[index])
 		{
 			import core.memory : GC;
+			totalMeshDataBytes -= mesh.data.length;
 			mesh.deleteBuffers();
 			GC.free(mesh.data.ptr);
 			chunkMeshes[index].remove(cwp);

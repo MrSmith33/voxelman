@@ -172,7 +172,8 @@ public:
 				totalLoadedChunks - lastFrameLoadedChunks);
 			igTextf("Chunks total loaded: %s",
 				totalLoadedChunks);
-			igTextf("Vertexes %s", vertsRendered);
+			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(clientWorld.chunkManager.totalLayerDataBytes));
+			igTextf("Vertices %s", vertsRendered);
 			igTextf("Triangles %s", trisRendered);
 			vec3 pos = graphics.camera.position;
 			igTextf("Pos: X %.2f, Y %.2f, Z %.2f", pos.x, pos.y, pos.z);
@@ -190,7 +191,7 @@ public:
 		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
 
 		with(clientWorld.chunkMeshMan) {
-			igTextf("Buffers: %s", ChunkMesh.numBuffersAllocated);
+			igTextf("Buffers: %s Mem: %s", ChunkMesh.numBuffersAllocated, DigitSeparator!(long, 3, ' ')(totalMeshDataBytes));
 			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
 			igTextf("New meshes: %s", newChunkMeshes.length);
 			size_t sum;

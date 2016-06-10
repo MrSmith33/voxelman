@@ -317,10 +317,10 @@ public:
 		connection.stop();
 
 		isDisconnecting = false;
-		Duration disconTime = MonoTime.currTime - start;
-		infof("disconnected in %s seconds",
-			disconTime.total!"seconds" +
-			0.001 * disconTime.total!"msecs" +
-			0.000_001 * disconTime.total!"usecs");
+		//Duration disconTime = MonoTime.currTime - start;
+		//infof("disconnected in %s seconds",
+		//	disconTime.total!"seconds" +
+		//	0.001 * disconTime.total!"msecs" +
+		//	0.000_001 * disconTime.total!"usecs");
 	}
 }

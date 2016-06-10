@@ -18,7 +18,6 @@ import voxelman.core.chunkgen;
 import voxelman.core.config;
 import voxelman.utils.compression;
 import voxelman.utils.worker;
-import voxelman.world.plugin : IoHandler;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
@@ -262,8 +261,17 @@ void storageWorker(
 		worldDb.beginTxn();
 		while (!saveTaskQueue.empty)
 		{
-			writeChunk();
-			++numReceived;
+			auto type = saveTaskQueue.popItem!SaveItemType();
+			final switch(type) {
+				case SaveItemType.chunk:
+					writeChunk();
+					++numReceived;
+					break;
+				case SaveItemType.saveHandler:
+					IoHandler ioHandler = saveTaskQueue.popItem!IoHandler();
+					ioHandler(worldDb);
+					break;
+			}
 		}
 		worldDb.commitTxn();
 

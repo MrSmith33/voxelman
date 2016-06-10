@@ -39,7 +39,7 @@ enum STONE = 4;
 enum SAND = 5;
 enum WATER = 6;
 
-version = DBG_OUT;
+//version = DBG_OUT;
 //version = DBG_COMPR;
 void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
 {

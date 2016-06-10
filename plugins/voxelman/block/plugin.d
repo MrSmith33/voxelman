@@ -97,7 +97,7 @@ final class BlockPluginServer : IPlugin
 	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry)
 	{
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
-		ioman.registerWorldLoadHandler(&handleWorldLoad);
+		ioman.registerWorldLoadSaveHandlers(&readBlockMap, &writeBlockMap);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -106,24 +106,25 @@ final class BlockPluginServer : IPlugin
 		connection.regIdMap(blockMappingKey, bm.blockMapping.nameRange.array);
 	}
 
-	void handleWorldLoad(WorldDb wdb) // Main thread
+	void readBlockMap(ref PluginDataLoader loader)
 	{
-		wdb.beginTxn();
-		ubyte[] data = wdb.getPerWorldValue(blockMappingKey);
-		scope(exit) wdb.commitTxn();
+		ubyte[] data = loader.readEntry(blockMappingKey);
 
-		if (data !is null)
+		if (data.length)
 		{
 			string[] blocks = decodeCborSingleDup!(string[])(data);
 			bm.blockMapping.setMapping(blocks);
 		}
+	}
 
-		auto sink = wdb.tempBuffer;
+	void writeBlockMap(ref PluginDataSaver saver)
+	{
+		auto sink = saver.tempBuffer;
 		size_t size = 0;
 		auto blockInfos = bm.blockMapping.infoArray;
 		size = encodeCborArrayHeader(sink[], blockInfos.length);
 		foreach(info; blockInfos)
 			size += encodeCbor(sink[size..$], info.name);
-		wdb.putPerWorldValue(blockMappingKey, sink[0..size]);
+		saver.writeEntry(blockMappingKey, size);
 	}
 }

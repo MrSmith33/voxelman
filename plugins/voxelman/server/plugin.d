@@ -41,7 +41,7 @@ private:
 public:
 	bool isRunning = false;
 	bool isAutosaveEnabled = true;
-	Duration autosavePeriod = dur!"seconds"(5);
+	Duration autosavePeriod = dur!"seconds"(10);
 	MonoTime lastSaveTime;
 
 	mixin IdAndSemverFrom!(voxelman.server.plugininfo);

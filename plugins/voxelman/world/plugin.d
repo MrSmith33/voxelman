@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.plugin;
 
 import std.experimental.logger;
+import std.experimental.allocator.mallocator;
 import std.concurrency : spawn, thisTid;
 import std.array : empty;
 import core.atomic : atomicStore, atomicLoad;
@@ -41,7 +42,8 @@ import voxelman.world.storage.worldaccess;
 public import voxelman.world.worlddb : WorldDb;
 
 
-alias IoHandler = void delegate(WorldDb);
+alias SaveHandler = void delegate(ref PluginDataSaver);
+alias LoadHandler = void delegate(ref PluginDataLoader);
 
 final class IoManager : IResourceManager
 {
@@ -50,8 +52,8 @@ private:
 	ConfigOption worldNameOpt;
 	void delegate(string) onPostInit;
 
-	IoHandler[] worldLoadHandlers;
-	IoHandler[] worldSaveHandlers;
+	LoadHandler[] worldLoadHandlers;
+	SaveHandler[] worldSaveHandlers;
 
 public:
 	this(void delegate(string) onPostInit)
@@ -68,18 +70,79 @@ public:
 	}
 	override void postInit() {
 		import std.path : buildPath;
+		import std.file : mkdirRecurse;
 		auto saveFilename = buildPath(saveDirOpt.get!string, worldNameOpt.get!string~".db");
+		mkdirRecurse(saveDirOpt.get!string);
 		onPostInit(saveFilename);
 	}
 
-	void registerWorldLoadHandler(IoHandler worldLoadHandler)
+	void registerWorldLoadSaveHandlers(LoadHandler loadHandler, SaveHandler saveHandler)
 	{
-		worldLoadHandlers ~= worldLoadHandler;
+		worldLoadHandlers ~= loadHandler;
+		worldSaveHandlers ~= saveHandler;
+	}
+}
+
+struct PluginDataSaver
+{
+	enum DATA_BUF_SIZE = 1024*1024*2;
+	enum KEY_BUF_SIZE = 1024*20;
+	private ubyte[] dataBuf;
+	private ubyte[] keyBuf;
+	private size_t dataLen;
+	private size_t keyLen;
+
+	private void alloc() {
+		dataBuf = cast(ubyte[])Mallocator.instance.allocate(DATA_BUF_SIZE);
+		keyBuf = cast(ubyte[])Mallocator.instance.allocate(KEY_BUF_SIZE);
 	}
 
-	void registerWorldSaveHandler(IoHandler worldSaveHandler)
+	private void free() {
+		Mallocator.instance.deallocate(dataBuf);
+		Mallocator.instance.deallocate(keyBuf);
+	}
+
+	ubyte[] tempBuffer() @property {
+		return dataBuf[dataLen..$];
+	}
+
+	void writeEntry(string key, size_t bytesWritten) {
+		keyLen += encodeCbor(keyBuf[keyLen..$], key);
+		keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
+		dataLen += bytesWritten;
+	}
+
+	private void reset() {
+		dataLen = 0;
+		keyLen = 0;
+	}
+
+	private int opApply(int delegate(string key, ubyte[] data) dg)
 	{
-		worldSaveHandlers ~= worldSaveHandler;
+		ubyte[] keyEntriesData = keyBuf[0..keyLen];
+		ubyte[] data = dataBuf;
+		while(!keyEntriesData.empty)
+		{
+			auto key = decodeCborSingle!string(keyEntriesData);
+			auto dataSize = decodeCborSingle!size_t(keyEntriesData);
+			auto result = dg(key, data[0..dataSize]);
+			data = data[dataSize..$];
+
+			if (result) return result;
+		}
+		return 0;
+	}
+}
+
+struct PluginDataLoader
+{
+	private WorldDb worldDb;
+
+	ubyte[] readEntry(string key) {
+		ubyte[] data = worldDb.getPerWorldValue(key);
+		//infof("Reading %s %s", key, data.length);
+		//printCborStream(data[]);
+		return data;
 	}
 }
 
@@ -110,6 +173,7 @@ private:
 
 	shared bool isSaving;
 	WorldDb worldDb;
+	PluginDataSaver pluginDataSaver;
 
 public:
 	ChunkManager chunkManager;
@@ -122,7 +186,7 @@ public:
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
-		ioManager = new IoManager(&handleIoManagerPostInit);
+		ioManager = new IoManager(&loadWorld);
 		registerHandler(ioManager);
 	}
 
@@ -130,10 +194,12 @@ public:
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		numGenWorkersOpt = config.registerOption!uint("num_workers", 4);
+		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
 	}
 
 	override void preInit()
 	{
+		pluginDataSaver.alloc();
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
@@ -177,12 +243,6 @@ public:
 		worldDb = null;
 	}
 
-	void sendTask(IoHandler handler)
-	{
-		// TODO
-		//ioThreadId.send(cast(immutable)handler);
-	}
-
 	TimestampType currentTimestamp() @property
 	{
 		return worldInfo.simulationTick;
@@ -193,47 +253,57 @@ public:
 		if (!atomicLoad(isSaving)) {
 			atomicStore(isSaving, true);
 			chunkManager.save();
-			foreach(h; ioManager.worldSaveHandlers)
-				sendTask(h);
-			evDispatcher.postEvent(WorldSaveEvent());
-			sendTask(&handleSaveEndTask);
+			foreach(saveHandler; ioManager.worldSaveHandlers) {
+				saveHandler(pluginDataSaver);
+			}
+			chunkProvider.pushSaveHandler(&worldSaver);
 		}
 	}
 
-	private void handleSaveEndTask(WorldDb)
+	// executed on io thread. Stores values written into pluginDataSaver.
+	private void worldSaver(WorldDb wdb)
 	{
+		foreach(string key, ubyte[] data; pluginDataSaver) {
+			//infof("Writing %s", key);
+			//printCborStream(data[]);
+
+			wdb.putPerWorldValue(key, data);
+		}
+		pluginDataSaver.reset();
 		atomicStore(isSaving, false);
 	}
 
-	// Load world
-	private void handleIoManagerPostInit(string _worldFilename)
+	private void loadWorld(string _worldFilename)
 	{
 		worldFilename = _worldFilename;
 		worldDb = new WorldDb;
 		worldDb.open(_worldFilename);
-		readWorldInfo(worldDb);
-		foreach(h; ioManager.worldLoadHandlers)
-			h(worldDb);
+
+		worldDb.beginTxn();
+		scope(exit) worldDb.abortTxn();
+
+		auto dataLoader = PluginDataLoader(worldDb);
+		foreach(loadHandler; ioManager.worldLoadHandlers) {
+			loadHandler(dataLoader);
+		}
 	}
 
-	private void readWorldInfo(WorldDb worldDb)
+	private void readWorldInfo(ref PluginDataLoader loader)
 	{
 		import std.path : absolutePath, buildNormalizedPath;
-		worldDb.beginTxn();
-		ubyte[] data = worldDb.getPerWorldValue(worldInfoKey);
-		scope(exit) worldDb.commitTxn();
+		ubyte[] data = loader.readEntry(worldInfoKey);
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
+		} else {
+			infof("Creating world %s", worldFilename.absolutePath.buildNormalizedPath);
 		}
-		else
-			writeWorldInfo(worldDb);
 	}
 
-	private void writeWorldInfo(WorldDb worldDb)
+	private void writeWorldInfo(ref PluginDataSaver saver)
 	{
-		size_t encodedSize = encodeCborArray(worldDb.tempBuffer, worldInfo);
-		worldDb.putPerWorldValue(worldInfoKey, worldDb.tempBuffer[0..encodedSize]);
+		size_t encodedSize = encodeCbor(saver.tempBuffer, worldInfo);
+		saver.writeEntry(worldInfoKey, encodedSize);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)
@@ -251,7 +321,13 @@ public:
 
 	private void handleStopEvent(ref GameStopEvent event)
 	{
+		while(atomicLoad(isSaving))
+		{
+			import core.thread : Thread;
+			Thread.yield();
+		}
 		chunkProvider.stop();
+		pluginDataSaver.free();
 	}
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)

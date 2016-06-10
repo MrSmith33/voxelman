@@ -100,6 +100,7 @@ final class ChunkManager {
 
 	bool isLoadCancelingEnabled = false; /// Set to true on client to cancel load on unload
 	bool isChunkSavingEnabled = true;
+	long totalLayerDataBytes;
 
 	private ChunkLayerSnap[ChunkWorldPos][] snapshots;
 	private ChunkLayerSnap[TimestampType][ChunkWorldPos][] oldSnapshots;
@@ -296,6 +297,7 @@ final class ChunkManager {
 		foreach(_; 0..header.numLayers)
 		{
 			ChunkLayerItem layer = chunk.getLayer();
+			totalLayerDataBytes += getLayerDataBytes(layer);
 			snapshots[layer.layerId][header.cwp] = ChunkLayerSnap(layer);
 			version(DBG_COMPR)if (layer.type == StorageType.compressedArray)
 				infof("CM Loaded %s %s %s\n(%(%02x%))", header.cwp, layer.dataPtr, layer.dataLength, layer.getArray!ubyte);
@@ -649,6 +651,7 @@ final class ChunkManager {
 			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.uniform, 0, currentTime, writeBuffer.uniformBlockId, writeBuffer.metadata);
 		} else {
 			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime, writeBuffer.blocks, writeBuffer.metadata);
+			totalLayerDataBytes += getLayerDataBytes(&writeBuffer);
 		}
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
@@ -680,6 +683,7 @@ final class ChunkManager {
 
 	// Called when snapshot data can be recycled.
 	private void recycleSnapshotMemory(ChunkLayerSnap snap) {
+		totalLayerDataBytes -= getLayerDataBytes(snap);
 		if (snap.type == StorageType.fullArray) {
 			freeBlockLayerArray(snap.getArray!BlockId());
 		} else if (snap.type == StorageType.compressedArray) {
