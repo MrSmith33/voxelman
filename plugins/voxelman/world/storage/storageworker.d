@@ -72,7 +72,6 @@ struct TimeMeasurer
 void storageWorker(
 			immutable WorldDb _worldDb,
 			shared bool* workerRunning,
-			shared bool* workerStopped,
 			shared Mutex workAvaliableMutex,
 			shared Condition workAvaliable,
 			shared MessageQueue* loadResQueue,
@@ -293,5 +292,4 @@ void storageWorker(
 		throw t;
 	}
 	version(DBG_OUT)infof("Storage worker stopped (%s, %s)", numReceived, *atomicLoad(workerRunning));
-	atomicStore!(MemoryOrder.rel)(*workerStopped, true);
 }

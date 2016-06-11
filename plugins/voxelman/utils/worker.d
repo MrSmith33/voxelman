@@ -33,7 +33,6 @@ shared struct Worker
 		workAvaliable = cast(shared) new Semaphore();
 	}
 
-	// for owner
 	void stop() shared {
 		atomicStore(running, false);
 		(cast(Semaphore)workAvaliable).notify();
@@ -43,27 +42,30 @@ shared struct Worker
 		(cast(Semaphore)workAvaliable).notify();
 	}
 
-	// for worker
 	void signalStopped() shared {
 		atomicStore(running, false);
 	}
 
 	bool isRunning() shared @property {
-		return atomicLoad!(MemoryOrder.acq)(running) && (cast(Thread)thread).isRunning;
+		return (cast(Thread)thread).isRunning;
 	}
 
 	bool isStopped() shared @property const {
 		return !(cast(Thread)thread).isRunning;
 	}
 
-	bool queuesEmpty() shared @property const {
-		return taskQueue.empty && resultQueue.empty;
-	}
-
-	// for owner
 	void free() shared {
 		taskQueue.free();
 		resultQueue.free();
+	}
+
+	// for worker
+	bool needsToRun() shared @property {
+		return atomicLoad!(MemoryOrder.acq)(running);
+	}
+
+	bool queuesEmpty() shared @property const {
+		return taskQueue.empty && resultQueue.empty;
 	}
 }
 
@@ -74,8 +76,9 @@ Thread spawnWorker(F, T...)(F fn, T args)
 		fn( args );
 	}
 	auto t = new Thread(&exec);
-    t.start();
-    return t;
+	t.start();
+	t.isDaemon = true;
+	return t;
 }
 
 shared struct WorkerGroup

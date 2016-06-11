@@ -14,7 +14,10 @@
 - [ ] for each layer register handlers for allocation, save, load
 - [ ] fix problem with dimention change when old position confuses server and volume is not updated.
 - [ ] Add server options for autosave and autosave period.
+- [ ] Detach worker threads so GC does not stop them.
+- [ ] Autocomplete in console
 
+- [x] Fix app not stopping when main thread crashes.
 - [x] Implement generic solution for saving/loading data for use in plugins.
 	(double buffering?)
 	- [x] Fix world save on game stop.

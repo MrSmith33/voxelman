@@ -79,7 +79,7 @@ enum SaveItemType : ubyte {
 //version = DBG_OUT;
 struct ChunkProvider
 {
-	private Tid storeWorker;
+	private Thread storeWorker;
 	private shared bool workerRunning = true;
 	private shared bool workerStopped = false;
 
@@ -127,9 +127,9 @@ struct ChunkProvider
 		saveResQueue.alloc("saveResQ");
 		loadTaskQueue.alloc("loadTaskQ");
 		saveTaskQueue.alloc("saveTaskQ");
-		storeWorker = spawn(
+		storeWorker = spawnWorker(
 			&storageWorker, cast(immutable)worldDb,
-			&workerRunning, &workerStopped,
+			&workerRunning,
 			cast(shared)workAvaliableMutex, cast(shared)workAvaliable,
 			&loadResQueue, &saveResQueue, &loadTaskQueue, &saveTaskQueue,
 			genWorkers);
@@ -140,7 +140,7 @@ struct ChunkProvider
 			return loadResQueue.empty && saveResQueue.empty && loadTaskQueue.empty && saveTaskQueue.empty;
 		}
 		bool allWorkersStopped() {
-			bool stopped = atomicLoad!(MemoryOrder.acq)(workerStopped);
+			bool stopped = !storeWorker.isRunning;
 			foreach(ref w; genWorkers) stopped = stopped && w.isStopped;
 			return stopped;
 		}

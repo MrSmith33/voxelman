@@ -162,7 +162,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 			workerInfo.resultQueue.endMessage();
 		}
 
-		while (workerInfo.isRunning)
+		while (workerInfo.needsToRun)
 		{
 			(cast(Semaphore)workerInfo.workAvaliable).wait();
 

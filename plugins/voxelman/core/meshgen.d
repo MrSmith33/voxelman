@@ -39,7 +39,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockIn
 {
 	try
 	{
-		while (workerInfo.isRunning)
+		while (workerInfo.needsToRun)
 		{
 			(cast(Semaphore)workerInfo.workAvaliable).wait();
 

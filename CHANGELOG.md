@@ -91,6 +91,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix app not stopping when main thread crashes.
 - Fix world save on game stop.
 - Fix volume intersection.
 - Fix mesh deletion when chunk does not produce mesh. Use special "delete mesh" tasks to queue mesh deletions. This allows to upload new chunk meshes together with deleting meshes of chunks that do not produce meshes anymore.
