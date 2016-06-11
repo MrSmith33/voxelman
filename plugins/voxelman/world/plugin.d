@@ -107,7 +107,7 @@ struct PluginDataSaver
 		return dataBuf[dataLen..$];
 	}
 
-	void writeEntry(string key, size_t bytesWritten) @nogc {
+	void writeEntry(string key, size_t bytesWritten) {
 		keyLen += encodeCbor(keyBuf[keyLen..$], key);
 		keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
 		dataLen += bytesWritten;
@@ -292,6 +292,7 @@ public:
 		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
 		worldDb = null;
 		activeChunks.loadActiveChunks();
+		worldAccess.blockInfos = blockPlugin.getBlocks();
 	}
 
 	TimestampType currentTimestamp() @property
@@ -367,7 +368,8 @@ public:
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
-		//sendChanges
+		sendChanges(worldAccess.blockChanges);
+		worldAccess.blockChanges = null;
 	}
 
 	private void handleStopEvent(ref GameStopEvent event)
@@ -419,13 +421,24 @@ public:
 		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, bd));
 	}
 
+	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
+	{
+		import voxelman.core.packets : MultiblockChangePacket;
+		foreach(pair; changes.byKeyValue)
+		{
+			connection.sendTo(
+				chunkObserverManager.getChunkObservers(pair.key),
+				MultiblockChangePacket(pair.key.ivector, pair.value));
+		}
+	}
+
 	private void handleFillBlockVolumePacket(ubyte[] packetData, ClientId clientId)
 	{
 		import voxelman.core.packets : FillBlockVolumePacket;
 		if (clientDb.isSpawned(clientId))
 		{
 			auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
-			worldAccess.fillVolume(packet.volume, packet.blockId, blockPlugin.getBlocks());
+			worldAccess.fillVolume(packet.volume, packet.blockId);
 			connection.sendToAll(packet);
 		}
 	}

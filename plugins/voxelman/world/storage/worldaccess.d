@@ -16,9 +16,27 @@ import voxelman.world.storage.volume;
 final class WorldAccess
 {
 	private ChunkManager chunkManager;
+	immutable(BlockInfo)[] blockInfos;
+	BlockChange[][ChunkWorldPos] blockChanges;
 
 	this(ChunkManager chunkManager) {
 		this.chunkManager = chunkManager;
+	}
+
+	// TODO move out change management
+	import std.range : isInputRange, array;
+	void onBlockChange(ChunkWorldPos cwp, BlockChange change)
+	{
+		blockChanges[cwp] = blockChanges.get(cwp, null) ~ change;
+	}
+
+	void applyBlockChanges(ChunkWorldPos cwp, BlockChange[] changes)
+	{
+		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+		if (writeBuffer is null) return;
+		applyChanges(writeBuffer, changes);
+		writeBuffer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
 	}
 
 	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
@@ -29,10 +47,12 @@ final class WorldAccess
 		if (writeBuffer is null) return false;
 
 		writeBuffer.blocks[blockIndex] = blockId;
+		onBlockChange(cwp, BlockChange(blockIndex.index, blockId));
+		updateWriteBufferMetadata(writeBuffer);
 		return true;
 	}
 
-	bool fillVolume(Volume blockFillVolume, BlockId blockId, immutable(BlockInfo)[] blockInfos) {
+	bool fillVolume(Volume blockFillVolume, BlockId blockId) {
 		Volume affectedChunks = blockVolumeToChunkVolume(blockFillVolume);
 		ushort dimention = blockFillVolume.dimention;
 
@@ -45,13 +65,13 @@ final class WorldAccess
 			auto chunkLocalVolume = intersection;
 			chunkLocalVolume.position -= chunkBlockVolume.position;
 
-			fillChunkVolume(cwp, chunkLocalVolume, blockId, blockInfos);
+			fillChunkVolume(cwp, chunkLocalVolume, blockId);
 		}
 		return true;
 	}
 
 	// blockVolume is in chunk-local coordinates
-	bool fillChunkVolume(ChunkWorldPos cwp, Volume blockVolume, BlockId blockId, immutable(BlockInfo)[] blockInfos) {
+	bool fillChunkVolume(ChunkWorldPos cwp, Volume blockVolume, BlockId blockId) {
 		auto old = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 		if (old.isNull) return false;
 
@@ -77,15 +97,19 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 			setSubArray(writeBuffer.blocks, blockVolume, blockId);
 		}
-		writeBuffer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
+		updateWriteBufferMetadata(writeBuffer);
 
 		return true;
+	}
+
+	private void updateWriteBufferMetadata(WriteBuffer* writeBuffer) {
+		writeBuffer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
 	}
 
 	BlockId getBlock(BlockWorldPos bwp) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
-		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER);
+		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER, Yes.Uncompress);
 		if (!snap.isNull) {
 			return snap.getBlockId(blockIndex);
 		}

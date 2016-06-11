@@ -8,6 +8,7 @@ module voxelman.world.storage.chunkmanager;
 import std.experimental.logger;
 import std.typecons : Nullable;
 import std.string : format;
+public import std.typecons : Flag, Yes, No;
 
 import voxelman.block.utils;
 import voxelman.core.config;
@@ -209,16 +210,27 @@ final class ChunkManager {
 	}
 
 	/// returned value isNull if chunk is not loaded/added
-	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, size_t layer) {
-		assert(layer == 0);
+	/// If uncompress is Yes then tries to convert snapshot to uncompressed.
+	/// If has users, then compressed snapshot is returned.
+	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, size_t layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
+		assert(layer == FIRST_LAYER);
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		if (state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving) {
 			auto snap = cwp in snapshots[layer];
-			if (snap) { // TODO no nulls allowed here
-				assert(snap);
-				auto res = Nullable!ChunkLayerSnap(*snap);
-				return res;
+			assert(snap);
+			if (snap.type == StorageType.compressedArray && uncompress)
+			{
+				if (snap.numUsers == 0) {
+					BlockId[] buffer = allocBlockLayerArray();
+					uncompressIntoBuffer(*snap, buffer);
+					recycleSnapshotMemory(*snap);
+					snap.dataPtr = buffer.ptr;
+					snap.dataLength = cast(ushort)buffer.length;
+					snap.type = StorageType.fullArray;
+				}
 			}
+			auto res = Nullable!ChunkLayerSnap(*snap);
+			return res;
 		}
 
 		auto res = Nullable!ChunkLayerSnap.init;

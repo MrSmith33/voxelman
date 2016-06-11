@@ -4,7 +4,7 @@
 - [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view volume.
 
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
-- [ ] Move metadata update to commit stage.
+- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk.
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
@@ -17,6 +17,8 @@
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
 
+- [ ] Improve calculation of modified chunks.
+- [ ] Restore capture of per-block changes.
 - [x] Add active chunk system.
 - [x] Fix app not stopping when main thread crashes.
 - [x] Implement generic solution for saving/loading data for use in plugins.

@@ -132,9 +132,7 @@ struct ChunkChange
 // position is chunk local [0; CHUNK_SIZE-1];
 struct BlockChange
 {
-	// index of block in chunk data
 	ushort index;
-
 	BlockId blockId;
 }
 
@@ -219,15 +217,19 @@ T getUniform(T, Layer)(const ref Layer layer)
 BlockId getBlockId(Layer)(const ref Layer layer, BlockChunkIndex index)
 	if (isSomeLayer!Layer)
 {
-	if (layer.type == StorageType.uniform) return cast(BlockId)layer.uniformData;
+	if (layer.type == StorageType.uniform) return layer.getUniform!BlockId;
+	if (layer.type == StorageType.compressedArray) {
+		BlockId[CHUNK_SIZE_CUBE] buffer;
+		uncompressIntoBuffer(layer, buffer);
+		return buffer[index];
+	}
 	return getArray!BlockId(layer)[index];
 }
 
 BlockId getBlockId(Layer)(const ref Layer layer, int x, int y, int z)
 	if (isSomeLayer!Layer)
 {
-	if (layer.type == StorageType.uniform) return cast(BlockId)layer.uniformData;
-	return getArray!BlockId(layer)[BlockChunkIndex(x, y, z)];
+	return getBlockId(layer, BlockChunkIndex(x, y, z));
 }
 
 bool isUniform(Layer)(const ref Layer layer) @property
@@ -292,7 +294,7 @@ void applyChanges(WriteBuffer* writeBuffer, BlockChange[] changes)
 	assert(!writeBuffer.isUniform);
 	foreach(change; changes)
 	{
-		writeBuffer.blocks[BlockChunkIndex(change.index)] = change.blockId;
+		writeBuffer.blocks[change.index] = change.blockId;
 	}
 }
 
@@ -315,14 +317,12 @@ void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
 		{
 			if (volume.position.y == 0 && volume.size.y == CHUNK_SIZE)
 			{
-				//infof("buf 1[%s..%s]");
 				buffer[] = blockId;
 			}
 			else
 			{
 				auto from = volume.position.y * CHUNK_SIZE_SQR;
 				auto to = (volume.position.y + volume.size.y) * CHUNK_SIZE_SQR;
-				//infof("buf 2[%s..%s]", from, to);
 				buffer[from..to] = blockId;
 			}
 		}
@@ -332,7 +332,6 @@ void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
 			{
 				auto from = y * CHUNK_SIZE_SQR + volume.position.z * CHUNK_SIZE;
 				auto to = y * CHUNK_SIZE_SQR + (volume.position.z + volume.size.z) * CHUNK_SIZE;
-				//infof("buf 3[%s..%s]", from, to);
 				buffer[from..to] = blockId;
 			}
 		}
@@ -349,7 +348,6 @@ void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
 			auto offset = y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
 			auto from = posx + offset;
 			auto to = endx + offset;
-			//infof("buf 4[%s..%s]", from, to);
 			buffer[from..to] = blockId;
 		}
 	}

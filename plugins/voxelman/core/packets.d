@@ -12,14 +12,15 @@ void registerPackets(Connection c)
 {
 	// Common
 	c.registerPacket!ClientPositionPacket;
+	c.registerPacket!FillBlockVolumePacket;
 
 	// Server -> Client
 	c.registerPacket!ChunkDataPacket;
 	c.registerPacket!SpawnPacket;
+	c.registerPacket!MultiblockChangePacket;
 
 	// Client -> Server
 	c.registerPacket!ViewRadiusPacket;
-	c.registerPacket!FillBlockVolumePacket;
 	c.registerPacket!CommandPacket;
 }
 
@@ -43,6 +44,13 @@ struct ChunkDataPacket
 	import voxelman.world.storage.chunk : BlockData;
 	ivec4 chunkPos;
 	BlockData blockData;
+}
+
+struct MultiblockChangePacket
+{
+	import voxelman.world.storage.chunk : BlockChange;
+	ivec4 chunkPos;
+	BlockChange[] blockChanges;
 }
 
 struct FillBlockVolumePacket

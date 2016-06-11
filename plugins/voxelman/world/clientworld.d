@@ -124,12 +124,14 @@ public:
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
+		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 	}
 
 	override void postInit()
 	{
+		worldAccess.blockInfos = blockPlugin.getBlocks();
 	}
 
 	void onTogglePositionUpdate(string)
@@ -300,7 +302,6 @@ public:
 		{
 			WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
 			writeBuffer.makeArray(layer);
-			writeBuffer.isModified = true;
 		}
 		else
 		{
@@ -312,11 +313,23 @@ public:
 			chunksToRemesh.put(adj);
 	}
 
+	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!MultiblockChangePacket(packetData);
+		auto cwp = ChunkWorldPos(packet.chunkPos);
+
+		worldAccess.applyBlockChanges(cwp, packet.blockChanges);
+
+		chunksToRemesh.put(cwp);
+		foreach(adj; adjacentPositions(cwp))
+			chunksToRemesh.put(adj);
+	}
+
 	void handleFillBlockVolumePacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
 
-		worldAccess.fillVolume(packet.volume, packet.blockId, blockPlugin.getBlocks());
+		worldAccess.fillVolume(packet.volume, packet.blockId);
 
 		Volume observedVolume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
 		Volume modifiedVolume = calcModifiedMeshesVolume(packet.volume);
