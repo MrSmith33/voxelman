@@ -27,12 +27,12 @@ final class WorldDb
 		version(Lmdb) mdb_load_libs();
 		db.open(filename);
 	}
-	void close() @nogc {
+	void close() {
 		db.close();
 		Mallocator.instance.deallocate(buffer);
 	}
 
-	ubyte[] tempBuffer() @property @nogc { return buffer; }
+	ubyte[] tempBuffer() @property { return buffer; }
 
 	//-----------------------------------------------
 	version(Lmdb) {
@@ -43,32 +43,32 @@ final class WorldDb
 			region,
 			chunk,
 		}
-		void putPerWorldValue(K)(K key, ubyte[] value) @nogc {
+		void putPerWorldValue(K)(K key, ubyte[] value) {
 			put(formKey(key), Table.world, value);
 		}
-		ubyte[] getPerWorldValue(K)(K key) @nogc {
+		ubyte[] getPerWorldValue(K)(K key) {
 			return get(formKey(key), Table.world);
 		}
-		void putPerChunkValue(ulong key, ubyte[] value) @nogc {
+		void putPerChunkValue(ulong key, ubyte[] value) {
 			put(key, Table.chunk, value);
 		}
-		ubyte[] getPerChunkValue(ulong key) @nogc {
+		ubyte[] getPerChunkValue(ulong key) {
 			return get(key, Table.chunk);
 		}
 
-		private void put(ulong key, ulong table, ubyte[] value) @nogc {
+		private void put(ulong key, ulong table, ubyte[] value) {
 			ubyte[16] dbKey;
 			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
 			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
 			db.put(dbKey, value);
 		}
-		private ubyte[] get(ulong key, ulong table) @nogc {
+		private ubyte[] get(ulong key, ulong table) {
 			ubyte[16] dbKey;
 			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
 			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
 			return db.get(dbKey);
 		}
-		private void del(ulong key, ulong table) @nogc {
+		private void del(ulong key, ulong table) {
 			ubyte[16] dbKey;
 			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
 			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
@@ -77,28 +77,28 @@ final class WorldDb
 	}
 
 	version(Sqlite) {
-		void putPerWorldValue(K)(K key, ubyte[] value) @nogc {
+		void putPerWorldValue(K)(K key, ubyte[] value) {
 			db.savePerWorldData(key, value);
 		}
-		ubyte[] getPerWorldValue(K)(K key) @nogc {
+		ubyte[] getPerWorldValue(K)(K key) {
 			return db.loadPerWorldData(key);
 		}
-		void putPerChunkValue(ulong key, ubyte[] value) @nogc {
+		void putPerChunkValue(ulong key, ubyte[] value) {
 			db.savePerChunkData(key, value);
 		}
-		ubyte[] getPerChunkValue(ulong key) @nogc {
+		ubyte[] getPerChunkValue(ulong key) {
 			return db.loadPerChunkData(key);
 		}
 	}
 
 	//-----------------------------------------------
-	void beginTxn() @nogc {
+	void beginTxn() {
 		db.beginTxn();
 	}
-	void abortTxn() @nogc {
+	void abortTxn() {
 		db.abortTxn();
 	}
-	void commitTxn() @nogc {
+	void commitTxn() {
 		db.commitTxn();
 	}
 }

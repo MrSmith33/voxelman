@@ -17,6 +17,7 @@
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
 
+- [x] Add active chunk system.
 - [x] Fix app not stopping when main thread crashes.
 - [x] Implement generic solution for saving/loading data for use in plugins.
 	(double buffering?)

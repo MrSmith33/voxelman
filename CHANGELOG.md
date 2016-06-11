@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add active chunk system.
 - Implement generic solution for saving/loading data for use in plugins.
 - Add number formatter with digit separation.
 - Add chunk and mesh memory counting.
