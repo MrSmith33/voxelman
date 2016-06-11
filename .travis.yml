@@ -2,6 +2,8 @@ language: d
 
 d:
  - dmd-2.069.2
+ - dmd-2.070.2
+ - dmd-2.071
 
 before_install:
   - sudo wget -P /home/travis/ http://mirrors.kernel.org/ubuntu/pool/main/s/sqlite3/libsqlite3-0_3.11.0-1ubuntu1_amd64.deb
