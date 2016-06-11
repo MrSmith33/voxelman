@@ -17,6 +17,7 @@ struct LmdbWorldDb
 	private uint txnFlags;
 	private MDB_dbi dbi;
 
+	// filename needs to have /0 after end
 	void open(string filename, size_t mapSize = 1 * 1024 * 1024 * 1024) {
 		assert(env is null);
 		assert(txn is null);
@@ -34,43 +35,43 @@ struct LmdbWorldDb
 			0);
 	}
 
-	static string libVersion() {
+	static string libVersion() @nogc {
 		return cast(string)mdb_version(null, null, null).fromStringz;
 	}
 
-	void close() {
+	void close() @nogc {
 		mdb_env_close(env);
 	}
 
-	void beginTxn(uint flags = 0) {
+	void beginTxn(uint flags = 0) @nogc {
 		checked!mdb_txn_begin(env, null, flags, &txn);
 		checked!mdb_dbi_open(txn, null/*main DB*/, 0/*flags*/, &dbi);
 		checked!mdb_set_compare(txn, dbi, &mdb_cmp_long);
 	}
 
-	void abortTxn() {
+	void abortTxn() @nogc {
 		mdb_txn_abort(txn);
 	}
 
-	void commitTxn() {
+	void commitTxn() @nogc {
 		checked!mdb_txn_commit(txn);
 	}
 
-	void put(ubyte[] key, ubyte[] value) {
+	void put(ubyte[] key, ubyte[] value) @nogc {
 		checked!mdb_put(txn, dbi, &key, &value, 0);
 	}
 
-	ubyte[] get(ubyte[] key) {
+	ubyte[] get(ubyte[] key) @nogc {
 		ubyte[] value;
 		checked!mdb_get(txn, dbi, &key, &value);
 		return value;
 	}
 
-	void del(ubyte[] key) {
+	void del(ubyte[] key) @nogc {
 		checked!mdb_del(txn, dbi, &key, null);
 	}
 
-	void dropDB() {
+	void dropDB() @nogc {
 		checked!mdb_drop(txn, dbi, 0);
 		checked!mdb_drop(txn, dbi, 1);
 	}
@@ -88,11 +89,13 @@ template checked(alias func)
 		alias checked = func;
 }
 
-void checkCode(int code, string file = __FILE__, int line = __LINE__)
+void checkCode(int code, string file = __FILE__, int line = __LINE__) @nogc
 {
 	if (code != MDB_SUCCESS && code != MDB_NOTFOUND)
 	{
-		errorf("%s@%s: MDB error: %s", file, line, mdb_strerror(code).fromStringz);
+		//errorf("%s@%s: MDB error: %s", file, line, mdb_strerror(code).fromStringz);
+		import core.stdc.stdio;
+		printf("%s@%s: MDB error: %s", file.ptr, line, mdb_strerror(code));
 		assert(false);
 	}
 }

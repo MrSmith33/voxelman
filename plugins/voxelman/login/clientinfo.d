@@ -9,6 +9,7 @@ import dlib.math.vector : vec3, vec2;
 
 import voxelman.core.config;
 import voxelman.world.storage.volume : Volume;
+import voxelman.world.storage.coordinates;
 
 struct ClientInfo
 {
@@ -23,4 +24,9 @@ struct ClientInfo
 
 	bool isLoggedIn;
 	bool isSpawned;
+
+	ChunkWorldPos chunk() {
+		ChunkWorldPos cwp = BlockWorldPos(pos, dimention);
+		return cwp;
+	}
 }

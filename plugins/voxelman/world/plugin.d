@@ -18,6 +18,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.utils.compression;
+import voxelman.utils.hashset;
 
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
@@ -92,27 +93,27 @@ struct PluginDataSaver
 	private size_t dataLen;
 	private size_t keyLen;
 
-	private void alloc() {
+	private void alloc() @nogc {
 		dataBuf = cast(ubyte[])Mallocator.instance.allocate(DATA_BUF_SIZE);
 		keyBuf = cast(ubyte[])Mallocator.instance.allocate(KEY_BUF_SIZE);
 	}
 
-	private void free() {
+	private void free() @nogc {
 		Mallocator.instance.deallocate(dataBuf);
 		Mallocator.instance.deallocate(keyBuf);
 	}
 
-	ubyte[] tempBuffer() @property {
+	ubyte[] tempBuffer() @property @nogc {
 		return dataBuf[dataLen..$];
 	}
 
-	void writeEntry(string key, size_t bytesWritten) {
+	void writeEntry(string key, size_t bytesWritten) @nogc {
 		keyLen += encodeCbor(keyBuf[keyLen..$], key);
 		keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
 		dataLen += bytesWritten;
 	}
 
-	private void reset() {
+	private void reset() @nogc {
 		dataLen = 0;
 		keyLen = 0;
 	}
@@ -153,6 +154,50 @@ struct WorldInfo
 	ivec3 spawnPosition;
 }
 
+struct ActiveChunks
+{
+	private immutable string dbKey = "voxelman.world.active_chunks";
+	HashSet!ChunkWorldPos chunks;
+	void delegate(ChunkWorldPos cwp) loadChunk;
+	void delegate(ChunkWorldPos cwp) unloadChunk;
+
+	void add(ChunkWorldPos cwp) {
+		chunks.put(cwp);
+		loadChunk(cwp);
+	}
+
+	void remove(ChunkWorldPos cwp) {
+		if (chunks.remove(cwp))
+			unloadChunk(cwp);
+	}
+
+	void loadActiveChunks() {
+		foreach(cwp; chunks.items) {
+			loadChunk(cwp);
+			infof("load active: %s", cwp);
+		}
+	}
+
+	private void read(ref PluginDataLoader loader) {
+		ubyte[] data = loader.readEntry(dbKey);
+		if (!data.empty) {
+			auto token = decodeCborToken(data);
+			assert(token.type == CborTokenType.arrayHeader);
+			foreach(_; 0..token.uinteger)
+				chunks.put(decodeCborSingle!ChunkWorldPos(data));
+			assert(data.empty);
+		}
+	}
+
+	private void write(ref PluginDataSaver saver) {
+		auto sink = saver.tempBuffer;
+		size_t encodedSize = encodeCborArrayHeader(sink[], chunks.length);
+		foreach(cwp; chunks.items)
+			encodedSize += encodeCbor(sink[encodedSize..$], cwp);
+		saver.writeEntry(dbKey, encodedSize);
+	}
+}
+
 //version = DBG_COMPR;
 final class ServerWorld : IPlugin
 {
@@ -179,6 +224,7 @@ public:
 	ChunkManager chunkManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
+	ActiveChunks activeChunks;
 
 	WorldAccess worldAccess;
 
@@ -195,6 +241,7 @@ public:
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		numGenWorkersOpt = config.registerOption!uint("num_workers", 4);
 		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
+		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
 	}
 
 	override void preInit()
@@ -222,6 +269,9 @@ public:
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
 		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
 
+		activeChunks.loadChunk = &chunkObserverManager.addServerObserver;
+		activeChunks.unloadChunk = &chunkObserverManager.removeServerObserver;
+
 		chunkManager.onChunkLoadedHandler = &onChunkLoaded;
 	}
 
@@ -241,6 +291,7 @@ public:
 
 		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
 		worldDb = null;
+		activeChunks.loadActiveChunks();
 	}
 
 	TimestampType currentTimestamp() @property

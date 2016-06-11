@@ -183,6 +183,20 @@ public:
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawn);
 		commandPlugin.registerCommand("dim", &changeDimentionCommand);
+		commandPlugin.registerCommand("add_active", &onAddActive);
+		commandPlugin.registerCommand("remove_active", &onRemoveActive);
+	}
+
+	void onAddActive(CommandParams params) {
+		auto cwp = clients[params.source].chunk;
+		serverWorld.activeChunks.add(cwp);
+		infof("add active %s", cwp);
+	}
+
+	void onRemoveActive(CommandParams params) {
+		auto cwp = clients[params.source].chunk;
+		serverWorld.activeChunks.remove(cwp);
+		infof("remove active %s", cwp);
 	}
 
 	void onSpawn(CommandParams params)
