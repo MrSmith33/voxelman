@@ -22,7 +22,7 @@ import voxelman.entity.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
-import voxelman.world.plugin : ServerWorld;
+import voxelman.world.plugin;
 import voxelman.input.keybindingmanager;
 
 shared static this()
@@ -110,10 +110,17 @@ mixin template EntityTestPluginClient()
 
 mixin template EntityTestPluginServer()
 {
+	immutable string transformKey = "test.entitytest.transform_component";
 	EntityPluginServer entityPlugin;
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&read, &write);
+	}
 
 	override void init(IPluginManager pluginman)
 	{
@@ -132,28 +139,35 @@ mixin template EntityTestPluginServer()
 		Appender!(EntityId[]) toRemove;
 		auto wa = serverWorld.worldAccess;
 		auto query = componentQuery(transformStorage);
+		bool isFree(ivec4 pos) {
+			return wa.isFree(BlockWorldPos(pos));
+		}
+		bool isLoaded(ivec4 pos) {
+			return wa.getBlock(BlockWorldPos(pos)) != 0;
+		}
 		foreach(row; query)
 		{
 			ivec4 pos = row.transform.pos;
-			if (wa.isFree(BlockWorldPos(pos+ivec4(0, -1, 0, 0)))) // lower
+			if (!isLoaded(pos)) continue;
+			if (isFree(pos+ivec4(0, -1, 0, 0))) // lower
 				row.transform.pos += ivec4(0,-1,0, 0);
-			else if (wa.isFree(BlockWorldPos(pos+ivec4( 0, 0, -1, 0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec4( 0, -1, -1, 0))))
+			else if (isFree(pos+ivec4( 0, 0, -1, 0)) && // side and lower
+					isFree(pos+ivec4( 0, -1, -1, 0)))
 			{
 				row.transform.pos = pos+ivec4( 0, 0, -1, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec4( 0, 0,  1, 0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec4( 0, -1,  1, 0))))
+			else if (isFree(pos+ivec4( 0, 0,  1, 0)) && // side and lower
+					isFree(pos+ivec4( 0, -1,  1, 0)))
 			{
 				row.transform.pos = pos+ivec4( 0, 0,  1, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec4(-1, 0,  0, 0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec4(-1, -1,  0, 0))))
+			else if (isFree(pos+ivec4(-1, 0,  0, 0)) && // side and lower
+					isFree(pos+ivec4(-1, -1,  0, 0)))
 			{
 				row.transform.pos = pos+ivec4(-1, 0,  0, 0);
 			}
-			else if (wa.isFree(BlockWorldPos(pos+ivec4( 1, 0,  0, 0))) && // side and lower
-					wa.isFree(BlockWorldPos(pos+ivec4( 1, -1,  0, 0))))
+			else if (isFree(pos+ivec4( 1, 0,  0, 0)) && // side and lower
+					isFree(pos+ivec4( 1, -1,  0, 0)))
 			{
 				row.transform.pos = pos+ivec4( 1, 0,  0, 0);
 			}
@@ -163,8 +177,9 @@ mixin template EntityTestPluginServer()
 				toRemove.put(row.eid);
 			}
 		}
-		foreach(eid; toRemove.data)
+		foreach(eid; toRemove.data) {
 			transformStorage.remove(eid);
+		}
 	}
 
 	void sync(ref SyncComponentsEvent event)
@@ -175,9 +190,23 @@ mixin template EntityTestPluginServer()
 	void handleEntityCreatePacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!EntityCreatePacket(packetData);
-
 		EntityId eid = entityPlugin.entityManager.nextEntityId;
 		transformStorage.add(eid, Transform(packet.pos));
+	}
+
+	void read(ref PluginDataLoader loader)
+	{
+		ubyte[] data = loader.readEntry(transformKey);
+		if (data.length) transformStorage.deserialize(data);
+		infof("read entities %s", transformStorage.length);
+	}
+
+	void write(ref PluginDataSaver saver)
+	{
+		auto sink = saver.tempBuffer;
+		size_t size = transformStorage.serialize(sink);
+		saver.writeEntry(transformKey, size);
+		infof("write entities %s", transformStorage.length);
 	}
 }
 

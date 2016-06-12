@@ -1,6 +1,7 @@
 module datadriven.storage;
 
 import datadriven.api;
+import cbor;
 
 struct HashmapComponentStorage(ComponentType)
 {
@@ -35,6 +36,22 @@ struct HashmapComponentStorage(ComponentType)
 	auto byKeyValue() @property
 	{
 		return components.byKeyValue;
+	}
+
+	size_t serialize(ubyte[] sink)
+	{
+		size_t size = encodeCborMapHeader(sink[], components.length);
+		foreach(keyValue; components.byKeyValue) {
+			size += encodeCbor(sink[size..$], keyValue.key);
+			size += encodeCbor(sink[size..$], keyValue.value);
+		}
+		return size;
+	}
+
+	void deserialize(ubyte[] input)
+	{
+		components.clear();
+		decodeCbor(input, components);
 	}
 }
 

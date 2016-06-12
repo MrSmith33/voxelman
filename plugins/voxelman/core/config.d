@@ -24,7 +24,7 @@ enum REGION_SIZE_CUBE = REGION_SIZE * REGION_SIZE * REGION_SIZE;
 
 immutable string DEFAULT_WORLD_NAME = "world";
 
-enum DEFAULT_VIEW_RADIUS = 5;
+enum DEFAULT_VIEW_RADIUS = 6;
 enum MIN_VIEW_RADIUS = 1;
 enum MAX_VIEW_RADIUS = 100;
 enum WORLD_SIZE = 12; // chunks

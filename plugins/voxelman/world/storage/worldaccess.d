@@ -117,6 +117,7 @@ final class WorldAccess
 	}
 
 	bool isFree(BlockWorldPos bwp) {
-		 return getBlock(bwp) < 2; // air or unknown
+		auto blockId = getBlock(bwp);
+		 return blockId == 1; // air
 	}
 }

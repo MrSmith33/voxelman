@@ -16,6 +16,7 @@ import datadriven.api;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
+import voxelman.world.plugin;
 
 shared static this()
 {
@@ -114,7 +115,9 @@ mixin template EntityPluginClientImpl()
 		storage.removeAll();
 		while(!data.empty)
 		{
-			storage.add(decodeCborSingle!size_t(data), decodeCborSingle!(componentType!Storage)(data));
+			storage.add(
+				decodeCborSingle!size_t(data),
+				decodeCborSingle!(componentType!Storage, Yes.Flatten)(data));
 		}
 	}
 
@@ -136,6 +139,13 @@ mixin template EntityPluginClientImpl()
 mixin template EntityPluginServerImpl()
 {
 	NetServerPlugin connection;
+	immutable string eidKey = "voxelman.entity.lastEntityId";
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&read, &write);
+	}
 
 	void sendComponents(Storage)(Storage storage)
 	{
@@ -156,7 +166,7 @@ mixin template EntityPluginServerImpl()
 		foreach(pair; storage.byKeyValue())
 		{
 			size += encodeCbor(bufferTemp[size..$], pair.key);
-			size += encodeCbor(bufferTemp[size..$], pair.value);
+			size += encodeCbor!(Yes.Flatten)(bufferTemp[size..$], pair.value);
 		}
 
 		return bufferTemp[0..size];
@@ -164,5 +174,20 @@ mixin template EntityPluginServerImpl()
 
 	void handleComponentSyncPacket(ubyte[] packetData, ClientId clientId)
 	{
+	}
+
+	import cbor;
+	void read(ref PluginDataLoader loader)
+	{
+		ubyte[] data = loader.readEntry(eidKey);
+		if (data.length)
+			decodeCbor(data, entityManager.lastEntityId);
+	}
+
+	void write(ref PluginDataSaver saver)
+	{
+		auto sink = saver.tempBuffer;
+		size_t size = encodeCbor(sink[], entityManager.lastEntityId);
+		saver.writeEntry(eidKey, size);
 	}
 }
