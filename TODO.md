@@ -17,8 +17,10 @@
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
 
+- [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
-- [ ] Restore capture of per-block changes.
+- [x] Toolbar.
+- [x] Restore capture of per-block changes.
 - [x] Add active chunk system.
 - [x] Fix app not stopping when main thread crashes.
 - [x] Implement generic solution for saving/loading data for use in plugins.

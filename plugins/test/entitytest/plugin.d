@@ -19,11 +19,11 @@ import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 
 import voxelman.entity.plugin;
+import voxelman.edit.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
 import voxelman.world.plugin;
-import voxelman.input.keybindingmanager;
 
 shared static this()
 {
@@ -55,12 +55,6 @@ mixin template EntityTestPluginClient()
 	WorldInteractionPlugin worldInteraction;
 	NetClientPlugin connection;
 
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
-	{
-		auto keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_E, "key.place_entity", null, &onMainActionRelease));
-	}
-
 	override void init(IPluginManager pluginman)
 	{
 		graphics = pluginman.getPlugin!GraphicsPlugin;
@@ -72,9 +66,19 @@ mixin template EntityTestPluginClient()
 		entityPlugin.registerComponent!Transform(&unpackTransform);
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacket!EntityCreatePacket();
+
+		auto editPlugin = pluginman.getPlugin!EditPlugin;
+		editPlugin.registerTool(
+			new class ITool {
+				this() { name = "test.entity.place_entity"; }
+				override void onSecondaryActionRelease() {
+					placeEntity();
+				}
+			}
+		);
 	}
 
-	void onMainActionRelease(string key)
+	void placeEntity()
 	{
 		if (worldInteraction.cursorHit) {
 			ivec4 pos = worldInteraction.sideBlockPos.vector;
@@ -148,7 +152,7 @@ mixin template EntityTestPluginServer()
 		foreach(row; query)
 		{
 			ivec4 pos = row.transform.pos;
-			if (!isLoaded(pos)) continue;
+			if (!isLoaded(pos) || !isLoaded(pos+ivec4(0, -1, 0, 0))) continue;
 			if (isFree(pos+ivec4(0, -1, 0, 0))) // lower
 				row.transform.pos += ivec4(0,-1,0, 0);
 			else if (isFree(pos+ivec4( 0, 0, -1, 0)) && // side and lower
@@ -198,7 +202,6 @@ mixin template EntityTestPluginServer()
 	{
 		ubyte[] data = loader.readEntry(transformKey);
 		if (data.length) transformStorage.deserialize(data);
-		infof("read entities %s", transformStorage.length);
 	}
 
 	void write(ref PluginDataSaver saver)
@@ -206,7 +209,6 @@ mixin template EntityTestPluginServer()
 		auto sink = saver.tempBuffer;
 		size_t size = transformStorage.serialize(sink);
 		saver.writeEntry(transformKey, size);
-		infof("write entities %s", transformStorage.length);
 	}
 }
 
