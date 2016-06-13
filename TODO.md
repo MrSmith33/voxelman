@@ -19,6 +19,7 @@
 
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
+- [x] Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - [x] Toolbar.
 - [x] Restore capture of per-block changes.
 - [x] Add active chunk system.

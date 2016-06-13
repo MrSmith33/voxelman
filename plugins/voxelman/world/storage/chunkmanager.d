@@ -241,7 +241,9 @@ final class ChunkManager {
 	/// This buffer is valid until commit.
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
-	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, size_t layer, WriteBufferPolicy policy = WriteBufferPolicy.init) {
+	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, size_t layer,
+		WriteBufferPolicy policy = WriteBufferPolicy.createUniform)
+	{
 		if (!isChunkLoaded(cwp)) return null;
 		auto writeBuffer = cwp in writeBuffers[layer];
 		if (writeBuffer is null) {
@@ -376,7 +378,10 @@ final class ChunkManager {
 			case non_loaded:
 				assert(false, "On saved should not occur for not added chunks");
 			case added_loaded:
-				assert(false, "On saved should not occur for not saving chunks");
+				// TODO: if chunk was modified, saved and modified again - this can happen.
+				// assert(false, "On saved should not occur for not saving chunks");
+				// after removal of _saving states this switch can be removed.
+				break; // ignore
 			case removed_loading:
 				assert(false, "On saved should not occur for not loaded chunks");
 			case added_loading:
@@ -1047,5 +1052,16 @@ unittest {
 
 	cm.removeSnapshotUser(ZERO_CWP, timestamp0, FIRST_LAYER);
 	cm.removeSnapshotUser(ZERO_CWP, timestamp1, FIRST_LAYER);
+	assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
+
+	//--------------------------------------------------------------------------
+	// test case where old snapshot was saved and current snapshot is added_loaded
+	setupState(ChunkState.added_loaded);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.commitSnapshots(1);
+	cm.save();
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.commitSnapshots(2); // now, snap that is saved is old.
+	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
 	assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
 }

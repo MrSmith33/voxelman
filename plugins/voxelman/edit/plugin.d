@@ -10,6 +10,8 @@ import std.experimental.logger;
 
 import pluginlib;
 import voxelman.core.events;
+import derelict.imgui.imgui;
+import voxelman.utils.textformatter;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;
@@ -101,6 +103,9 @@ class EditPlugin : IPlugin
 	}
 
 	void onUpdateEvent(ref UpdateEvent event) {
+		igBegin("Debug");
+		igTextf("Tool: %s", currentTool.name);
+		igEnd();
 		currentTool.onUpdate();
 	}
 	void onMainActionPress(string key) {
