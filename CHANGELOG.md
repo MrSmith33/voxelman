@@ -93,6 +93,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - Fix app not stopping when main thread crashes.
 - Fix world save on game stop.
 - Fix volume intersection.
