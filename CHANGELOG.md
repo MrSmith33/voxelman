@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add toolbar.
 - Add active chunk system.
 - Implement generic solution for saving/loading data for use in plugins.
 - Add number formatter with digit separation.
