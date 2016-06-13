@@ -50,7 +50,7 @@ struct HashmapComponentStorage(ComponentType)
 
 	void deserialize(ubyte[] input)
 	{
-		components.clear();
+		components = null;//.clear(); //introduced in 2.071
 		decodeCbor(input, components);
 	}
 }
