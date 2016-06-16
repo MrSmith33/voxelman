@@ -45,25 +45,26 @@ struct ChunkLayerTimestampItem {
 static assert(ChunkLayerTimestampItem.sizeof == 8);
 
 /// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
+align(1)
 struct ChunkLayerItem
 {
 	StorageType type;
 	ubyte layerId;
-	ushort dataLength;
+	ushort metadata;
 	uint timestamp;
 	union {
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	ushort metadata;
-	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+	uint dataLength;
+	this(StorageType _type, ubyte _layerId, uint _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, ubyte _layerId, ushort _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
+	this(StorageType _type, ubyte _layerId, uint _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
 	this(T)(StorageType _type, ubyte _layerId, uint _timestamp, T[] _array, ushort _metadata = 0) {
-		type = _type; layerId = _layerId; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = cast(void*)_array.ptr; metadata = _metadata;
+		type = _type; layerId = _layerId; dataLength = cast(uint)_array.length; timestamp = _timestamp; dataPtr = cast(void*)_array.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerSnap l, ubyte _layerId) {
 		type = l.type;
@@ -80,7 +81,7 @@ struct ChunkLayerItem
 			type, layerId, dataLength, timestamp, uniformData, dataPtr, metadata);
 	}
 }
-static assert(ChunkLayerItem.sizeof == 24);
+static assert(ChunkLayerItem.sizeof == 20);
 
 struct WriteBuffer
 {
@@ -176,19 +177,19 @@ struct ChunkLayerSnap
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	ushort dataLength; // unused when uniform
+	uint dataLength; // unused when uniform
+	uint timestamp;
 	ushort numUsers;
 	ushort metadata;
 	StorageType type;
-	uint timestamp;
-	this(StorageType _type, ushort _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+	this(StorageType _type, uint _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
 		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, ushort _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
+	this(StorageType _type, uint _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
 		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
 	this(T)(StorageType _type, uint _timestamp, T[] _array, ushort _metadata = 0) {
-		type = _type; dataLength = cast(ushort)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
+		type = _type; dataLength = cast(uint)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerItem l) {
 		numUsers = 0;

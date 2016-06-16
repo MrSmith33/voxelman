@@ -252,7 +252,7 @@ public:
 		worldAccess = new WorldAccess(chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
-		ubyte numLayers = 1;
+		ubyte numLayers = 2;
 		chunkManager.setup(numLayers);
 		chunkManager.isChunkSavingEnabled = true;
 

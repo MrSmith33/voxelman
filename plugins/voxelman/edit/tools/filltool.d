@@ -29,6 +29,7 @@ final class FillTool : ITool
 	BlockWorldPos startingPos;
 	EditState state;
 	Volume selection;
+	bool showCursor = true;
 
 	enum EditState
 	{
@@ -46,6 +47,11 @@ final class FillTool : ITool
 		}
 		selection = volumeFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimentionId)currentCursorPos.w);
 		drawSelection();
+		if (showCursor && !worldInteraction.cameraInSolidBlock)
+		{
+			worldInteraction.drawCursor(worldInteraction.blockPos, Colors.red);
+			worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
+		}
 	}
 
 	BlockWorldPos currentCursorPos() @property {
@@ -63,10 +69,12 @@ final class FillTool : ITool
 			case EditState.none:
 				break;
 			case EditState.placing:
-				graphics.debugBatch.putCube(vec3(selection.position), vec3(selection.size), Colors.blue, false);
+				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffeset,
+					vec3(selection.size) + cursorOffeset, Colors.blue, false);
 				break;
 			case EditState.removing:
-				graphics.debugBatch.putCube(vec3(selection.position), vec3(selection.size), Colors.red, false);
+				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffeset,
+					vec3(selection.size) + cursorOffeset, Colors.red, false);
 				break;
 		}
 	}
@@ -77,14 +85,14 @@ final class FillTool : ITool
 		if (!worldInteraction.cursorHit) return;
 		state = EditState.removing;
 		startingPos = currentCursorPos;
-		worldInteraction.showCursor = false;
+		showCursor = false;
 	}
 
 	override void onMainActionRelease() {
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.removing) return;
 		state = EditState.none;
-		worldInteraction.showCursor = true;
+		showCursor = true;
 
 		if (worldInteraction.cursorHit)
 		{
@@ -98,14 +106,14 @@ final class FillTool : ITool
 		if (!worldInteraction.cursorHit) return;
 		state = EditState.placing;
 		startingPos = currentCursorPos;
-		worldInteraction.showCursor = false;
+		showCursor = false;
 	}
 
 	override void onSecondaryActionRelease() {
 		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.placing) return;
 		state = EditState.none;
-		worldInteraction.showCursor = true;
+		showCursor = true;
 
 		if (worldInteraction.cursorHit)
 		{

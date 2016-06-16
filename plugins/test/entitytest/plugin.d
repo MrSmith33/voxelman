@@ -69,10 +69,18 @@ mixin template EntityTestPluginClient()
 
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
 		editPlugin.registerTool(
-			new class ITool {
+			new class ITool
+			{
 				this() { name = "test.entity.place_entity"; }
-				override void onSecondaryActionRelease() {
+				override void onMainActionRelease() {
 					placeEntity();
+				}
+
+				override void onUpdate() {
+					if (!worldInteraction.cameraInSolidBlock)
+					{
+						worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.green);
+					}
 				}
 			}
 		);

@@ -31,6 +31,9 @@ shared static this()
 	pluginRegistry.regClientPlugin(new WorldInteractionPlugin);
 }
 
+enum cursorSize = vec3(1.02, 1.02, 1.02);
+enum cursorOffeset = vec3(0.01, 0.01, 0.01);
+
 class WorldInteractionPlugin : IPlugin
 {
 	NetClientPlugin connection;
@@ -47,10 +50,9 @@ class WorldInteractionPlugin : IPlugin
 	ivec3 hitNormal;
 
 	// Cursor rendering stuff
-	vec3 cursorPos, cursorSize = vec3(1.02, 1.02, 1.02);
+	vec3 cursorPos;
 	vec3 lineStart, lineEnd;
 	bool traceVisible;
-	bool showCursor = true;
 	vec3 hitPosition;
 	Duration cursorTraceTime;
 	Batch traceBatch;
@@ -124,16 +126,13 @@ class WorldInteractionPlugin : IPlugin
 			traceBatch.putCube(cursorPos, cursorSize, Colors.black, false);
 			traceBatch.putLine(lineStart, lineEnd, Colors.black);
 		}
+	}
 
-		if (showCursor && !cameraInSolidBlock)
-		{
-			graphics.debugBatch.putCube(
-				vec3(blockPos.xyz) - vec3(0.005, 0.005, 0.005),
-				cursorSize, Colors.red, false);
-			graphics.debugBatch.putCube(
-				vec3(sideBlockPos.xyz) - vec3(0.005, 0.005, 0.005),
-				cursorSize, Colors.blue, false);
-		}
+	void drawCursor(BlockWorldPos block, Color3ub color)
+	{
+		graphics.debugBatch.putCube(
+			vec3(block.xyz) - cursorOffeset,
+			cursorSize, color, false);
 	}
 
 	void drawDebug(ref RenderSolid3dEvent event)

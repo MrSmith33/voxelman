@@ -99,7 +99,7 @@ final class ChunkManager {
 
 	bool isLoadCancelingEnabled = false; /// Set to true on client to cancel load on unload
 	bool isChunkSavingEnabled = true;
-	long totalLayerDataBytes;
+	long totalLayerDataBytes; // debug
 
 	private ChunkLayerSnap[ChunkWorldPos][] snapshots;
 	private ChunkLayerSnap[TimestampType][ChunkWorldPos][] oldSnapshots;
@@ -125,8 +125,6 @@ final class ChunkManager {
 	/// Perform save right after commit.
 	void save() {
 		foreach(cwp; modifiedChunks.items) {
-			auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-			assert(state == ChunkState.added_loaded, "Save should only occur for added_loaded chunks");
 			saveChunk(cwp);
 		}
 		clearModifiedChunks();
@@ -162,6 +160,8 @@ final class ChunkManager {
 		assert(startChunkSave, "startChunkSave is null");
 		assert(pushLayer, "pushLayer is null");
 		assert(endChunkSave, "endChunkSave is null");
+		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
+		assert(state == ChunkState.added_loaded, "Save should only occur for added_loaded chunks");
 
 		size_t headerPos = startChunkSave();
 		// code lower does work of addCurrentSnapshotUsers too
@@ -441,8 +441,8 @@ final class ChunkManager {
 					modifiedChunks.remove(cwp);
 					if (isChunkSavingEnabled)
 					{
-						chunkStates[cwp] = removed_loaded_used;
 						saveChunk(cwp);
+						chunkStates[cwp] = removed_loaded_used;
 					}
 				}
 				else

@@ -95,7 +95,7 @@ public:
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
 
-		ubyte numLayers = 1;
+		ubyte numLayers = 2;
 		chunkManager.setup(numLayers);
 		chunkManager.loadChunkHandler = &handleLoadChunk;
 		chunkManager.isLoadCancelingEnabled = true;
