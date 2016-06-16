@@ -257,11 +257,13 @@ struct Launcher
 					job.status = res.status;
 
 					bool success = job.status == 0;
-					bool doneCompilation = job.jobState == JobState.build;
+					bool doneBuild = job.jobState == JobState.build;
 					bool needsStart = job.params.start;
-					if (doneCompilation)
-						job.messageWindow.putln(job.status == 0 ? "Compilation successful" : "Compilation failed");
-					if (success && doneCompilation && needsStart)
+					if (doneBuild)
+					{
+						onJobBuildCompletion(job, job.status == 0);
+					}
+					if (success && doneBuild && needsStart)
 					{
 						job.jobState = JobState.run;
 						startJob(job);
@@ -410,6 +412,20 @@ string makeTestCommand(JobParams params)
 	immutable doForce = params.force ? ` --force` : ``;
 	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
 	return format("dub test -q %s %s %s %s\0", arch, compiler, deps, doForce)[0..$-1];
+}
+
+void onJobBuildCompletion(Job* job, bool success)
+{
+	if (success)
+	{
+		if (job.params.jobType != JobType.test)
+			job.messageWindow.putln("Compilation successful");
+	}
+	else
+	{
+		if (job.params.jobType != JobType.test)
+			job.messageWindow.putln("Compilation failed");
+	}
 }
 
 void sendCommand(Job* job, string command)

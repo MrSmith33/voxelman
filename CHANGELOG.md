@@ -84,7 +84,8 @@
 - Move network handling to `net` from `client`.
 
 ### Removed
-- Remove chunk change managerment from chunk manager.
+- Remove _saving states in chunk manager
+- Remove chunk change management from chunk manager.
 - Remove old chunk manager and chunk storage.
 - Remove old chunk.
 - Remove `continuePropagation` from events.

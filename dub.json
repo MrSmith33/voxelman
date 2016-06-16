@@ -27,6 +27,12 @@
 	"sourceFiles-windows-x86": ["lib/32/sqlite3.lib", "lib/32/lz4.lib", "lib/32/lmdb.lib"],
 	"sourceFiles-windows-x86_64": ["lib/64/sqlite3.lib", "lib/64/lz4.lib", "lib/64/lmdb.lib"],
 
+	"lflags-windows": [
+		"libcmt.lib",
+		"/nodefaultlib:msvcrt.lib",
+		"/nodefaultlib:vcruntime.lib"
+	],
+
 	"configurations": [
 		{
 			"name" : "exe",

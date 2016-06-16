@@ -24,9 +24,7 @@ private enum ChunkState {
 	added_loaded,
 	removed_loading,
 	added_loading,
-	removed_loaded_saving,
-	removed_loaded_used,
-	added_loaded_saving,
+	removed_loaded_used
 }
 
 private enum traceStateStr = q{
@@ -128,25 +126,8 @@ final class ChunkManager {
 	void save() {
 		foreach(cwp; modifiedChunks.items) {
 			auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-			with(ChunkState) final switch(state) {
-				case non_loaded:
-					assert(false, "Save should not occur for not added chunks");
-				case added_loaded:
-					chunkStates[cwp] = added_loaded_saving;
-					saveChunk(cwp);
-					break;
-				case removed_loading:
-					assert(false, "Save should not occur for not loaded chunks");
-				case added_loading:
-					assert(false, "Save should not occur for not loaded chunks");
-				case removed_loaded_saving:
-					assert(false, "Save should not occur for not added chunks");
-				case removed_loaded_used:
-					assert(false, "Save should not occur for not added chunks");
-				case added_loaded_saving:
-					assert(false, "Save should not occur for not for saving chunk");
-			}
-			mixin(traceStateStr);
+			assert(state == ChunkState.added_loaded, "Save should only occur for added_loaded chunks");
+			saveChunk(cwp);
 		}
 		clearModifiedChunks();
 	}
@@ -165,14 +146,14 @@ final class ChunkManager {
 	bool isChunkLoaded(ChunkWorldPos cwp)
 	{
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-		return state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving;
+		return state == ChunkState.added_loaded;
 	}
 
 	bool isChunkAdded(ChunkWorldPos cwp)
 	{
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) {
-			return state == added_loaded || state == added_loading || state == added_loaded_saving;
+			return state == added_loaded || state == added_loading;
 		}
 	}
 
@@ -214,8 +195,7 @@ final class ChunkManager {
 	/// If has users, then compressed snapshot is returned.
 	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, size_t layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
 		assert(layer == FIRST_LAYER);
-		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-		if (state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving) {
+		if (isChunkLoaded(cwp)) {
 			auto snap = cwp in snapshots[layer];
 			assert(snap);
 			if (snap.type == StorageType.compressedArray && uncompress)
@@ -265,7 +245,7 @@ final class ChunkManager {
 		assert(snap, "Cannot add chunk user. No such snapshot.");
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-		assert(state == ChunkState.added_loaded || state == ChunkState.added_loaded_saving,
+		assert(state == ChunkState.added_loaded,
 			format("To add user chunk must be both added and loaded, not %s", state));
 
 		totalSnapshotUsers[cwp] = totalSnapshotUsers.get(cwp, 0) + 1;
@@ -275,26 +255,26 @@ final class ChunkManager {
 		return snap.timestamp;
 	}
 
-	void addCurrentSnapshotUsers(ChunkWorldPos cwp) {
-		foreach(i; 0..numLayers) {
-			addCurrentSnapshotUser(cwp, i);
-		}
-	}
-
 	/// Generic removal of snapshot user. Removes chunk if numUsers == 0.
 	/// Use this to remove added snapshot user. Use timestamp returned from addCurrentSnapshotUser.
 	void removeSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, size_t layer) {
 		auto snap = cwp in snapshots[layer];
-		if (snap && snap.timestamp == timestamp) {
+		if (snap && snap.timestamp == timestamp)
+		{
 			auto totalUsersLeft = removeCurrentSnapshotUser(cwp, layer);
-			if (totalUsersLeft == 0) {
+			if (totalUsersLeft == 0)
+			{
 				auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-				if (state == ChunkState.removed_loaded_used) {
+				assert(state == ChunkState.added_loaded || state == ChunkState.removed_loaded_used);
+				if (state == ChunkState.removed_loaded_used)
+				{
 					chunkStates[cwp] = ChunkState.non_loaded;
 					clearChunkData(cwp);
 				}
 			}
-		} else {
+		}
+		else
+		{
 			removeOldSnapshotUser(cwp, timestamp, layer);
 		}
 	}
@@ -326,7 +306,7 @@ final class ChunkManager {
 				if (isLoadCancelingEnabled) {
 					clearChunkData(cwp);
 				} else {
-					assert(false, "On loaded should not occur for already loaded chunk");
+					assert(false, "On loaded should not occur for non-loading chunk");
 				}
 				break;
 			case added_loaded:
@@ -339,7 +319,7 @@ final class ChunkManager {
 					assert(!isLoadCancelingEnabled, "Should happen only when isLoadCancelingEnabled is false");
 					chunkStates[cwp] = added_loaded;
 					saveChunk(cwp);
-					chunkStates[cwp] = removed_loaded_saving;
+					chunkStates[cwp] = removed_loaded_used;
 				}
 				break;
 			case added_loading:
@@ -347,11 +327,7 @@ final class ChunkManager {
 				if (!isSaved) modifiedChunks.put(cwp);
 				notifyLoaded(cwp);
 				break;
-			case removed_loaded_saving:
-				assert(false, "On loaded should not occur for already loaded chunk");
 			case removed_loaded_used:
-				assert(false, "On loaded should not occur for already loaded chunk");
-			case added_loaded_saving:
 				assert(false, "On loaded should not occur for already loaded chunk");
 		}
 		mixin(traceStateStr);
@@ -365,43 +341,14 @@ final class ChunkManager {
 		ChunkHeaderItem header = chunk.getHeader();
 		version(DBG_OUT)infof("res saved %s", header.cwp);
 
+		auto cwp = header.cwp;
+		auto state = chunkStates.get(header.cwp, ChunkState.non_loaded);
 		foreach(i; 0..header.numLayers)
 		{
 			ChunkLayerTimestampItem layer = chunk.getLayerTimestamp();
+			// will delete current chunk when totalUsersLeft becomes 0;
 			removeSnapshotUser(header.cwp, layer.timestamp, layer.layerId);
 		}
-
-		// TODO remove code below once *_saving states are removed
-		auto state = chunkStates.get(header.cwp, ChunkState.non_loaded);
-		with(ChunkState) final switch(state)
-		{
-			case non_loaded:
-				assert(false, "On saved should not occur for not added chunks");
-			case added_loaded:
-				// TODO: if chunk was modified, saved and modified again - this can happen.
-				// assert(false, "On saved should not occur for not saving chunks");
-				// after removal of _saving states this switch can be removed.
-				break; // ignore
-			case removed_loading:
-				assert(false, "On saved should not occur for not loaded chunks");
-			case added_loading:
-				assert(false, "On saved should not occur for not loaded chunks");
-			case removed_loaded_saving:
-				auto totalUsersLeft = totalSnapshotUsers.get(header.cwp, 0);
-				if (totalUsersLeft == 0) {
-					chunkStates[header.cwp] = non_loaded;
-					clearChunkData(header.cwp);
-				} else {
-					chunkStates[header.cwp] = removed_loaded_used;
-				}
-				break;
-			case removed_loaded_used:
-				assert(false, "On saved should not occur for not saving chunks");
-			case added_loaded_saving:
-				chunkStates[header.cwp] = added_loaded;
-				break;
-		}
-		auto cwp = header.cwp;
 		mixin(traceStateStr);
 	}
 
@@ -420,7 +367,7 @@ final class ChunkManager {
 				if (writeBuffer.isModified)
 				{
 					modifiedChunks.put(cwp);
-					commitChunkSnapshot(cwp, writeBuffer, currentTime, layer);
+					commitLayerSnapshot(cwp, writeBuffer, currentTime, layer);
 				}
 				else
 				{
@@ -471,18 +418,11 @@ final class ChunkManager {
 				break;
 			case added_loading:
 				break; // ignore
-			case removed_loaded_saving:
-				chunkStates[cwp] = added_loaded_saving;
-				notifyAdded(cwp);
-				notifyLoaded(cwp);
-				break;
 			case removed_loaded_used:
 				chunkStates[cwp] = added_loaded;
 				notifyAdded(cwp);
 				notifyLoaded(cwp);
 				break;
-			case added_loaded_saving:
-				break; // ignore
 		}
 		mixin(traceStateStr);
 	}
@@ -491,23 +431,31 @@ final class ChunkManager {
 	// Notifies on remove.
 	private void unloadChunk(ChunkWorldPos cwp) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
+		notifyRemoved(cwp);
 		with(ChunkState) final switch(state) {
 			case non_loaded:
 				assert(false, "Unload should not occur when chunk was not yet loaded");
 			case added_loaded:
-				//assert(cwp !in writeBuffers[FIRST_LAYER], "Chunk with write buffer should not be unloaded");
-				notifyRemoved(cwp);
-				if(cwp in modifiedChunks && isChunkSavingEnabled) {
-					chunkStates[cwp] = removed_loaded_saving;
-					saveChunk(cwp);
+				if(cwp in modifiedChunks)
+				{
 					modifiedChunks.remove(cwp);
-				} else { // state 0
+					if (isChunkSavingEnabled)
+					{
+						chunkStates[cwp] = removed_loaded_used;
+						saveChunk(cwp);
+					}
+				}
+				else
+				{ // state 0
 					auto totalUsersLeft = totalSnapshotUsers.get(cwp, 0);
-					if (totalUsersLeft == 0) {
+					if (totalUsersLeft == 0)
+					{
 						chunkStates[cwp] = non_loaded;
 						modifiedChunks.remove(cwp);
 						clearChunkData(cwp);
-					} else {
+					}
+					else
+					{
 						chunkStates[cwp] = removed_loaded_used;
 					}
 				}
@@ -515,7 +463,6 @@ final class ChunkManager {
 			case removed_loading:
 				assert(false, "Unload should not occur when chunk is already removed");
 			case added_loading:
-				notifyRemoved(cwp);
 				if (isLoadCancelingEnabled)
 				{
 					chunkStates[cwp] = non_loaded;
@@ -526,14 +473,8 @@ final class ChunkManager {
 					chunkStates[cwp] = removed_loading;
 				}
 				break;
-			case removed_loaded_saving:
-				assert(false, "Unload should not occur when chunk is already removed");
 			case removed_loaded_used:
 				assert(false, "Unload should not occur when chunk is already removed");
-			case added_loaded_saving:
-				notifyRemoved(cwp);
-				chunkStates[cwp] = removed_loaded_saving;
-				break;
 		}
 		mixin(traceStateStr);
 	}
@@ -610,6 +551,7 @@ final class ChunkManager {
 
 		if ((*totalUsers) == 0) {
 			totalSnapshotUsers.remove(cwp);
+			return 0;
 		}
 
 		return (*totalUsers);
@@ -636,7 +578,7 @@ final class ChunkManager {
 	}
 
 	// Commit for single chunk.
-	private void commitChunkSnapshot(ChunkWorldPos cwp, WriteBuffer writeBuffer, TimestampType currentTime, size_t layer) {
+	private void commitLayerSnapshot(ChunkWorldPos cwp, WriteBuffer writeBuffer, TimestampType currentTime, size_t layer) {
 		auto currentSnapshot = getChunkSnapshot(cwp, layer);
 		assert(!currentSnapshot.isNull);
 		assert(writeBuffer.isModified);
@@ -653,10 +595,10 @@ final class ChunkManager {
 				totalSnapshotUsers.remove(cwp);
 			}
 
-			if (auto chunkSnaps = cwp in oldSnapshots[layer]) {
+			if (auto layerSnaps = cwp in oldSnapshots[layer]) {
 				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit add:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
-				assert(currentSnapshot.timestamp !in *chunkSnaps);
-				(*chunkSnaps)[currentSnapshot.timestamp] = currentSnapshot.get;
+				assert(currentSnapshot.timestamp !in *layerSnaps);
+				(*layerSnaps)[currentSnapshot.timestamp] = currentSnapshot.get;
 			} else {
 				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit new:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
 				oldSnapshots[layer][cwp] = [currentSnapshot.timestamp : currentSnapshot.get];
@@ -671,31 +613,7 @@ final class ChunkManager {
 			totalLayerDataBytes += getLayerDataBytes(&writeBuffer);
 		}
 
-		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-		with(ChunkState) final switch(state) {
-			case non_loaded:
-				assert(false, "Commit is not possible for non-loaded chunk");
-			case added_loaded:
-				break; // ignore
-			case removed_loading:
-				// Write buffer will be never returned when no snapshot is loaded.
-				assert(false, "Commit is not possible for removed chunk");
-			case added_loading:
-				// Write buffer will be never returned when no snapshot is loaded.
-				assert(false, "Commit is not possible for non-loaded chunk");
-			case removed_loaded_saving:
-				// This is guarded by internal user count.
-				assert(false, "Commit is not possible for removed chunk");
-			case removed_loaded_used:
-				// This is guarded by internal user count.
-				assert(false, "Commit is not possible for removed chunk");
-			case added_loaded_saving:
-				// This is now old snapshot with saving state. New one is not used by IO.
-				chunkStates[cwp] = added_loaded;
-				break;
-		}
-
-		mixin(traceStateStr);
+		assert(isChunkLoaded(cwp), "Commit is only possible for loaded chunk");
 	}
 
 	// Called when snapshot data can be recycled.
@@ -815,10 +733,10 @@ version(unittest) {
 				case added_loading:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
 					break;
-				case removed_loaded_saving:
-					gotoState(cm, ChunkState.added_loaded_saving);
-					cm.setExternalChunkObservers(ZERO_CWP, 0);
-					break;
+				//case removed_loaded_saving:
+				//	gotoState(cm, ChunkState.added_loaded_saving);
+				//	cm.setExternalChunkObservers(ZERO_CWP, 0);
+				//	break;
 				case removed_loaded_used:
 					gotoState(cm, ChunkState.added_loaded);
 					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
@@ -828,14 +746,32 @@ version(unittest) {
 					cm.setExternalChunkObservers(ZERO_CWP, 0);
 					cm.onSnapshotSaved(TestSavedChunkData(timestamp));
 					break;
-				case added_loaded_saving:
-					gotoState(cm, ChunkState.added_loaded);
-					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
-					cm.commitSnapshots(1);
-					cm.save();
-					break;
+				//case added_loaded_saving:
+				//	gotoState(cm, ChunkState.added_loaded);
+				//	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
+				//	cm.commitSnapshots(1);
+				//	cm.save();
+				//	break;
 			}
 			import std.string : format;
+			assert(currentState(cm) == state,
+				format("Failed to set state %s, got %s", state, currentState(cm)));
+		}
+
+		void gotoStateSaving(ChunkManager cm, ChunkState state)
+		{
+			if (state == ChunkState.added_loaded)
+			{
+				gotoState(cm, ChunkState.added_loaded);
+				cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
+				cm.commitSnapshots(1);
+				cm.save();
+			}
+			else if (state == ChunkState.removed_loaded_used)
+			{
+				gotoStateSaving(cm, ChunkState.added_loaded);
+				cm.setExternalChunkObservers(ZERO_CWP, 0);
+			}
 			assert(currentState(cm) == state,
 				format("Failed to set state %s, got %s", state, currentState(cm)));
 		}
@@ -856,6 +792,14 @@ unittest {
 		auto actualState = fsmTester.currentState(cm);
 		assert(actualState == state,
 			format("Got state '%s', while needed '%s'", actualState, state));
+	}
+
+	void assertHasOldSnapshot(TimestampType timestamp) {
+		assert(timestamp in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
+	}
+
+	void assertNoOldSnapshots() {
+		assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
 	}
 
 	void assertHasSnapshot() {
@@ -882,6 +826,12 @@ unittest {
 
 	void setupState(ChunkState state) {
 		fsmTester.gotoState(cm, state);
+		resetHandlersState();
+		assertState(state);
+	}
+
+	void setupStateSaving(ChunkState state) {
+		fsmTester.gotoStateSaving(cm, state);
 		resetHandlersState();
 		assertState(state);
 	}
@@ -919,16 +869,26 @@ unittest {
 	// removed_loading -> non_loaded
 	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
 	assertState(ChunkState.non_loaded);
-	assertHasNoSnapshot(); // null
+	assertHasNoSnapshot();
 	h.assertCalled(0b0000_0000);
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
-	// added_loading -> added_loaded
+	// added_loading -> added_loaded + modified
 	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
 	assertState(ChunkState.added_loaded);
 	assertHasSnapshot();
 	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled
+	assert(ZERO_CWP in cm.modifiedChunks);
+
+	//--------------------------------------------------------------------------
+	setupState(ChunkState.added_loading);
+	// added_loading -> added_loaded
+	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
+	assertState(ChunkState.added_loaded);
+	assertHasSnapshot();
+	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled
+	assert(ZERO_CWP !in cm.modifiedChunks);
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
@@ -939,75 +899,71 @@ unittest {
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
-	// added_loaded -> removed_loaded_saving
-	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
+	// added_loaded -> removed_loaded_used
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(TimestampType(1));
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
-	assertState(ChunkState.removed_loaded_saving);
+	assertState(ChunkState.removed_loaded_used);
+	assertHasSnapshot();
 	h.assertCalled(0b0010_0010); //onChunkRemovedHandlerCalled, loadChunkHandlerCalled
-
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
-	// added_loaded -> added_loaded_saving
-	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
+	// added_loaded -> added_loaded
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(TimestampType(1));
 	cm.save();
-	assertState(ChunkState.added_loaded_saving);
+	assertState(ChunkState.added_loaded);
 	h.assertCalled(0b0010_0000); //loadChunkHandlerCalled
 
+	//--------------------------------------------------------------------------
+	setupState(ChunkState.added_loaded);
+	// added_loaded with user -> added_loaded no user after commit
+	cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
+	cm.commitSnapshots(TimestampType(1));
+	assertState(ChunkState.added_loaded);
+	h.assertCalled(0b0000_0000);
+	assertHasOldSnapshot(TimestampType(0));
 
 	//--------------------------------------------------------------------------
-	setupState(ChunkState.added_loaded_saving);
-	// added_loaded_saving -> added_loaded with commit
-	cm.getOrCreateWriteBuffer(ZERO_CWP, 0);
-	cm.commitSnapshots(TimestampType(2));
+	setupStateSaving(ChunkState.added_loaded);
+	// added_loaded saving -> added_loaded after on_saved
+	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
 	assertState(ChunkState.added_loaded);
 	h.assertCalled(0b0000_0000);
 
-
 	//--------------------------------------------------------------------------
-	setupState(ChunkState.added_loaded_saving);
-	// added_loaded_saving -> added_loaded with on_saved
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
-	assertState(ChunkState.added_loaded);
-	h.assertCalled(0b0000_0000);
-
-
-	//--------------------------------------------------------------------------
-	setupState(ChunkState.added_loaded_saving);
-	// added_loaded_saving -> removed_loaded_saving
+	setupStateSaving(ChunkState.added_loaded);
+	// added_loaded saving -> removed_loaded saving
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
-	assertState(ChunkState.removed_loaded_saving);
-	h.assertCalled(0b0000_0010); //onChunkRemovedHandlerCalled
-
-
-	//--------------------------------------------------------------------------
-	setupState(ChunkState.removed_loaded_saving);
-	// removed_loaded_saving -> non_loaded
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
-	assertState(ChunkState.non_loaded);
-	h.assertCalled(0b0000_0000);
-
-
-	//--------------------------------------------------------------------------
-	setupState(ChunkState.added_loaded_saving);
-	// removed_loaded_saving -> removed_loaded_used
-	cm.addCurrentSnapshotUser(ZERO_CWP, 0);
-	cm.setExternalChunkObservers(ZERO_CWP, 0);
-	assertState(ChunkState.removed_loaded_saving);
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
 	assertState(ChunkState.removed_loaded_used);
 	h.assertCalled(0b0000_0010); //onChunkRemovedHandlerCalled
 
 
 	//--------------------------------------------------------------------------
-	setupState(ChunkState.removed_loaded_saving);
-	// removed_loaded_saving -> added_loaded_saving
-	cm.setExternalChunkObservers(ZERO_CWP, 1);
-	assertState(ChunkState.added_loaded_saving);
-	h.assertCalled(0b0000_0101); //onChunkAddedHandlerCalled, onChunkLoadedHandlerCalled
+	setupStateSaving(ChunkState.removed_loaded_used);
+	// removed_loaded_used saving -> non_loaded
+	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	assertState(ChunkState.non_loaded);
+	h.assertCalled(0b0000_0000);
 
+	//--------------------------------------------------------------------------
+	setupStateSaving(ChunkState.added_loaded);
+	// removed_loaded_used saving -> removed_loaded_used
+	cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
+	cm.setExternalChunkObservers(ZERO_CWP, 0);
+	assertState(ChunkState.removed_loaded_used); // & saving
+	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	assertState(ChunkState.removed_loaded_used);
+	h.assertCalled(0b0000_0010); //onChunkRemovedHandlerCalled
+
+	//--------------------------------------------------------------------------
+	setupStateSaving(ChunkState.removed_loaded_used);
+	// removed_loaded_used saving -> added_loaded saving
+	cm.setExternalChunkObservers(ZERO_CWP, 1);
+	assertState(ChunkState.added_loaded);
+	h.assertCalled(0b0000_0101); //onChunkAddedHandlerCalled, onChunkLoadedHandlerCalled
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.removed_loaded_used);
@@ -1034,7 +990,7 @@ unittest {
 	cm.commitSnapshots(1);
 	assert(timestamp in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
 	cm.removeSnapshotUser(ZERO_CWP, timestamp, FIRST_LAYER);
-	assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
+	assertNoOldSnapshots();
 
 	//--------------------------------------------------------------------------
 	// test unload of old chunk when it has users. Already has snapshot for earlier timestamp.
@@ -1052,7 +1008,7 @@ unittest {
 
 	cm.removeSnapshotUser(ZERO_CWP, timestamp0, FIRST_LAYER);
 	cm.removeSnapshotUser(ZERO_CWP, timestamp1, FIRST_LAYER);
-	assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
+	assertNoOldSnapshots();
 
 	//--------------------------------------------------------------------------
 	// test case where old snapshot was saved and current snapshot is added_loaded
@@ -1063,5 +1019,5 @@ unittest {
 	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
 	cm.commitSnapshots(2); // now, snap that is saved is old.
 	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
-	assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
+	assertNoOldSnapshots();
 }

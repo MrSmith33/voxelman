@@ -10,8 +10,6 @@
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement graphics pipeline.
 - [ ] Generic Volume type
-- [ ] remove _saving states on chunk manager
-- [ ] for each layer register handlers for allocation, save, load
 - [ ] fix problem with dimention change when old position confuses server and volume is not updated.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
@@ -19,6 +17,11 @@
 
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
+
+- [ ] add block entity code.
+- [ ] add static entity layer code.
+- [ ] for each layer register handlers for allocation, save, load, write buffer.
+- [x] remove _saving states in chunk manager
 - [x] Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - [x] Toolbar.
 - [x] Restore capture of per-block changes.
