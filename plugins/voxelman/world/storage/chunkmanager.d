@@ -904,7 +904,6 @@ unittest {
 	cm.commitSnapshots(TimestampType(1));
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
 	assertState(ChunkState.removed_loaded_used);
-	assertHasSnapshot();
 	h.assertCalled(0b0010_0010); //onChunkRemovedHandlerCalled, loadChunkHandlerCalled
 
 	//--------------------------------------------------------------------------
