@@ -375,7 +375,7 @@ BlockId getBlockId(Layer)(const ref Layer layer, BlockChunkIndex index)
 	if (layer.type == StorageType.uniform) return layer.getUniform!BlockId;
 	if (layer.type == StorageType.compressedArray) {
 		BlockId[CHUNK_SIZE_CUBE] buffer;
-		decompressLayerData(layer, buffer[]);
+		decompressLayerData(layer, cast(ubyte[])buffer[]);
 		return buffer[index];
 	}
 	return getArray!BlockId(layer)[index];
@@ -400,7 +400,7 @@ BlockData toBlockData(Layer)(const ref Layer layer)
 	res.uniform = layer.type == StorageType.uniform;
 	res.metadata = layer.metadata;
 	if (!res.uniform)
-		res.blocks = layer.getArray!BlockId();
+		res.blocks = layer.getArray!ubyte();
 	else
 		res.uniformType = layer.getUniform!BlockId;
 	return res;
@@ -545,13 +545,13 @@ struct BlockData
 {
 	void validate()
 	{
-		if (!uniform && blocks.length != CHUNK_SIZE_CUBE) {
+		if (!uniform && blocks.length != BLOCKS_DATA_LENGTH) {
 			fatalf("Size of uniform chunk != CHUNK_SIZE_CUBE, == %s", blocks.length);
 		}
 	}
 
 	/// null if uniform is true, or contains chunk data otherwise
-	BlockId[] blocks;
+	ubyte[] blocks;
 
 	/// type of common block
 	BlockId uniformType = 0; // Unknown block

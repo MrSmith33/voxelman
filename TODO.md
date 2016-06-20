@@ -18,6 +18,7 @@
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
 
+- [ ] Remove BlockData
 - [ ] add block entity code.
 - [ ] add static entity layer code.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.

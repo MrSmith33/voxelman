@@ -260,8 +260,7 @@ public:
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
 		if (!packet.blockData.uniform) {
-			import std.array : uninitializedArray;
-			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
+			auto blocks = allocLayerArray(BLOCKS_DATA_LENGTH);
 			version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, packet.blockData.blocks.length, cast(ubyte[])packet.blockData.blocks);
 			auto decompressed = decompressLayerData(packet.blockData.blocks, blocks);
 			if (decompressed is null)

@@ -52,6 +52,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Change BlockID size to two bytes.
 - Rewrite client to use new chunk manager.
 - Rewrite chunk mesh manager to new algo of chunk meshing. Meshing passes that use snapshot system of chunk manager.
 - Implement new worker and worker group.

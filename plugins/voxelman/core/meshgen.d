@@ -176,7 +176,7 @@ ubyte[][2] chunkMeshWorker(ChunkLayerItem layer, ChunkLayerItem[6] adjacent, imm
 	{
 		auto blocks = layer.getArray!BlockId();
 		assert(blocks.length == CHUNK_SIZE_CUBE);
-		foreach (uint index, ubyte blockId; blocks)
+		foreach (uint index, BlockId blockId; blocks)
 		{
 			if (blockInfos[blockId].isVisible)
 			{

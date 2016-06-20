@@ -8,7 +8,7 @@ module voxelman.core.config;
 public import voxelman.globalconfig;
 public import dlib.math.vector : vec3, ivec3, ivec4, uvec2;
 
-alias BlockId = ubyte;
+alias BlockId = ushort;
 alias TimestampType = uint;
 alias DimentionId = ushort;
 
