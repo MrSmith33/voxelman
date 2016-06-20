@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add universal data management for chunk layers.
 - Add toolbar.
 - Add active chunk system.
 - Implement generic solution for saving/loading data for use in plugins.

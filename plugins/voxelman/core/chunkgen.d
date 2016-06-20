@@ -116,7 +116,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 				ushort metadata = calcChunkSideMetadata(uniformBlockId, blockInfos);
 				metadata |= cast(ushort)(solidityBits<<CHUNK_SIDE_METADATA_BITS);
 
-				auto layer = ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformBlockId, metadata);
+				auto layer = ChunkLayerItem(StorageType.uniform, layerId, BLOCKID_UNIFORM_FILL_BITS, timestamp, uniformBlockId, metadata);
 				workerInfo.resultQueue.pushMessagePart(layer);
 			}
 			else
@@ -125,26 +125,26 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blo
 				ushort metadata = calcChunkSideMetadata(blocks[], blockInfos);
 				metadata |= cast(ushort)(solidityBits<<CHUNK_SIDE_METADATA_BITS);
 
-				ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
+				ubyte[] compactBlocks = compressLayerData(cast(ubyte[])blocks, compressBuffer);
 				//infof("%s L %s C (%(%02x%))", cwp, compactBlocks.length, cast(ubyte[])compactBlocks);
 
 				StorageType storageType;
-				ushort dataLength;
+				LayerDataLenType dataLength;
 				ubyte* data;
 
-				if (compactBlocks.length <= ushort.max)
+				if (compactBlocks.length <= LayerDataLenType.max)
 				{
 					version(DBG_COMPR)infof("Gen1 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
 					compactBlocks = compactBlocks.dup;
 					version(DBG_COMPR)infof("Gen2 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
-					dataLength = cast(ushort)compactBlocks.length;
+					dataLength = cast(LayerDataLenType)compactBlocks.length;
 					data = cast(ubyte*)compactBlocks.ptr;
 					storageType = StorageType.compressedArray;
 				}
 				else
 				{
 					infof("Gen non-compressed %s", cwp);
-					dataLength = cast(ushort)blocks.length;
+					dataLength = cast(LayerDataLenType)blocks.length;
 					assert(dataLength == CHUNK_SIZE_CUBE);
 					data = cast(ubyte*)blocks.dup.ptr;
 					storageType = StorageType.fullArray;

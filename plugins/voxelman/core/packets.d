@@ -28,8 +28,8 @@ void registerPackets(Connection c)
 struct ClientPositionPacket
 {
 	import voxelman.core.config : DimentionId;
-	vec3 pos = vec3(0, 0, 0);
-	vec2 heading = vec2(0, 0);
+	float[3] pos = [0, 0, 0];
+	float[2] heading = [0, 0];
 	DimentionId dimention;
 }
 
@@ -42,14 +42,14 @@ struct ViewRadiusPacket
 struct ChunkDataPacket
 {
 	import voxelman.world.storage.chunk : BlockData;
-	ivec4 chunkPos;
+	int[4] chunkPos;
 	BlockData blockData;
 }
 
 struct MultiblockChangePacket
 {
 	import voxelman.world.storage.chunk : BlockChange;
-	ivec4 chunkPos;
+	int[4] chunkPos;
 	BlockChange[] blockChanges;
 }
 

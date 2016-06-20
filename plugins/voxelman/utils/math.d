@@ -19,3 +19,12 @@ void nansToZero(T, int size)(ref Vector!(T, size) vector)
 		item = isNaN(item) ? 0 : item;
 	}
 }
+
+void nansToZero(T, int size)(ref T[size] vector)
+	if (isFloatingPoint!T)
+{
+	foreach(ref item; vector)
+	{
+		item = isNaN(item) ? 0 : item;
+	}
+}

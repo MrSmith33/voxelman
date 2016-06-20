@@ -167,20 +167,20 @@ struct BlockInfoSetter
 ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
 {
 	if (writeBuffer.isUniform) {
-		ushort sideMeta = calcChunkSideMetadata(writeBuffer.uniformBlockId, blockInfos);
-		ushort solidityBits = calcSolidityBits(writeBuffer.uniformBlockId, blockInfos);
+		ushort sideMeta = calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
+		ushort solidityBits = calcSolidityBits(writeBuffer.getUniform!BlockId, blockInfos);
 		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
 	} else {
-		ushort sideMeta = calcChunkSideMetadata(writeBuffer.blocks, blockInfos);
-		ushort solidityBits = calcSolidityBits(writeBuffer.blocks, blockInfos);
+		ushort sideMeta = calcChunkSideMetadata(writeBuffer.getArray!BlockId, blockInfos);
+		ushort solidityBits = calcSolidityBits(writeBuffer.getArray!BlockId, blockInfos);
 		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
 	}
 }
 
 ushort calcChunkSideMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
 {
-	if (writeBuffer.isUniform) return calcChunkSideMetadata(writeBuffer.uniformBlockId, blockInfos);
-	else return calcChunkSideMetadata(writeBuffer.blocks, blockInfos);
+	if (writeBuffer.isUniform) return calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
+	else return calcChunkSideMetadata(writeBuffer.getArray!BlockId, blockInfos);
 }
 
 ushort calcChunkSideMetadata(Layer)(Layer blockLayer, immutable(BlockInfo)[] blockInfos)

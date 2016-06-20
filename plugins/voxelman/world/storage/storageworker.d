@@ -118,20 +118,20 @@ void storageWorker(
 				encodedSize += encodeCbor(buffer[encodedSize..$], layer.metadata);
 				if (layer.type == StorageType.uniform)
 				{
-					encodedSize += encodeCbor(buffer[encodedSize..$], layer.type);
-					encodedSize += encodeCbor(buffer[encodedSize..$], cast(BlockId)layer.uniformData);
+					encodedSize += encodeCbor(buffer[encodedSize..$], StorageType.uniform);
+					encodedSize += encodeCbor(buffer[encodedSize..$], layer.uniformData);
+					encodedSize += encodeCbor(buffer[encodedSize..$], layer.dataLength);
 				}
 				else if (layer.type == StorageType.fullArray)
 				{
 					encodedSize += encodeCbor(buffer[encodedSize..$], StorageType.compressedArray);
-					BlockId[] blocks = layer.getArray!BlockId;
-					ubyte[] compactBlocks = compress(cast(ubyte[])blocks, compressBuffer);
+					ubyte[] compactBlocks = compressLayerData(layer.getArray!ubyte, compressBuffer);
 					encodedSize += encodeCbor(buffer[encodedSize..$], compactBlocks);
 					version(DBG_COMPR)infof("Store1 %s %s %s\n(%(%02x%))", header.cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
 				}
 				else if (layer.type == StorageType.compressedArray)
 				{
-					encodedSize += encodeCbor(buffer[encodedSize..$], layer.type);
+					encodedSize += encodeCbor(buffer[encodedSize..$], StorageType.compressedArray);
 					ubyte[] compactBlocks = layer.getArray!ubyte;
 					encodedSize += encodeCbor(buffer[encodedSize..$], compactBlocks);
 					version(DBG_COMPR)infof("Store2 %s %s %s\n(%(%02x%))", header.cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
@@ -199,8 +199,9 @@ void storageWorker(
 
 					if (type == StorageType.uniform)
 					{
-						BlockId uniformData = decodeCborSingle!BlockId(cborData);
-						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.uniform, layerId, 0, timestamp, uniformData, metadata));
+						ulong uniformData = decodeCborSingle!ulong(cborData);
+						auto dataLength = decodeCborSingle!LayerDataLenType(cborData);
+						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.uniform, layerId, dataLength, timestamp, uniformData, metadata));
 					}
 					else
 					{
@@ -208,7 +209,7 @@ void storageWorker(
 						assert(type == StorageType.compressedArray);
 						ubyte[] compactBlocks = decodeCborSingle!(ubyte[])(cborData);
 						compactBlocks = compactBlocks.dup;
-						ushort dataLength = cast(ushort)compactBlocks.length;
+						LayerDataLenType dataLength = cast(LayerDataLenType)compactBlocks.length;
 						ubyte* data = cast(ubyte*)compactBlocks.ptr;
 
 						// Add root to data.

@@ -17,6 +17,7 @@ import voxelman.utils.trace : traceRay;
 import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
+import voxelman.world.storage.volume;
 
 import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;
@@ -32,7 +33,7 @@ shared static this()
 }
 
 enum cursorSize = vec3(1.02, 1.02, 1.02);
-enum cursorOffeset = vec3(0.01, 0.01, 0.01);
+enum cursorOffset = vec3(0.01, 0.01, 0.01);
 
 class WorldInteractionPlugin : IPlugin
 {
@@ -83,6 +84,11 @@ class WorldInteractionPlugin : IPlugin
 		return clientWorld.worldAccess.getBlock(blockPos);
 	}
 
+	void fillVolume(Volume volume, BlockId blockId)
+	{
+		connection.send(FillBlockVolumePacket(volume, blockId));
+	}
+
 	void traceCursor()
 	{
 		StopWatch sw;
@@ -131,7 +137,7 @@ class WorldInteractionPlugin : IPlugin
 	void drawCursor(BlockWorldPos block, Color3ub color)
 	{
 		graphics.debugBatch.putCube(
-			vec3(block.xyz) - cursorOffeset,
+			vec3(block.xyz) - cursorOffset,
 			cursorSize, color, false);
 	}
 

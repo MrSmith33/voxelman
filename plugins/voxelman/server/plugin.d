@@ -14,7 +14,6 @@ import pluginlib.pluginmanager;
 
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.net.events;
 
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.command.plugin;

@@ -71,6 +71,11 @@ struct BlockWorldPos
 		vector = ivec4(blockWorldPos.x, blockWorldPos.y, blockWorldPos.z, dim);
 	}
 
+	this(int x, int y, int z, int dim)
+	{
+		vector = ivec4(x, y, z, dim);
+	}
+
 	ivec4 vector;
 	auto opDispatch(string s)()
 	{
@@ -146,6 +151,11 @@ struct ChunkWorldPos
 	this(ivec4 chunkWorldPos)
 	{
 		vector = chunkWorldPos;
+	}
+
+	this(int[4] chunkWorldPos)
+	{
+		vector = svec4(chunkWorldPos);
 	}
 
 	this(ivec3 chunkWorldPos, DimentionId dim)

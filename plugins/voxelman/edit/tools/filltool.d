@@ -69,12 +69,12 @@ final class FillTool : ITool
 			case EditState.none:
 				break;
 			case EditState.placing:
-				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffeset,
-					vec3(selection.size) + cursorOffeset, Colors.blue, false);
+				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffset,
+					vec3(selection.size) + cursorOffset, Colors.blue, false);
 				break;
 			case EditState.removing:
-				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffeset,
-					vec3(selection.size) + cursorOffeset, Colors.red, false);
+				graphics.debugBatch.putCube(vec3(selection.position) - cursorOffset,
+					vec3(selection.size) + cursorOffset, Colors.red, false);
 				break;
 		}
 	}
@@ -96,7 +96,7 @@ final class FillTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			fillVolume(selection, 1);
+			worldInteraction.fillVolume(selection, 1);
 		}
 	}
 
@@ -117,17 +117,12 @@ final class FillTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			fillVolume(selection, currentBlock);
+			worldInteraction.fillVolume(selection, currentBlock);
 		}
 	}
 
 	override void onTertiaryActionRelease() {
 		if (!clientPlugin.mouseLocked) return;
 		currentBlock = worldInteraction.pickBlock();
-	}
-
-	void fillVolume(Volume volume, BlockId blockId)
-	{
-		connection.send(FillBlockVolumePacket(volume, blockId));
 	}
 }

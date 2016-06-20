@@ -20,7 +20,8 @@
 
 - [ ] add block entity code.
 - [ ] add static entity layer code.
-- [ ] for each layer register handlers for allocation, save, load, write buffer.
+- [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
+- [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.
 - [x] remove _saving states in chunk manager
 - [x] Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - [x] Toolbar.

@@ -415,10 +415,10 @@ public:
 		BlockData bd = layer.toBlockData();
 		if (layer.type == StorageType.fullArray)
 		{
-			ubyte[] compactBlocks = compress(cast(ubyte[])layer.getArray!BlockId, buf);
+			ubyte[] compactBlocks = compressLayerData(layer.getArray!ubyte, buf);
 			bd.blocks = compactBlocks;
 		}
-		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, bd));
+		connection.sendTo(clients, ChunkDataPacket(cwp.ivector.arrayof, bd));
 	}
 
 	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
@@ -428,7 +428,7 @@ public:
 		{
 			connection.sendTo(
 				chunkObserverManager.getChunkObservers(pair.key),
-				MultiblockChangePacket(pair.key.ivector, pair.value));
+				MultiblockChangePacket(pair.key.ivector.arrayof, pair.value));
 		}
 	}
 

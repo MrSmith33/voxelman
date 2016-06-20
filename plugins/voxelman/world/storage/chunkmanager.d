@@ -195,22 +195,37 @@ final class ChunkManager {
 	/// If has users, then compressed snapshot is returned.
 	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, size_t layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
 		assert(layer == FIRST_LAYER);
-		if (isChunkLoaded(cwp)) {
+		if (isChunkLoaded(cwp))
+		{
 			auto snap = cwp in snapshots[layer];
 			assert(snap);
-			if (snap.type == StorageType.compressedArray && uncompress)
+			if (snap)
 			{
-				if (snap.numUsers == 0) {
-					BlockId[] buffer = allocBlockLayerArray();
-					uncompressIntoBuffer(*snap, buffer);
-					recycleSnapshotMemory(*snap);
-					snap.dataPtr = buffer.ptr;
-					snap.dataLength = cast(ushort)buffer.length;
-					snap.type = StorageType.fullArray;
+				if (snap.type == StorageType.compressedArray && uncompress)
+				{
+					ubyte[] decompressedData = decompressLayerData((*snap).getArray!ubyte);
+					if (snap.numUsers == 0) {
+						recycleSnapshotMemory(*snap);
+						snap.dataPtr = decompressedData.ptr;
+						snap.dataLength = cast(LayerDataLenType)decompressedData.length;
+						snap.type = StorageType.fullArray;
+					}
+					else
+					{
+						ChunkLayerSnap res = *snap;
+						res.dataPtr = decompressedData.ptr;
+						res.dataLength = cast(LayerDataLenType)decompressedData.length;
+						res.type = StorageType.fullArray;
+						return Nullable!ChunkLayerSnap(res);
+					}
 				}
+				auto res = Nullable!ChunkLayerSnap(*snap);
+				return res;
 			}
-			auto res = Nullable!ChunkLayerSnap(*snap);
-			return res;
+			else
+			{
+				return Nullable!ChunkLayerSnap(ChunkLayerSnap.init);
+			}
 		}
 
 		auto res = Nullable!ChunkLayerSnap.init;
@@ -232,7 +247,7 @@ final class ChunkManager {
 		if (writeBuffer && policy == WriteBufferPolicy.copySnapshotArray) {
 			auto old = getChunkSnapshot(cwp, layer);
 			if (!old.isNull) {
-				writeBuffer.makeArray(old);
+				applyLayer(old, writeBuffer.layer);
 			}
 		}
 		return writeBuffer;
@@ -371,8 +386,9 @@ final class ChunkManager {
 				}
 				else
 				{
-					if (!writeBuffer.isUniform)
-						freeBlockLayerArray(writeBuffer.blocks);
+					if (!writeBuffer.isUniform) {
+						freeLayerArray(writeBuffer.layer);
+					}
 				}
 				removeInternalObserver(cwp); // remove user added in createWriteBuffer
 			}
@@ -596,34 +612,36 @@ final class ChunkManager {
 			}
 
 			if (auto layerSnaps = cwp in oldSnapshots[layer]) {
-				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit add:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
+				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit add:%s) %s/%s @%s", cwp, layer,
+					currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
 				assert(currentSnapshot.timestamp !in *layerSnaps);
 				(*layerSnaps)[currentSnapshot.timestamp] = currentSnapshot.get;
 			} else {
-				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit new:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
+				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit new:%s) %s/%s @%s", cwp, layer,
+					currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);
 				oldSnapshots[layer][cwp] = [currentSnapshot.timestamp : currentSnapshot.get];
 				version(TRACE_SNAP_USERS) tracef("oldSnapshots[%s][%s] == %s", layer, cwp, oldSnapshots[layer][cwp]);
 			}
 		}
 
 		if (writeBuffer.isUniform) {
-			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.uniform, 0, currentTime, writeBuffer.uniformBlockId, writeBuffer.metadata);
+			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.uniform, writeBuffer.layer.dataLength,
+				currentTime, writeBuffer.layer.uniformData, writeBuffer.layer.metadata);
 		} else {
-			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime, writeBuffer.blocks, writeBuffer.metadata);
-			totalLayerDataBytes += getLayerDataBytes(&writeBuffer);
+			assert(writeBuffer.layer.type == StorageType.fullArray);
+			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime,
+				writeBuffer.getArray!ubyte, writeBuffer.layer.metadata);
+			totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);
 		}
 
 		assert(isChunkLoaded(cwp), "Commit is only possible for loaded chunk");
 	}
 
 	// Called when snapshot data can be recycled.
-	private void recycleSnapshotMemory(ChunkLayerSnap snap) {
+	private void recycleSnapshotMemory(ref ChunkLayerSnap snap) {
 		totalLayerDataBytes -= getLayerDataBytes(snap);
-		if (snap.type == StorageType.fullArray) {
-			freeBlockLayerArray(snap.getArray!BlockId());
-		} else if (snap.type == StorageType.compressedArray) {
-			import core.memory : GC;
-			GC.free(snap.getArray!ubyte().ptr);
+		if (snap.type != StorageType.uniform) {
+			freeLayerArray(snap);
 		}
 	}
 }

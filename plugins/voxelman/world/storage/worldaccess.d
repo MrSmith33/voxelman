@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.worldaccess;
 
 import std.experimental.logger;
+import std.string;
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.world.storage.chunk;
@@ -36,7 +37,7 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return;
 		applyChanges(writeBuffer, changes);
-		writeBuffer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
+		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
 	}
 
 	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
@@ -46,7 +47,8 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return false;
 
-		writeBuffer.blocks[blockIndex] = blockId;
+		BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
+		blocks[blockIndex] = blockId;
 		onBlockChange(cwp, BlockChange(blockIndex.index, blockId));
 		updateWriteBufferMetadata(writeBuffer);
 		return true;
@@ -89,13 +91,15 @@ final class WorldAccess
 		{
 			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
 			if (writeBuffer is null) return false;
-			writeBuffer.makeUniform(blockId);
+			writeBuffer.makeUniform!BlockId(blockId);
 		}
 		else
 		{
 			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
-			setSubArray(writeBuffer.blocks, blockVolume, blockId);
+			BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
+			assert(blocks.length == CHUNK_SIZE_CUBE, format("blocks %s", blocks.length));
+			setSubArray(blocks, blockVolume, blockId);
 		}
 		updateWriteBufferMetadata(writeBuffer);
 
@@ -103,7 +107,7 @@ final class WorldAccess
 	}
 
 	private void updateWriteBufferMetadata(WriteBuffer* writeBuffer) {
-		writeBuffer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
+		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
 	}
 
 	BlockId getBlock(BlockWorldPos bwp) {

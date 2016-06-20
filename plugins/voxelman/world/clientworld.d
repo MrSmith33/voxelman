@@ -263,7 +263,7 @@ public:
 			import std.array : uninitializedArray;
 			auto blocks = uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
 			version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, packet.blockData.blocks.length, cast(ubyte[])packet.blockData.blocks);
-			auto decompressed = decompress(packet.blockData.blocks, blocks);
+			auto decompressed = decompressLayerData(packet.blockData.blocks, blocks);
 			if (decompressed is null)
 			{
 				auto b = packet.blockData.blocks;
@@ -301,7 +301,7 @@ public:
 		if (chunkManager.isChunkLoaded(cwp))
 		{
 			WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
-			writeBuffer.makeArray(layer);
+			applyLayer(layer, writeBuffer.layer);
 		}
 		else
 		{
@@ -370,8 +370,8 @@ public:
 				observerPosition != prevChunkPos)
 			{
 				connection.send(ClientPositionPacket(
-					graphics.camera.position,
-					graphics.camera.heading,
+					graphics.camera.position.arrayof,
+					graphics.camera.heading.arrayof,
 					observerPosition.w));
 
 				if (sendPositionTimer < sendPositionInterval)

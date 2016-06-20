@@ -131,10 +131,10 @@ public:
 			packet.pos, packet.heading, packet.dimention);
 
 		nansToZero(packet.pos);
-		graphics.camera.position = packet.pos;
+		graphics.camera.position = vec3(packet.pos);
 
 		nansToZero(packet.heading);
-		graphics.camera.setHeading(packet.heading);
+		graphics.camera.setHeading(vec2(packet.heading));
 
 		clientWorld.setCurrentDimention(packet.dimention);
 	}
@@ -206,7 +206,7 @@ public:
 		info.pos = START_POS;
 		info.heading = vec2(0,0);
 		info.dimention = 0;
-		connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading, info.dimention));
+		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
 		updateObserverVolume(info);
 	}
 
@@ -251,7 +251,7 @@ public:
 		info.pos = pos;
 		info.heading = heading;
 		info.dimention = dimention;
-		connection.sendTo(clientId, ClientPositionPacket(pos, heading, dimention));
+		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimention));
 		connection.sendTo(clientId, SpawnPacket());
 		updateObserverVolume(info);
 	}
@@ -282,7 +282,7 @@ public:
 				auto dim = to!DimentionId(params.args[1]);
 				info.dimention = dim;
 				tracef("change dimention to %s for %s", dim, clientName(params.source));
-				connection.sendTo(params.source, ClientPositionPacket(info.pos, info.heading, info.dimention));
+				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
 				//updateObserverVolume(info);
 				// BUG: old positions will come from client until ClientPositionPacket is delivered.
 			}
@@ -339,8 +339,8 @@ public:
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
 			ClientInfo* info = clients[clientId];
-			info.pos = packet.pos;
-			info.heading = packet.heading;
+			info.pos = vec3(packet.pos);
+			info.heading = vec2(packet.heading);
 			updateObserverVolume(info);
 		}
 	}

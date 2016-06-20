@@ -10,6 +10,7 @@ import std.array : uninitializedArray;
 import std.string : format;
 import std.typecons : Nullable;
 
+import cbor;
 import dlib.math.vector;
 
 import voxelman.core.config;
@@ -21,14 +22,57 @@ import voxelman.world.storage.volume;
 import voxelman.utils.compression;
 
 enum FIRST_LAYER = 0;
+enum ENTITY_LAYER = 1;
+enum BLOCKS_DATA_LENGTH = CHUNK_SIZE_CUBE * BlockId.sizeof;
+enum BLOCKID_UNIFORM_FILL_BITS = bitsToUniformLength(BlockId.sizeof * 8);
 
-BlockId[] allocBlockLayerArray() {
-	return uninitializedArray!(BlockId[])(CHUNK_SIZE_CUBE);
+
+ubyte bitsToUniformLength(ubyte bits) {
+	if (bits == 1)
+		return 1;
+	else if (bits == 2)
+		return 2;
+	else if (bits == 4)
+		return 3;
+	else if (bits == 8)
+		return 4;
+	else if (bits == 16)
+		return 5;
+	else if (bits == 32)
+		return 6;
+	else if (bits == 64)
+		return 7;
+	else
+		assert(false);
 }
 
-void freeBlockLayerArray(BlockId[] buffer) {
+/// is used as array size when non-uniform.
+/// Used to allocate full array when uniform.
+/// Assumes array length as CHUNK_SIZE_CUBE, but element size is dataLength/CHUNK_SIZE_CUBE if CHUNK_SIZE_CUBE > dataLength
+/// Or CHUNK_SIZE_CUBE/dataLength otherwise. Element size is used to fill created array.
+/// If dataLength < CHUNK_SIZE_CUBE then element size is less than byte.
+/// Element size must be power of two, either of bytes or of bits.
+alias LayerDataLenType = uint;
+
+enum StorageType : ubyte
+{
+	uniform,
+	//linearMap,
+	//hashMap,
+	compressedArray,
+	fullArray,
+}
+
+ubyte[] allocLayerArray(size_t length) {
+	return uninitializedArray!(ubyte[])(length);
+}
+
+void freeLayerArray(Layer)(ref Layer layer) {
 	import core.memory : GC;
-	GC.free(buffer.ptr);
+	assert(layer.type != StorageType.uniform);
+	GC.free(layer.dataPtr);
+	layer.dataPtr = null;
+	layer.dataLength = 0;
 }
 
 struct ChunkHeaderItem {
@@ -44,7 +88,8 @@ struct ChunkLayerTimestampItem {
 }
 static assert(ChunkLayerTimestampItem.sizeof == 8);
 
-/// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
+/// Stores layer of chunk data. Used for transferring and saving chunk layers.
+/// Stores layerId. Stores no user count.
 align(1)
 struct ChunkLayerItem
 {
@@ -56,15 +101,17 @@ struct ChunkLayerItem
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	uint dataLength;
-	this(StorageType _type, ubyte _layerId, uint _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+
+	LayerDataLenType dataLength;
+	this(StorageType _type, ubyte _layerId, LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, ubyte _layerId, uint _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
+	this(StorageType _type, ubyte _layerId, LayerDataLenType _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
 	this(T)(StorageType _type, ubyte _layerId, uint _timestamp, T[] _array, ushort _metadata = 0) {
-		type = _type; layerId = _layerId; dataLength = cast(uint)_array.length; timestamp = _timestamp; dataPtr = cast(void*)_array.ptr; metadata = _metadata;
+		ubyte[] data = cast(ubyte[])_array;
+		type = _type; layerId = _layerId; dataLength = cast(LayerDataLenType)data.length; timestamp = _timestamp; dataPtr = cast(void*)data.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerSnap l, ubyte _layerId) {
 		type = l.type;
@@ -85,39 +132,153 @@ static assert(ChunkLayerItem.sizeof == 20);
 
 struct WriteBuffer
 {
-	bool isUniform = true;
+	ChunkLayerItem layer;
 	bool isModified = true;
-	union {
-		BlockId[] blocks;
-		BlockId uniformBlockId;
-	}
-	ushort metadata;
 
-	void makeUniform(BlockId blockId, ushort _metadata = 0) {
-		if (!isUniform) {
-			freeBlockLayerArray(blocks);
-			isUniform = true;
-		}
-		uniformBlockId = blockId;
-		metadata = _metadata;
-	}
-
-	// Allocates buffer and copies layer data.
-	void makeArray(Layer)(Layer layer) {
-		if (isUniform) {
-			blocks = allocBlockLayerArray();
-			isUniform = false;
-		}
-		layer.copyToBuffer(blocks); // uncompresses automatically
-		metadata = layer.metadata;
-	}
-
-	void copyFromLayer(Layer)(Layer layer) {
-		if (layer.type == StorageType.uniform) {
-			makeUniform(layer.getUniform!BlockId(), layer.metadata);
+	this(Layer)(Layer _layer) if (isSomeLayer!Layer) {
+		if (_layer.type == StorageType.uniform) {
+			makeUniform(_layer.uniformData, _layer.dataLength, _layer.metadata);
 		} else {
-			makeArray(layer);
+			applyLayer(_layer, layer);
 		}
+	}
+
+	void makeUniform(ulong uniformData, LayerDataLenType dataLength, ushort metadata = 0) {
+		if (!isUniform) {
+			freeLayerArray(layer);
+		}
+		layer.uniformData = uniformData;
+		layer.dataLength = dataLength;
+		layer.metadata = metadata;
+	}
+
+	void makeUniform(T)(ulong uniformData, ushort metadata = 0) {
+		if (!isUniform) {
+			freeLayerArray(layer);
+		}
+		layer.uniformData = uniformData;
+		layer.dataLength = bitsToUniformLength(T.sizeof * 8);
+		layer.metadata = metadata;
+	}
+
+	bool isUniform() {
+		return layer.type == StorageType.uniform;
+	}
+
+	T getUniform(T)() {
+		return layer.getUniform!T;
+	}
+
+	T[] getArray(T)() {
+		return layer.getArray!T;
+	}
+}
+
+void applyLayer(Layer1, Layer2)(const Layer1 layer, ref Layer2 writeBuffer)
+	if (isSomeLayer!Layer1 && isSomeLayer!Layer2)
+{
+	ubyte[] buffer;
+	if (layer.type == StorageType.uniform)
+	{
+		// zero is used to denote that uniform cannot be expanded and should produce empty array.
+		assert(layer.dataLength >= 0 && layer.dataLength <= 7,
+			format("dataLength == %s", layer.dataLength));
+		if (layer.dataLength > 0)
+		{
+			size_t itemBitsPowerOfTwo = layer.dataLength - 1; // [1; 7] => [0; 6]
+			size_t itemBits = 1 << itemBitsPowerOfTwo; // [1..64]
+			size_t arraySize = (CHUNK_SIZE_CUBE * itemBits) / 8;
+
+			buffer = ensureLayerArrayLength(writeBuffer, arraySize);
+			expandUniform(buffer, cast(ubyte)itemBits, layer.uniformData);
+		}
+		else
+		{
+			// empty array
+		}
+	}
+	else if (layer.type == StorageType.fullArray)
+	{
+		buffer = ensureLayerArrayLength(writeBuffer, layer.dataLength);
+		buffer[] = layer.getArray!ubyte;
+	}
+	else if (layer.type == StorageType.compressedArray)
+	{
+		ubyte[] compressedData = layer.getArray!ubyte;
+		size_t uncompressedLength = uncompressedDataLength(compressedData);
+		buffer = ensureLayerArrayLength(writeBuffer, uncompressedLength);
+		ubyte[] decompressedData = decompress(compressedData, buffer);
+		assert(decompressedData.length == buffer.length);
+	}
+	writeBuffer.type = StorageType.fullArray;
+	writeBuffer.metadata = layer.metadata;
+	writeBuffer.dataPtr = buffer.ptr;
+	writeBuffer.dataLength = cast(LayerDataLenType)buffer.length;
+}
+
+ubyte[] ensureLayerArrayLength(Layer)(ref Layer layer, size_t length)
+	if (isSomeLayer!Layer)
+{
+	ubyte[] buffer;
+	if (layer.isUniform)
+	{
+		buffer = allocLayerArray(length);
+	}
+	else
+	{
+		if (layer.dataLength == length)
+		{
+			buffer = layer.getArray!ubyte;
+		}
+		else
+		{
+			freeLayerArray(layer); // TODO realloc
+			buffer = allocLayerArray(length);
+		}
+	}
+	return buffer;
+}
+
+// tables of repeated bit patterns for 1, 2 and 4 bit items.
+private static immutable ubyte[2] bitsTable1 = [0b0000_0000, 0b1111_1111];
+private static immutable ubyte[4] bitsTable2 = [0b00_00_00_00, 0b01_01_01_01, 0b10_10_10_10, 0b11_11_11_11];
+private static immutable ubyte[16] bitsTable4 = [
+0b0000_0000, 0b0001_0001, 0b0010_0010, 0b0011_0011, 0b0100_0100, 0b0101_0101, 0b0110_0110, 0b0111_0111,
+0b1000_1000, 0b1001_1001, 0b1010_1010, 0b1011_1011, 0b1100_1100, 0b1101_1101, 0b1110_1110, 0b1111_1111];
+
+void expandUniform(ubyte[] buffer, ubyte itemBits, ulong uniformData)
+{
+	switch(itemBits) {
+		case 1:
+			ubyte byteFiller = bitsTable1[uniformData & 0b0001];
+			buffer[] = byteFiller;
+			break;
+		case 2:
+			ubyte byteFiller = bitsTable2[uniformData & 0b0011];
+			buffer[] = byteFiller;
+			break;
+		case 4:
+			ubyte byteFiller = bitsTable4[uniformData & 0b1111];
+			buffer[] = byteFiller;
+			break;
+		case 8:
+			ubyte byteFiller = uniformData & ubyte.max;
+			buffer[] = byteFiller;
+			break;
+		case 16:
+			ushort ushortFiller = uniformData & ushort.max;
+			(cast(ushort[])buffer)[] = ushortFiller;
+			break;
+		case 32:
+			uint uintFiller = uniformData & uint.max;
+			(cast(uint[])buffer)[] = uintFiller;
+			break;
+		case 64:
+			ulong ulongFiller = uniformData & ulong.max;
+			(cast(ulong[])buffer)[] = ulongFiller;
+			break;
+		default:
+			assert(false, "Invalid itemBits");
 	}
 }
 
@@ -161,15 +322,6 @@ struct BlockDataSnapshot
 	uint numUsers;
 }
 
-enum StorageType : ubyte
-{
-	uniform,
-	//linearMap,
-	//hashMap,
-	compressedArray,
-	fullArray,
-}
-
 /// Stores layer of chunk data. Blocks are stored as array of blocks or uniform.
 struct ChunkLayerSnap
 {
@@ -177,19 +329,20 @@ struct ChunkLayerSnap
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-	uint dataLength; // unused when uniform
+	LayerDataLenType dataLength; // unused when uniform
 	uint timestamp;
 	ushort numUsers;
 	ushort metadata;
 	StorageType type;
-	this(StorageType _type, uint _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+	this(StorageType _type, LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
 		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
-	this(StorageType _type, uint _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
+	this(StorageType _type, LayerDataLenType _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
 		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
 	}
 	this(T)(StorageType _type, uint _timestamp, T[] _array, ushort _metadata = 0) {
-		type = _type; dataLength = cast(uint)_array.length; timestamp = _timestamp; dataPtr = _array.ptr; metadata = _metadata;
+		ubyte[] data = cast(ubyte[])_array;
+		type = _type; dataLength = cast(LayerDataLenType)data.length; timestamp = _timestamp; dataPtr = data.ptr; metadata = _metadata;
 	}
 	this(ChunkLayerItem l) {
 		numUsers = 0;
@@ -207,11 +360,12 @@ T[] getArray(T, Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
 	assert(layer.type != StorageType.uniform);
-	return (cast(T*)layer.dataPtr)[0..layer.dataLength];
+	return cast(T[])(layer.dataPtr[0..layer.dataLength]);
 }
 T getUniform(T, Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
+	assert(layer.type == StorageType.uniform);
 	return cast(T)layer.uniformData;
 }
 
@@ -221,7 +375,7 @@ BlockId getBlockId(Layer)(const ref Layer layer, BlockChunkIndex index)
 	if (layer.type == StorageType.uniform) return layer.getUniform!BlockId;
 	if (layer.type == StorageType.compressedArray) {
 		BlockId[CHUNK_SIZE_CUBE] buffer;
-		uncompressIntoBuffer(layer, buffer);
+		decompressLayerData(layer, buffer[]);
 		return buffer[index];
 	}
 	return getArray!BlockId(layer)[index];
@@ -255,7 +409,7 @@ BlockData toBlockData(Layer)(const ref Layer layer)
 ChunkLayerItem fromBlockData(const ref BlockData bd)
 {
 	if (bd.uniform)
-		return ChunkLayerItem(StorageType.uniform, FIRST_LAYER, 0, 0, bd.uniformType, bd.metadata);
+		return ChunkLayerItem(StorageType.uniform, FIRST_LAYER, BLOCKID_UNIFORM_FILL_BITS, 0, bd.uniformType, bd.metadata);
 	else
 		return ChunkLayerItem(StorageType.fullArray, FIRST_LAYER, 0, bd.blocks, bd.metadata);
 }
@@ -269,42 +423,37 @@ void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
 	else if (layer.type == StorageType.fullArray)
 		outBuffer[] = layer.getArray!BlockId;
 	else if (layer.type == StorageType.compressedArray)
-		uncompressIntoBuffer(layer, outBuffer);
+		decompressLayerData(layer, outBuffer);
 }
 
 size_t getLayerDataBytes(Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)
 {
-	if (layer.type == StorageType.fullArray)
-		return layer.getArray!BlockId.length * BlockId.sizeof;
-	else if (layer.type == StorageType.compressedArray)
-		return layer.getArray!ubyte.length;
-	return 0;
-}
-
-size_t getLayerDataBytes(WriteBuffer* writeBuffer)
-{
-	if (!writeBuffer.isUniform) {
-		return writeBuffer.blocks.length * BlockId.sizeof;
-	}
-	return 0;
+	if (layer.type == StorageType.uniform)
+		return 0;
+	else
+		return layer.dataLength;
 }
 
 void applyChanges(WriteBuffer* writeBuffer, BlockChange[] changes)
 {
 	assert(!writeBuffer.isUniform);
+	assert(writeBuffer.layer.dataLength == BLOCKS_DATA_LENGTH);
+	BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 	foreach(change; changes)
 	{
-		writeBuffer.blocks[change.index] = change.blockId;
+		blocks[change.index] = change.blockId;
 	}
 }
 
 void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
 {
 	assert(!writeBuffer.isUniform);
+	assert(writeBuffer.layer.dataLength == BLOCKS_DATA_LENGTH);
+	BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 	foreach(change; changes)
 	{
-		setSubArray(writeBuffer.blocks, Volume(ivec3(change.a), ivec3(change.b)), change.blockId);
+		setSubArray(blocks, Volume(ivec3(change.a), ivec3(change.b)), change.blockId);
 	}
 }
 
@@ -354,11 +503,41 @@ void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
 	}
 }
 
-void uncompressIntoBuffer(Layer)(Layer layer, BlockId[] outBuffer)
+ubyte[] compressLayerData(ubyte[] data, ubyte[] buffer)
 {
-	assert(outBuffer.length == CHUNK_SIZE_CUBE);
-	BlockId[] blocks = decompress(layer.getArray!ubyte, outBuffer);
-	assert(blocks.length == CHUNK_SIZE_CUBE);
+	size_t size = encodeCbor(buffer[], data.length);
+	size += compress(data, buffer[size..$]).length;
+	return buffer[0..size];
+}
+
+ubyte[] decompressLayerData(Layer)(const Layer layer, ubyte[] outBuffer) if (isSomeLayer!Layer)
+{
+	assert(layer.type == StorageType.compressedArray);
+	return decompressLayerData(layer.getArray!ubyte, outBuffer);
+}
+
+ubyte[] decompressLayerData(const ubyte[] _compressedData)
+{
+	ubyte[] compressedData = cast(ubyte[])_compressedData;
+	auto dataSize = decodeCborSingle!size_t(compressedData);
+	ubyte[] buffer = uninitializedArray!(ubyte[])(dataSize);
+	ubyte[] decompressedData = decompress(compressedData, buffer);
+	return decompressedData;
+}
+
+// pops and returns size of uncompressed data. Modifies provided array.
+size_t uncompressedDataLength()(auto ref ubyte[] compressedData)
+{
+	return decodeCborSingle!size_t(compressedData);
+}
+
+ubyte[] decompressLayerData(const ubyte[] _compressedData, ubyte[] outBuffer)
+{
+	ubyte[] compressedData = cast(ubyte[])_compressedData;
+	auto dataSize = decodeCborSingle!size_t(compressedData);
+	//assert(outBuffer.length == dataSize, format("%s != %s", outBuffer.length, dataSize));
+	ubyte[] decompressedData = decompress(compressedData, outBuffer);
+	return decompressedData;
 }
 
 // Stores blocks of the chunk.
