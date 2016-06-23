@@ -39,6 +39,7 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.storageworker;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
+import voxelman.world.storage.blockentityaccess;
 
 public import voxelman.world.worlddb : WorldDb;
 
@@ -227,6 +228,7 @@ public:
 	ActiveChunks activeChunks;
 
 	WorldAccess worldAccess;
+	BlockEntityAccess entityAccess;
 
 	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
 
@@ -250,6 +252,7 @@ public:
 		buf = new ubyte[](1024*64);
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
+		entityAccess = new BlockEntityAccess(chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
 		ubyte numLayers = 2;

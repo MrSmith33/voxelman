@@ -25,7 +25,8 @@ import voxelman.utils.worker;
 import core.thread;
 
 
-alias Generator = Generator2d;
+alias Generator = GeneratorFlat;
+//alias Generator = Generator2d;
 //alias Generator = Generator2d3d;
 //alias Generator = TestGeneratorSmallCubes;
 //alias Generator = TestGeneratorSmallCubes2;
@@ -41,7 +42,7 @@ enum WATER = 6;
 
 //version = DBG_OUT;
 //version = DBG_COMPR;
-void chunkGenWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
+void chunkGenWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos)
 {
 	import std.array : uninitializedArray;
 
@@ -294,6 +295,26 @@ struct TestGeneratorSmallCubes3
 			y % cubeOffsets < cubesSizes &&
 			z % cubeOffsets < cubesSizes) return GRASS;
 		else return AIR;
+	}
+}
+
+struct GeneratorFlat
+{
+	ivec3 chunkOffset;
+	PerColumnChunkData perColumnChunkData;
+
+	void genPerChunkData()
+	{
+		perColumnChunkData.minHeight = perColumnChunkData.maxHeight = 0;
+	}
+
+	BlockId generateBlock(int x, int y, int z)
+	{
+		int blockY = chunkOffset.y + y;
+		if (blockY > 0)
+			return AIR;
+		else
+			return STONE;
 	}
 }
 

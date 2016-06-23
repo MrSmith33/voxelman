@@ -143,6 +143,25 @@ struct BlockInfo
 	size_t id;
 }
 
+BlockInfo entityBlock = BlockInfo("Entity", &makeColoredBlockMesh);
+struct BlockInfoTable
+{
+	immutable(BlockInfo)[] blockInfos;
+	size_t length() {return blockInfos.length; }
+	BlockInfo opIndex(BlockId blockId) {
+		if (blockId >= blockInfos.length)
+			return entityBlock;
+		return blockInfos[blockId];
+	}
+}
+
+enum staticEntityBit = ((BlockId.max+1) >> 1);
+bool isBlockEntity(BlockId blockId)
+{
+	enum n = BlockId.sizeof*8 - 1;
+	return blockId >> n; // highest bit
+}
+
 /// Returned when registering block.
 /// Use this to set block properties.
 struct BlockInfoSetter
@@ -164,7 +183,7 @@ struct BlockInfoSetter
 // 1 - 1 bit representing if metadata is presented
 // 2 - 12 bits -- solidity of each side
 
-ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, BlockInfoTable blockInfos)
 {
 	if (writeBuffer.isUniform) {
 		ushort sideMeta = calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
@@ -177,13 +196,13 @@ ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] bl
 	}
 }
 
-ushort calcChunkSideMetadata(WriteBuffer* writeBuffer, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkSideMetadata(WriteBuffer* writeBuffer, BlockInfoTable blockInfos)
 {
 	if (writeBuffer.isUniform) return calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
 	else return calcChunkSideMetadata(writeBuffer.getArray!BlockId, blockInfos);
 }
 
-ushort calcChunkSideMetadata(Layer)(Layer blockLayer, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
 	if (isSomeLayer!Layer)
 {
 	if (blockLayer.type == StorageType.uniform)
@@ -199,7 +218,7 @@ ushort calcChunkSideMetadata(Layer)(Layer blockLayer, immutable(BlockInfo)[] blo
 		assert(false);
 }
 
-ubyte calcSolidityBits(Layer)(Layer blockLayer, immutable(BlockInfo)[] blockInfos)
+ubyte calcSolidityBits(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
 	if (isSomeLayer!Layer)
 {
 	if (blockLayer.type == StorageType.uniform) {
@@ -210,14 +229,14 @@ ubyte calcSolidityBits(Layer)(Layer blockLayer, immutable(BlockInfo)[] blockInfo
 	} else assert(false);
 }
 
-ubyte calcSolidityBits(BlockId uniformBlock, immutable(BlockInfo)[] blockInfos)
+ubyte calcSolidityBits(BlockId uniformBlock, BlockInfoTable blockInfos)
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
 	enum ubyte[3] bits = [0b001, 0b010, 0b100];
 	return bits[solidity];
 }
 
-ubyte calcSolidityBits(BlockId[] blocks, immutable(BlockInfo)[] blockInfos)
+ubyte calcSolidityBits(BlockId[] blocks, BlockInfoTable blockInfos)
 {
 	bool[3] presentSolidities;
 	foreach(i; 0..CHUNK_SIZE_CUBE) {
@@ -314,7 +333,7 @@ void printChunkMetadata(ushort metadata)
 	}
 }
 
-ushort calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
 	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
@@ -324,7 +343,7 @@ ushort calcChunkSideMetadata(BlockId uniformBlock, immutable(BlockInfo)[] blockI
 
 enum CHUNK_SIDE_METADATA_BITS = 13;
 
-ushort calcChunkSideMetadata(BlockId[] blocks, immutable(BlockInfo)[] blockInfos)
+ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {
 	ushort flags = 0b1_00_00_00_00_00_00; // all sides are solid
 	Solidity sideSolidity = Solidity.solid;

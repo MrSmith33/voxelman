@@ -51,6 +51,7 @@ class EditPlugin : IPlugin
 	mixin IdAndSemverFrom!(voxelman.edit.plugininfo);
 
 	size_t selectedTool;
+	ClientPlugin clientPlugin;
 	Mapping!ITool tools;
 	NullTool nullTool;
 	FillTool fillTool;
@@ -74,10 +75,10 @@ class EditPlugin : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		fillTool.connection = pluginman.getPlugin!NetClientPlugin;
-		fillTool.clientPlugin = pluginman.getPlugin!ClientPlugin;
 		fillTool.worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		fillTool.graphics = pluginman.getPlugin!GraphicsPlugin;
 
+		clientPlugin = pluginman.getPlugin!ClientPlugin;
 		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 	}
@@ -109,21 +110,27 @@ class EditPlugin : IPlugin
 		currentTool.onUpdate();
 	}
 	void onMainActionPress(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onMainActionPress();
 	}
 	void onMainActionRelease(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onMainActionRelease();
 	}
 	void onSecondaryActionPress(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onSecondaryActionPress();
 	}
 	void onSecondaryActionRelease(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onSecondaryActionRelease();
 	}
 	void onTertiaryActionPress(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onTertiaryActionPress();
 	}
 	void onTertiaryActionRelease(string key) {
+		if (!clientPlugin.mouseLocked) return;
 		currentTool.onTertiaryActionRelease();
 	}
 }

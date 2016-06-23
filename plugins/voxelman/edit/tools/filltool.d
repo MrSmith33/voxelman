@@ -20,7 +20,6 @@ import voxelman.edit.plugin : ITool;
 
 final class FillTool : ITool
 {
-	ClientPlugin clientPlugin;
 	WorldInteractionPlugin worldInteraction;
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
@@ -80,7 +79,6 @@ final class FillTool : ITool
 	}
 
 	override void onMainActionPress() {
-		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.none) return;
 		if (!worldInteraction.cursorHit) return;
 		state = EditState.removing;
@@ -89,7 +87,6 @@ final class FillTool : ITool
 	}
 
 	override void onMainActionRelease() {
-		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.removing) return;
 		state = EditState.none;
 		showCursor = true;
@@ -101,7 +98,6 @@ final class FillTool : ITool
 	}
 
 	override void onSecondaryActionPress() {
-		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.none) return;
 		if (!worldInteraction.cursorHit) return;
 		state = EditState.placing;
@@ -110,7 +106,6 @@ final class FillTool : ITool
 	}
 
 	override void onSecondaryActionRelease() {
-		if (!clientPlugin.mouseLocked) return;
 		if (state != EditState.placing) return;
 		state = EditState.none;
 		showCursor = true;
@@ -122,7 +117,6 @@ final class FillTool : ITool
 	}
 
 	override void onTertiaryActionRelease() {
-		if (!clientPlugin.mouseLocked) return;
 		currentBlock = worldInteraction.pickBlock();
 	}
 }

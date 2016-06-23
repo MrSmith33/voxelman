@@ -13,7 +13,7 @@ import core.thread : Thread;
 
 import dlib.math.vector;
 
-import voxelman.block.utils : BlockInfo;
+import voxelman.block.utils : BlockInfoTable;
 import voxelman.core.chunkgen;
 import voxelman.core.config;
 import voxelman.utils.worker;
@@ -110,7 +110,7 @@ struct ChunkProvider
 		}
 	}
 
-	void init(WorldDb worldDb, uint numGenWorkers, immutable(BlockInfo)[] blocks)
+	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks)
 	{
 		import std.algorithm.comparison : clamp;
 		numGenWorkers = clamp(numGenWorkers, 1, 16);

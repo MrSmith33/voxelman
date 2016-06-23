@@ -57,9 +57,9 @@ struct ChunkMeshMan
 	long totalMeshDataBytes;
 
 	ChunkManager chunkManager;
-	immutable(BlockInfo)[] blocks;
+	BlockInfoTable blocks;
 
-	void init(ChunkManager _chunkManager, immutable(BlockInfo)[] _blocks, uint numMeshWorkers)
+	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, uint numMeshWorkers)
 	{
 		chunkManager = _chunkManager;
 		blocks = _blocks;

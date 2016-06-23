@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add flat terrain gen.
+- Add railroad test plugin.
+- Add block entities.
 - Add universal data management for chunk layers.
 - Add toolbar.
 - Add active chunk system.
@@ -52,6 +55,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Encapsulate block info retreival into BlockInfoTable.
 - Change BlockID size to two bytes.
 - Rewrite client to use new chunk manager.
 - Rewrite chunk mesh manager to new algo of chunk meshing. Meshing passes that use snapshot system of chunk manager.

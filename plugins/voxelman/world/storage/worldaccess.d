@@ -17,7 +17,7 @@ import voxelman.world.storage.volume;
 final class WorldAccess
 {
 	private ChunkManager chunkManager;
-	immutable(BlockInfo)[] blockInfos;
+	BlockInfoTable blockInfos;
 	BlockChange[][ChunkWorldPos] blockChanges;
 
 	this(ChunkManager chunkManager) {
@@ -122,6 +122,6 @@ final class WorldAccess
 
 	bool isFree(BlockWorldPos bwp) {
 		auto blockId = getBlock(bwp);
-		 return blockId == 1; // air
+		return blockId == 1; // air
 	}
 }

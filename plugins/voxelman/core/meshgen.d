@@ -35,7 +35,7 @@ struct MeshGenTaskHeader
 }
 
 //version = DBG_OUT;
-void meshWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockInfos)
+void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos)
 {
 	try
 	{
@@ -91,7 +91,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, immutable(BlockInfo)[] blockIn
 	version(DBG_OUT)infof("Mesh worker stopped");
 }
 
-ubyte[][2] chunkMeshWorker(ChunkLayerItem layer, ChunkLayerItem[6] adjacent, immutable(BlockInfo)[] blockInfos)
+ubyte[][2] chunkMeshWorker(ChunkLayerItem layer, ChunkLayerItem[6] adjacent, BlockInfoTable blockInfos)
 {
 	Appender!(ubyte[])[3] geometry; // 2 - solid, 1 - semiTransparent
 

@@ -65,9 +65,9 @@ mixin template BlockPluginCommonImpl()
 		registerResourcesImpl(resmanRegistry);
 	}
 
-	immutable(BlockInfo)[] getBlocks()
+	BlockInfoTable getBlocks()
 	{
-		return cast(typeof(return))bm.blockMapping.infoArray;
+		return BlockInfoTable(cast(immutable)bm.blockMapping.infoArray);
 	}
 }
 

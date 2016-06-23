@@ -47,6 +47,11 @@ struct BlockChunkIndex
 		index = cast(ushort)(x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE);
 	}
 
+	this(ivec3 pos)
+	{
+		index = cast(ushort)(pos.x + pos.y * CHUNK_SIZE_SQR + pos.z * CHUNK_SIZE);
+	}
+
 	ushort index;
 
 	size_t getIndex() @property { return index; }

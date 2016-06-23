@@ -13,11 +13,15 @@ import std.datetime : StopWatch;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.utils.trace : traceRay;
+import derelict.imgui.imgui;
+import voxelman.utils.textformatter;
+import voxelman.block.utils;
 
 import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
+import voxelman.world.storage.blockentityaccess;
 
 import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;
@@ -75,6 +79,24 @@ class WorldInteractionPlugin : IPlugin
 
 	void onUpdateEvent(ref UpdateEvent event)
 	{
+		auto blockId = clientWorld.worldAccess.getBlock(blockPos);
+		auto cwp = ChunkWorldPos(blockPos);
+		igBegin("Debug");
+		if (isBlockEntity(blockId)) {
+			BlockEntityData entity = clientWorld.entityAccess.getBlockEntity(cwp, blockId);
+			with(BlockEntityType) final switch(entity.type)
+			{
+				case localBlockEntity:
+					igTextf("Entity: @%s: id %s, data %s", blockId, entity.id, entity.entityData); break;
+				case foreignBlockEntity:
+					igTextf("Entity: @%s: foreign %s", blockId, entity.payload); break;
+				case componentId:
+					igTextf("Entity: @%s: entity id %s", blockId, entity.payload); break;
+			}
+		} else {
+			igTextf("Block: %s", blockPlugin.getBlocks()[blockId].name);
+		}
+		igEnd();
 		traceCursor();
 		drawDebugCursor();
 	}

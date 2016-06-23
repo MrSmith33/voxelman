@@ -4,6 +4,7 @@ exampleplugin 0.1.0
 
 test.avatar 1.0.0
 test.entitytest 1.0.0
+test.railroad 0.7.0
 
 voxelman.block 0.6.0
 voxelman.chat 0.6.0

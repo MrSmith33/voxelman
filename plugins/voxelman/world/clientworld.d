@@ -33,6 +33,7 @@ import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
+import voxelman.world.storage.blockentityaccess;
 
 import voxelman.client.chunkmeshman;
 
@@ -52,6 +53,7 @@ public:
 	ChunkManager chunkManager;
 	ChunkObserverManager chunkObserverManager;
 	WorldAccess worldAccess;
+	BlockEntityAccess entityAccess;
 	ChunkMeshMan chunkMeshMan;
 	TimestampType currentTimestamp;
 	HashSet!ChunkWorldPos chunksToRemesh;
@@ -94,6 +96,7 @@ public:
 	{
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
+		entityAccess = new BlockEntityAccess(chunkManager);
 
 		ubyte numLayers = 2;
 		chunkManager.setup(numLayers);
@@ -125,6 +128,8 @@ public:
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
 		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
+		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
+		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 	}
@@ -329,13 +334,32 @@ public:
 		auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
 
 		worldAccess.fillVolume(packet.volume, packet.blockId);
+		onBlockVolumeChanged(packet.volume);
+	}
 
+	void onBlockVolumeChanged(Volume blockVolume)
+	{
 		Volume observedVolume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
-		Volume modifiedVolume = calcModifiedMeshesVolume(packet.volume);
+		Volume modifiedVolume = calcModifiedMeshesVolume(blockVolume);
 		Volume vol = volumeIntersection(observedVolume, modifiedVolume);
 
 		foreach(pos; vol.positions)
 			chunksToRemesh.put(ChunkWorldPos(pos, vol.dimention));
+	}
+
+	void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
+		placeEntity(packet.volume, BlockEntityData(packet.data),
+			worldAccess, entityAccess);
+		onBlockVolumeChanged(packet.volume);
+	}
+
+	void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
+		Volume changedVolume = removeEntity(ChunkWorldPos(packet.chunkPos), packet.index, worldAccess, entityAccess);
+		onBlockVolumeChanged(changedVolume);
 	}
 
 	void remeshVolume(Volume volume, bool printTime = false)

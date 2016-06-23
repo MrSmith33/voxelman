@@ -13,6 +13,8 @@ void registerPackets(Connection c)
 	// Common
 	c.registerPacket!ClientPositionPacket;
 	c.registerPacket!FillBlockVolumePacket;
+	c.registerPacket!PlaceBlockEntityPacket;
+	c.registerPacket!RemoveBlockEntityPacket;
 
 	// Server -> Client
 	c.registerPacket!ChunkDataPacket;
@@ -59,6 +61,20 @@ struct FillBlockVolumePacket
 	import voxelman.core.config : BlockId;
 	Volume volume;
 	BlockId blockId;
+}
+
+struct PlaceBlockEntityPacket
+{
+	import voxelman.world.storage.volume : Volume;
+	Volume volume;
+	ulong data;
+}
+
+struct RemoveBlockEntityPacket
+{
+	import voxelman.world.storage.volume : Volume;
+	int[4] chunkPos;
+	ushort index;
 }
 
 struct SpawnPacket
