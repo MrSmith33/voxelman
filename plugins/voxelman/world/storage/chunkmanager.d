@@ -111,7 +111,7 @@ final class ChunkManager {
 	// total number of snapshot users of all 'snapshots'
 	// used to change state from added_loaded to removed_loaded_used
 	private size_t[ChunkWorldPos] totalSnapshotUsers;
-	private ubyte numLayers;
+	ubyte numLayers;
 
 	void setup(ubyte _numLayers) {
 		numLayers = _numLayers;

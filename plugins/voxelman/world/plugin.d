@@ -249,7 +249,7 @@ public:
 	override void preInit()
 	{
 		pluginDataSaver.alloc();
-		buf = new ubyte[](1024*64);
+		buf = new ubyte[](1024*64*4);
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
 		entityAccess = new BlockEntityAccess(chunkManager);
@@ -388,10 +388,7 @@ public:
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
 	{
-		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER); //TODO send other layers
-		if (!snap.isNull) {
-			sendChunk(clientId, cwp, snap);
-		}
+		sendChunk(clientId, cwp);
 	}
 
 	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
@@ -401,27 +398,42 @@ public:
 
 	private void onChunkLoaded(ChunkWorldPos cwp)
 	{
-		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER); //TODO send other layers
-		if (!snap.isNull) {
-			sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp, snap);
-		}
+		sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp);
 	}
 
-	private void sendChunk(C)(C clients, ChunkWorldPos cwp, ChunkLayerSnap layer)
+	private void sendChunk(C)(C clients, ChunkWorldPos cwp)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
-		version(DBG_COMPR)if (layer.type != StorageType.uniform)
+
+		if (!chunkManager.isChunkLoaded(cwp)) return;
+		BlockData[8] layerBuf;
+		size_t compressedSize;
+
+		ubyte numChunkLayers;
+		foreach(ubyte layerId; 0..chunkManager.numLayers)
 		{
-			ubyte[] compactBlocks = layer.getArray!ubyte;
-			infof("Send %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
+			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
+			if (layer.isNull) continue;
+
+			version(DBG_COMPR)if (layer.type != StorageType.uniform)
+			{
+				ubyte[] compactBlocks = layer.getArray!ubyte;
+				infof("Send %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
+			}
+
+			BlockData bd = toBlockData(layer, layerId);
+			if (layer.type == StorageType.fullArray)
+			{
+				ubyte[] compactBlocks = compressLayerData(layer.getArray!ubyte, buf[compressedSize..$]);
+				compressedSize += compactBlocks.length;
+				bd.blocks = compactBlocks;
+			}
+			layerBuf[numChunkLayers] = bd;
+
+			++numChunkLayers;
 		}
-		BlockData bd = layer.toBlockData();
-		if (layer.type == StorageType.fullArray)
-		{
-			ubyte[] compactBlocks = compressLayerData(layer.getArray!ubyte, buf);
-			bd.blocks = compactBlocks;
-		}
-		connection.sendTo(clients, ChunkDataPacket(cwp.ivector.arrayof, bd));
+
+		connection.sendTo(clients, ChunkDataPacket(cwp.ivector.arrayof, layerBuf[0..numChunkLayers]));
 	}
 
 	private void sendChanges(BlockChange[][ChunkWorldPos] changes)

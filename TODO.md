@@ -22,8 +22,8 @@
 - [ ] Add block entity rendering.
 - [ ] Add block entity removing.
 - [ ] Add block entity type registry.
-- [ ] Send block entity layer to client.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
+- [x] Send block entity layer to client.
 - [x] Add block entity code.
 - [x] Add static entity layer code.
 - [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.

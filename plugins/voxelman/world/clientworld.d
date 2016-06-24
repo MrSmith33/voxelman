@@ -264,52 +264,64 @@ public:
 		auto packet = unpackPacketNoDup!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
-		if (!packet.blockData.uniform) {
-			auto blocks = allocLayerArray(BLOCKS_DATA_LENGTH);
-			version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, packet.blockData.blocks.length, cast(ubyte[])packet.blockData.blocks);
-			auto decompressed = decompressLayerData(packet.blockData.blocks, blocks);
-			if (decompressed is null)
+
+		ChunkLayerItem[8] layers;
+		auto cwp = ChunkWorldPos(packet.chunkPos);
+
+		ubyte numChunkLayers;
+		foreach(layer; packet.layers)
+		{
+			if (!layer.uniform)
 			{
-				auto b = packet.blockData.blocks;
-				infof("Fail %s %s\n(%(%02x%))", packet.chunkPos, b.length, cast(ubyte[])b);
-				return;
+				version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, layer.blocks.length, cast(ubyte[])layer.blocks);
+				auto decompressed = decompressLayerData(layer.blocks);
+				if (decompressed is null)
+				{
+					auto b = layer.blocks;
+					infof("Fail %s %s\n(%(%02x%))", packet.chunkPos, b.length, cast(ubyte[])b);
+					return;
+				}
+				else
+				{
+					layer.blocks = decompressed;
+					layer.validate();
+				}
 			}
-			else
-			{
-				packet.blockData.blocks = decompressed;
-				packet.blockData.validate();
-			}
+			layers[numChunkLayers] = fromBlockData(layer);
+			++numChunkLayers;
 		}
 
-		onChunkLoaded(ChunkWorldPos(packet.chunkPos), packet.blockData);
+		onChunkLoaded(cwp, layers[0..numChunkLayers]);
 	}
 
-	void onChunkLoaded(ChunkWorldPos cwp, BlockData blockData)
+	void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
 	{
 		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
 		static struct LoadedChunkData
 		{
 			ChunkWorldPos cwp;
-			ChunkLayerItem layer;
-			ChunkHeaderItem getHeader() { return ChunkHeaderItem(cwp, 1, 0); }
-			ChunkLayerItem getLayer() { return layer; }
+			ChunkLayerItem[] layers;
+			ChunkHeaderItem getHeader() { return ChunkHeaderItem(cwp, cast(uint)layers.length, 0); }
+			ChunkLayerItem getLayer() {
+				ChunkLayerItem layer = layers[0];
+				layers = layers[1..$];
+				return layer;
+			}
 		}
 
-		ChunkLayerItem layer = fromBlockData(blockData);
-		if (layer.isUniform)
-		{
-			assert(layer.getUniform!BlockId < blockPlugin.getBlocks().length);
-		}
 
 		if (chunkManager.isChunkLoaded(cwp))
 		{
-			WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
-			applyLayer(layer, writeBuffer.layer);
+			foreach(layer; layers)
+			{
+				WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, layer.layerId);
+				applyLayer(layer, writeBuffer.layer);
+			}
 		}
 		else
 		{
-			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layer), false);
+			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), false);
 		}
 
 		chunksToRemesh.put(cwp);

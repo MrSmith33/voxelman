@@ -393,25 +393,26 @@ bool isUniform(Layer)(const ref Layer layer) @property
 	return layer.type == StorageType.uniform;
 }
 
-BlockData toBlockData(Layer)(const ref Layer layer)
+BlockData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
 	if (isSomeLayer!Layer)
 {
 	BlockData res;
 	res.uniform = layer.type == StorageType.uniform;
 	res.metadata = layer.metadata;
+	res.layerId = layerId;
 	if (!res.uniform)
 		res.blocks = layer.getArray!ubyte();
 	else
-		res.uniformType = layer.getUniform!BlockId;
+		res.uniformType = layer.uniformData;
 	return res;
 }
 
 ChunkLayerItem fromBlockData(const ref BlockData bd)
 {
 	if (bd.uniform)
-		return ChunkLayerItem(StorageType.uniform, FIRST_LAYER, BLOCKID_UNIFORM_FILL_BITS, 0, bd.uniformType, bd.metadata);
+		return ChunkLayerItem(StorageType.uniform, bd.layerId, BLOCKID_UNIFORM_FILL_BITS, 0, bd.uniformType, bd.metadata);
 	else
-		return ChunkLayerItem(StorageType.fullArray, FIRST_LAYER, 0, bd.blocks, bd.metadata);
+		return ChunkLayerItem(StorageType.fullArray, bd.layerId, 0, bd.blocks, bd.metadata);
 }
 
 void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
@@ -545,7 +546,7 @@ struct BlockData
 {
 	void validate()
 	{
-		if (!uniform && blocks.length != BLOCKS_DATA_LENGTH) {
+		if (layerId == 0 && !uniform && blocks.length != BLOCKS_DATA_LENGTH) {
 			fatalf("Size of uniform chunk != CHUNK_SIZE_CUBE, == %s", blocks.length);
 		}
 	}
@@ -554,10 +555,11 @@ struct BlockData
 	ubyte[] blocks;
 
 	/// type of common block
-	BlockId uniformType = 0; // Unknown block
+	ulong uniformType = 0; // Unknown block
 
 	/// is chunk filled with block of the same type
 	bool uniform = true;
 
 	ushort metadata;
+	ubyte layerId;
 }

@@ -45,7 +45,7 @@ struct ChunkDataPacket
 {
 	import voxelman.world.storage.chunk : BlockData;
 	int[4] chunkPos;
-	BlockData blockData;
+	BlockData[] layers;
 }
 
 struct MultiblockChangePacket

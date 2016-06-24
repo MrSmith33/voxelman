@@ -311,7 +311,7 @@ struct GeneratorFlat
 	BlockId generateBlock(int x, int y, int z)
 	{
 		int blockY = chunkOffset.y + y;
-		if (blockY > 0)
+		if (blockY >= 0)
 			return AIR;
 		else
 			return STONE;
