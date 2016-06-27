@@ -1,3 +1,8 @@
+/**
+Copyright: Copyright (c) 2016 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Authors: Andrey Penechko.
+*/
 module test.railroad.plugin;
 
 import std.experimental.logger;
@@ -11,13 +16,16 @@ import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.world.plugin;
 import voxelman.worldinteraction.plugin;
-import voxelman.world.storage.blockentityaccess;
+import voxelman.blockentity.plugin;
 
+import voxelman.blockentity.blockentityaccess;
+
+import voxelman.block.utils;
 import voxelman.utils.math;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 
-import voxelman.world.storage.blockentityaccess;
+import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.worldaccess;
 
 shared static this()
@@ -63,6 +71,7 @@ struct RailPos {
 final class TrainsPluginClient : IPlugin
 {
 	mixin IdAndSemverFrom!(test.railroad.plugininfo);
+	mixin TrainsPluginCommon;
 
 	NetClientPlugin connection;
 	WorldInteractionPlugin worldInteraction;
@@ -85,8 +94,15 @@ final class TrainsPluginClient : IPlugin
 						vec3(railSizeVector) + cursorOffset, Colors.green, false);
 				}
 			}
-			override void onMainActionRelease() {
+			override void onSecondaryActionRelease() {
 				connection.send(PlaceRailPacket(railPos));
+			}
+
+			override void onMainActionRelease() {
+				auto blockId = worldInteraction.pickBlock();
+				if (isBlockEntity(blockId)) {
+					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector.arrayof));
+				}
 			}
 		};
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
@@ -104,6 +120,8 @@ final class TrainsPluginClient : IPlugin
 final class TrainsPluginServer : IPlugin
 {
 	mixin IdAndSemverFrom!(test.railroad.plugininfo);
+	mixin TrainsPluginCommon;
+
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
 
@@ -121,9 +139,26 @@ final class TrainsPluginServer : IPlugin
 		RailPos railPos = packet.pos;
 		ChunkWorldPos cwp = railPos.chunkPos();
 		Volume blockVolume = railPos.toBlockVolume;
-		BlockEntityData beData = BlockEntityData(BlockEntityType.localBlockEntity, 1, 123);
+		BlockEntityData beData = BlockEntityData(BlockEntityType.localBlockEntity,
+			blockEntityManager.getId("rail"), 0);
 		placeEntity(blockVolume, beData, serverWorld.worldAccess, serverWorld.entityAccess);
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 			PlaceBlockEntityPacket(blockVolume, beData.storage));
 	}
+}
+
+mixin template TrainsPluginCommon()
+{
+	BlockEntityManager blockEntityManager;
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		blockEntityManager = resmanRegistry.getResourceManager!BlockEntityManager;
+		blockEntityManager.regBlockEntity("rail").boxHandler(&railBoxHandler);
+	}
+}
+
+Volume railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
+{
+	auto railPos = RailPos(bwp);
+	return railPos.toBlockVolume();
 }

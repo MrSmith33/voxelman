@@ -15,13 +15,14 @@ import voxelman.net.events;
 import voxelman.utils.compression;
 import voxelman.utils.hashset;
 
-import voxelman.input.keybindingmanager;
+import voxelman.block.plugin;
+import voxelman.blockentity.plugin;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
-import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
-import voxelman.login.plugin;
-import voxelman.block.plugin;
 import voxelman.graphics.plugin;
+import voxelman.input.keybindingmanager;
+import voxelman.login.plugin;
+import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
 
 import voxelman.net.packets;
 import voxelman.core.packets;
@@ -33,9 +34,20 @@ import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
-import voxelman.world.storage.blockentityaccess;
+import voxelman.blockentity.blockentityaccess;
 
 import voxelman.client.chunkmeshman;
+
+struct IdMapManagerClient
+{
+	void delegate(string[])[string] onMapReceivedHandlers;
+
+	void regIdMapHandler(string mapName, void delegate(string[]) onMapReceived)
+	{
+		onMapReceivedHandlers[mapName] = onMapReceived;
+	}
+}
+
 
 //version = DBG_COMPR;
 final class ClientWorld : IPlugin
@@ -46,12 +58,14 @@ private:
 	GraphicsPlugin graphics;
 	ClientDbClient clientDb;
 	BlockPluginClient blockPlugin;
+	BlockEntityClient blockEntityPlugin;
 
 	ConfigOption numWorkersOpt;
 
 public:
 	ChunkManager chunkManager;
 	ChunkObserverManager chunkObserverManager;
+	IdMapManagerClient idMapManager;
 	WorldAccess worldAccess;
 	BlockEntityAccess entityAccess;
 	ChunkMeshMan chunkMeshMan;
@@ -117,6 +131,7 @@ public:
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		chunkMeshMan.init(chunkManager, blockPlugin.getBlocks(), numWorkersOpt.get!uint);
+		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
@@ -130,6 +145,7 @@ public:
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
 		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
 		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
+		connection.registerPacketHandler!IdMapPacket(&handleIdMapPacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 	}
@@ -137,6 +153,15 @@ public:
 	override void postInit()
 	{
 		worldAccess.blockInfos = blockPlugin.getBlocks();
+	}
+
+	void handleIdMapPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!IdMapPacket(packetData);
+		if (auto h = idMapManager.onMapReceivedHandlers.get(packet.mapName, null))
+		{
+			h(packet.names);
+		}
 	}
 
 	void onTogglePositionUpdate(string)
@@ -370,7 +395,8 @@ public:
 	void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
-		Volume changedVolume = removeEntity(ChunkWorldPos(packet.chunkPos), packet.index, worldAccess, entityAccess);
+		Volume changedVolume = removeEntity(BlockWorldPos(packet.blockPos),
+			blockEntityPlugin.blockEntityInfos, worldAccess, entityAccess, /*AIR*/1);
 		onBlockVolumeChanged(changedVolume);
 	}
 

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.blockentityaccess;
+module voxelman.blockentity.blockentityaccess;
 
 import std.experimental.logger;
 import std.string;
@@ -14,6 +14,7 @@ import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
+import voxelman.blockentity.plugin;
 
 enum BlockEntityType : ubyte
 {
@@ -24,6 +25,8 @@ enum BlockEntityType : ubyte
 
 enum ENTITY_DATA_MASK = (1UL << 46) - 1;
 enum PAYLOAD_MASK = (1UL << 62) - 1;
+enum BLOCK_INDEX_MASK = (1 << 15) - 1;
+enum BLOCK_ENTITY_FLAG = 1 << 16;
 
 /// Layout (bit fields, MSB -> LSB)
 /// 2: type; 16 id + 46 entityData = 62 payload
@@ -53,10 +56,14 @@ struct BlockEntityData
 	ulong payload() { return storage & PAYLOAD_MASK; }
 }
 
-BlockId volumeEntityId(Volume blockVolume) {
+BlockId volumeEntityIndex(Volume blockVolume) {
 	BlockId blockId = BlockChunkIndex(blockVolume.position).index;
 	blockId |= staticEntityBit;
 	return blockId;
+}
+
+ushort blockIndexFromBlockId(BlockId blockId) {
+	return blockId & BLOCK_INDEX_MASK;
 }
 
 ulong payloadFromIdAndEntityData(ushort id, ulong entityData) {
@@ -76,9 +83,9 @@ void placeEntity(Volume blockVolume, BlockEntityData beData,
 	auto chunkLocalVolume = intersection;
 	chunkLocalVolume.position -= chunkBlockVolume.position;
 
-	BlockId blockId = volumeEntityId(chunkLocalVolume);
-	worldAccess.fillChunkVolume(cwp, chunkLocalVolume, blockId);
-	bool placed = entityAccess.setBlockEntity(cwp, blockId, beData);
+	ushort blockIndex = volumeEntityIndex(chunkLocalVolume);
+	worldAccess.fillChunkVolume(cwp, chunkLocalVolume, blockIndex);
+	bool placed = entityAccess.setBlockEntity(cwp, blockIndex, beData);
 
 	//if (placed)
 	//	infof("Placed entity at %s with payload %s (id %s, data %s)",
@@ -86,10 +93,40 @@ void placeEntity(Volume blockVolume, BlockEntityData beData,
 }
 
 /// Returns changed volume
-Volume removeEntity(ChunkWorldPos cwp, ushort blockIndex,
-	WorldAccess worldAccess, BlockEntityAccess entityAccess)
+Volume removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
+	WorldAccess worldAccess, BlockEntityAccess entityAccess,
+	BlockId fillerBlock)
 {
-	return Volume();
+	auto cwp = ChunkWorldPos(bwp);
+	//ushort blockIndex = BlockChunkIndex(BlockChunkPos(bwp)).index;
+
+	BlockId blockId = worldAccess.getBlock(bwp);
+	if (!isBlockEntity(blockId))
+		return Volume();
+	ushort blockIndex = blockIndexFromBlockId(blockId);
+	auto entityBwp = BlockWorldPos(cwp, blockIndex);
+
+	BlockEntityData beData = entityAccess.getBlockEntity(cwp, blockIndex);
+	// box should start at bwp
+	Volume entityBox;
+	with(BlockEntityType) final switch(beData.type) {
+		case localBlockEntity:
+			entityBox = beInfos[beData.id].boxHandler(entityBwp, beData);
+			break;
+		case foreignBlockEntity:
+			entityBox = unknownBlockEntity.boxHandler(entityBwp, beData);
+			break;
+		case componentId:
+			entityBox = unknownBlockEntity.boxHandler(entityBwp, beData);
+			break;
+	}
+
+	//infof("Remove entity pos %s box %s %s", bwp, entityBox, cwp);
+
+	Volume chunkEntityVol = blockVolumeToChunkLocalVolume(entityBox);
+	worldAccess.fillChunkVolume(cwp, chunkEntityVol, fillerBlock);
+	entityAccess.removeEntity(cwp, blockIndex);
+	return entityBox;
 }
 
 final class BlockEntityAccess
@@ -102,6 +139,7 @@ final class BlockEntityAccess
 
 	bool setBlockEntity(ChunkWorldPos cwp, ushort blockIndex, BlockEntityData beData)
 	{
+		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
 		if (!chunkManager.isChunkLoaded(cwp)) return false;
 
 		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
@@ -116,6 +154,7 @@ final class BlockEntityAccess
 
 	BlockEntityData getBlockEntity(ChunkWorldPos cwp, ushort blockIndex)
 	{
+		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
 		auto entities = chunkManager.getChunkSnapshot(cwp, ENTITY_LAYER, Yes.Uncompress);
 		if (entities.isNull) return BlockEntityData.init;
 		if (entities.type == StorageType.uniform) return BlockEntityData.init;
@@ -127,6 +166,21 @@ final class BlockEntityAccess
 
 		return BlockEntityData(*entity);
 	}
+
+	bool removeEntity(ChunkWorldPos cwp, ushort blockIndex)
+	{
+		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
+		if (!chunkManager.isChunkLoaded(cwp)) return false;
+
+		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+				ENTITY_LAYER, WriteBufferPolicy.copySnapshotArray);
+		assert(writeBuffer);
+
+		auto map = getHashMapFromLayer(writeBuffer.layer);
+		map.remove(blockIndex);
+		setLayer(writeBuffer.layer, map);
+		return true;
+	}
 }
 
 void setLayer(Layer)(ref Layer layer, HashMap map) {
@@ -137,6 +191,8 @@ void setLayer(Layer)(ref Layer layer, HashMap map) {
 }
 
 HashMap getHashMapFromLayer(Layer)(const ref Layer layer) {
+	if (layer.type == StorageType.uniform)
+		return HashMap();
 	return HashMap(layer.getArray!ubyte, layer.metadata);
 }
 
@@ -185,6 +241,8 @@ struct HashMap
 	alias allocator = GCAllocator.instance;
 
 	this(ubyte[] array, ushort length) {
+		if (array.length % (Key.sizeof + Value.sizeof))
+			infof("size %s", array.length);
 		size_t size = array.length / (Key.sizeof + Value.sizeof);
 		keys = cast(Key[])array[0..Key.sizeof * size];
 		values = cast(Value[])array[Key.sizeof * size..$];
@@ -233,7 +291,6 @@ struct HashMap
 	}
 
 	void opIndexAssign(Value value, ushort key) {
-		assert(key != nullKey, "Inserting clear value into hash map.");
 		grow(1);
 		auto i = findInsertIndex(key);
 		if (keys[i] != key) length++;
@@ -340,12 +397,13 @@ struct HashMap
 			void[] array = allocator.allocate((Key.sizeof + Value.sizeof) * newSize);
 			keys = cast(Key[])(array[0..Key.sizeof * newSize]);
 			values = cast(Value[])(array[Key.sizeof * newSize..$]);
+			//infof("%s %s %s", array.length, keys.length, values.length);
 			keys[] = nullKey;
-			foreach (ref key; oldKeys) {
+			foreach (i, ref key; oldKeys) {
 				if (key != nullKey) {
 					auto idx = findInsertIndex(key);
 					keys[idx] = key;
-					values[idx] = oldValues[idx];
+					values[idx] = oldValues[i];
 				}
 			}
 		} else {

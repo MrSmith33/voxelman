@@ -400,17 +400,19 @@ BlockData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
 	res.uniform = layer.type == StorageType.uniform;
 	res.metadata = layer.metadata;
 	res.layerId = layerId;
-	if (!res.uniform)
+	if (!res.uniform) {
 		res.blocks = layer.getArray!ubyte();
-	else
+	} else {
 		res.uniformType = layer.uniformData;
+		res.dataLength = layer.dataLength;
+	}
 	return res;
 }
 
 ChunkLayerItem fromBlockData(const ref BlockData bd)
 {
 	if (bd.uniform)
-		return ChunkLayerItem(StorageType.uniform, bd.layerId, BLOCKID_UNIFORM_FILL_BITS, 0, bd.uniformType, bd.metadata);
+		return ChunkLayerItem(StorageType.uniform, bd.layerId, bd.dataLength, 0, bd.uniformType, bd.metadata);
 	else
 		return ChunkLayerItem(StorageType.fullArray, bd.layerId, 0, bd.blocks, bd.metadata);
 }
@@ -559,6 +561,7 @@ struct BlockData
 
 	/// is chunk filled with block of the same type
 	bool uniform = true;
+	uint dataLength;
 
 	ushort metadata;
 	ubyte layerId;

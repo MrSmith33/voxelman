@@ -26,6 +26,7 @@ import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.net.plugin : NetServerPlugin;
 import voxelman.login.plugin;
 import voxelman.block.plugin;
+import voxelman.blockentity.plugin;
 import voxelman.server.plugin : WorldSaveInternalEvent;
 
 import voxelman.net.packets;
@@ -39,7 +40,7 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.storageworker;
 import voxelman.world.storage.volume;
 import voxelman.world.storage.worldaccess;
-import voxelman.world.storage.blockentityaccess;
+import voxelman.blockentity.blockentityaccess;
 
 public import voxelman.world.worlddb : WorldDb;
 
@@ -82,6 +83,15 @@ public:
 	{
 		worldLoadHandlers ~= loadHandler;
 		worldSaveHandlers ~= saveHandler;
+	}
+}
+
+struct IdMapManagerServer
+{
+	string[][string] idMaps;
+	void regIdMap(string name, string[] mapItems)
+	{
+		idMaps[name] = mapItems;
 	}
 }
 
@@ -207,6 +217,7 @@ private:
 	NetServerPlugin connection;
 	ClientDbServer clientDb;
 	BlockPluginServer blockPlugin;
+	BlockEntityServer blockEntityPlugin;
 
 	IoManager ioManager;
 
@@ -226,6 +237,7 @@ public:
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
 	ActiveChunks activeChunks;
+	IdMapManagerServer idMapManager;
 
 	WorldAccess worldAccess;
 	BlockEntityAccess entityAccess;
@@ -282,15 +294,21 @@ public:
 	{
 		blockPlugin = pluginman.getPlugin!BlockPluginServer;
 		clientDb = pluginman.getPlugin!ClientDbServer;
+
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
 		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
 		evDispatcher.subscribeToEvent(&handleStopEvent);
 		evDispatcher.subscribeToEvent(&handleClientDisconnected);
 		evDispatcher.subscribeToEvent(&handleSaveEvent);
+		evDispatcher.subscribeToEvent(&handleClientConnectedEvent);
+
+		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
 
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
+		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
+		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
 
 		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
 		worldDb = null;
@@ -391,6 +409,14 @@ public:
 		sendChunk(clientId, cwp);
 	}
 
+	private void handleClientConnectedEvent(ref ClientConnectedEvent event)
+	{
+		foreach(key, idmap; idMapManager.idMaps)
+		{
+			connection.sendTo(event.clientId, IdMapPacket(key, idmap));
+		}
+	}
+
 	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
 		chunkObserverManager.removeObserver(event.clientId);
@@ -414,6 +440,9 @@ public:
 		{
 			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
 			if (layer.isNull) continue;
+
+			if (layer.dataLength == 5 && layerId == 1)
+				infof("CM Loaded %s %s", cwp, layer.type);
 
 			version(DBG_COMPR)if (layer.type != StorageType.uniform)
 			{
@@ -453,8 +482,31 @@ public:
 		if (clientDb.isSpawned(clientId))
 		{
 			auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
+			// TODO send to observers only.
 			worldAccess.fillVolume(packet.volume, packet.blockId);
 			connection.sendToAll(packet);
 		}
+	}
+
+	private void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
+		//infof("Place entity %s", packet.pos);
+		placeEntity(
+			packet.volume, BlockEntityData(packet.data),
+			worldAccess, entityAccess);
+
+		// TODO send to observers only.
+		connection.sendToAll(packet);
+	}
+
+	private void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	{
+		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
+		Volume vol = removeEntity(BlockWorldPos(packet.blockPos),
+			blockEntityPlugin.blockEntityInfos, worldAccess, entityAccess, /*AIR*/1);
+		//infof("Remove entity at %s", vol);
+
+		connection.sendToAll(packet);
 	}
 }

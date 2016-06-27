@@ -14,6 +14,18 @@ import dlib.math.vector;
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 
+import voxelman.utils.renderutils;
+void putCube(ref Batch batch, Volume volume, Color3ub color, bool fill, bool offset = true)
+{
+	vec3 pos = volume.position;
+	vec3 size = volume.size;
+	if (offset) {
+		pos -= vec3(0.01, 0.01, 0.01);
+		size += vec3(0.02, 0.02, 0.02);
+	}
+	batch.putCube(pos, size, color, fill);
+}
+
 Volume calcVolume(ChunkWorldPos cwp, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
@@ -35,6 +47,13 @@ Volume blockVolumeToChunkVolume(Volume blockVolume)
 	auto startPosition = blockToChunkPosition(blockVolume.position);
 	auto endPosition = blockToChunkPosition(blockVolume.endPosition);
 	return volumeFromCorners(startPosition, endPosition, blockVolume.dimention);
+}
+
+// makes block volume in chunk-local space out of world space
+Volume blockVolumeToChunkLocalVolume(Volume blockVolume)
+{
+	blockVolume.position -= chunkStartBlockPos(blockVolume.position);
+	return blockVolume;
 }
 
 /// Returns chunks if their mesh may have changed after specified modification

@@ -23,6 +23,13 @@ ivec3 chunkToBlockPosition(ivec3 cp)
 	return ivec3(cp.x*CHUNK_SIZE, cp.y*CHUNK_SIZE, cp.z * CHUNK_SIZE);
 }
 
+ivec3 chunkStartBlockPos(ivec3 worldBlockPos) {
+	return ivec3(
+		floor(cast(float)worldBlockPos.x / CHUNK_SIZE) * CHUNK_SIZE,
+		floor(cast(float)worldBlockPos.y / CHUNK_SIZE) * CHUNK_SIZE,
+		floor(cast(float)worldBlockPos.z / CHUNK_SIZE) * CHUNK_SIZE);
+}
+
 struct BlockChunkIndex
 {
 	this(BlockChunkPos blockChunkPos)
@@ -61,6 +68,17 @@ struct BlockChunkIndex
 // Position of block in world space. -int.max..int.max
 struct BlockWorldPos
 {
+	this(ChunkWorldPos cwp, ushort index) {
+		ubyte bx = index & CHUNK_SIZE_BITS;
+		ubyte by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		ubyte bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+		vector = ivec4(
+			cwp.x * CHUNK_SIZE + bx,
+			cwp.y * CHUNK_SIZE + by,
+			cwp.z * CHUNK_SIZE + bz,
+			cwp.w);
+	}
+
 	this(ivec3 blockWorldPos, int dim)
 	{
 		vector = ivec4(blockWorldPos.x, blockWorldPos.y, blockWorldPos.z, dim);
@@ -81,10 +99,21 @@ struct BlockWorldPos
 		vector = ivec4(x, y, z, dim);
 	}
 
+	this(int[4] pos)
+	{
+		vector = ivec4(pos[0], pos[1], pos[2], pos[3]);
+	}
+
 	ivec4 vector;
 	auto opDispatch(string s)()
 	{
 		return mixin("vector." ~ s);
+	}
+
+	void toString()(scope void delegate(const(char)[]) sink)
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("bwp(%(%s %))", vector.arrayof);
 	}
 }
 

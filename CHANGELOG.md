@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add block entity removing.
+- Add block entity type registry.
 - Add flat terrain gen.
 - Add railroad test plugin.
 - Add block entities.

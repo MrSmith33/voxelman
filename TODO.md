@@ -18,11 +18,12 @@
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
 
-- [ ] Remove BlockData
+- [ ] Remove BlockData.
 - [ ] Add block entity rendering.
-- [ ] Add block entity removing.
-- [ ] Add block entity type registry.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
+- [ ] Multichunk block entity.
+- [x] Add block entity removing.
+- [x] Add block entity type registry.
 - [x] Send block entity layer to client.
 - [x] Add block entity code.
 - [x] Add static entity layer code.

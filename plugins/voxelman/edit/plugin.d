@@ -11,6 +11,7 @@ import std.experimental.logger;
 import pluginlib;
 import voxelman.core.events;
 import derelict.imgui.imgui;
+import dlib.math.utils;
 import voxelman.utils.textformatter;
 
 import voxelman.client.plugin;
@@ -90,11 +91,11 @@ class EditPlugin : IPlugin
 	}
 
 	void nextTool(string) {
-		selectedTool = (selectedTool+1) % tools.length;
+		selectedTool = clamp(selectedTool+1, 0, tools.length-1);
 	}
 
 	void prevTool(string) {
-		selectedTool = (selectedTool-1) % tools.length;
+		selectedTool = clamp(selectedTool-1, 0, tools.length-1);
 	}
 
 	ITool currentTool() @property {

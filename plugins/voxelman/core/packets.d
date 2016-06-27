@@ -73,8 +73,7 @@ struct PlaceBlockEntityPacket
 struct RemoveBlockEntityPacket
 {
 	import voxelman.world.storage.volume : Volume;
-	int[4] chunkPos;
-	ushort index;
+	int[4] blockPos;
 }
 
 struct SpawnPacket

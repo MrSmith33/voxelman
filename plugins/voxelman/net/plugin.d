@@ -60,7 +60,6 @@ final class NetClientPlugin : IPlugin
 	ConfigOption serverIpOpt;
 	ConfigOption serverPortOpt;
 	bool isDisconnecting = false;
-	void delegate(string[])[string] onMapReceivedHandlers;
 
 	mixin NetCommon;
 
@@ -94,16 +93,6 @@ final class NetClientPlugin : IPlugin
 		commandPlugin.registerCommand("connect", &connectCommand);
 
 		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
-		connection.registerPacketHandler!IdMapPacket(&handleIdMapPacket);
-	}
-
-	override void postInit()
-	{
-	}
-
-	void regIdMapHandler(string mapName, void delegate(string[]) onMapReceived)
-	{
-		onMapReceivedHandlers[mapName] = onMapReceived;
 	}
 
 	void handleGameStartEvent(ref GameStartEvent event)
@@ -180,15 +169,6 @@ final class NetClientPlugin : IPlugin
 		connection.printPacketMap();
 	}
 
-	void handleIdMapPacket(ubyte[] packetData, ClientId clientId)
-	{
-		auto packet = unpackPacket!IdMapPacket(packetData);
-		if (auto h = onMapReceivedHandlers.get(packet.mapName, null))
-		{
-			h(packet.names);
-		}
-	}
-
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
 		if (!connection.isConnected) return;
@@ -256,11 +236,6 @@ public:
 		connection.printPacketMap();
 	}
 
-	void regIdMap(string name, string[] mapItems)
-	{
-		idMaps[name] = mapItems;
-	}
-
 	void handleGameStartEvent(ref GameStartEvent event)
 	{
 		ConnectionSettings settings = {null, maxPlayers.get!uint, 2, 0, 0};
@@ -273,12 +248,8 @@ public:
 		auto clientId = connection.clientStorage.addClient(event.peer);
 		event.peer.data = cast(void*)clientId;
 
-		evDispatcher.postEvent(ClientConnectedEvent(clientId));
 		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
-		foreach(key, idmap; idMaps)
-		{
-			connection.sendTo(clientId, IdMapPacket(key, idmap));
-		}
+		evDispatcher.postEvent(ClientConnectedEvent(clientId));
 		connection.sendTo(clientId, GameStartPacket());
 	}
 

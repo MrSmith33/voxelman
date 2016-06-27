@@ -14,14 +14,8 @@ import voxelman.world.storage.coordinates;
 import voxelman.block.utils;
 import voxelman.utils.mapping;
 
-import voxelman.net.plugin;
 import voxelman.world.plugin;
-
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new BlockPluginClient);
-	pluginRegistry.regServerPlugin(new BlockPluginServer);
-}
+import voxelman.world.clientworld;
 
 final class BlockManager : IResourceManager
 {
@@ -77,14 +71,13 @@ final class BlockPluginClient : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		auto connection = pluginman.getPlugin!NetClientPlugin;
-		connection.regIdMapHandler(blockMappingKey, &handleBlockMap);
+		auto clientWorld = pluginman.getPlugin!ClientWorld;
+		clientWorld.idMapManager.regIdMapHandler(blockMappingKey, &handleBlockMap);
 	}
 
 	void handleBlockMap(string[] blocks)
 	{
 		bm.blockMapping.setMapping(blocks);
-		//infof("received block map %s", blocks);
 	}
 
 	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry){}
@@ -102,8 +95,8 @@ final class BlockPluginServer : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		auto connection = pluginman.getPlugin!NetServerPlugin;
-		connection.regIdMap(blockMappingKey, bm.blockMapping.nameRange.array);
+		auto serverWorld = pluginman.getPlugin!ServerWorld;
+		serverWorld.idMapManager.regIdMap(blockMappingKey, bm.blockMapping.nameRange.array);
 	}
 
 	void readBlockMap(ref PluginDataLoader loader)

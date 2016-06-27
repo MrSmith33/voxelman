@@ -56,7 +56,7 @@ struct ChunkSnapWithAdjacent
 }
 
 // Assumes that central chunk is loaded.
-ChunkSnapWithAdjacent getSnapWithAdjacentAddUsers(ChunkManager cm, ChunkWorldPos cwp, size_t layer)
+ChunkSnapWithAdjacent getSnapWithAdjacentAddUsers(ChunkManager cm, ChunkWorldPos cwp, ubyte layer)
 {
 	ChunkSnapWithAdjacent result;
 
@@ -193,7 +193,7 @@ final class ChunkManager {
 	/// returned value isNull if chunk is not loaded/added
 	/// If uncompress is Yes then tries to convert snapshot to uncompressed.
 	/// If has users, then compressed snapshot is returned.
-	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, size_t layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
+	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, ubyte layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
 		if (isChunkLoaded(cwp))
 		{
 			auto snap = cwp in snapshots[layer];
@@ -234,7 +234,7 @@ final class ChunkManager {
 	/// This buffer is valid until commit.
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
-	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, size_t layer,
+	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, ubyte layer,
 		WriteBufferPolicy policy = WriteBufferPolicy.createUniform)
 	{
 		if (!isChunkLoaded(cwp)) return null;
@@ -253,7 +253,7 @@ final class ChunkManager {
 
 	/// Returns timestamp of current chunk snapshot.
 	/// Store this timestamp to use in removeSnapshotUser
-	TimestampType addCurrentSnapshotUser(ChunkWorldPos cwp, size_t layer) {
+	TimestampType addCurrentSnapshotUser(ChunkWorldPos cwp, ubyte layer) {
 		auto snap = cwp in snapshots[layer];
 		assert(snap, "Cannot add chunk user. No such snapshot.");
 
@@ -270,7 +270,7 @@ final class ChunkManager {
 
 	/// Generic removal of snapshot user. Removes chunk if numUsers == 0.
 	/// Use this to remove added snapshot user. Use timestamp returned from addCurrentSnapshotUser.
-	void removeSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, size_t layer) {
+	void removeSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, ubyte layer) {
 		auto snap = cwp in snapshots[layer];
 		if (snap && snap.timestamp == timestamp)
 		{
@@ -305,6 +305,7 @@ final class ChunkManager {
 		{
 			ChunkLayerItem layer = chunk.getLayer();
 			totalLayerDataBytes += getLayerDataBytes(layer);
+
 			snapshots[layer.layerId][header.cwp] = ChunkLayerSnap(layer);
 			version(DBG_COMPR)if (layer.type == StorageType.compressedArray)
 				infof("CM Loaded %s %s %s\n(%(%02x%))", header.cwp, layer.dataPtr, layer.dataLength, layer.getArray!ubyte);
@@ -367,7 +368,7 @@ final class ChunkManager {
 
 	/// called at the end of tick
 	void commitSnapshots(TimestampType currentTime) {
-		foreach(layer; 0..numLayers)
+		foreach(ubyte layer; 0..numLayers)
 		{
 			auto writeBuffersCopy = writeBuffers[layer];
 			// Clear it here because commit can unload chunk.
@@ -515,9 +516,11 @@ final class ChunkManager {
 	// On commit stage this is moved into new snapshot if write buffer is modified.
 	// Adds internal user that is removed on commit to prevent unloading chunk with uncommitted changes.
 	// Returns pointer to created write buffer.
-	private WriteBuffer* createWriteBuffer(ChunkWorldPos cwp, size_t layer) {
+	private WriteBuffer* createWriteBuffer(ChunkWorldPos cwp, ubyte layer) {
 		assert(cwp !in writeBuffers[layer]);
-		writeBuffers[layer][cwp] = WriteBuffer.init;
+		auto wb = WriteBuffer.init;
+		wb.layer.layerId = layer;
+		writeBuffers[layer][cwp] = wb;
 		addInternalObserver(cwp); // prevent unload until commit
 		return cwp in writeBuffers[layer];
 	}
@@ -552,7 +555,7 @@ final class ChunkManager {
 	}
 
 	// Returns number of current snapshot users left.
-	private size_t removeCurrentSnapshotUser(ChunkWorldPos cwp, size_t layer) {
+	private size_t removeCurrentSnapshotUser(ChunkWorldPos cwp, ubyte layer) {
 		auto snap = cwp in snapshots[layer];
 		assert(snap && snap.numUsers > 0, "cannot remove chunk user. Snapshot has 0 users");
 
@@ -572,7 +575,7 @@ final class ChunkManager {
 	}
 
 	// Snapshot is removed from oldSnapshots if numUsers == 0.
-	private void removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, size_t layer) {
+	private void removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, ubyte layer) {
 		ChunkLayerSnap[TimestampType]* chunkSnaps = cwp in oldSnapshots[layer];
 		version(TRACE_SNAP_USERS) tracef("#%s:%s (rem old) x/%s @%s", cwp, layer, totalSnapshotUsers.get(cwp, 0), timestamp);
 		assert(chunkSnaps, "old snapshot should have waited for releasing user");
@@ -591,7 +594,7 @@ final class ChunkManager {
 	}
 
 	// Commit for single chunk.
-	private void commitLayerSnapshot(ChunkWorldPos cwp, WriteBuffer writeBuffer, TimestampType currentTime, size_t layer) {
+	private void commitLayerSnapshot(ChunkWorldPos cwp, WriteBuffer writeBuffer, TimestampType currentTime, ubyte layer) {
 		auto currentSnapshot = getChunkSnapshot(cwp, layer);
 		if (!currentSnapshot.isNull) handleCurrentSnapCommit(cwp, layer, currentSnapshot.get());
 
@@ -613,7 +616,7 @@ final class ChunkManager {
 		assert(isChunkLoaded(cwp), "Commit is only possible for loaded chunk");
 	}
 
-	void handleCurrentSnapCommit(ChunkWorldPos cwp, size_t layer, ChunkLayerSnap currentSnapshot)
+	void handleCurrentSnapCommit(ChunkWorldPos cwp, ubyte layer, ChunkLayerSnap currentSnapshot)
 	{
 		if (currentSnapshot.numUsers == 0) {
 			version(TRACE_SNAP_USERS) tracef("#%s:%s (commit:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);

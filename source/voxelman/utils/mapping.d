@@ -68,6 +68,11 @@ struct Mapping(InfoType, bool withTypeMap = false)
 		return infoArray.map!(a => a.name);
 	}
 
+	size_t id(string name)
+	{
+		return nameToIndexMap.get(name, size_t.max);
+	}
+
 	string name(size_t id)
 	{
 		import std.string : format;
