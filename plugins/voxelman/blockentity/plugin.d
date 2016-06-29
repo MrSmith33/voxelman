@@ -56,13 +56,21 @@ final class BlockEntityClient : IPlugin {
 		auto removeEntityTool = new class ITool
 		{
 			this() { name = "test.blockentity.block_entity"; }
-			override void onUpdate()
-			{
 
+			bool placing;
+			Volume selection;
+			BlockWorldPos startingPos;
+
+			override void onUpdate() {
+				auto cursor = worldInteraction.sideBlockPos;
+				selection = volumeFromCorners(startingPos.xyz,
+					cursor.xyz, cast(DimentionId)cursor.w);
+				drawSelection();
 			}
 
 			// remove
 			override void onMainActionRelease() {
+				if (placing) return;
 				auto blockId = worldInteraction.pickBlock();
 				if (isBlockEntity(blockId)) {
 					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector.arrayof));
@@ -70,13 +78,35 @@ final class BlockEntityClient : IPlugin {
 			}
 
 			// place
+			override void onSecondaryActionPress() {
+				placing = true;
+				startingPos = worldInteraction.sideBlockPos;
+			}
 			override void onSecondaryActionRelease() {
-				// TODO multi chunk block entity
+				if (placing) {
+					ulong sizeData = sizeToEntityData(selection.size);
+					ulong payload = payloadFromIdAndEntityData(
+						blockEntityMan.getId("multi"), sizeData);
+					connection.send(PlaceBlockEntityPacket(selection, payload));
+					placing = false;
+				}
+			}
+
+			void drawSelection() {
+				if (placing) {
+					graphics.debugBatch.putCube(vec3(selection.position) - cursorOffset,
+						vec3(selection.size) + cursorOffset, Colors.blue, false);
+				} else {
+					if (!worldInteraction.cameraInSolidBlock)
+					{
+						worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
+					}
+				}
 			}
 		};
 
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
-		//editPlugin.registerTool(removeEntityTool);
+		editPlugin.registerTool(removeEntityTool);
 	}
 
 	void onUpdateEvent(ref UpdateEvent event)
@@ -88,23 +118,39 @@ final class BlockEntityClient : IPlugin {
 		{
 			ushort blockIndex = blockIndexFromBlockId(blockId);
 			BlockEntityData entity = clientWorld.entityAccess.getBlockEntity(cwp, blockIndex);
-			auto entityBwp = BlockWorldPos(cwp, blockIndex);
 			with(BlockEntityType) final switch(entity.type)
 			{
 				case localBlockEntity:
 					BlockEntityInfo eInfo = blockEntityInfos[entity.id];
+					auto entityBwp = BlockWorldPos(cwp, blockIndex);
 					Volume eVol = eInfo.boxHandler(entityBwp, entity);
 
-					igTextf("Entity: @%s: id %s %s, data %s, size %s",
-						blockIndex, entity.id, eInfo.name, entity.entityData, eVol.size);
-					igTextf(" vol %s, pos %s", eVol, entityBwp);
+					igTextf("Entity(main): ind %s: id %s %s %s",
+						blockIndex, entity.id, eInfo.name, eVol);
+					if (eInfo.debugHandler)
+						eInfo.debugHandler(entityBwp, entity);
 
 					voxelman.world.storage.volume.putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
 				case foreignBlockEntity:
-					igTextf("Entity: @%s: foreign %s", blockIndex, entity.payload); break;
-				case componentId:
-					igTextf("Entity: @%s: entity id %s", blockIndex, entity.payload); break;
+					auto mainPtr = entity.mainChunkPointer;
+
+					auto mainCwp = ChunkWorldPos(ivec3(cwp.xyz) - mainPtr.mainChunkOffset, cwp.w);
+					BlockEntityData mainEntity = clientWorld.entityAccess.getBlockEntity(mainCwp, mainPtr.blockIndex);
+					auto mainBwp = BlockWorldPos(mainCwp, mainPtr.blockIndex);
+
+					BlockEntityInfo eInfo = blockEntityInfos[mainPtr.entityId];
+					Volume eVol = eInfo.boxHandler(mainBwp, mainEntity);
+
+					igTextf("Entity(other): ind %s mid %s mind %s moff %s",
+						blockIndex, mainPtr.entityId,
+						mainPtr.blockIndex, mainPtr.mainChunkOffset);
+					igTextf(" %s %s", eInfo.name, eVol);
+
+					voxelman.world.storage.volume.putCube(graphics.debugBatch, eVol, Colors.red, false);
+					break;
+				//case componentId:
+				//	igTextf("Entity: @%s: entity id %s", blockIndex, entity.payload); break;
 			}
 		}
 		else
@@ -124,6 +170,11 @@ mixin template BlockEntityCommon()
 {
 	override void registerResourceManagers(void delegate(IResourceManager) reg) {
 		blockEntityMan = new BlockEntityManager;
+		blockEntityMan.regBlockEntity("unknown") // 0
+			.boxHandler(&nullBoxHandler);
+		blockEntityMan.regBlockEntity("multi")
+			.boxHandler(&multichunkBoxHandler);
+			//.debugHandler(&multichunkDebugHandler);
 		reg(blockEntityMan);
 	}
 	BlockEntityManager blockEntityMan;
@@ -131,6 +182,20 @@ mixin template BlockEntityCommon()
 	BlockEntityInfoTable blockEntityInfos() {
 		return BlockEntityInfoTable(cast(immutable)blockEntityMan.blockEntityMapping.infoArray);
 	}
+}
+
+Volume multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
+{
+	ulong sizeData = data.entityData;
+	ivec3 size = entityDataToSize(sizeData);
+	return Volume(bwp.xyz, size, cast(ushort)bwp.w);
+}
+
+void multichunkDebugHandler(BlockWorldPos bwp, BlockEntityData data)
+{
+	ulong sizeData = data.entityData;
+	ivec3 size = entityDataToSize(sizeData);
+	//auto vol = Volume(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
 struct BlockEntityInfoSetter
@@ -145,6 +210,7 @@ struct BlockEntityInfoSetter
 	ref BlockEntityInfoSetter meshHandler(BlockEntityMeshhandler val) { info.meshHandler = val; return this; }
 	ref BlockEntityInfoSetter sideSolidity(SolidityHandler val) { info.sideSolidity = val; return this; }
 	ref BlockEntityInfoSetter boxHandler(EntityBoxHandler val) { info.boxHandler = val; return this; }
+	ref BlockEntityInfoSetter debugHandler(EntityDebugHandler val) { info.debugHandler = val; return this; }
 }
 
 final class BlockEntityManager : IResourceManager

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add multichunk block entity.
 - Add block entity removing.
 - Add block entity type registry.
 - Add flat terrain gen.

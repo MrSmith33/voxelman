@@ -387,7 +387,7 @@ public:
 	void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
-		placeEntity(packet.volume, BlockEntityData(packet.data),
+		placeEntity(packet.volume, packet.data,
 			worldAccess, entityAccess);
 		onBlockVolumeChanged(packet.volume);
 	}

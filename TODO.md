@@ -18,10 +18,18 @@
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
 
+----
+### EDITING
+- [ ] Editing of unloaded chunks. Save modifications to special storage, then apply.
+
 - [ ] Remove BlockData.
 - [ ] Add block entity rendering.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
-- [ ] Multichunk block entity.
+- [ ] Problems with multichunk entities with unloaded parts.
+- [x] Multichunk block entity.
+
+----
+### OTHER
 - [x] Add block entity removing.
 - [x] Add block entity type registry.
 - [x] Send block entity layer to client.

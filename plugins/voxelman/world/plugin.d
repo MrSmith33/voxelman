@@ -491,9 +491,8 @@ public:
 	private void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
-		//infof("Place entity %s", packet.pos);
 		placeEntity(
-			packet.volume, BlockEntityData(packet.data),
+			packet.volume, packet.data,
 			worldAccess, entityAccess);
 
 		// TODO send to observers only.

@@ -139,11 +139,12 @@ final class TrainsPluginServer : IPlugin
 		RailPos railPos = packet.pos;
 		ChunkWorldPos cwp = railPos.chunkPos();
 		Volume blockVolume = railPos.toBlockVolume;
-		BlockEntityData beData = BlockEntityData(BlockEntityType.localBlockEntity,
+		ulong payload = payloadFromIdAndEntityData(
 			blockEntityManager.getId("rail"), 0);
-		placeEntity(blockVolume, beData, serverWorld.worldAccess, serverWorld.entityAccess);
+		placeEntity(blockVolume, payload,
+			serverWorld.worldAccess, serverWorld.entityAccess);
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
-			PlaceBlockEntityPacket(blockVolume, beData.storage));
+			PlaceBlockEntityPacket(blockVolume, payload));
 	}
 }
 
@@ -153,7 +154,8 @@ mixin template TrainsPluginCommon()
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		blockEntityManager = resmanRegistry.getResourceManager!BlockEntityManager;
-		blockEntityManager.regBlockEntity("rail").boxHandler(&railBoxHandler);
+		blockEntityManager.regBlockEntity("rail")
+			.boxHandler(&railBoxHandler);
 	}
 }
 

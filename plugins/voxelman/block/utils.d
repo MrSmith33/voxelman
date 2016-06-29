@@ -155,13 +155,6 @@ struct BlockInfoTable
 	}
 }
 
-enum staticEntityBit = ((BlockId.max+1) >> 1);
-bool isBlockEntity(BlockId blockId)
-{
-	enum n = BlockId.sizeof*8 - 1;
-	return blockId >> n; // highest bit
-}
-
 /// Returned when registering block.
 /// Use this to set block properties.
 struct BlockInfoSetter
