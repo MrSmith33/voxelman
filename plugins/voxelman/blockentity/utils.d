@@ -7,6 +7,7 @@ module voxelman.blockentity.utils;
 
 import std.experimental.logger;
 import std.array : Appender;
+import dlib.math.vector;
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
@@ -33,10 +34,13 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 
 
 alias BlockEntityMeshhandler = void function(
-	ref Appender!(ubyte[]) output,
+	Appender!(ubyte[])[] output,
 	BlockEntityData data,
-	ubyte[3] color, ubyte bx, ubyte by, ubyte bz,
-	ubyte sides);
+	ubyte[3] color,
+	ubyte sides,
+	//ivec3 worldPos,
+	ivec3 chunkPos,
+	ivec3 entityPos);
 
 alias SolidityHandler = Solidity function(Side side);
 alias EntityBoxHandler = Volume function(BlockWorldPos bwp, BlockEntityData data);
@@ -47,28 +51,28 @@ Volume nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 }
 
 void nullBlockEntityMeshhandler(
-	ref Appender!(ubyte[]) output, BlockEntityData data,
-	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides) {}
+	Appender!(ubyte[])[] output, BlockEntityData data,
+	ubyte[3] color, ubyte sides, //ivec3 worldPos,
+	ivec3 chunkPos, ivec3 entityPos) {}
+
 Solidity nullSolidityHandler(Side side) {
-	return Solidity.transparent;
+	return Solidity.solid;
 }
+
+void nullDebugHandler(BlockWorldPos, BlockEntityData) {}
 
 struct BlockEntityInfo
 {
 	string name;
-	BlockEntityMeshhandler meshHandler;
-	SolidityHandler sideSolidity;
-	EntityBoxHandler boxHandler;
-	EntityDebugHandler debugHandler;
+	BlockEntityMeshhandler meshHandler = &nullBlockEntityMeshhandler;
+	SolidityHandler sideSolidity = &nullSolidityHandler;
+	EntityBoxHandler boxHandler = &nullBoxHandler;
+	EntityDebugHandler debugHandler = &nullDebugHandler;
 	ubyte[3] color;
 	//bool isVisible = true;
 	size_t id;
 }
-BlockEntityInfo unknownBlockEntity =
-	BlockEntityInfo("Unknown",
-		&nullBlockEntityMeshhandler,
-		&nullSolidityHandler,
-		&nullBoxHandler);
+BlockEntityInfo unknownBlockEntity = BlockEntityInfo("Unknown");
 
 struct BlockEntityInfoTable
 {

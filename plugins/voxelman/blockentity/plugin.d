@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.blockentity.plugin;
 
 import std.experimental.logger;
+import std.array : Appender;
 
 import pluginlib;
 
@@ -173,7 +174,8 @@ mixin template BlockEntityCommon()
 		blockEntityMan.regBlockEntity("unknown") // 0
 			.boxHandler(&nullBoxHandler);
 		blockEntityMan.regBlockEntity("multi")
-			.boxHandler(&multichunkBoxHandler);
+			.boxHandler(&multichunkBoxHandler)
+			.meshHandler(&multichunkMeshHandler);
 			//.debugHandler(&multichunkDebugHandler);
 		reg(blockEntityMan);
 	}
@@ -182,6 +184,31 @@ mixin template BlockEntityCommon()
 	BlockEntityInfoTable blockEntityInfos() {
 		return BlockEntityInfoTable(cast(immutable)blockEntityMan.blockEntityMapping.infoArray);
 	}
+}
+
+void multichunkMeshHandler(
+	Appender!(ubyte[])[] output,
+	BlockEntityData data,
+	ubyte[3] color,
+	ubyte sides,
+	//ivec3 worldPos,
+	ivec3 chunkPos,
+	ivec3 entityPos)
+{
+	static ubyte[3] mainColor = [60,0,0];
+	static ubyte[3] otherColor = [0,0,60];
+
+	ubyte[3] col;
+	if (data.type == BlockEntityType.localBlockEntity)
+		col = mainColor;
+	else
+		col = otherColor;
+
+	makeColoredBlockMesh(output[Solidity.solid], col,
+		cast(ubyte)chunkPos.x,
+		cast(ubyte)chunkPos.y,
+		cast(ubyte)chunkPos.z,
+		sides);
 }
 
 Volume multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)

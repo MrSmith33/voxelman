@@ -25,7 +25,7 @@ import voxelman.world.worlddb : WorldDb;
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData
 {
-	private shared(MessageQueue)* queue;
+	private shared(SharedQueue)* queue;
 	ChunkHeaderItem getHeader()
 	{
 		assert(queue.length >= ChunkHeaderItem.sizeof);
@@ -52,7 +52,7 @@ struct LoadedChunkData
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct SavedChunkData
 {
-	private shared(MessageQueue)* queue;
+	private shared(SharedQueue)* queue;
 	ChunkHeaderItem getHeader()
 	{
 		assert(queue.length >= 2);
@@ -87,10 +87,10 @@ struct ChunkProvider
 
 	Mutex workAvaliableMutex;
 	Condition workAvaliable;
-	shared MessageQueue loadResQueue;
-	shared MessageQueue saveResQueue;
-	shared MessageQueue loadTaskQueue;
-	shared MessageQueue saveTaskQueue;
+	shared SharedQueue loadResQueue;
+	shared SharedQueue saveResQueue;
+	shared SharedQueue loadTaskQueue;
+	shared SharedQueue saveTaskQueue;
 
 	shared Worker[] genWorkers;
 
@@ -117,16 +117,16 @@ struct ChunkProvider
 		genWorkers.length = numGenWorkers;
 		foreach(i; 0..numGenWorkers)
 		{
-			genWorkers[i].alloc("GEN_W");
+			genWorkers[i].alloc("GEN_W", QUEUE_LENGTH);
 			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], blocks);
 		}
 
 		workAvaliableMutex = new Mutex;
 		workAvaliable = new Condition(workAvaliableMutex);
-		loadResQueue.alloc("loadResQ");
-		saveResQueue.alloc("saveResQ");
-		loadTaskQueue.alloc("loadTaskQ");
-		saveTaskQueue.alloc("saveTaskQ");
+		loadResQueue.alloc("loadResQ", QUEUE_LENGTH);
+		saveResQueue.alloc("saveResQ", QUEUE_LENGTH);
+		loadTaskQueue.alloc("loadTaskQ", QUEUE_LENGTH);
+		saveTaskQueue.alloc("saveTaskQ", QUEUE_LENGTH);
 		storeWorker = spawnWorker(
 			&storageWorker, cast(immutable)worldDb,
 			&workerRunning,

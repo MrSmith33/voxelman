@@ -45,9 +45,7 @@ final class AvatarClient : IPlugin
 
 	void drawEntities(ref RenderSolid3dEvent event)
 	{
-		graphics.chunkShader.bind;
 		graphics.draw(batch);
-		graphics.chunkShader.unbind;
 	}
 
 	void handleUpdateAvatarsPacket(ubyte[] packetData, ClientId clientId)

@@ -54,16 +54,30 @@ void main() {
 }
 `;
 
-string perspective_vert_shader = `
+string solid_vert_shader = `
 #version 330
 layout(location = 0) in vec4 position;
 layout(location = 1) in vec4 color;
-smooth out vec4 theColor;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
+smooth out vec4 theColor;
 void main() {
 	gl_Position = projection * view * model * position;
+	theColor = color;
+}
+`;
+
+string chunk_vert_shader = `
+#version 330
+layout(location = 0) in vec4 position;
+layout(location = 1) in vec4 color;
+uniform mat4 projection;
+uniform mat4 view;
+uniform mat4 model;
+smooth out vec4 theColor;
+void main() {
+	gl_Position = projection * view * model * (position/vec4(7,7,7,1));
 	theColor = color;
 }
 `;
@@ -80,13 +94,16 @@ public:
 	Batch debugBatch;
 
 	ShaderProgram chunkShader;
-	GLuint modelLoc, viewLoc, projectionLoc;
-	ShaderProgram transparentShader;
-	//GLuint modelLocT, viewLocT, projectionLocT;
+	ShaderProgram solidShader;
+	ShaderProgram transChunkShader;
 
 	IRenderer renderer;
 	ConfigOption cameraSensivity;
 	ConfigOption cameraFov;
+
+	GLuint projectionLoc = 2; //perspective
+	GLuint viewLoc = 3; //camera trandformation
+	GLuint modelLoc = 4; //model transformation
 
 
 	mixin IdAndSemverFrom!(voxelman.graphics.plugininfo);
@@ -119,13 +136,14 @@ public:
 		glGenBuffers( 1, &vbo);
 
 		// Setup shaders
-		chunkShader = renderer.createShaderProgram(perspective_vert_shader, color_frag_shader);
-		transparentShader = renderer.createShaderProgram(perspective_vert_shader, color_frag_shader_transparent);
+		chunkShader = renderer.createShaderProgram(chunk_vert_shader, color_frag_shader);
+		transChunkShader = renderer.createShaderProgram(chunk_vert_shader, color_frag_shader_transparent);
+		solidShader = renderer.createShaderProgram(solid_vert_shader, color_frag_shader);
 
 		chunkShader.bind;
-			modelLoc = glGetUniformLocation( chunkShader.handle, "model" );//model transformation
-			viewLoc = glGetUniformLocation( chunkShader.handle, "view" );//camera trandformation
-			projectionLoc = glGetUniformLocation( chunkShader.handle, "projection" );//perspective
+			modelLoc = glGetUniformLocation( solidShader.handle, "model" );//model transformation
+			viewLoc = glGetUniformLocation( solidShader.handle, "view" );//camera trandformation
+			projectionLoc = glGetUniformLocation( solidShader.handle, "projection" );//perspective
 
 			glUniformMatrix4fv(modelLoc, 1, GL_FALSE,
 				cast(const float*)Matrix4f.identity.arrayof);
@@ -162,10 +180,8 @@ public:
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		chunkShader.bind;
 		draw(debugBatch);
 		debugBatch.reset();
-		chunkShader.unbind;
 
 		evDispatcher.postEvent(RenderSolid3dEvent(renderer));
 
@@ -184,9 +200,11 @@ public:
 
 	void draw(Batch batch)
 	{
+		solidShader.bind;
 		drawBuffer(batch.triBuffer, GL_TRIANGLES);
 		drawBuffer(batch.lineBuffer, GL_LINES);
 		drawBuffer(batch.pointBuffer, GL_POINTS);
+		solidShader.unbind;
 	}
 
 private:
@@ -196,6 +214,8 @@ private:
 		if (buffer.length == 0) return;
 
 		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+		glUniformMatrix4fv(viewLoc, 1, GL_FALSE, camera.cameraMatrix);
+		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, cast(const float*)camera.perspective.arrayof);
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);

@@ -67,6 +67,30 @@ immutable byte[3][6] sideOffsets = [
 	[ 0,-1, 0],
 ];
 
+struct ChunkAndBlockAt
+{
+	ubyte chunk;
+	ubyte blockX, blockY, blockZ;
+}
+
+// 0-5 sides, or 6 if center
+ChunkAndBlockAt chunkAndBlockAt(int x, int y, int z)
+{
+	ubyte bx = cast(ubyte)x;
+	ubyte by = cast(ubyte)y;
+	ubyte bz = cast(ubyte)z;
+	if(x == -1) return ChunkAndBlockAt(Side.west, CHUNK_SIZE-1, by, bz);
+	else if(x == CHUNK_SIZE) return ChunkAndBlockAt(Side.east, 0, by, bz);
+
+	if(y == -1) return ChunkAndBlockAt(Side.bottom, bx, CHUNK_SIZE-1, bz);
+	else if(y == CHUNK_SIZE) return ChunkAndBlockAt(Side.top, bx, 0, bz);
+
+	if(z == -1) return ChunkAndBlockAt(Side.north, bx, by, CHUNK_SIZE-1);
+	else if(z == CHUNK_SIZE) return ChunkAndBlockAt(Side.south, bx, by, 0);
+
+	return ChunkAndBlockAt(6, bx, by, bz);
+}
+
 Side sideFromNormal(ivec3 normal)
 {
 	if (normal.x == 1)
@@ -101,15 +125,16 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 	auto rnd = Xorshift32(index);
 	float randomTint = uniform(0.90f, 1.0f, rnd);
 
+	ubyte flag = 1;
 	foreach(ubyte i; 0..6)
 	{
-		if (sides & (2^^i))
+		if (sides & flag)
 		{
 			for (size_t v = 0; v!=18; v+=3)
 			{
-				output ~= cast(ubyte)(faces[18*i+v] + bx);
-				output ~= cast(ubyte)(faces[18*i+v+1] + by);
-				output ~= cast(ubyte)(faces[18*i+v+2] + bz);
+				output ~= cast(ubyte)((faces[18*i+v] + bx)*POS_SCALE);
+				output ~= cast(ubyte)((faces[18*i+v+1] + by)*POS_SCALE);
+				output ~= cast(ubyte)((faces[18*i+v+2] + bz)*POS_SCALE);
 				output ~= cast(ubyte)0;
 				output ~= cast(ubyte)(shadowMultipliers[i] * color[0] * randomTint);
 				output ~= cast(ubyte)(shadowMultipliers[i] * color[1] * randomTint);
@@ -117,6 +142,7 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 				output ~= cast(ubyte)0;
 			} // for v
 		} // if
+		flag <<= 1;
 	} // for i
 }
 
@@ -463,6 +489,8 @@ void iterateSides()
 	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
 }
 */
+
+enum POS_SCALE = 7;
 
 // mesh for single block
 immutable ubyte[18 * 6] faces =

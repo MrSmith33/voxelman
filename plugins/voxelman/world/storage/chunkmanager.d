@@ -55,8 +55,7 @@ struct ChunkSnapWithAdjacent
 	bool allLoaded = true;
 }
 
-// Assumes that central chunk is loaded.
-ChunkSnapWithAdjacent getSnapWithAdjacentAddUsers(ChunkManager cm, ChunkWorldPos cwp, ubyte layer)
+ChunkSnapWithAdjacent getSnapWithAdjacent(ChunkManager cm, ChunkWorldPos cwp, ubyte layer)
 {
 	ChunkSnapWithAdjacent result;
 

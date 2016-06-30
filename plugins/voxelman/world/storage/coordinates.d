@@ -140,7 +140,19 @@ struct BlockChunkPos
 		if (vector.z < 0) vector.z += CHUNK_SIZE;
 	}
 
-	this(ivec3 blockChunkPos)
+	this(BlockChunkIndex blockIndex)
+	{
+		this(blockIndex.index);
+	}
+
+	this(ushort blockIndex)
+	{
+		vector.x = blockIndex & CHUNK_SIZE_BITS;
+		vector.y = (blockIndex / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		vector.z = (blockIndex / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+	}
+
+	this(uvec3 blockChunkPos)
 	{
 		vector = blockChunkPos;
 	}

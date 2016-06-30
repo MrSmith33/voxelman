@@ -15,13 +15,14 @@ import std.experimental.logger;
 //version = DBG_QUEUE;
 private enum PAGE_SIZE = 4096;
 /// Single-producer single-consumer fixed size circular buffer queue.
-shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
-	enum capacity = _capacity;
-	static assert(capacity > 0, "Cannot have a capacity of 0.");
-	static assert(roundPow2!capacity == capacity, "The capacity must be a power of 2");
+shared struct SharedQueue {
+	size_t capacity;
 
-	void alloc(string debugName = null) shared {
+	void alloc(string debugName = null, size_t _capacity = roundPow2(PAGE_SIZE)) shared {
 		_debugName = debugName;
+		capacity = _capacity;
+		assert(capacity > 0, "Cannot have a capacity of 0.");
+		assert(roundPow2(capacity) == capacity, "The capacity must be a power of 2");
 		_data = cast(shared ubyte[])Mallocator.instance.allocate(capacity);
 		assert(_data, "Cannot allocate memory for queue");
 	}
@@ -58,7 +59,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	I popItem(I)() shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		I res;
@@ -69,7 +70,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	void popItem(I)(out I item) shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		getItem(item, pos);
@@ -78,7 +79,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	I peekItem(I)() shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		I res;
@@ -88,7 +89,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	void peekItem(I)(out I item) shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		getItem(item, pos);
@@ -96,7 +97,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	void dropItem(I)() shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 
 		immutable pos = atomicLoad!(MemoryOrder.acq)(_readPos);
 		atomicStore!(MemoryOrder.rel)(_readPos, pos + I.sizeof);
@@ -104,11 +105,11 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	private void getItem(I)(out I item, const size_t at) shared const {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 		ubyte[] itemData = (*cast(ubyte[I.sizeof]*)&item);
 
-		size_t start = at & mask;
-		size_t end = (at + I.sizeof) & mask;
+		size_t start = at & (capacity - 1);
+		size_t end = (at + I.sizeof) & (capacity - 1);
 		if (end > start)
 		{
 			//             item[0] v          v item[$]
@@ -128,11 +129,11 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 	void setItem(I)(auto const ref I item, const size_t at) shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 		ubyte[] itemData = (*cast(ubyte[I.sizeof]*)&item);
 
-		size_t start = at & mask;
-		size_t end = (at + I.sizeof) & mask;
+		size_t start = at & (capacity - 1);
+		size_t end = (at + I.sizeof) & (capacity - 1);
 		if (end > start)
 		{
 			//             item[0] v          v item[$]
@@ -166,7 +167,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 
 	// skip to fill in later with setItem in multipart message mode
 	size_t skipMessageItem(I)() shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 		size_t skippedItemPos = cast(size_t)_msgWritePos;
 		// space < I.sizeof
 		while (capacity - _msgWritePos + atomicLoad!(MemoryOrder.acq)(_readPos) < I.sizeof) {
@@ -181,7 +182,7 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	// Make sure that there is enough space. Or else keep consuming
 	// push in multipart message mode
 	void pushMessagePart(I)(auto const ref I item) shared {
-		static assert(I.sizeof <= capacity, "Item size is greater then capacity");
+		//static assert(I.sizeof <= capacity, "Item size is greater then capacity");
 		// space < I.sizeof
 		while (capacity - _msgWritePos + atomicLoad!(MemoryOrder.acq)(_readPos) < I.sizeof) {
 			yield();
@@ -197,8 +198,6 @@ shared struct SharedQueue(size_t _capacity = roundPow2!(PAGE_SIZE)) {
 	}
 
 private:
-	enum mask = capacity - 1;
-
 	size_t _msgWritePos;
 	size_t _writePos;
 	size_t _readPos;
@@ -216,9 +215,7 @@ private:
 	}
 }
 
-private:
-
-template roundPow2(size_t v) {
+size_t roundPow2(size_t v) {
 	import core.bitop : bsr;
-	enum roundPow2 = v ? cast(size_t)1 << bsr(v) : 0;
+	return v ? cast(size_t)1 << bsr(v) : 0;
 }

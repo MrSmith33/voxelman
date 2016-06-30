@@ -8,6 +8,7 @@ module voxelman.client.chunkmeshman;
 import std.experimental.logger;
 
 import voxelman.block.utils;
+import voxelman.blockentity.utils;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
 import voxelman.core.meshgen;
@@ -58,12 +59,14 @@ struct ChunkMeshMan
 
 	ChunkManager chunkManager;
 	BlockInfoTable blocks;
+	BlockEntityInfoTable beInfos;
 
-	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, uint numMeshWorkers)
+	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, BlockEntityInfoTable _beInfos, uint numMeshWorkers)
 	{
 		chunkManager = _chunkManager;
 		blocks = _blocks;
-		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks);
+		beInfos = _beInfos;
+		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks, beInfos);
 	}
 
 	void stop()
@@ -104,52 +107,62 @@ struct ChunkMeshMan
 		{
 			while(!w.resultQueue.empty)
 			{
-				auto taskHeader = w.resultQueue.peekItem!MeshGenTaskHeader();
-
-				// Process only current meshing pass. Leave next passes for later.
-				if (taskHeader.meshGroupId != meshingPasses[0].meshGroupId)
-				{
-					//infof("meshGroup %s != %s", taskHeader.meshGroupId, meshingPasses[0].meshGroupId);
-					break;
-				}
-
-				++meshingPasses[0].chunksMeshed;
-				--numMeshChunkTasks;
-
-				w.resultQueue.dropItem!MeshGenTaskHeader();
-
-				if (taskHeader.type == MeshGenTaskType.genMesh)
-				{
-					ubyte[][2] meshes = w.resultQueue.popItem!(ubyte[][2])();
-					uint[7] timestamps = w.resultQueue.popItem!(uint[7])();
-
-					// Remove users
-					ChunkWorldPos[7] positions;
-					positions[0..6] = adjacentPositions(taskHeader.cwp);
-					positions[6] = taskHeader.cwp;
-					foreach(i, pos; positions)
-					{
-						chunkManager.removeSnapshotUser(pos, timestamps[i], FIRST_LAYER);
-					}
-
-					// save result for later. All new meshes are loaded at once to prevent holes in geometry.
-					newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
-
-					// Remove root, added on chunk load and gen.
-					// Data can be collected by GC if no-one is referencing it.
-					import core.memory : GC;
-					if (meshes[0].ptr) GC.removeRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
-					if (meshes[1].ptr) GC.removeRoot(meshes[1].ptr); //
-				}
-				else // taskHeader.type == MeshGenTaskType.unloadMesh
-				{
-					// even mesh deletions are saved in a queue.
-					newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp);
-				}
+				bool breakLoop = receiveTaskResult(w);
+				if (breakLoop) break;
 			}
 		}
 
 		commitMeshes();
+	}
+
+	bool receiveTaskResult(ref shared Worker w)
+	{
+		auto taskHeader = w.resultQueue.peekItem!MeshGenTaskHeader();
+
+		// Process only current meshing pass. Leave next passes for later.
+		if (taskHeader.meshGroupId != meshingPasses[0].meshGroupId)
+		{
+			//infof("meshGroup %s != %s", taskHeader.meshGroupId, meshingPasses[0].meshGroupId);
+			return true;
+		}
+
+		++meshingPasses[0].chunksMeshed;
+		--numMeshChunkTasks;
+
+		w.resultQueue.dropItem!MeshGenTaskHeader();
+
+		if (taskHeader.type == MeshGenTaskType.genMesh)
+		{
+			ubyte[][2] meshes = w.resultQueue.popItem!(ubyte[][2])();
+			uint[7] blockTimestamps = w.resultQueue.popItem!(uint[7])();
+			uint[7] entityTimestamps = w.resultQueue.popItem!(uint[7])();
+
+			// Remove users
+			ChunkWorldPos[7] positions;
+			positions[0..6] = adjacentPositions(taskHeader.cwp);
+			positions[6] = taskHeader.cwp;
+			foreach(i, pos; positions)
+			{
+				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], FIRST_LAYER);
+				chunkManager.removeSnapshotUser(pos, entityTimestamps[i], ENTITY_LAYER);
+			}
+
+			// save result for later. All new meshes are loaded at once to prevent holes in geometry.
+			newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
+
+			// Remove root, added on chunk load and gen.
+			// Data can be collected by GC if no-one is referencing it.
+			import core.memory : GC;
+			if (meshes[0].ptr) GC.removeRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
+			if (meshes[1].ptr) GC.removeRoot(meshes[1].ptr); //
+		}
+		else // taskHeader.type == MeshGenTaskType.unloadMesh
+		{
+			// even mesh deletions are saved in a queue.
+			newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp);
+		}
+
+		return false;
 	}
 
 	void commitMeshes()
@@ -229,9 +242,10 @@ struct ChunkMeshMan
 	// returns true if was sent to mesh
 	bool meshChunk(ChunkWorldPos cwp)
 	{
-		ChunkSnapWithAdjacent snapWithAdjacent = chunkManager.getSnapWithAdjacentAddUsers(cwp, FIRST_LAYER);
+		ChunkSnapWithAdjacent snapWithAdjacentBlocks = chunkManager.getSnapWithAdjacent(cwp, FIRST_LAYER);
+		ChunkSnapWithAdjacent snapWithAdjacentEntities = chunkManager.getSnapWithAdjacent(cwp, ENTITY_LAYER);
 
-		if (!snapWithAdjacent.allLoaded)
+		if (!snapWithAdjacentBlocks.allLoaded)
 		{
 			version(DBG) tracef("meshChunk %s !allLoaded", cwp);
 			return false;
@@ -239,7 +253,7 @@ struct ChunkMeshMan
 
 		++numMeshChunkTasks;
 
-		if (!producesMesh(snapWithAdjacent))
+		if (!producesMesh(snapWithAdjacentBlocks))
 		{
 			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
 
@@ -256,15 +270,18 @@ struct ChunkMeshMan
 
 		version(DBG) tracef("meshChunk %s", cwp);
 
-		foreach(pos; snapWithAdjacent.positions)
+		foreach(pos; snapWithAdjacentBlocks.positions)
 		{
 			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
+			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
 		}
 
-		ChunkLayerItem[7] layers;
+		ChunkLayerItem[7] blockLayers;
+		ChunkLayerItem[7] entityLayers;
 		foreach(i; 0..7)
 		{
-			layers[i] = ChunkLayerItem(snapWithAdjacent.snapshots[i].get(), FIRST_LAYER);
+			blockLayers[i] = ChunkLayerItem(snapWithAdjacentBlocks.snapshots[i].get(), FIRST_LAYER);
+			entityLayers[i] = ChunkLayerItem(snapWithAdjacentEntities.snapshots[i].get(), ENTITY_LAYER);
 		}
 
 		// send mesh task
@@ -272,7 +289,8 @@ struct ChunkMeshMan
 		with(meshWorkers.nextWorker) {
 			taskQueue.startMessage();
 			taskQueue.pushMessagePart(header);
-			taskQueue.pushMessagePart(layers);
+			taskQueue.pushMessagePart(blockLayers);
+			taskQueue.pushMessagePart(entityLayers);
 			taskQueue.endMessage();
 			notify();
 		}

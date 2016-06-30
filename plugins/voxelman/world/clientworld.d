@@ -130,8 +130,9 @@ public:
 		clientDb = pluginman.getPlugin!ClientDbClient;
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
-		chunkMeshMan.init(chunkManager, blockPlugin.getBlocks(), numWorkersOpt.get!uint);
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
+		chunkMeshMan.init(chunkManager, blockPlugin.getBlocks(),
+			blockEntityPlugin.blockEntityInfos(), numWorkersOpt.get!uint);
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);

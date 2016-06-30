@@ -399,7 +399,7 @@ public:
 		graphics.renderer.enableAlphaBlending();
 		glDepthMask(GL_FALSE);
 
-		graphics.transparentShader.bind;
+		graphics.transChunkShader.bind;
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
 		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
@@ -427,7 +427,7 @@ public:
 			stats.trisRendered += mesh.numTris;
 		}
 		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-		graphics.transparentShader.unbind;
+		graphics.transChunkShader.unbind;
 		glDisable(GL_CULL_FACE);
 		glDepthMask(GL_TRUE);
 		graphics.renderer.disableAlphaBlending();

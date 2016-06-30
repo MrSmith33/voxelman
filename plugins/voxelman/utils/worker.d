@@ -14,22 +14,21 @@ import core.sync.mutex;
 import core.thread : Thread;
 
 import voxelman.core.config : QUEUE_LENGTH;
-import voxelman.utils.sharedqueue;
+public import voxelman.utils.sharedqueue;
 
-alias MessageQueue = SharedQueue!(QUEUE_LENGTH);
 
 shared struct Worker
 {
 	Thread thread;
 	bool running = true;
-	MessageQueue taskQueue;
-	MessageQueue resultQueue;
+	SharedQueue taskQueue;
+	SharedQueue resultQueue;
 	Semaphore workAvaliable;
 
 	// for owner
-	void alloc(string debugName = "W") shared {
-		taskQueue.alloc(format("%s_task", debugName));
-		resultQueue.alloc(format("%s_res", debugName));
+	void alloc(string debugName = "W", size_t capacity = QUEUE_LENGTH) shared {
+		taskQueue.alloc(format("%s_task", debugName), capacity);
+		resultQueue.alloc(format("%s_res", debugName), capacity);
 		workAvaliable = cast(shared) new Semaphore();
 	}
 

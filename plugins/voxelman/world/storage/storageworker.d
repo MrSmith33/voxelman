@@ -74,10 +74,10 @@ void storageWorker(
 			shared bool* workerRunning,
 			shared Mutex workAvaliableMutex,
 			shared Condition workAvaliable,
-			shared MessageQueue* loadResQueue,
-			shared MessageQueue* saveResQueue,
-			shared MessageQueue* loadTaskQueue,
-			shared MessageQueue* saveTaskQueue,
+			shared SharedQueue* loadResQueue,
+			shared SharedQueue* saveResQueue,
+			shared SharedQueue* loadTaskQueue,
+			shared SharedQueue* saveTaskQueue,
 			shared Worker[] genWorkers,
 			)
 {

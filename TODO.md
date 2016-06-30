@@ -3,8 +3,6 @@
 	- [x] send dimention with avatar.
 - [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view volume.
 
-- [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
-- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk.
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
@@ -19,17 +17,31 @@
 - [ ] Improve calculation of modified chunks.
 
 ----
+### STORAGE
+
+- [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
+- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk.
+
+----
+### BLOCK ENTITIES
+
+- [x] Use block entity mesh handlers for meshing.
+- [x] Send block entity layer to mesh workers.
+- [ ] Problems with multichunk entities with unloaded parts.
+- [x] Multichunk block entity.
+
+----
 ### EDITING
+
 - [ ] Editing of unloaded chunks. Save modifications to special storage, then apply.
 
 - [ ] Remove BlockData.
 - [ ] Add block entity rendering.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
-- [ ] Problems with multichunk entities with unloaded parts.
-- [x] Multichunk block entity.
 
 ----
 ### OTHER
+
 - [x] Add block entity removing.
 - [x] Add block entity type registry.
 - [x] Send block entity layer to client.

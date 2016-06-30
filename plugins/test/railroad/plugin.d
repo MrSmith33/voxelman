@@ -28,6 +28,8 @@ import voxelman.world.storage.volume;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.worldaccess;
 
+import test.railroad.mesh;
+
 shared static this()
 {
 	pluginRegistry.regClientPlugin(new TrainsPluginClient);
@@ -155,7 +157,9 @@ mixin template TrainsPluginCommon()
 	{
 		blockEntityManager = resmanRegistry.getResourceManager!BlockEntityManager;
 		blockEntityManager.regBlockEntity("rail")
-			.boxHandler(&railBoxHandler);
+			.boxHandler(&railBoxHandler)
+			.meshHandler(&makeRailMesh)
+			.sideSolidity(&railSideSolidity);
 	}
 }
 
@@ -163,4 +167,10 @@ Volume railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
 	auto railPos = RailPos(bwp);
 	return railPos.toBlockVolume();
+}
+
+Solidity railSideSolidity(Side side)
+{
+	if (side == Side.bottom) return Solidity.solid;
+	return Solidity.transparent;
 }
