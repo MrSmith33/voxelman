@@ -13,6 +13,7 @@ import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunk;
 import voxelman.utils.mapping;
+import voxelman.core.chunkmesh;
 
 enum Side : ubyte
 {
@@ -111,9 +112,9 @@ Side sideFromNormal(ivec3 normal)
 	return Side.north;
 }
 
-void makeNullMesh(ref Appender!(ubyte[]), ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
+void makeNullMesh(ref Appender!(MeshVertex[]), ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
 
-void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
+void makeColoredBlockMesh(ref Appender!(MeshVertex[]) output,
 	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides)
 {
 	import std.random;
@@ -125,29 +126,42 @@ void makeColoredBlockMesh(ref Appender!(ubyte[]) output,
 	auto rnd = Xorshift32(index);
 	float randomTint = uniform(0.90f, 1.0f, rnd);
 
+	float r = cast(ubyte)(color[0] * randomTint);
+	float g = cast(ubyte)(color[1] * randomTint);
+	float b = cast(ubyte)(color[2] * randomTint);
+	ubyte[3] finalColor;
+
 	ubyte flag = 1;
 	foreach(ubyte i; 0..6)
 	{
 		if (sides & flag)
 		{
+			finalColor = [
+				cast(ubyte)(shadowMultipliers[i] * r),
+				cast(ubyte)(shadowMultipliers[i] * g),
+				cast(ubyte)(shadowMultipliers[i] * b)];
 			for (size_t v = 0; v!=18; v+=3)
 			{
-				output ~= cast(ubyte)((faces[18*i+v] + bx)*POS_SCALE);
-				output ~= cast(ubyte)((faces[18*i+v+1] + by)*POS_SCALE);
-				output ~= cast(ubyte)((faces[18*i+v+2] + bz)*POS_SCALE);
-				output ~= cast(ubyte)0;
-				output ~= cast(ubyte)(shadowMultipliers[i] * color[0] * randomTint);
-				output ~= cast(ubyte)(shadowMultipliers[i] * color[1] * randomTint);
-				output ~= cast(ubyte)(shadowMultipliers[i] * color[2] * randomTint);
-				output ~= cast(ubyte)0;
+				output ~= MeshVertex(
+					[faces[18*i+v  ] + bx,
+					 faces[18*i+v+1] + by,
+					 faces[18*i+v+2] + bz],
+					finalColor);
 			} // for v
 		} // if
 		flag <<= 1;
 	} // for i
 }
 
+ushort packColor(ubyte[3] c) {
+	return (c[0]>>3) | (c[1]&31) << 5 | (c[2]&31) << 10;
+}
+ushort packColor(ubyte r, ubyte g, ubyte b) {
+	return (r>>3) | (g&31) << 5 | (b&31) << 10;
+}
+
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
-alias Meshhandler = void function(ref Appender!(ubyte[]) output,
+alias Meshhandler = void function(ref Appender!(MeshVertex[]) output,
 	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
 
 // solidity number increases with solidity
@@ -490,7 +504,7 @@ void iterateSides()
 }
 */
 
-enum POS_SCALE = 7;
+enum POS_SCALE = ushort.max / CHUNK_SIZE;
 
 // mesh for single block
 immutable ubyte[18 * 6] faces =

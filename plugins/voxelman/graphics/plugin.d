@@ -77,7 +77,9 @@ uniform mat4 view;
 uniform mat4 model;
 smooth out vec4 theColor;
 void main() {
-	gl_Position = projection * view * model * (position/vec4(7,7,7,1));
+	gl_Position = projection * view * model * (position);
+	//vec4 unpackedColor = vec4(1,1,1,1);
+	//vec4 unpackedColor = vec4((color & 31)/31, ((color >> 5) & 31)/31, ((color >> 10) & 31)/31, 1);
 	theColor = color;
 }
 `;

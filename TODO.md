@@ -17,6 +17,11 @@
 - [ ] Improve calculation of modified chunks.
 
 ----
+### Railroad
+
+- [x] Load and render rail mesh.
+
+----
 ### STORAGE
 
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.

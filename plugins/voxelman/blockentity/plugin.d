@@ -18,7 +18,7 @@ import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.core.packets;
-import voxelman.blockentity.blockentityaccess;
+import voxelman.core.chunkmesh;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
 
@@ -30,6 +30,9 @@ import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 
+public import voxelman.blockentity.blockentityaccess;
+public import voxelman.blockentity.blockentitydata;
+public import voxelman.blockentity.blockentitymap;
 public import voxelman.blockentity.utils;
 
 final class BlockEntityClient : IPlugin {
@@ -187,7 +190,7 @@ mixin template BlockEntityCommon()
 }
 
 void multichunkMeshHandler(
-	Appender!(ubyte[])[] output,
+	Appender!(MeshVertex[])[] output,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,

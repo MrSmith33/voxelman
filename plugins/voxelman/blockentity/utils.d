@@ -11,9 +11,12 @@ import dlib.math.vector;
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.volume;
+import voxelman.core.chunkmesh;
+
+import voxelman.blockentity.blockentityaccess;
+import voxelman.blockentity.blockentitydata;
 
 enum BLOCK_ENTITY_FLAG = 1 << 15;
 enum BLOCK_INDEX_MASK = (1 << 15) - 1;
@@ -34,7 +37,7 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 
 
 alias BlockEntityMeshhandler = void function(
-	Appender!(ubyte[])[] output,
+	Appender!(MeshVertex[])[] output,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,
@@ -51,7 +54,7 @@ Volume nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 }
 
 void nullBlockEntityMeshhandler(
-	Appender!(ubyte[])[] output, BlockEntityData data,
+	Appender!(MeshVertex[])[] output, BlockEntityData data,
 	ubyte[3] color, ubyte sides, //ivec3 worldPos,
 	ivec3 chunkPos, ivec3 entityPos) {}
 

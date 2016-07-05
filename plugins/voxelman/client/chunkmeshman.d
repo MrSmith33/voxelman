@@ -36,7 +36,7 @@ struct MeshGenResult
 {
 	MeshGenTaskType type;
 	ChunkWorldPos cwp;
-	ubyte[][2] meshes;
+	MeshVertex[][2] meshes;
 }
 
 ///
@@ -133,7 +133,7 @@ struct ChunkMeshMan
 
 		if (taskHeader.type == MeshGenTaskType.genMesh)
 		{
-			ubyte[][2] meshes = w.resultQueue.popItem!(ubyte[][2])();
+			MeshVertex[][2] meshes = w.resultQueue.popItem!(MeshVertex[][2])();
 			uint[7] blockTimestamps = w.resultQueue.popItem!(uint[7])();
 			uint[7] entityTimestamps = w.resultQueue.popItem!(uint[7])();
 
@@ -298,7 +298,7 @@ struct ChunkMeshMan
 		return true;
 	}
 
-	void loadMeshData(ChunkWorldPos cwp, ubyte[][2] meshes)
+	void loadMeshData(ChunkWorldPos cwp, MeshVertex[][2] meshes)
 	{
 		if (!chunkManager.isChunkLoaded(cwp))
 		{
@@ -318,7 +318,7 @@ struct ChunkMeshMan
 				unloadChunkSubmesh(cwp, i);
 				continue;
 			}
-			totalMeshDataBytes += meshData.length;
+			totalMeshDataBytes += meshData.length * MeshVertex.Size;
 
 			auto mesh = cwp in chunkMeshes[i];
 			if (mesh)
@@ -370,7 +370,7 @@ struct ChunkMeshMan
 		if (auto mesh = cwp in chunkMeshes[index])
 		{
 			import core.memory : GC;
-			totalMeshDataBytes -= mesh.data.length;
+			totalMeshDataBytes -= mesh.dataBytes;
 			mesh.deleteBuffers();
 			GC.free(mesh.data.ptr);
 			chunkMeshes[index].remove(cwp);

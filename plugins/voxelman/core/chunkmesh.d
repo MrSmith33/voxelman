@@ -28,7 +28,7 @@ struct ChunkMesh
 {
 	vec3 position;
 	DimentionId dimention;
-	ubyte[] data;
+	MeshVertex[] data;
 
 	bool isDataDirty = true;
 	static int numBuffersAllocated;
@@ -54,18 +54,11 @@ struct ChunkMesh
 		hasBuffers = false;
 	}
 
-	enum VERTEX_SIZE = ubyte.sizeof * 8;
-
 	private void loadBuffer()
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, data.length, data.ptr, GL_STATIC_DRAW);
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		// positions
-		glVertexAttribPointer(0, 3, GL_UNSIGNED_BYTE, GL_FALSE, VERTEX_SIZE, null);
-		// color
-		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, VERTEX_SIZE, cast(void*)(VERTEX_SIZE / 2));
+		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
+		MeshVertex.setAttributes();
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
@@ -96,6 +89,29 @@ struct ChunkMesh
 			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());//data.length/12);
 	}
 
-	ulong numVertexes() {return data.length/VERTEX_SIZE;}
-	ulong numTris() {return data.length/(VERTEX_SIZE*3);}
+	ulong numVertexes() {return data.length;}
+	ulong numTris() {return data.length/3;}
+	ulong dataBytes() { return data.length * MeshVertex.Size; }
 }
+
+align(1) struct MeshVertex
+{
+	align(1):
+	enum PositionSize = float.sizeof * 3;
+	enum ColorSize = 3;
+	enum Size = PositionSize + ColorSize + 1;
+	float[3] position;
+	ubyte[3] color;
+	ubyte _pad;
+
+	static void setAttributes() {
+		glEnableVertexAttribArray(0);
+		glEnableVertexAttribArray(1);
+		// positions
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, Size, null);
+		// color
+		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, Size, cast(void*)(PositionSize));
+	}
+}
+
+static assert(MeshVertex.sizeof == MeshVertex.Size);

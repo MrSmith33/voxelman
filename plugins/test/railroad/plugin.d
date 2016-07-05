@@ -29,6 +29,7 @@ import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.worldaccess;
 
 import test.railroad.mesh;
+public import test.railroad.utils;
 
 shared static this()
 {
@@ -36,39 +37,12 @@ shared static this()
 	pluginRegistry.regServerPlugin(new TrainsPluginServer);
 }
 
-enum RAIL_SIZE = 4;
-ivec3 railSizeVector = vec3(RAIL_SIZE, 1, RAIL_SIZE);
 
 struct PlaceRailPacket
 {
 	RailPos pos;
 }
 
-struct RailPos {
-	this(BlockWorldPos bwp)
-	{
-		vector = svec4(
-			floor(cast(float)bwp.x / RAIL_SIZE),
-			floor(cast(float)bwp.y),
-			floor(cast(float)bwp.z / RAIL_SIZE),
-			bwp.w);
-	}
-	ChunkWorldPos chunkPos() {
-		return ChunkWorldPos(toBlockWorldPos());
-	}
-	BlockWorldPos toBlockWorldPos() {
-		return BlockWorldPos(
-			vector.x * RAIL_SIZE,
-			vector.y,
-			vector.z * RAIL_SIZE,
-			vector.w);
-	}
-	Volume toBlockVolume()
-	{
-		return Volume(toBlockWorldPos().xyz, railSizeVector, vector.w);
-	}
-	svec4 vector;
-}
 
 final class TrainsPluginClient : IPlugin
 {
@@ -80,6 +54,23 @@ final class TrainsPluginClient : IPlugin
 	GraphicsPlugin graphics;
 	ClientWorld clientWorld;
 	RailPos railPos;
+
+	override void preInit() {
+		import voxelman.globalconfig;
+		import voxelman.model.obj;
+		import voxelman.model.ply;
+		import voxelman.model.mesh;
+		import voxelman.model.utils;
+		import voxelman.core.chunkmesh;
+		try{
+			railMesh_1 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail1.ply");
+			railMesh_2 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail2.ply");
+			railMesh_3 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail3.ply");
+		}
+		catch(Exception e){
+			warningf("Error reading model, %s", e);
+		}
+	}
 
 	override void init(IPluginManager pluginman)
 	{
@@ -159,14 +150,14 @@ mixin template TrainsPluginCommon()
 		blockEntityManager.regBlockEntity("rail")
 			.boxHandler(&railBoxHandler)
 			.meshHandler(&makeRailMesh)
+			.color([128, 128, 128])
 			.sideSolidity(&railSideSolidity);
 	}
 }
 
 Volume railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
-	auto railPos = RailPos(bwp);
-	return railPos.toBlockVolume();
+	return RailData(data).boundingBox(bwp);
 }
 
 Solidity railSideSolidity(Side side)

@@ -65,13 +65,13 @@ final class ChatPluginClient : IPlugin
 		float h = 200;
 		igSetNextWindowPos(ImVec2(0, igGetIO().DisplaySize.y-h), ImGuiSetCond_Always);
 		igSetNextWindowSize(ImVec2(400, h), ImGuiSetCond_Always);
-	    if (!igBegin2("Chat", null, ImVec2(0,0), 0.3f,
-	    	ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize|
-	    	ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings))
-	    {
+		if (!igBegin2("Chat", null, ImVec2(0,0), 0.0f,
+			ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize|
+			ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoSavedSettings))
+		{
 			igEnd();
-	    	return;
-	    }
+			return;
+		}
 		//if (!igBegin("Chat")) return;
 		messageWindow.draw();
 		igEnd();

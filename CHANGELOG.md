@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add .obj and .ply model loading.
 - Add multichunk block entity.
 - Add block entity removing.
 - Add block entity type registry.
@@ -58,6 +59,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Use typed mesh vertices instead of ubyte array.
 - Encapsulate block info retreival into BlockInfoTable.
 - Change BlockID size to two bytes.
 - Rewrite client to use new chunk manager.

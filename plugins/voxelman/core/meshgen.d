@@ -12,11 +12,10 @@ import core.exception : Throwable;
 import core.sync.semaphore;
 
 
+import voxelman.core.chunkmesh;
 import voxelman.block.plugin;
 import voxelman.block.utils;
-import voxelman.blockentity.utils;
-import voxelman.blockentity.blockentityaccess;
-import voxelman.blockentity.blockentitymap;
+import voxelman.blockentity.plugin;
 
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
@@ -55,7 +54,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 			//
 			// send
 			//   MeshGenTaskHeader taskHeader;
-			//   ubyte[][2] meshes;
+			//   MeshVertex[][2] meshes;
 			//   uint[7] blockTimestamps;
 			//   uint[7] entityTimestamps;
 			// or
@@ -70,7 +69,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 					ChunkLayerItem[7] blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
 					ChunkLayerItem[7] entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
 
-					ubyte[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos);
+					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos);
 
 					uint[7] blockTimestamps;
 					uint[7] entityTimestamps;
@@ -100,10 +99,10 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 	version(DBG_OUT)infof("Mesh worker stopped");
 }
 
-ubyte[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
+MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 	ChunkLayerItem[7] entityLayers, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
-	Appender!(ubyte[])[3] geometry; // 2 - solid, 1 - semiTransparent
+	Appender!(MeshVertex[])[3] geometry; // 2 - solid, 1 - semiTransparent
 
 	foreach (layer; blockLayers)
 		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");
@@ -217,7 +216,7 @@ ubyte[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 		}
 	}
 
-	ubyte[][2] meshes;
+	MeshVertex[][2] meshes;
 	meshes[0] = geometry[2].data; // solid geometry
 	meshes[1] = geometry[1].data; // semi-transparent geometry
 
