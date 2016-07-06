@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module test.railroad.utils;
 
+import voxelman.geometry.box;
 import voxelman.utils.math;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
@@ -45,6 +46,60 @@ struct RailPos {
 	svec4 vector;
 }
 
+struct RailData
+{
+	ubyte data;
+
+	this(ubyte eData) {
+		data = eData;
+	}
+
+	this(BlockEntityData beData) {
+		data = cast(ubyte)(beData.entityData);
+	}
+
+	bool isSlope() {
+		return (data & SLOPE_RAIL_BIT) != 0;
+	}
+
+	WorldBox boundingBox(BlockWorldPos bwp)
+	{
+		if (isSlope)
+		{
+			auto segment = data - SLOPE_RAIL_BIT + RailSegment.northUp;
+			ivec3 tilePos = railTilePos(bwp);
+			ivec3 railPos = tilePos + railSegmentOffsets[segment];
+			ivec3 railSize = railSegmentSizes[segment];
+			return WorldBox(railPos, railSize, cast(ushort)(bwp.w));
+		}
+		else
+		{
+			ivec3 tilePos = railTilePos(bwp);
+
+			Box commonBox;
+			ubyte flag = 1;
+			foreach(segment; 0..6)
+			{
+				if (flag & data)
+				{
+					ivec3 segmentPos = railSegmentOffsets[segment];
+					ivec3 segmentSize = railSegmentSizes[segment];
+					Box box = Box(segmentPos, segmentSize);
+					if (commonBox.empty)
+						commonBox = box;
+					else
+						commonBox = calcCommonBox(commonBox, box);
+				}
+
+				flag <<= 1;
+			}
+			commonBox.position += tilePos;
+
+			return WorldBox(commonBox, cast(ushort)(bwp.w));
+		}
+	}
+}
+
 enum RailSegment
 {
 	north, //zNeg
@@ -79,9 +134,9 @@ ubyte[] railSegmentData =
 	SLOPE_RAIL_BIT + 2,
 	SLOPE_RAIL_BIT + 3];
 
-enum NORTH_RAIL_SIZE = ivec3(4, 0, 8);
-enum EAST_RAIL_SIZE = ivec3(8, 0, 4);
-enum DIAGONAL_RAIL_SIZE = ivec3(6, 0, 6);
+enum NORTH_RAIL_SIZE = ivec3(4, 1, 8);
+enum EAST_RAIL_SIZE = ivec3(8, 1, 4);
+enum DIAGONAL_RAIL_SIZE = ivec3(6, 1, 6);
 
 // [x, z]
 ivec3[] railSegmentSizes = [
@@ -115,21 +170,3 @@ ivec3[] railSegmentOffsets = [
 	EAST_RAIL_OFFSET, // eastUp
 	EAST_RAIL_OFFSET, // westUp
 ];
-
-struct RailData
-{
-	ubyte data;
-
-	this(BlockEntityData beData) {
-		data = cast(ubyte)(beData.entityData);
-	}
-
-	bool isSlope() {
-		return (data & SLOPE_RAIL_BIT) != 0;
-	}
-
-	WorldBox boundingBox(BlockWorldPos bwp) {
-		auto railPos = RailPos(bwp);
-		return railPos.toBlockBox();
-	}
-}

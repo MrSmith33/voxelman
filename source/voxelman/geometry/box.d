@@ -245,6 +245,25 @@ unittest
 		Box(ivec3(1,0,0), ivec3(1,1,1)));
 }
 
+Box calcCommonBox(Box[] boxes ...)
+{
+	ivec3 start = boxes[0].position;
+	ivec3 end = boxes[0].endPosition;
+
+	foreach(box; boxes[1..$])
+	{
+		start.x = alg_min(start.x, box.position.x);
+		start.y = alg_min(start.y, box.position.y);
+		start.z = alg_min(start.z, box.position.z);
+
+		end.x = alg_max(end.x, box.endPosition.x);
+		end.y = alg_max(end.y, box.endPosition.y);
+		end.z = alg_max(end.z, box.endPosition.z);
+	}
+
+	return boxFromCorners(start, end);
+}
+
 Vector!(T, size) min(T, int size)(Vector!(T, size) a, Vector!(T, size) b)
 {
 	Vector!(T, size) res;

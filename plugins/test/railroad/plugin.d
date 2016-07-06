@@ -41,6 +41,7 @@ shared static this()
 struct PlaceRailPacket
 {
 	RailPos pos;
+	ubyte data;
 }
 
 
@@ -54,6 +55,7 @@ final class TrainsPluginClient : IPlugin
 	GraphicsPlugin graphics;
 	ClientWorld clientWorld;
 	RailPos railPos;
+	RailData railData = RailData(1);
 
 	override void preInit() {
 		import voxelman.globalconfig;
@@ -82,13 +84,13 @@ final class TrainsPluginClient : IPlugin
 				railPos = RailPos(worldInteraction.sideBlockPos);
 				if (!worldInteraction.cameraInSolidBlock)
 				{
-					BlockWorldPos railStart = railPos.toBlockWorldPos();
-					graphics.debugBatch.putCube(vec3(railStart.xyz) - cursorOffset,
-						vec3(railSizeVector) + cursorOffset, Colors.green, false);
+					WorldBox box = railData.boundingBox(worldInteraction.sideBlockPos);
+					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
+						vec3(box.size) + cursorOffset, Colors.green, false);
 				}
 			}
 			override void onSecondaryActionRelease() {
-				connection.send(PlaceRailPacket(railPos));
+				connection.send(PlaceRailPacket(railPos, railData.data));
 			}
 
 			override void onMainActionRelease() {
@@ -130,12 +132,18 @@ final class TrainsPluginServer : IPlugin
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
 		//infof("Place rail %s", packet.pos);
 		RailPos railPos = packet.pos;
-		ChunkWorldPos cwp = railPos.chunkPos();
-		WorldBox blockBox = railPos.toBlockBox;
+		RailData railData = RailData(packet.data);
+
+		BlockWorldPos bwp = railPos.toBlockWorldPos;
+		WorldBox blockBox = railData.boundingBox(bwp);
+
 		ulong payload = payloadFromIdAndEntityData(
-			blockEntityManager.getId("rail"), 0);
+			blockEntityManager.getId("rail"), packet.data);
+
 		placeEntity(blockBox, payload,
 			serverWorld.worldAccess, serverWorld.entityAccess);
+
+		ChunkWorldPos cwp = railPos.chunkPos();
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 			PlaceBlockEntityPacket(blockBox, payload));
 	}
