@@ -123,10 +123,16 @@ MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 			chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
 
 		if (isBlockEntity(blockId)) {
-			ushort blockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(blockIndex, maps[chAndBlock.chunk]);
+			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
+			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[chAndBlock.chunk]);
 			auto entityInfo = beInfos[data.id];
-			return entityInfo.sideSolidity(side);
+
+			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
+
+			ivec3 blockChunkPos = ivec3(chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
+			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
+
+			return entityInfo.sideSolidity(side, blockEntityPos, data);
 		} else {
 			return blockInfos[blockId].solidity;
 		}

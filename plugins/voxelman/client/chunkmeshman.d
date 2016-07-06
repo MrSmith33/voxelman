@@ -319,11 +319,12 @@ struct ChunkMeshMan
 				continue;
 			}
 			totalMeshDataBytes += meshData.length * MeshVertex.Size;
-
 			auto mesh = cwp in chunkMeshes[i];
 			if (mesh)
 			{
 				assert(mesh.data);
+				totalMeshDataBytes -= mesh.dataBytes;
+
 				import core.memory : GC;
 				GC.free(mesh.data.ptr);
 

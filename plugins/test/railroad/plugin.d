@@ -7,6 +7,7 @@ module test.railroad.plugin;
 
 import std.experimental.logger;
 import pluginlib;
+import voxelman.container.buffer;
 import voxelman.core.config;
 import voxelman.core.packets;
 
@@ -54,8 +55,7 @@ final class TrainsPluginClient : IPlugin
 	WorldInteractionPlugin worldInteraction;
 	GraphicsPlugin graphics;
 	ClientWorld clientWorld;
-	RailPos railPos;
-	RailData railData = RailData(1);
+	RailSegment segment;
 
 	override void preInit() {
 		import voxelman.globalconfig;
@@ -65,9 +65,9 @@ final class TrainsPluginClient : IPlugin
 		import voxelman.model.utils;
 		import voxelman.core.chunkmesh;
 		try{
-			railMesh_1 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail1.ply");
-			railMesh_2 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail2.ply");
-			railMesh_3 = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail3.ply");
+			railMeshes[0] = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail1.ply");
+			railMeshes[1] = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail2.ply");
+			railMeshes[2] = cast(MeshVertex[])readPlyFile(BUILD_TO_ROOT_PATH~"res/model/rail3.ply");
 		}
 		catch(Exception e){
 			warningf("Error reading model, %s", e);
@@ -81,16 +81,36 @@ final class TrainsPluginClient : IPlugin
 			this() { name = "test.entity.place_rail"; }
 			override void onUpdate()
 			{
-				railPos = RailPos(worldInteraction.sideBlockPos);
 				if (!worldInteraction.cameraInSolidBlock)
 				{
+					auto railData = RailData(segment);
 					WorldBox box = railData.boundingBox(worldInteraction.sideBlockPos);
+
+					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
+						vec3(1,1,1) + cursorOffset, Colors.blue, false);
+
 					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
 						vec3(box.size) + cursorOffset, Colors.green, false);
+
+					auto triBuffer = Buffer!ColoredVertex(graphics.debugBatch.triBuffer,
+						graphics.debugBatch.triBuffer.length);
+
+					putRailMesh(triBuffer, box.position, railData);
+
+					graphics.debugBatch.triBuffer = triBuffer.data;
+
+					import derelict.imgui.imgui;
+					import voxelman.utils.textformatter;
+
+					igBegin("Debug");
+						igTextf("Segment: %s s %s o %s m %s r %s", segment,
+							railSegmentSizes[segment], railSegmentOffsets[segment],
+							railSegmentMeshId[segment], railSegmentMeshRotation[segment]);
+					igEnd();
 				}
 			}
 			override void onSecondaryActionRelease() {
-				connection.send(PlaceRailPacket(railPos, railData.data));
+				connection.send(PlaceRailPacket(RailPos(worldInteraction.sideBlockPos), RailData(segment).data));
 			}
 
 			override void onMainActionRelease() {
@@ -98,6 +118,9 @@ final class TrainsPluginClient : IPlugin
 				if (isBlockEntity(blockId)) {
 					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector.arrayof));
 				}
+			}
+			override void onRotateAction() {
+				rotateSegment(segment);
 			}
 		};
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
@@ -130,7 +153,6 @@ final class TrainsPluginServer : IPlugin
 	void handlePlaceRailPacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
-		//infof("Place rail %s", packet.pos);
 		RailPos railPos = packet.pos;
 		RailData railData = RailData(packet.data);
 
@@ -146,6 +168,7 @@ final class TrainsPluginServer : IPlugin
 		ChunkWorldPos cwp = railPos.chunkPos();
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 			PlaceBlockEntityPacket(blockBox, payload));
+		//infof("Place rail %s %s", packet.pos, blockBox);
 	}
 }
 
@@ -168,8 +191,11 @@ WorldBox railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 	return RailData(data).boundingBox(bwp);
 }
 
-Solidity railSideSolidity(Side side)
+Solidity railSideSolidity(Side side, ivec3 entityPos, BlockEntityData data)
 {
-	if (side == Side.bottom) return Solidity.solid;
+	if (side == Side.bottom)
+	{
+		return RailData(data).bottomSolidity;
+	}
 	return Solidity.transparent;
 }

@@ -10,9 +10,9 @@ import core.atomic : atomicLoad, atomicOp;
 import std.concurrency : thisTid;
 
 import dlib.math.vector;
-import dlib.math.quaternion;
 import derelict.opengl3.gl3;
 import voxelman.core.config : DimentionId;
+import voxelman.utils.renderutils;
 
 struct Attribute
 {
@@ -112,6 +112,13 @@ align(1) struct MeshVertex
 		// color
 		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, Size, cast(void*)(PositionSize));
 	}
+
+	ColoredVertex toColoredVertex()
+	{
+		return *cast(ColoredVertex*)&this;
+	}
+
+	alias toColoredVertex this;
 }
 
 static assert(MeshVertex.sizeof == MeshVertex.Size);

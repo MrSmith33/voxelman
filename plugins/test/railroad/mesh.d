@@ -33,15 +33,27 @@ void makeRailMesh(
 	}
 }
 
-void putRailMesh(ref Appender!(MeshVertex[]) sink, ivec3 chunkPos, RailData data)
+void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
 {
 	auto chunkPosF = vec3(chunkPos);
-	foreach(v; railMesh_1)
+
+	foreach(segment; data.getSegments())
 	{
-		sink.put(MeshVertex((vec3(v.position) + chunkPosF).arrayof, v.color));
+		auto meshIndex = railSegmentMeshId[segment];
+		auto mesh = railMeshes[meshIndex];
+		ubyte rotation = railSegmentMeshRotation[segment];
+		auto rotator = getCCWRotationShiftOriginFunction!vec3(rotation);
+		ivec3 offset = railSegmentOffsets[segment];
+		vec3 meshSize = vec3(meshSizes[meshIndex]);
+		foreach(v; mesh)
+		{
+			sink.put(MeshVertex((rotator(vec3(v.position), meshSize) + chunkPosF).arrayof, v.color));
+		}
 	}
 }
 
-__gshared MeshVertex[] railMesh_1;
-__gshared MeshVertex[] railMesh_2;
-__gshared MeshVertex[] railMesh_3;
+__gshared MeshVertex[][3] railMeshes;
+ivec3[3] meshSizes = [
+	ivec3(4, 1, 8),
+	ivec3(6, 1, 6),
+	ivec3(4, 1, 8)];

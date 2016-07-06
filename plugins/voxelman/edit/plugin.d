@@ -39,6 +39,7 @@ abstract class ITool
 	void onSecondaryActionRelease() {}
 	void onTertiaryActionPress() {}
 	void onTertiaryActionRelease() {}
+	void onRotateAction() {}
 }
 
 final class NullTool : ITool
@@ -65,6 +66,7 @@ class EditPlugin : IPlugin
 		keyBindingsMan.registerKeyBinding(new KeyBinding(PointerButton.PB_3, "key.tertiaryAction", &onTertiaryActionPress, &onTertiaryActionRelease));
 		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT, "key.next_tool", null, &nextTool));
 		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT, "key.prev_tool", null, &prevTool));
+		keyBindingsMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_R, "key.rotateAction", null, &onRotateAction));
 	}
 
 	override void preInit() {
@@ -91,7 +93,9 @@ class EditPlugin : IPlugin
 	}
 
 	void nextTool(string) {
-		selectedTool = clamp(selectedTool+1, 0, tools.length-1);
+		selectedTool = selectedTool+1;
+		if (selectedTool > tools.length-1)
+			selectedTool = 0;
 	}
 
 	void prevTool(string) {
@@ -133,5 +137,9 @@ class EditPlugin : IPlugin
 	void onTertiaryActionRelease(string key) {
 		if (!clientPlugin.mouseLocked) return;
 		currentTool.onTertiaryActionRelease();
+	}
+	void onRotateAction(string key) {
+		if (!clientPlugin.mouseLocked) return;
+		currentTool.onRotateAction();
 	}
 }

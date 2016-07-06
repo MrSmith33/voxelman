@@ -7,6 +7,7 @@ module test.railroad.utils;
 
 import voxelman.geometry.box;
 import voxelman.utils.math;
+import voxelman.block.utils;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
 import voxelman.blockentity.blockentitydata;
@@ -54,12 +55,30 @@ struct RailData
 		data = eData;
 	}
 
+	this(RailSegment segment) {
+		data = railSegmentData[segment];
+	}
+
 	this(BlockEntityData beData) {
 		data = cast(ubyte)(beData.entityData);
 	}
 
 	bool isSlope() {
 		return (data & SLOPE_RAIL_BIT) != 0;
+	}
+
+	SegmentRange getSegments()
+	{
+		return SegmentRange(data);
+	}
+
+	Solidity bottomSolidity()
+	{
+		if (data & railBottomSolidities)
+		{
+			return Solidity.solid;
+		}
+		return Solidity.transparent;
 	}
 
 	WorldBox boundingBox(BlockWorldPos bwp)
@@ -100,19 +119,58 @@ struct RailData
 	}
 }
 
+struct SegmentRange
+{
+	this(ubyte _data)
+	{
+		data = _data;
+		assert(data != 0);
+	}
+
+	private ubyte data;
+
+	int opApply(int delegate(ubyte) del)
+	{
+		if ((data & SLOPE_RAIL_BIT) != 0)
+		{
+			ubyte segment = cast(ubyte)(data - SLOPE_RAIL_BIT + RailSegment.northUp);
+			if (auto ret = del(segment))
+				return ret;
+		}
+		else
+		{
+			import core.bitop : popcnt, bsf;
+
+			ubyte segment = cast(ubyte)bsf(data);
+			ubyte flag = cast(ubyte)(1 << segment);
+
+			while(segment <= RailSegment.eastNorth)
+			{
+				if (flag & data)
+					if (auto ret = del(segment))
+						return ret;
+				flag <<= 1;
+				++segment;
+			}
+		}
+		return 0;
+	}
+}
+
 enum RailSegment
 {
-	north, //zNeg
-	east, //xPos
-	eastNorth, //xPos zNeg
-	westNorth, //xNeg zNeg
-	westSouth, //xNeg zPos
-	eastSouth, //xPos zPos
+	north,
+	east,
+
+	westNorth,
+	westSouth,
+	eastSouth,
+	eastNorth,
 
 	northUp,
+	westUp,
 	southUp,
 	eastUp,
-	westUp,
 
 	//northDown = southUp,
 	//southDown = northUp,
@@ -125,10 +183,12 @@ ubyte[] railSegmentData =
 [
 	1,
 	2,
+
 	4,
 	8,
 	16,
 	32,
+
 	SLOPE_RAIL_BIT + 0,
 	SLOPE_RAIL_BIT + 1,
 	SLOPE_RAIL_BIT + 2,
@@ -142,15 +202,16 @@ enum DIAGONAL_RAIL_SIZE = ivec3(6, 1, 6);
 ivec3[] railSegmentSizes = [
 	NORTH_RAIL_SIZE, // north
 	EAST_RAIL_SIZE, // east
-	DIAGONAL_RAIL_SIZE, // eastNorth
+
 	DIAGONAL_RAIL_SIZE, // westNorth
 	DIAGONAL_RAIL_SIZE, // westSouth
 	DIAGONAL_RAIL_SIZE, // eastSouth
+	DIAGONAL_RAIL_SIZE, // eastNorth
 
 	NORTH_RAIL_SIZE, // northUp
+	EAST_RAIL_SIZE, // westUp
 	NORTH_RAIL_SIZE, // southUp
 	EAST_RAIL_SIZE, // eastUp
-	EAST_RAIL_SIZE, // westUp
 ];
 
 enum NORTH_RAIL_OFFSET = ivec3(2, 0, 0);
@@ -160,13 +221,26 @@ enum EAST_RAIL_OFFSET = ivec3(0, 0, 2);
 ivec3[] railSegmentOffsets = [
 	NORTH_RAIL_OFFSET, // north
 	EAST_RAIL_OFFSET, // east
-	ivec3(2, 0, 0), // eastNorth
+
 	ivec3(0, 0, 0), // westNorth
 	ivec3(0, 0, 2), // westSouth
-	ivec3(0, 0, 2), // eastSouth
+	ivec3(2, 0, 2), // eastSouth
+	ivec3(2, 0, 0), // eastNorth
 
 	NORTH_RAIL_OFFSET, // northUp
+	EAST_RAIL_OFFSET, // westUp
 	NORTH_RAIL_OFFSET, // southUp
 	EAST_RAIL_OFFSET, // eastUp
-	EAST_RAIL_OFFSET, // westUp
 ];
+
+ushort railBottomSolidities = 0b0100_0011;
+
+ubyte[] railSegmentMeshId = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
+ubyte[] railSegmentMeshRotation = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3];
+
+void rotateSegment(ref RailSegment segment)
+{
+	++segment;
+	if (segment > RailSegment.max)
+		segment = RailSegment.min;
+}

@@ -18,6 +18,8 @@
 
 ----
 ### Railroad
+- [x] Add mesh rotation.
+- [x] Add rail mesh based on rail type.
 - [x] Store rail type in entity data.
 - [x] Make rail bounding box fit to mesh.
 - [x] Load and render rail mesh.
