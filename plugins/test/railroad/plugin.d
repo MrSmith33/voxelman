@@ -23,7 +23,7 @@ import voxelman.blockentity.blockentityaccess;
 import voxelman.block.utils;
 import voxelman.utils.math;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 
 import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.worldaccess;
@@ -131,13 +131,13 @@ final class TrainsPluginServer : IPlugin
 		//infof("Place rail %s", packet.pos);
 		RailPos railPos = packet.pos;
 		ChunkWorldPos cwp = railPos.chunkPos();
-		Volume blockVolume = railPos.toBlockVolume;
+		WorldBox blockBox = railPos.toBlockBox;
 		ulong payload = payloadFromIdAndEntityData(
 			blockEntityManager.getId("rail"), 0);
-		placeEntity(blockVolume, payload,
+		placeEntity(blockBox, payload,
 			serverWorld.worldAccess, serverWorld.entityAccess);
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
-			PlaceBlockEntityPacket(blockVolume, payload));
+			PlaceBlockEntityPacket(blockBox, payload));
 	}
 }
 
@@ -155,7 +155,7 @@ mixin template TrainsPluginCommon()
 	}
 }
 
-Volume railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
+WorldBox railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
 	return RailData(data).boundingBox(bwp);
 }

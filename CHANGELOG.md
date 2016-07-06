@@ -59,6 +59,8 @@
 - Add current frame number to update events.
 
 ### Changed
+- Split Box into WorldBox and Box.
+- Rename Volume to Box.
 - Use typed mesh vertices instead of ubyte array.
 - Encapsulate block info retreival into BlockInfoTable.
 - Change BlockID size to two bytes.

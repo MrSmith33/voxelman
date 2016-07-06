@@ -1,14 +1,14 @@
-- [ ] Isolate client position, view volume and dimention.
+- [ ] Isolate client position, view box and dimention.
 	- [x] draw avatar based on dimention.
 	- [x] send dimention with avatar.
-- [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view volume.
+- [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view box.
 
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement graphics pipeline.
-- [ ] Generic Volume type
-- [ ] fix problem with dimention change when old position confuses server and volume is not updated.
+- [ ] Generic Box type
+- [ ] fix problem with dimention change when old position confuses server and box is not updated.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console

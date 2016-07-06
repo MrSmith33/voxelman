@@ -20,7 +20,7 @@ import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.core.chunkmesh;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 
 import voxelman.block.plugin;
 import voxelman.edit.plugin;
@@ -62,12 +62,12 @@ final class BlockEntityClient : IPlugin {
 			this() { name = "test.blockentity.block_entity"; }
 
 			bool placing;
-			Volume selection;
+			WorldBox selection;
 			BlockWorldPos startingPos;
 
 			override void onUpdate() {
 				auto cursor = worldInteraction.sideBlockPos;
-				selection = volumeFromCorners(startingPos.xyz,
+				selection = worldBoxFromCorners(startingPos.xyz,
 					cursor.xyz, cast(DimentionId)cursor.w);
 				drawSelection();
 			}
@@ -127,14 +127,14 @@ final class BlockEntityClient : IPlugin {
 				case localBlockEntity:
 					BlockEntityInfo eInfo = blockEntityInfos[entity.id];
 					auto entityBwp = BlockWorldPos(cwp, blockIndex);
-					Volume eVol = eInfo.boxHandler(entityBwp, entity);
+					WorldBox eVol = eInfo.boxHandler(entityBwp, entity);
 
 					igTextf("Entity(main): ind %s: id %s %s %s",
 						blockIndex, entity.id, eInfo.name, eVol);
 					if (eInfo.debugHandler)
 						eInfo.debugHandler(entityBwp, entity);
 
-					voxelman.world.storage.volume.putCube(graphics.debugBatch, eVol, Colors.red, false);
+					voxelman.world.storage.worldbox.putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
 				case foreignBlockEntity:
 					auto mainPtr = entity.mainChunkPointer;
@@ -144,14 +144,14 @@ final class BlockEntityClient : IPlugin {
 					auto mainBwp = BlockWorldPos(mainCwp, mainPtr.blockIndex);
 
 					BlockEntityInfo eInfo = blockEntityInfos[mainPtr.entityId];
-					Volume eVol = eInfo.boxHandler(mainBwp, mainEntity);
+					WorldBox eVol = eInfo.boxHandler(mainBwp, mainEntity);
 
 					igTextf("Entity(other): ind %s mid %s mind %s moff %s",
 						blockIndex, mainPtr.entityId,
 						mainPtr.blockIndex, mainPtr.mainChunkOffset);
 					igTextf(" %s %s", eInfo.name, eVol);
 
-					voxelman.world.storage.volume.putCube(graphics.debugBatch, eVol, Colors.red, false);
+					voxelman.world.storage.worldbox.putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
 				//case componentId:
 				//	igTextf("Entity: @%s: entity id %s", blockIndex, entity.payload); break;
@@ -214,18 +214,18 @@ void multichunkMeshHandler(
 		sides);
 }
 
-Volume multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
+WorldBox multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
 	ulong sizeData = data.entityData;
 	ivec3 size = entityDataToSize(sizeData);
-	return Volume(bwp.xyz, size, cast(ushort)bwp.w);
+	return WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
 void multichunkDebugHandler(BlockWorldPos bwp, BlockEntityData data)
 {
 	ulong sizeData = data.entityData;
 	ivec3 size = entityDataToSize(sizeData);
-	//auto vol = Volume(bwp.xyz, size, cast(ushort)bwp.w);
+	//auto vol = WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
 struct BlockEntityInfoSetter

@@ -9,14 +9,14 @@ import std.experimental.logger;
 import dlib.math.vector : ivec3;
 import netlib.connection : ClientId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
-import voxelman.world.storage.volume : Volume, TrisectResult, trisect, calcVolume;
+import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect, calcBox;
 
 enum chunkPackLoadSize = 200;
 
 struct ViewInfo
 {
 	ClientId clientId;
-	Volume viewVolume;
+	WorldBox viewBox;
 	//ivec3 viewRadius;
 	ChunkWorldPos observerPosition;
 	int viewRadius;
@@ -161,44 +161,44 @@ final class ChunkObserverManager {
 
 	void removeObserver(ClientId clientId) {
 		if (clientId in viewInfos) {
-			changeObserverVolume(clientId, ChunkWorldPos.init, 0);
+			changeObserverBox(clientId, ChunkWorldPos.init, 0);
 			viewInfos.remove(clientId);
 		}
 		else
 			warningf("removing observer %s, that was not added", clientId);
 	}
 
-	Volume getObserverVolume(ClientId clientId) {
+	WorldBox getObserverBox(ClientId clientId) {
 		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
-		return info.viewVolume;
+		return info.viewBox;
 	}
 
-	void changeObserverVolume(ClientId clientId, ChunkWorldPos observerPosition, int viewRadius) {
+	void changeObserverBox(ClientId clientId, ChunkWorldPos observerPosition, int viewRadius) {
 		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
 
-		Volume oldVolume = info.viewVolume;
-		Volume newVolume = calcVolume(observerPosition, viewRadius);
+		WorldBox oldBox = info.viewBox;
+		WorldBox newBox = calcBox(observerPosition, viewRadius);
 
-		if (newVolume == oldVolume)
+		if (newBox == oldBox)
 			return;
 
-		info = ViewInfo(clientId, newVolume, observerPosition, viewRadius);
+		info = ViewInfo(clientId, newBox, observerPosition, viewRadius);
 
-		//infof("oldV %s newV %s", oldVolume, newVolume);
-		TrisectResult tsect = trisect(oldVolume, newVolume);
+		//infof("oldV %s newV %s", oldBox, newBox);
+		TrisectResult tsect = trisect(oldBox, newBox);
 
 		// remove observer
 		foreach(a; tsect.aPositions) {
-			removeChunkObserver(ChunkWorldPos(a, oldVolume.dimention), clientId);
+			removeChunkObserver(ChunkWorldPos(a, oldBox.dimention), clientId);
 			//infof("Rem %s", a);
 		}
 
 		// add observer
 		foreach(b; tsect.bPositions) {
-			addChunkObserver(ChunkWorldPos(b, newVolume.dimention), clientId);
+			addChunkObserver(ChunkWorldPos(b, newBox.dimention), clientId);
 		}
 
-		if (newVolume.empty)
+		if (newBox.empty)
 			viewInfos.remove(clientId);
 		else
 			viewInfos[clientId] = info;
@@ -233,7 +233,7 @@ private struct ChunkObservers {
 
 	// clients observing this chunk
 	private ClientId[] _clients;
-	// Each client can observe a chunk multiple times via multiple volumes.
+	// Each client can observe a chunk multiple times via multiple boxes.
 	private size_t[] numObservations;
 	// ref counts for keeping chunk loaded
 	size_t numServerObservers;

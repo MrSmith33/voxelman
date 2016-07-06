@@ -12,7 +12,7 @@ void registerPackets(Connection c)
 {
 	// Common
 	c.registerPacket!ClientPositionPacket;
-	c.registerPacket!FillBlockVolumePacket;
+	c.registerPacket!FillBlockBoxPacket;
 	c.registerPacket!PlaceBlockEntityPacket;
 	c.registerPacket!RemoveBlockEntityPacket;
 
@@ -55,24 +55,24 @@ struct MultiblockChangePacket
 	BlockChange[] blockChanges;
 }
 
-struct FillBlockVolumePacket
+struct FillBlockBoxPacket
 {
-	import voxelman.world.storage.volume : Volume;
+	import voxelman.world.storage.worldbox : WorldBox;
 	import voxelman.core.config : BlockId;
-	Volume volume;
+	WorldBox box;
 	BlockId blockId;
 }
 
 struct PlaceBlockEntityPacket
 {
-	import voxelman.world.storage.volume : Volume;
-	Volume volume;
+	import voxelman.world.storage.worldbox : WorldBox;
+	WorldBox box;
 	ulong data;
 }
 
 struct RemoveBlockEntityPacket
 {
-	import voxelman.world.storage.volume : Volume;
+	import voxelman.world.storage.worldbox : WorldBox;
 	int[4] blockPos;
 }
 

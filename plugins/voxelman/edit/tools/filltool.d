@@ -9,7 +9,7 @@ module voxelman.edit.tools.filltool;
 import voxelman.core.config;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;
@@ -27,7 +27,7 @@ final class FillTool : ITool
 	BlockId currentBlock = 4;
 	BlockWorldPos startingPos;
 	EditState state;
-	Volume selection;
+	WorldBox selection;
 	bool showCursor = true;
 
 	enum EditState
@@ -44,7 +44,7 @@ final class FillTool : ITool
 		{
 			startingPos = currentCursorPos;
 		}
-		selection = volumeFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimentionId)currentCursorPos.w);
+		selection = worldBoxFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimentionId)currentCursorPos.w);
 		drawSelection();
 		if (showCursor && !worldInteraction.cameraInSolidBlock)
 		{
@@ -93,7 +93,7 @@ final class FillTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			worldInteraction.fillVolume(selection, 1);
+			worldInteraction.fillBox(selection, 1);
 		}
 	}
 
@@ -112,7 +112,7 @@ final class FillTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			worldInteraction.fillVolume(selection, currentBlock);
+			worldInteraction.fillBox(selection, currentBlock);
 		}
 	}
 

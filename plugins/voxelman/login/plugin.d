@@ -207,7 +207,7 @@ public:
 		info.heading = vec2(0,0);
 		info.dimention = 0;
 		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
-		updateObserverVolume(info);
+		updateObserverBox(info);
 	}
 
 	bool isLoggedIn(ClientId clientId)
@@ -253,7 +253,7 @@ public:
 		info.dimention = dimention;
 		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimention));
 		connection.sendTo(clientId, SpawnPacket());
-		updateObserverVolume(info);
+		updateObserverBox(info);
 	}
 
 	void handleClientConnected(ref ClientConnectedEvent event)
@@ -283,17 +283,17 @@ public:
 				info.dimention = dim;
 				tracef("change dimention to %s for %s", dim, clientName(params.source));
 				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
-				//updateObserverVolume(info);
+				//updateObserverBox(info);
 				// BUG: old positions will come from client until ClientPositionPacket is delivered.
 			}
 		}
 	}
 
-	void updateObserverVolume(ClientInfo* info)
+	void updateObserverBox(ClientInfo* info)
 	{
 		if (info.isSpawned) {
 			ChunkWorldPos cwp = BlockWorldPos(info.pos, info.dimention);
-			serverWorld.chunkObserverManager.changeObserverVolume(info.id, cwp, info.viewRadius);
+			serverWorld.chunkObserverManager.changeObserverBox(info.id, cwp, info.viewRadius);
 		}
 	}
 
@@ -330,7 +330,7 @@ public:
 		ClientInfo* info = clients[clientId];
 		info.viewRadius = clamp(packet.viewRadius,
 			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-		updateObserverVolume(info);
+		updateObserverBox(info);
 	}
 
 	void handleClientPosition(ubyte[] packetData, ClientId clientId)
@@ -341,7 +341,7 @@ public:
 			ClientInfo* info = clients[clientId];
 			info.pos = vec3(packet.pos);
 			info.heading = vec2(packet.heading);
-			updateObserverVolume(info);
+			updateObserverBox(info);
 		}
 	}
 }

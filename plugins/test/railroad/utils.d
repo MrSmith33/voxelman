@@ -7,7 +7,7 @@ module test.railroad.utils;
 
 import voxelman.utils.math;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.blockentity.blockentitydata;
 
 enum RAIL_TILE_SIZE = 8;
@@ -38,9 +38,9 @@ struct RailPos {
 			vector.z * RAIL_TILE_SIZE,
 			vector.w);
 	}
-	Volume toBlockVolume()
+	WorldBox toBlockBox()
 	{
-		return Volume(toBlockWorldPos().xyz, railSizeVector, vector.w);
+		return WorldBox(toBlockWorldPos().xyz, railSizeVector, vector.w);
 	}
 	svec4 vector;
 }
@@ -128,8 +128,8 @@ struct RailData
 		return (data & SLOPE_RAIL_BIT) != 0;
 	}
 
-	Volume boundingBox(BlockWorldPos bwp) {
+	WorldBox boundingBox(BlockWorldPos bwp) {
 		auto railPos = RailPos(bwp);
-		return railPos.toBlockVolume();
+		return railPos.toBlockBox();
 	}
 }

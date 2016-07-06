@@ -7,12 +7,13 @@ module voxelman.blockentity.blockentityaccess;
 
 import std.experimental.logger;
 import std.string;
+import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.world.storage.worldaccess;
 import voxelman.blockentity.plugin;
 
@@ -20,8 +21,8 @@ import voxelman.blockentity.blockentitymap;
 import voxelman.blockentity.blockentitydata;
 
 
-ushort volumeEntityIndex(Volume blockVolume) {
-	return BlockChunkIndex(blockVolume.position).index;
+ushort boxEntityIndex(Box blockBox) {
+	return BlockChunkIndex(blockBox.position).index;
 }
 
 ulong payloadFromIdAndEntityData(ushort id, ulong entityData) {
@@ -29,32 +30,32 @@ ulong payloadFromIdAndEntityData(ushort id, ulong entityData) {
 	return payload;
 }
 
-// get chunk local piece of world space volume
-Volume chunkLocalBlockVolume(ChunkWorldPos cwp, Volume blockVolume) {
-	Volume chunkBlockVolume = chunkToBlockVolume(cwp);
-	auto intersection = volumeIntersection(chunkBlockVolume, blockVolume);
+// get chunk local piece of world space box
+Box chunkLocalBlockBox(ChunkWorldPos cwp, Box blockBox) {
+	Box chunkBlockBox = chunkToBlockBox(cwp);
+	auto intersection = boxIntersection(chunkBlockBox, blockBox);
 	assert(!intersection.empty);
-	auto chunkLocalVolume = intersection;
-	chunkLocalVolume.position -= chunkBlockVolume.position;
-	return chunkLocalVolume;
+	auto chunkLocalBox = intersection;
+	chunkLocalBox.position -= chunkBlockBox.position;
+	return chunkLocalBox;
 }
 
-void placeEntity(Volume blockVolume, ulong payload,
+void placeEntity(WorldBox blockBox, ulong payload,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess)
 {
-	auto mainCwp = ChunkWorldPos(BlockWorldPos(blockVolume.position, blockVolume.dimention));
-	Volume mainChunkVolume = chunkLocalBlockVolume(mainCwp, blockVolume);
-	ushort mainBlockIndex = volumeEntityIndex(mainChunkVolume);
+	auto mainCwp = ChunkWorldPos(BlockWorldPos(blockBox.position, blockBox.dimention));
+	Box mainChunkBox = chunkLocalBlockBox(mainCwp, blockBox);
+	ushort mainBlockIndex = boxEntityIndex(mainChunkBox);
 	auto mainData = BlockEntityData(
 		BlockEntityType.localBlockEntity, payload);
 
-	Volume affectedChunks = blockVolumeToChunkVolume(blockVolume);
-	ushort dimention = blockVolume.dimention;
+	Box affectedChunks = blockBoxToChunkBox(blockBox);
+	ushort dimention = blockBox.dimention;
 	foreach(chunkPos; affectedChunks.positions) {
 		auto cwp = ChunkWorldPos(chunkPos, dimention);
-		Volume chunkLocalVolume = chunkLocalBlockVolume(cwp, blockVolume);
+		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
-		ushort blockIndex = volumeEntityIndex(chunkLocalVolume);
+		ushort blockIndex = boxEntityIndex(chunkLocalBox);
 		BlockId blockId = blockIdFromBlockIndex(blockIndex);
 
 		if (cwp == mainCwp)
@@ -70,27 +71,27 @@ void placeEntity(Volume blockVolume, ulong payload,
 				mainData.id, mainOffset, mainBlockIndex);
 			entityAccess.setBlockEntity(cwp, blockIndex, data);
 		}
-		worldAccess.fillChunkVolume(cwp, chunkLocalVolume, blockId);
+		worldAccess.fillChunkBox(cwp, chunkLocalBox, blockId);
 	}
 }
 
-void placeChunkEntity(Volume blockVolume, ulong payload,
+void placeChunkEntity(WorldBox blockBox, ulong payload,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess)
 {
-	auto corner = BlockWorldPos(blockVolume.position, blockVolume.dimention);
+	auto corner = BlockWorldPos(blockBox.position, blockBox.dimention);
 	auto cwp = ChunkWorldPos(corner);
 
 	// limit entity to a single chunk
-	Volume chunkLocalVolume = chunkLocalBlockVolume(cwp, blockVolume);
+	Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
-	ushort blockIndex = volumeEntityIndex(chunkLocalVolume);
+	ushort blockIndex = boxEntityIndex(chunkLocalBox);
 	BlockId blockId = blockIdFromBlockIndex(blockIndex);
-	worldAccess.fillChunkVolume(cwp, chunkLocalVolume, blockId);
+	worldAccess.fillChunkBox(cwp, chunkLocalBox, blockId);
 	auto beData = BlockEntityData(BlockEntityType.localBlockEntity, payload);
 	bool placed = entityAccess.setBlockEntity(cwp, blockIndex, beData);
 }
 
-Volume getBlockEntityVolume(ChunkWorldPos cwp, ushort blockIndex,
+WorldBox getBlockEntityBox(ChunkWorldPos cwp, ushort blockIndex,
 	BlockEntityInfoTable blockEntityInfos, BlockEntityAccess entityAccess)
 {
 	BlockEntityData entity = entityAccess.getBlockEntity(cwp, blockIndex);
@@ -100,7 +101,7 @@ Volume getBlockEntityVolume(ChunkWorldPos cwp, ushort blockIndex,
 		case localBlockEntity:
 			BlockEntityInfo eInfo = blockEntityInfos[entity.id];
 			auto entityBwp = BlockWorldPos(cwp, blockIndex);
-			Volume eVol = eInfo.boxHandler(entityBwp, entity);
+			WorldBox eVol = eInfo.boxHandler(entityBwp, entity);
 			return eVol;
 		case foreignBlockEntity:
 			auto mainPtr = entity.mainChunkPointer;
@@ -109,37 +110,37 @@ Volume getBlockEntityVolume(ChunkWorldPos cwp, ushort blockIndex,
 			auto mainBwp = BlockWorldPos(mainCwp, mainPtr.blockIndex);
 
 			BlockEntityInfo eInfo = blockEntityInfos[mainPtr.entityId];
-			Volume eVol = eInfo.boxHandler(mainBwp, mainEntity);
+			WorldBox eVol = eInfo.boxHandler(mainBwp, mainEntity);
 			return eVol;
 	}
 }
 
-/// Returns changed volume
-Volume removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
+/// Returns changed box
+WorldBox removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess,
 	BlockId fillerBlock)
 {
 	BlockId blockId = worldAccess.getBlock(bwp);
 	if (!isBlockEntity(blockId))
-		return Volume();
+		return WorldBox();
 
 	auto mainCwp = ChunkWorldPos(bwp);
 	ushort mainBlockIndex = blockIndexFromBlockId(blockId);
-	Volume blockVolume = getBlockEntityVolume(mainCwp, mainBlockIndex, beInfos, entityAccess);
+	WorldBox blockBox = getBlockEntityBox(mainCwp, mainBlockIndex, beInfos, entityAccess);
 
-	Volume affectedChunks = blockVolumeToChunkVolume(blockVolume);
-	ushort dimention = blockVolume.dimention;
+	Box affectedChunks = blockBoxToChunkBox(blockBox);
+	ushort dimention = blockBox.dimention;
 	foreach(chunkPos; affectedChunks.positions) {
 		auto cwp = ChunkWorldPos(chunkPos, dimention);
-		Volume chunkLocalVolume = chunkLocalBlockVolume(cwp, blockVolume);
+		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
-		ushort blockIndex = volumeEntityIndex(chunkLocalVolume);
+		ushort blockIndex = boxEntityIndex(chunkLocalBox);
 
 		entityAccess.removeEntity(cwp, blockIndex);
-		worldAccess.fillChunkVolume(cwp, chunkLocalVolume, fillerBlock);
+		worldAccess.fillChunkBox(cwp, chunkLocalBox, fillerBlock);
 	}
 
-	return blockVolume;
+	return blockBox;
 }
 
 final class BlockEntityAccess

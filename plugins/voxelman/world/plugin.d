@@ -38,7 +38,7 @@ import voxelman.world.storage.chunkobservermanager;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.storageworker;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.world.storage.worldaccess;
 import voxelman.blockentity.blockentityaccess;
 
@@ -306,7 +306,7 @@ public:
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
 
 		connection = pluginman.getPlugin!NetServerPlugin;
-		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
+		connection.registerPacketHandler!FillBlockBoxPacket(&handleFillBlockBoxPacket);
 		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
 		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
 
@@ -476,14 +476,14 @@ public:
 		}
 	}
 
-	private void handleFillBlockVolumePacket(ubyte[] packetData, ClientId clientId)
+	private void handleFillBlockBoxPacket(ubyte[] packetData, ClientId clientId)
 	{
-		import voxelman.core.packets : FillBlockVolumePacket;
+		import voxelman.core.packets : FillBlockBoxPacket;
 		if (clientDb.isSpawned(clientId))
 		{
-			auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
+			auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 			// TODO send to observers only.
-			worldAccess.fillVolume(packet.volume, packet.blockId);
+			worldAccess.fillBox(packet.box, packet.blockId);
 			connection.sendToAll(packet);
 		}
 	}
@@ -492,7 +492,7 @@ public:
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
 		placeEntity(
-			packet.volume, packet.data,
+			packet.box, packet.data,
 			worldAccess, entityAccess);
 
 		// TODO send to observers only.
@@ -502,7 +502,7 @@ public:
 	private void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
-		Volume vol = removeEntity(BlockWorldPos(packet.blockPos),
+		WorldBox vol = removeEntity(BlockWorldPos(packet.blockPos),
 			blockEntityPlugin.blockEntityInfos, worldAccess, entityAccess, /*AIR*/1);
 		//infof("Remove entity at %s", vol);
 

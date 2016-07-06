@@ -7,12 +7,13 @@ module voxelman.world.storage.worldaccess;
 
 import std.experimental.logger;
 import std.string;
+import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 
 final class WorldAccess
 {
@@ -54,26 +55,26 @@ final class WorldAccess
 		return true;
 	}
 
-	bool fillVolume(Volume blockFillVolume, BlockId blockId) {
-		Volume affectedChunks = blockVolumeToChunkVolume(blockFillVolume);
-		ushort dimention = blockFillVolume.dimention;
+	bool fillBox(WorldBox blockFillBox, BlockId blockId) {
+		WorldBox affectedChunks = blockBoxToChunkBox(blockFillBox);
+		ushort dimention = blockFillBox.dimention;
 
 		foreach(chunkPos; affectedChunks.positions) {
-			Volume chunkBlockVolume = chunkToBlockVolume(chunkPos, dimention);
-			auto intersection = volumeIntersection(chunkBlockVolume, blockFillVolume);
+			Box chunkBlockBox = chunkToBlockBox(chunkPos);
+			auto intersection = boxIntersection(chunkBlockBox, blockFillBox);
 			assert(!intersection.empty);
 
 			auto cwp = ChunkWorldPos(chunkPos, dimention);
-			auto chunkLocalVolume = intersection;
-			chunkLocalVolume.position -= chunkBlockVolume.position;
+			auto chunkLocalBox = intersection;
+			chunkLocalBox.position -= chunkBlockBox.position;
 
-			fillChunkVolume(cwp, chunkLocalVolume, blockId);
+			fillChunkBox(cwp, chunkLocalBox, blockId);
 		}
 		return true;
 	}
 
-	// blockVolume is in chunk-local coordinates
-	bool fillChunkVolume(ChunkWorldPos cwp, Volume blockVolume, BlockId blockId) {
+	// blockBox is in chunk-local coordinates
+	bool fillChunkBox(ChunkWorldPos cwp, Box blockBox, BlockId blockId) {
 		auto old = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 		if (old.isNull) return false;
 
@@ -87,7 +88,7 @@ final class WorldAccess
 		WriteBuffer* writeBuffer;
 
 		// uniform fill
-		if (blockVolume.size == CHUNK_SIZE_VECTOR)
+		if (blockBox.size == CHUNK_SIZE_VECTOR)
 		{
 			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
 			if (writeBuffer is null) return false;
@@ -99,7 +100,7 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 			BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 			assert(blocks.length == CHUNK_SIZE_CUBE, format("blocks %s", blocks.length));
-			setSubArray(blocks, blockVolume, blockId);
+			setSubArray(blocks, blockBox, blockId);
 		}
 		updateWriteBufferMetadata(writeBuffer);
 

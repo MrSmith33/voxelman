@@ -8,6 +8,7 @@ module voxelman.world.clientworld;
 import std.experimental.logger;
 import netlib;
 import pluginlib;
+import voxelman.geometry.box;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -32,7 +33,7 @@ import voxelman.world.storage.chunkmanager;
 import voxelman.world.storage.chunkobservermanager;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.world.storage.worldaccess;
 import voxelman.blockentity.blockentityaccess;
 
@@ -102,7 +103,7 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_M, "key.toggleMetaData", null, &onToggleMetaData));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewVolume));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewBox));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
 	}
 
@@ -142,7 +143,7 @@ public:
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
-		connection.registerPacketHandler!FillBlockVolumePacket(&handleFillBlockVolumePacket);
+		connection.registerPacketHandler!FillBlockBoxPacket(&handleFillBlockBoxPacket);
 		connection.registerPacketHandler!MultiblockChangePacket(&handleMultiblockChangePacket);
 		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
 		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
@@ -174,9 +175,9 @@ public:
 		drawDebugMetadata = !drawDebugMetadata;
 	}
 
-	void onRemeshViewVolume(string) {
-		Volume volume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
-		remeshVolume(volume, true);
+	void onRemeshViewBox(string) {
+		WorldBox box = chunkObserverManager.getObserverBox(clientDb.thisClientId);
+		remeshBox(box, true);
 	}
 
 	void onPrintChunkMeta(string) {
@@ -215,21 +216,21 @@ public:
 	{
 		enum nearRadius = 2;
 		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimention);
-		Volume nearVolume = calcVolume(chunkPos, nearRadius);
+		WorldBox nearBox = calcBox(chunkPos, nearRadius);
 
-		drawDebugChunkMetadata(nearVolume);
-		drawDebugChunkGrid(nearVolume);
+		drawDebugChunkMetadata(nearBox);
+		drawDebugChunkGrid(nearBox);
 	}
 
-	void drawDebugChunkMetadata(Volume volume)
+	void drawDebugChunkMetadata(WorldBox box)
 	{
 		import voxelman.block.utils;
-		foreach(pos; volume.positions)
+		foreach(pos; box.positions)
 		{
 			vec3 blockPos = pos * CHUNK_SIZE;
 
 			auto snap = chunkManager.getChunkSnapshot(
-				ChunkWorldPos(pos, volume.dimention), FIRST_LAYER);
+				ChunkWorldPos(pos, box.dimention), FIRST_LAYER);
 
 			if (snap.isNull) continue;
 			foreach(ubyte side; 0..6)
@@ -246,10 +247,10 @@ public:
 		}
 	}
 
-	void drawDebugChunkGrid(Volume volume)
+	void drawDebugChunkGrid(WorldBox box)
 	{
-		vec3 gridPos = vec3(volume.position*CHUNK_SIZE);
-		ivec3 gridCount = volume.size+1;
+		vec3 gridPos = vec3(box.position*CHUNK_SIZE);
+		ivec3 gridCount = box.size+1;
 		vec3 gridOffset = vec3(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SIZE);
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
@@ -367,41 +368,41 @@ public:
 			chunksToRemesh.put(adj);
 	}
 
-	void handleFillBlockVolumePacket(ubyte[] packetData, ClientId peer)
+	void handleFillBlockBoxPacket(ubyte[] packetData, ClientId peer)
 	{
-		auto packet = unpackPacketNoDup!FillBlockVolumePacket(packetData);
+		auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 
-		worldAccess.fillVolume(packet.volume, packet.blockId);
-		onBlockVolumeChanged(packet.volume);
+		worldAccess.fillBox(packet.box, packet.blockId);
+		onBlockBoxChanged(packet.box);
 	}
 
-	void onBlockVolumeChanged(Volume blockVolume)
+	void onBlockBoxChanged(WorldBox blockBox)
 	{
-		Volume observedVolume = chunkObserverManager.getObserverVolume(clientDb.thisClientId);
-		Volume modifiedVolume = calcModifiedMeshesVolume(blockVolume);
-		Volume vol = volumeIntersection(observedVolume, modifiedVolume);
+		WorldBox observedBox = chunkObserverManager.getObserverBox(clientDb.thisClientId);
+		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);
+		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
-		foreach(pos; vol.positions)
-			chunksToRemesh.put(ChunkWorldPos(pos, vol.dimention));
+		foreach(pos; box.positions)
+			chunksToRemesh.put(ChunkWorldPos(pos, box.dimention));
 	}
 
 	void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
-		placeEntity(packet.volume, packet.data,
+		placeEntity(packet.box, packet.data,
 			worldAccess, entityAccess);
-		onBlockVolumeChanged(packet.volume);
+		onBlockBoxChanged(packet.box);
 	}
 
 	void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
-		Volume changedVolume = removeEntity(BlockWorldPos(packet.blockPos),
+		WorldBox changedBox = removeEntity(BlockWorldPos(packet.blockPos),
 			blockEntityPlugin.blockEntityInfos, worldAccess, entityAccess, /*AIR*/1);
-		onBlockVolumeChanged(changedVolume);
+		onBlockBoxChanged(changedBox);
 	}
 
-	void remeshVolume(Volume volume, bool printTime = false)
+	void remeshBox(WorldBox box, bool printTime = false)
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		MonoTime startTime = MonoTime.currTime;
@@ -414,8 +415,8 @@ public:
 		}
 
 		HashSet!ChunkWorldPos remeshedChunks;
-		foreach(pos; volume.positions) {
-			remeshedChunks.put(ChunkWorldPos(pos, volume.dimention));
+		foreach(pos; box.positions) {
+			remeshedChunks.put(ChunkWorldPos(pos, box.dimention));
 		}
 		if (printTime)
 			chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
@@ -465,7 +466,7 @@ public:
 				observerClientId = clientDb.thisClientId;
 			}
 
-			chunkObserverManager.changeObserverVolume(clientDb.thisClientId, observerPosition, viewRadius);
+			chunkObserverManager.changeObserverBox(clientDb.thisClientId, observerPosition, viewRadius);
 		}
 	}
 

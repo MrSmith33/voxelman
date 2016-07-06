@@ -18,7 +18,7 @@ import voxelman.block.utils;
 import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.blockentity.blockentityaccess;
 
 import voxelman.block.plugin;
@@ -86,9 +86,9 @@ class WorldInteractionPlugin : IPlugin
 		return clientWorld.worldAccess.getBlock(blockPos);
 	}
 
-	void fillVolume(Volume volume, BlockId blockId)
+	void fillBox(WorldBox box, BlockId blockId)
 	{
-		connection.send(FillBlockVolumePacket(volume, blockId));
+		connection.send(FillBlockBoxPacket(box, blockId));
 	}
 
 	void traceCursor()

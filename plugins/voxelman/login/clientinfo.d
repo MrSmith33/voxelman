@@ -8,7 +8,7 @@ module voxelman.login.clientinfo;
 import dlib.math.vector : vec3, vec2;
 
 import voxelman.core.config;
-import voxelman.world.storage.volume : Volume;
+import voxelman.world.storage.worldbox : WorldBox;
 import voxelman.world.storage.coordinates;
 
 struct ClientInfo
@@ -20,7 +20,7 @@ struct ClientInfo
 	DimentionId dimention;
 
 	int viewRadius = DEFAULT_VIEW_RADIUS;
-	Volume visibleVolume;
+	WorldBox visibleBox;
 
 	bool isLoggedIn;
 	bool isSpawned;

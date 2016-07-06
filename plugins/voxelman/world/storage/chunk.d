@@ -12,13 +12,13 @@ import std.typecons : Nullable;
 
 import cbor;
 import dlib.math.vector;
+import voxelman.geometry.box;
 
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.core.chunkmesh;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
-import voxelman.world.storage.volume;
 import voxelman.utils.compression;
 
 enum FIRST_LAYER = 0;
@@ -286,7 +286,7 @@ void expandUniform(ubyte[] buffer, ubyte itemBits, ulong uniformData)
 /// If blockChanges is null uses newBlockData
 struct ChunkChange
 {
-	uvec3 a, b; // volume
+	uvec3 a, b; // box
 	BlockId blockId;
 }
 
@@ -456,47 +456,47 @@ void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
 	BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 	foreach(change; changes)
 	{
-		setSubArray(blocks, Volume(ivec3(change.a), ivec3(change.b)), change.blockId);
+		setSubArray(blocks, Box(ivec3(change.a), ivec3(change.b)), change.blockId);
 	}
 }
 
-void setSubArray(BlockId[] buffer, Volume volume, BlockId blockId)
+void setSubArray(BlockId[] buffer, Box box, BlockId blockId)
 {
 	assert(buffer.length == CHUNK_SIZE_CUBE);
 
-	if (volume.position.x == 0 && volume.size.x == CHUNK_SIZE)
+	if (box.position.x == 0 && box.size.x == CHUNK_SIZE)
 	{
-		if (volume.position.z == 0 && volume.size.z == CHUNK_SIZE)
+		if (box.position.z == 0 && box.size.z == CHUNK_SIZE)
 		{
-			if (volume.position.y == 0 && volume.size.y == CHUNK_SIZE)
+			if (box.position.y == 0 && box.size.y == CHUNK_SIZE)
 			{
 				buffer[] = blockId;
 			}
 			else
 			{
-				auto from = volume.position.y * CHUNK_SIZE_SQR;
-				auto to = (volume.position.y + volume.size.y) * CHUNK_SIZE_SQR;
+				auto from = box.position.y * CHUNK_SIZE_SQR;
+				auto to = (box.position.y + box.size.y) * CHUNK_SIZE_SQR;
 				buffer[from..to] = blockId;
 			}
 		}
 		else
 		{
-			foreach(y; volume.position.y..(volume.position.y + volume.size.y))
+			foreach(y; box.position.y..(box.position.y + box.size.y))
 			{
-				auto from = y * CHUNK_SIZE_SQR + volume.position.z * CHUNK_SIZE;
-				auto to = y * CHUNK_SIZE_SQR + (volume.position.z + volume.size.z) * CHUNK_SIZE;
+				auto from = y * CHUNK_SIZE_SQR + box.position.z * CHUNK_SIZE;
+				auto to = y * CHUNK_SIZE_SQR + (box.position.z + box.size.z) * CHUNK_SIZE;
 				buffer[from..to] = blockId;
 			}
 		}
 	}
 	else
 	{
-		int posx = volume.position.x;
-		int endx = volume.position.x + volume.size.x;
-		int endy = volume.position.y + volume.size.y;
-		int endz = volume.position.z + volume.size.z;
-		foreach(y; volume.position.y..endy)
-		foreach(z; volume.position.z..endz)
+		int posx = box.position.x;
+		int endx = box.position.x + box.size.x;
+		int endy = box.position.y + box.size.y;
+		int endz = box.position.z + box.size.z;
+		foreach(y; box.position.y..endy)
+		foreach(z; box.position.z..endz)
 		{
 			auto offset = y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
 			auto from = posx + offset;

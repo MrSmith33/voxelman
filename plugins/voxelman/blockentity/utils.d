@@ -12,7 +12,7 @@ import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.volume;
+import voxelman.world.storage.worldbox;
 import voxelman.core.chunkmesh;
 
 import voxelman.blockentity.blockentityaccess;
@@ -46,11 +46,11 @@ alias BlockEntityMeshhandler = void function(
 	ivec3 entityPos);
 
 alias SolidityHandler = Solidity function(Side side);
-alias EntityBoxHandler = Volume function(BlockWorldPos bwp, BlockEntityData data);
+alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
 alias EntityDebugHandler = void function(BlockWorldPos bwp, BlockEntityData data);
-Volume nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
+WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
-	return Volume(bwp.xyz, ivec3(1,1,1), cast(ushort)bwp.w);
+	return WorldBox(bwp.xyz, ivec3(1,1,1), cast(ushort)bwp.w);
 }
 
 void nullBlockEntityMeshhandler(
