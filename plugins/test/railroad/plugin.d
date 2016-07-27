@@ -55,7 +55,9 @@ final class TrainsPluginClient : IPlugin
 	WorldInteractionPlugin worldInteraction;
 	GraphicsPlugin graphics;
 	ClientWorld clientWorld;
+
 	RailSegment segment;
+	BlockWorldPos placePos;
 
 	override void preInit() {
 		import voxelman.globalconfig;
@@ -84,7 +86,21 @@ final class TrainsPluginClient : IPlugin
 				if (!worldInteraction.cameraInSolidBlock)
 				{
 					auto railData = RailData(segment);
-					WorldBox box = railData.boundingBox(worldInteraction.sideBlockPos);
+
+					auto blockId = worldInteraction.pickBlock();
+					placePos = worldInteraction.sideBlockPos;
+
+					RailData railOnGround = getRailAt(RailPos(worldInteraction.blockPos),
+						blockEntityManager.getId("rail"),
+						clientWorld.worldAccess, clientWorld.entityAccess);
+
+					if (!railOnGround.empty)
+					{
+						placePos = worldInteraction.blockPos;
+						//drawSolidityDebug(graphics.debugBatch, railOnGround, placePos);
+					}
+
+					WorldBox box = railData.boundingBox(placePos);
 
 					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
 						vec3(1,1,1) + cursorOffset, Colors.blue, false);
@@ -110,7 +126,7 @@ final class TrainsPluginClient : IPlugin
 				}
 			}
 			override void onSecondaryActionRelease() {
-				connection.send(PlaceRailPacket(RailPos(worldInteraction.sideBlockPos), RailData(segment).data));
+				connection.send(PlaceRailPacket(RailPos(placePos), RailData(segment).data));
 			}
 
 			override void onMainActionRelease() {
@@ -142,30 +158,51 @@ final class TrainsPluginServer : IPlugin
 
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
+	BlockEntityServer blockEntityPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!PlaceRailPacket(&handlePlaceRailPacket);
 		serverWorld = pluginman.getPlugin!ServerWorld;
+		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
 	}
 
 	void handlePlaceRailPacket(ubyte[] packetData, ClientId clientId)
 	{
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
 		RailPos railPos = packet.pos;
+		ChunkWorldPos cwp = railPos.chunkPos();
 		RailData railData = RailData(packet.data);
+		ushort railEntityId = blockEntityManager.getId("rail");
 
-		BlockWorldPos bwp = railPos.toBlockWorldPos;
-		WorldBox blockBox = railData.boundingBox(bwp);
-
-		ulong payload = payloadFromIdAndEntityData(
-			blockEntityManager.getId("rail"), packet.data);
-
-		placeEntity(blockBox, payload,
+		RailData railOnGround = getRailAt(railPos, railEntityId,
 			serverWorld.worldAccess, serverWorld.entityAccess);
 
-		ChunkWorldPos cwp = railPos.chunkPos();
+		if (!railOnGround.empty)
+		{
+			WorldBox oldBox = railData.boundingBox(railPos);
+			BlockWorldPos delPos = railPos.deletePos;
+
+			RailData combined = railOnGround;
+			combined.addRail(railData); // combine rails
+
+			// Adding existing rail segment
+			if (railOnGround == combined)
+				return;
+
+			WorldBox changedBox = removeEntity(delPos, blockEntityPlugin.blockEntityInfos,
+				serverWorld.worldAccess, serverWorld.entityAccess, BlockId(1));
+			connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
+				RemoveBlockEntityPacket(delPos.vector.arrayof));
+			railData = combined;
+		}
+
+		WorldBox blockBox = railData.boundingBox(railPos);
+		ulong payload = payloadFromIdAndEntityData(railEntityId, railData.data);
+
+		placeEntity(blockBox, payload, serverWorld.worldAccess, serverWorld.entityAccess);
+
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 			PlaceBlockEntityPacket(blockBox, payload));
 		//infof("Place rail %s %s", packet.pos, blockBox);
@@ -191,11 +228,11 @@ WorldBox railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 	return RailData(data).boundingBox(bwp);
 }
 
-Solidity railSideSolidity(Side side, ivec3 entityPos, BlockEntityData data)
+Solidity railSideSolidity(Side side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
 {
 	if (side == Side.bottom)
 	{
-		return RailData(data).bottomSolidity;
+		return RailData(data).bottomSolidity(calcBlockTilePos(chunkPos));
 	}
 	return Solidity.transparent;
 }

@@ -102,6 +102,20 @@ struct WorldBox
 		if (this.dimention != dimention) return false;
 		return box.contains(point);
 	}
+
+	import std.algorithm : cartesianProduct, map, joiner, equal, canFind;
+	import std.range : iota, walkLength;
+	import std.array : array;
+
+	// generates all positions within box.
+	auto positions4d() const @property
+	{
+		return cartesianProduct(
+			iota(position.x, position.x + size.x),
+			iota(position.y, position.y + size.y),
+			iota(position.z, position.z + size.z))
+			.map!((a)=>ivec4(a[0], a[1], a[2], dimention));
+	}
 }
 
 WorldBox worldBoxIntersection(WorldBox a, WorldBox b)

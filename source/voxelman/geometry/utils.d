@@ -9,17 +9,28 @@ module voxelman.geometry.utils;
 // rotType is 0 for 0, 1 for 90, 2 for 180, 3 for 270 degrees
 T rotatePointCCW(T)(T point, ubyte rotType)
 {
-	     if (rotType == 0) return point;
-	else if (rotType == 1) return rotateCCW90(point);
+	if (rotType == 1) return rotateCCW90(point);
 	else if (rotType == 2) return rotateCCW180(point);
 	else if (rotType == 3) return rotateCCW270(point);
+	return point;
 }
 
 // ditto
 T rotatePointCW(T)(T point, ubyte rotType)
 {
-	if (rotType == 0) return point;
-	return rotatePointCCW(point, 4 - rotType);
+	if (rotType == 1) return rotateCCW270(point);
+	else if (rotType == 2) return rotateCCW180(point);
+	else if (rotType == 3) return rotateCCW90(point);
+	return point;
+}
+
+// ditto
+T rotatePointShiftOriginCW(T)(T point, T size, ubyte rotType)
+{
+	if (rotType == 1) return rotateCCW270ShiftOrigin(point, size);
+	else if (rotType == 2) return rotateCCW180ShiftOrigin(point, size);
+	else if (rotType == 3) return rotateCCW90ShiftOrigin(point, size);
+	return point;
 }
 
 T function(T) getCCWRotationFunction(T)(ubyte rotType)

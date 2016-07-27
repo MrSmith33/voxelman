@@ -162,7 +162,7 @@ final class BlockEntityAccess
 
 		BlockEntityMap map = getHashMapFromLayer(writeBuffer.layer);
 		map[blockIndex] = beData.storage;
-		setLayer(writeBuffer.layer, map);
+		setLayerMap(writeBuffer.layer, map);
 		return true;
 	}
 
@@ -193,13 +193,13 @@ final class BlockEntityAccess
 		BlockEntityMap map = getHashMapFromLayer(writeBuffer.layer);
 
 		map.remove(blockIndex);
-		setLayer(writeBuffer.layer, map);
+		setLayerMap(writeBuffer.layer, map);
 		return true;
 	}
 }
 
-void setLayer(Layer)(ref Layer layer, BlockEntityMap map) {
-	ubyte[] arr = cast(ubyte[])map.getTable();
+void setLayerMap(Layer)(ref Layer layer, BlockEntityMap map) {
+	ubyte[] arr = map.getTable();
 	layer.dataPtr = arr.ptr;
 	layer.dataLength = cast(LayerDataLenType)arr.length;
 	layer.metadata = cast(ushort)map.length;

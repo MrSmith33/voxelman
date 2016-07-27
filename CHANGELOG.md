@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add generic Box type
+- Add multiple rails per tile.
 - Add .obj and .ply model loading.
 - Add multichunk block entity.
 - Add block entity removing.

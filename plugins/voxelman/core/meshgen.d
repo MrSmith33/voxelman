@@ -132,7 +132,7 @@ MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 			ivec3 blockChunkPos = ivec3(chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
 			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
 
-			return entityInfo.sideSolidity(side, blockEntityPos, data);
+			return entityInfo.sideSolidity(side, blockChunkPos, blockEntityPos, data);
 		} else {
 			return blockInfos[blockId].solidity;
 		}

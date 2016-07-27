@@ -6,19 +6,48 @@ Authors: Andrey Penechko.
 module test.railroad.utils;
 
 import voxelman.geometry.box;
+import voxelman.geometry.utils;
 import voxelman.utils.math;
 import voxelman.block.utils;
+import voxelman.blockentity.blockentitydata;
+import voxelman.blockentity.blockentityaccess;
+import voxelman.blockentity.utils;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
-import voxelman.blockentity.blockentitydata;
+import voxelman.world.storage.worldaccess;
 
 enum RAIL_TILE_SIZE = 8;
-ivec3 railSizeVector = vec3(RAIL_TILE_SIZE, 1, RAIL_TILE_SIZE);
+immutable ivec3 railSizeVector = ivec3(RAIL_TILE_SIZE, 1, RAIL_TILE_SIZE);
+immutable ivec4 railPickOffset = ivec4(RAIL_TILE_SIZE/2, 0, RAIL_TILE_SIZE/2, 0);
 
-ivec3 railTilePos(BlockWorldPos bwp) {
+ivec3 railTilePos(ivec3 bwp) {
 	return ivec3(floor(cast(float)bwp.x / RAIL_TILE_SIZE) * RAIL_TILE_SIZE,
 		cast(float)bwp.y,
 		floor(cast(float)bwp.z / RAIL_TILE_SIZE) * RAIL_TILE_SIZE);
+}
+
+ivec3 calcBlockTilePos(ivec3 bwp)
+{
+	ivec3 tilePos = railTilePos(bwp);
+	return bwp - tilePos;
+}
+
+RailData getRailAt(RailPos railPos, ushort railEntityId,
+	WorldAccess worldAccess, BlockEntityAccess entityAccess)
+{
+	auto bwp = railPos.toBlockWorldPos;
+	bwp.vector += railPickOffset;
+	auto blockId = worldAccess.getBlock(bwp);
+
+	if (isBlockEntity(blockId))
+	{
+		ushort blockIndex = blockIndexFromBlockId(blockId);
+		BlockEntityData entity = entityAccess.getBlockEntity(railPos.chunkPos, blockIndex);
+
+		if (entity.id == railEntityId)
+			return RailData(entity);
+	}
+	return RailData();
 }
 
 struct RailPos {
@@ -44,6 +73,12 @@ struct RailPos {
 	{
 		return WorldBox(toBlockWorldPos().xyz, railSizeVector, vector.w);
 	}
+	BlockWorldPos deletePos()
+	{
+		auto bwp = toBlockWorldPos;
+		bwp.vector += railPickOffset;
+		return bwp;
+	}
 	svec4 vector;
 }
 
@@ -67,18 +102,41 @@ struct RailData
 		return (data & SLOPE_RAIL_BIT) != 0;
 	}
 
+	bool empty() {
+		return data == 0;
+	}
+
+	void addRail(RailData newRail)
+	{
+		if (newRail.isSlope || isSlope)
+		{
+			data = newRail.data;
+		}
+		else
+		{
+			data |= newRail.data;
+		}
+	}
+
 	SegmentRange getSegments()
 	{
 		return SegmentRange(data);
 	}
 
-	Solidity bottomSolidity()
+	Solidity bottomSolidity(ivec3 blockTilePos)
 	{
-		if (data & railBottomSolidities)
+		foreach(segment; getSegments)
 		{
-			return Solidity.solid;
+			if (isSegmentSolid(segment, blockTilePos))
+				return Solidity.solid;
 		}
+
 		return Solidity.transparent;
+	}
+
+	WorldBox boundingBox(RailPos railPos)
+	{
+		return boundingBox(railPos.toBlockWorldPos());
 	}
 
 	WorldBox boundingBox(BlockWorldPos bwp)
@@ -86,14 +144,14 @@ struct RailData
 		if (isSlope)
 		{
 			auto segment = data - SLOPE_RAIL_BIT + RailSegment.northUp;
-			ivec3 tilePos = railTilePos(bwp);
+			ivec3 tilePos = railTilePos(bwp.xyz);
 			ivec3 railPos = tilePos + railSegmentOffsets[segment];
 			ivec3 railSize = railSegmentSizes[segment];
 			return WorldBox(railPos, railSize, cast(ushort)(bwp.w));
 		}
 		else
 		{
-			ivec3 tilePos = railTilePos(bwp);
+			ivec3 tilePos = railTilePos(bwp.xyz);
 
 			Box commonBox;
 			ubyte flag = 1;
@@ -139,7 +197,7 @@ struct SegmentRange
 		}
 		else
 		{
-			import core.bitop : popcnt, bsf;
+			import core.bitop : bsf;
 
 			ubyte segment = cast(ubyte)bsf(data);
 			ubyte flag = cast(ubyte)(1 << segment);
@@ -233,7 +291,6 @@ ivec3[] railSegmentOffsets = [
 	EAST_RAIL_OFFSET, // eastUp
 ];
 
-ushort railBottomSolidities = 0b0100_0011;
 
 ubyte[] railSegmentMeshId = [0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
 ubyte[] railSegmentMeshRotation = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3];
@@ -243,4 +300,62 @@ void rotateSegment(ref RailSegment segment)
 	++segment;
 	if (segment > RailSegment.max)
 		segment = RailSegment.min;
+}
+
+bool isSegmentSolid(ubyte segment, ivec3 blockTilePos)
+{
+	import core.bitop : bt;
+	auto bitmapId = bt(cast(size_t*)&railSegmentBottomSolidityIndex, segment);
+	ulong bitmap = railBottomSolidityBitmaps[bitmapId];
+	ubyte rotation = railSegmentMeshRotation[segment];
+	// Size needs to me less by 1 for correct shift
+	ivec3 rotatedPos = rotatePointShiftOriginCW!ivec3(blockTilePos, ivec3(7,0,7), rotation);
+	// Invert bit order (63 - bit num)
+	auto tileIndex = 63 - (rotatedPos.x + rotatedPos.z * RAIL_TILE_SIZE);
+	return !!bt(&bitmap, tileIndex);
+}
+
+ushort railSegmentBottomSolidityIndex = 0b0000_1111_00;
+
+ulong[2] railBottomSolidityBitmaps = [
+mixin("0b" // !bit order is right to left!
+"00111100"
+"00111100"
+"00111100"
+"00111100"
+"00111100"
+"00111100"
+"00111100"
+"00111100"),
+mixin("0b"
+"00111000"
+"01110000"
+"11100000"
+"11000000"
+"10000000"
+"00000000"
+"00000000"
+"00000000")];
+
+import voxelman.utils.renderutils;
+void drawSolidityDebug(ref Batch b, RailData data, BlockWorldPos bwp)
+{
+	ivec3 tilePos = railTilePos(bwp.xyz);
+	ivec3 blockTilePos = bwp.xyz - tilePos;
+
+	foreach(segment; data.getSegments)
+	{
+		foreach(z; 0..RAIL_TILE_SIZE)
+		foreach(x; 0..RAIL_TILE_SIZE)
+		{
+			auto blockPos = ivec3(x, 0, z);
+			if (isSegmentSolid(segment, blockPos))
+			{
+				auto renderPos = tilePos + ivec3(x, segment, z);
+				enum cursorOffset = vec3(0.01, 0.01, 0.01);
+				b.putCube(vec3(renderPos) - cursorOffset + vec3(0.25,0.25,0.25),
+					vec3(0.5,0.5,0.5) + cursorOffset, Colors.black, true);
+			}
+		}
+	}
 }

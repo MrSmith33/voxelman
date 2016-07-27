@@ -35,7 +35,8 @@ void makeRailMesh(
 
 void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
 {
-	auto chunkPosF = vec3(chunkPos);
+	ivec3 tilePos = railTilePos(chunkPos);
+	auto chunkPosF = vec3(tilePos);
 
 	foreach(segment; data.getSegments())
 	{
@@ -43,11 +44,11 @@ void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
 		auto mesh = railMeshes[meshIndex];
 		ubyte rotation = railSegmentMeshRotation[segment];
 		auto rotator = getCCWRotationShiftOriginFunction!vec3(rotation);
-		ivec3 offset = railSegmentOffsets[segment];
+		vec3 offset = chunkPosF + vec3(railSegmentOffsets[segment]);
 		vec3 meshSize = vec3(meshSizes[meshIndex]);
 		foreach(v; mesh)
 		{
-			sink.put(MeshVertex((rotator(vec3(v.position), meshSize) + chunkPosF).arrayof, v.color));
+			sink.put(MeshVertex((rotator(vec3(v.position), meshSize) + offset).arrayof, v.color));
 		}
 	}
 }

@@ -34,10 +34,13 @@ smooth in vec4 theColor;
 out vec4 outputColor;
 const vec4 fogcolor = vec4(0.6, 0.8, 1.0, 1.0);
 const float fogdensity = .00001;
+vec4 gamma(vec4 color) {
+	return vec4(pow(color.xyz, vec3(1.0/2.0)), color.a);
+}
 void main() {
 	float z = gl_FragCoord.z / gl_FragCoord.w;
 	float fogModifier = clamp(exp(-fogdensity * z * z), 0.0, 1);
-	outputColor = mix(fogcolor, theColor, fogModifier);
+	outputColor = gamma(mix(fogcolor, theColor, fogModifier));
 }
 `;
 
@@ -47,6 +50,9 @@ smooth in vec4 theColor;
 out vec4 outputColor;
 const vec4 fogcolor = vec4(0.6, 0.8, 1.0, 1.0);
 const float fogdensity = .00001;
+vec3 gamma(vec3 color) {
+	return pow(color, vec3(1.0/2.0));
+}
 void main() {
 	float z = gl_FragCoord.z / gl_FragCoord.w;
 	float fogModifier = clamp(exp(-fogdensity * z * z), 0.0, 1);

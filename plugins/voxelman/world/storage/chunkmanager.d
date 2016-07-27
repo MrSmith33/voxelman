@@ -233,6 +233,11 @@ final class ChunkManager {
 	/// This buffer is valid until commit.
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
+	/// If write buffer was not yet created then it is created based on policy.
+	/// BUG: returned pointer points inside hash table.
+	/// If new write buffer is added hash table can reallocate.
+	/// Do not use more than one write buffer at a time.
+	/// Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, ubyte layer,
 		WriteBufferPolicy policy = WriteBufferPolicy.createUniform)
 	{
@@ -240,11 +245,11 @@ final class ChunkManager {
 		auto writeBuffer = cwp in writeBuffers[layer];
 		if (writeBuffer is null) {
 			writeBuffer = createWriteBuffer(cwp, layer);
-		}
-		if (writeBuffer && policy == WriteBufferPolicy.copySnapshotArray) {
-			auto old = getChunkSnapshot(cwp, layer);
-			if (!old.isNull) {
-				applyLayer(old, writeBuffer.layer);
+			if (writeBuffer && policy == WriteBufferPolicy.copySnapshotArray) {
+				auto old = getChunkSnapshot(cwp, layer);
+				if (!old.isNull) {
+					applyLayer(old, writeBuffer.layer);
+				}
 			}
 		}
 		return writeBuffer;
@@ -512,8 +517,8 @@ final class ChunkManager {
 	// Creates write buffer for writing changes in it.
 	// Latest snapshot's data is not copied in it.
 	// Write buffer is then avaliable through getWriteBuffer/getOrCreateWriteBuffer.
-	// On commit stage this is moved into new snapshot if write buffer is modified.
-	// Adds internal user that is removed on commit to prevent unloading chunk with uncommitted changes.
+	// On commit stage WB is moved into new snapshot if write buffer was modified.
+	// Adds internal user that is removed on commit to prevent chunk from unloading with uncommitted changes.
 	// Returns pointer to created write buffer.
 	private WriteBuffer* createWriteBuffer(ChunkWorldPos cwp, ubyte layer) {
 		assert(cwp !in writeBuffers[layer]);

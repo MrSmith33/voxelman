@@ -106,7 +106,7 @@ struct BlockEntityMap
 	void opIndexAssign(Value value, ushort key) {
 		grow(1);
 		auto i = findInsertIndex(key);
-		if (keys[i] != key) length++;
+		if (keys[i] != key) ++length;
 		//writefln("index %s for %s %016b len %s", i, key, key, length);
 		//writefln("replace %s:%s by %s:%s", keys[i], values[i], key, value);
 		keys[i] = key;
@@ -196,7 +196,7 @@ struct BlockEntityMap
 	private void grow(size_t amount) {
 		auto newsize = length + amount;
 		if (newsize < (keys.length*2)/3) return;
-		auto newcap = keys.length ? keys.length : 8;
+		auto newcap = keys.length ? keys.length : 1;
 		while (newsize >= (newcap*2)/3) newcap *= 2;
 		resize(newcap);
 	}

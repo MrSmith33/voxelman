@@ -122,9 +122,10 @@ struct ChunkLayerItem
 		metadata = l.metadata;
 	}
 
-	string toString() const
+	void toString()(scope void delegate(const(char)[]) sink) const
 	{
-		return format("ChunkLayerItem(%s, %s, %s, %s, {%s, %s}, %s)",
+		import std.format : formattedWrite;
+		sink.formattedWrite("ChunkLayerItem(%s, %s, %s, %s, {%s, %s}, %s)",
 			type, layerId, dataLength, timestamp, uniformData, dataPtr, metadata);
 	}
 }

@@ -7,17 +7,20 @@
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement graphics pipeline.
-- [ ] Generic Box type
 - [ ] fix problem with dimention change when old position confuses server and box is not updated.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
+- [x] Generic Box type
 
 - [ ] Translation strings.
 - [ ] Improve calculation of modified chunks.
 
 ----
 ### Railroad
+- [ ] Click-and-drag rail placement.
+- [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment. 
+- [x] Multiple rails per tile.
 - [x] Add mesh rotation.
 - [x] Add rail mesh based on rail type.
 - [x] Store rail type in entity data.
@@ -33,6 +36,7 @@
 ----
 ### BLOCK ENTITIES
 
+- [x] Fix write buffer retrieval. Old snapshot was copied every time, not only when WB was created.
 - [x] Use block entity mesh handlers for meshing.
 - [x] Send block entity layer to mesh workers.
 - [ ] Problems with multichunk entities with unloaded parts.
