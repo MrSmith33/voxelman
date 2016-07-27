@@ -7,17 +7,16 @@ module test.railroad.plugin;
 
 import std.experimental.logger;
 import pluginlib;
-import voxelman.container.buffer;
 import voxelman.core.config;
 import voxelman.core.packets;
 
+import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.world.plugin;
 import voxelman.worldinteraction.plugin;
-import voxelman.blockentity.plugin;
 
 import voxelman.blockentity.blockentityaccess;
 
@@ -30,7 +29,8 @@ import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage.worldaccess;
 
 import test.railroad.mesh;
-public import test.railroad.utils;
+import test.railroad.utils;
+import test.railroad.railtool;
 
 shared static this()
 {
@@ -51,13 +51,10 @@ final class TrainsPluginClient : IPlugin
 	mixin IdAndSemverFrom!(test.railroad.plugininfo);
 	mixin TrainsPluginCommon;
 
+	ClientWorld clientWorld;
+	GraphicsPlugin graphics;
 	NetClientPlugin connection;
 	WorldInteractionPlugin worldInteraction;
-	GraphicsPlugin graphics;
-	ClientWorld clientWorld;
-
-	RailSegment segment;
-	BlockWorldPos placePos;
 
 	override void preInit() {
 		import voxelman.globalconfig;
@@ -78,76 +75,18 @@ final class TrainsPluginClient : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		auto railTool = new class ITool
-		{
-			this() { name = "test.entity.place_rail"; }
-			override void onUpdate()
-			{
-				if (!worldInteraction.cameraInSolidBlock)
-				{
-					auto railData = RailData(segment);
-
-					auto blockId = worldInteraction.pickBlock();
-					placePos = worldInteraction.sideBlockPos;
-
-					RailData railOnGround = getRailAt(RailPos(worldInteraction.blockPos),
-						blockEntityManager.getId("rail"),
-						clientWorld.worldAccess, clientWorld.entityAccess);
-
-					if (!railOnGround.empty)
-					{
-						placePos = worldInteraction.blockPos;
-						//drawSolidityDebug(graphics.debugBatch, railOnGround, placePos);
-					}
-
-					WorldBox box = railData.boundingBox(placePos);
-
-					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
-						vec3(1,1,1) + cursorOffset, Colors.blue, false);
-
-					graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
-						vec3(box.size) + cursorOffset, Colors.green, false);
-
-					auto triBuffer = Buffer!ColoredVertex(graphics.debugBatch.triBuffer,
-						graphics.debugBatch.triBuffer.length);
-
-					putRailMesh(triBuffer, box.position, railData);
-
-					graphics.debugBatch.triBuffer = triBuffer.data;
-
-					import derelict.imgui.imgui;
-					import voxelman.utils.textformatter;
-
-					igBegin("Debug");
-						igTextf("Segment: %s s %s o %s m %s r %s", segment,
-							railSegmentSizes[segment], railSegmentOffsets[segment],
-							railSegmentMeshId[segment], railSegmentMeshRotation[segment]);
-					igEnd();
-				}
-			}
-			override void onSecondaryActionRelease() {
-				connection.send(PlaceRailPacket(RailPos(placePos), RailData(segment).data));
-			}
-
-			override void onMainActionRelease() {
-				auto blockId = worldInteraction.pickBlock();
-				if (isBlockEntity(blockId)) {
-					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector.arrayof));
-				}
-			}
-			override void onRotateAction() {
-				rotateSegment(segment);
-			}
-		};
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		clientWorld = pluginman.getPlugin!ClientWorld;
 
-		auto editPlugin = pluginman.getPlugin!EditPlugin;
-		editPlugin.registerTool(railTool);
-
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacket!PlaceRailPacket;
+
+		auto railTool = new RailTool(clientWorld, blockEntityManager,
+			graphics, connection, worldInteraction);
+
+		auto editPlugin = pluginman.getPlugin!EditPlugin;
+		editPlugin.registerTool(railTool);
 	}
 }
 

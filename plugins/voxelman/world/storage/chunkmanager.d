@@ -235,9 +235,9 @@ final class ChunkManager {
 	/// Returns null if chunk is not added and/or not loaded.
 	/// If write buffer was not yet created then it is created based on policy.
 	/// BUG: returned pointer points inside hash table.
-	/// If new write buffer is added hash table can reallocate.
-	/// Do not use more than one write buffer at a time.
-	/// Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
+	///      If new write buffer is added hash table can reallocate.
+	///      Do not use more than one write buffer at a time.
+	///      Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, ubyte layer,
 		WriteBufferPolicy policy = WriteBufferPolicy.createUniform)
 	{
