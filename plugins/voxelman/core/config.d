@@ -10,7 +10,7 @@ public import dlib.math.vector : vec3, ivec3, ivec4, uvec2, uvec3;
 
 alias BlockId = ushort;
 alias TimestampType = uint;
-alias DimentionId = ushort;
+alias DimentionId = short;
 
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;

@@ -9,7 +9,7 @@ import std.experimental.logger;
 import dlib.math.vector : ivec3;
 import netlib.connection : ClientId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
-import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect, calcBox;
+import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect4d, calcBox;
 
 enum chunkPackLoadSize = 200;
 
@@ -185,7 +185,7 @@ final class ChunkObserverManager {
 		info = ViewInfo(clientId, newBox, observerPosition, viewRadius);
 
 		//infof("oldV %s newV %s", oldBox, newBox);
-		TrisectResult tsect = trisect(oldBox, newBox);
+		TrisectResult tsect = trisect4d(oldBox, newBox);
 
 		// remove observer
 		foreach(a; tsect.aPositions) {

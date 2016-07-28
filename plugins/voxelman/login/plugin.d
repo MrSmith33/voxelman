@@ -127,8 +127,8 @@ public:
 		import voxelman.utils.math : nansToZero;
 
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
-		tracef("Received ClientPositionPacket(%s, %s, %s)",
-			packet.pos, packet.heading, packet.dimention);
+		//tracef("Received ClientPositionPacket(%s, %s, %s, %s)",
+		//	packet.pos, packet.heading, packet.dimention, packet.positionKey);
 
 		nansToZero(packet.pos);
 		graphics.camera.position = vec3(packet.pos);
@@ -136,7 +136,7 @@ public:
 		nansToZero(packet.heading);
 		graphics.camera.setHeading(vec2(packet.heading));
 
-		clientWorld.setCurrentDimention(packet.dimention);
+		clientWorld.setCurrentDimention(packet.dimention, packet.positionKey);
 	}
 
 	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
@@ -206,7 +206,9 @@ public:
 		info.pos = START_POS;
 		info.heading = vec2(0,0);
 		info.dimention = 0;
-		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
+		info.positionKey = 0;
+		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
+			info.heading.arrayof, info.dimention, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -251,7 +253,8 @@ public:
 		info.pos = pos;
 		info.heading = heading;
 		info.dimention = dimention;
-		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimention));
+		++info.positionKey;
+		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimention, info.positionKey));
 		connection.sendTo(clientId, SpawnPacket());
 		updateObserverBox(info);
 	}
@@ -280,11 +283,15 @@ public:
 			if (params.args.length > 1)
 			{
 				auto dim = to!DimentionId(params.args[1]);
+				if (dim == info.dimention)
+					return;
+
 				info.dimention = dim;
-				tracef("change dimention to %s for %s", dim, clientName(params.source));
-				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof, info.heading.arrayof, info.dimention));
-				//updateObserverBox(info);
-				// BUG: old positions will come from client until ClientPositionPacket is delivered.
+				++info.positionKey;
+				updateObserverBox(info);
+
+				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
+					info.heading.arrayof, info.dimention, info.positionKey));
 			}
 		}
 	}
@@ -292,8 +299,7 @@ public:
 	void updateObserverBox(ClientInfo* info)
 	{
 		if (info.isSpawned) {
-			ChunkWorldPos cwp = BlockWorldPos(info.pos, info.dimention);
-			serverWorld.chunkObserverManager.changeObserverBox(info.id, cwp, info.viewRadius);
+			serverWorld.chunkObserverManager.changeObserverBox(info.id, info.chunk, info.viewRadius);
 		}
 	}
 
@@ -339,6 +345,11 @@ public:
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
 			ClientInfo* info = clients[clientId];
+
+			// reject stale position. Dimention already have changed.
+			if (packet.positionKey != info.positionKey)
+				return;
+
 			info.pos = vec3(packet.pos);
 			info.heading = vec2(packet.heading);
 			updateObserverBox(info);

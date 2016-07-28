@@ -6,9 +6,11 @@ Authors: Andrey Penechko.
 module voxelman.world.clientworld;
 
 import std.experimental.logger;
+import std.algorithm : clamp;
 import netlib;
 import pluginlib;
 import voxelman.geometry.box;
+import voxelman.utils.textformatter;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -81,8 +83,11 @@ public:
 	// Observer data
 	vec3 updatedCameraPos;
 	ChunkWorldPos observerPosition;
+	ubyte positionKey;
 	ClientId observerClientId;
-	int viewRadius = DEFAULT_VIEW_RADIUS;
+
+	ConfigOption viewRadiusOpt;
+	int viewRadius;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -97,6 +102,7 @@ public:
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		numWorkersOpt = config.registerOption!uint("num_workers", 4);
+		viewRadiusOpt = config.registerOption!uint("view_distance", DEFAULT_VIEW_RADIUS);
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
@@ -128,6 +134,10 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		viewRadius = viewRadiusOpt.get!uint;
+		// duplicated code
+		viewRadius = clamp(viewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+
 		clientDb = pluginman.getPlugin!ClientDbClient;
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
@@ -176,7 +186,7 @@ public:
 	}
 
 	void onRemeshViewBox(string) {
-		WorldBox box = chunkObserverManager.getObserverBox(clientDb.thisClientId);
+		WorldBox box = chunkObserverManager.getObserverBox(observerClientId);
 		remeshBox(box, true);
 	}
 
@@ -378,7 +388,7 @@ public:
 
 	void onBlockBoxChanged(WorldBox blockBox)
 	{
-		WorldBox observedBox = chunkObserverManager.getObserverBox(clientDb.thisClientId);
+		WorldBox observedBox = chunkObserverManager.getObserverBox(observerClientId);
 		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);
 		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
@@ -435,7 +445,7 @@ public:
 				connection.send(ClientPositionPacket(
 					graphics.camera.position.arrayof,
 					graphics.camera.heading.arrayof,
-					observerPosition.w));
+					observerPosition.w, positionKey));
 
 				if (sendPositionTimer < sendPositionInterval)
 					sendPositionTimer = 0;
@@ -447,8 +457,9 @@ public:
 		prevChunkPos = observerPosition;
 	}
 
-	void setCurrentDimention(DimentionId dimention) {
+	void setCurrentDimention(DimentionId dimention, ubyte positionKey) {
 		observerPosition.w = dimention;
+		this.positionKey = positionKey;
 		updateObserverPosition();
 	}
 
@@ -456,8 +467,14 @@ public:
 		return observerPosition.w;
 	}
 
-	void incDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() + 1)); }
-	void decDimention() { setCurrentDimention(cast(DimentionId)(currentDimention() - 1)); }
+	void incDimention() {
+		string com = cast(string)makeFormattedText("dim %s", currentDimention() + 1);
+		connection.send(CommandPacket(com));
+	}
+	void decDimention() {
+		string com = cast(string)makeFormattedText("dim %s", currentDimention() - 1);
+		connection.send(CommandPacket(com));
+	}
 
 	void updateObserverPosition() {
 		if (clientDb.isSpawned) {
@@ -466,7 +483,7 @@ public:
 				observerClientId = clientDb.thisClientId;
 			}
 
-			chunkObserverManager.changeObserverBox(clientDb.thisClientId, observerPosition, viewRadius);
+			chunkObserverManager.changeObserverBox(observerClientId, observerPosition, viewRadius);
 		}
 	}
 
@@ -491,8 +508,8 @@ public:
 	}
 
 	void setViewRadius(int newViewRadius) {
-		import std.algorithm : clamp;
 		auto oldViewRadius = viewRadius;
+		// duplicated code
 		viewRadius = clamp(newViewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 
 		if (oldViewRadius != viewRadius)

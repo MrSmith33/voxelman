@@ -3,14 +3,17 @@
 	- [x] send dimention with avatar.
 - [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view box.
 
-- [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk.
+- [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk. Can skip uniform chunks.
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement graphics pipeline.
-- [ ] fix problem with dimention change when old position confuses server and box is not updated.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
+- [x] fix problem with dimention change when old position confuses server and box is not updated.
+	(Use position key. Client sends key with current position. Server only accepts positions with current key. Client and server increment position key when position changes)
+- [x] Add client view radius config option.
+- [x] Fix WorldBox equality checking.
 - [x] Generic Box type
 
 - [ ] Translation strings.
@@ -18,6 +21,8 @@
 
 ----
 ### Railroad
+- [ ] Separate stub meshes and read adjacent rails for advanced meshing.
+- [ ] Use stone/gravel material for rail's bottom side and for slope's side.
 - [ ] Click-and-drag rail placement.
 - [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment. 
 - [x] Multiple rails per tile.
@@ -32,11 +37,14 @@
 - [ ] BUG: In chunk manager returned pointer points inside hash table. If new write buffer is added hash table can reallocate. Do not use more than one write buffer at a time.
 Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
-- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk.
+- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
+- [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
+- [ ] Remove BlockData.
 
 ----
 ### BLOCK ENTITIES
 
+- [x] Add block entity rendering.
 - [x] Fix write buffer retrieval. Old snapshot was copied every time, not only when WB was created.
 - [x] Use block entity mesh handlers for meshing.
 - [x] Send block entity layer to mesh workers.
@@ -46,11 +54,8 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### EDITING
 
-- [ ] Editing of unloaded chunks. Save modifications to special storage, then apply.
-
-- [ ] Remove BlockData.
-- [ ] Add block entity rendering.
-- [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
+- [ ] Editing of unloaded chunks.
+- [ ] Accumulate modifications, then apply. Possibly in parallel.
 
 ----
 ### OTHER

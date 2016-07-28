@@ -87,14 +87,23 @@ struct TrisectResult
 // TrisectResult[2] b - a  == b if no intersection
 TrisectResult trisect(Box a, Box b)
 {
-	TrisectResult result;
-	result.intersection = boxIntersection(a, b);
+	Box intersection = boxIntersection(a, b);
 
 	// no intersection
-	if (result.intersection.empty)
+	if (intersection.empty)
 	{
 		return TrisectResult([a], Box(), [b]);
 	}
+
+	auto result = trisectIntersecting(a, b);
+	result.intersection = intersection;
+	return result;
+}
+
+/// Assumes that boxes have intersection. Does not write to intersection
+TrisectResult trisectIntersecting(Box a, Box b)
+{
+	TrisectResult result;
 
 	auto xTrisect = trisectAxis(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
 	auto yTrisect = trisectAxis(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);

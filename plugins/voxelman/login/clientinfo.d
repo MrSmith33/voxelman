@@ -18,9 +18,13 @@ struct ClientInfo
 	vec3 pos = START_POS;
 	vec2 heading = vec2(-90, 0);
 	DimentionId dimention;
+	/// Used to reject wrong positions from client.
+	/// Client sends positions updates with latest known key and server only accepts
+	/// positions matching this key.
+	/// After dimention change key is incremented.
+	ubyte positionKey;
 
 	int viewRadius = DEFAULT_VIEW_RADIUS;
-	WorldBox visibleBox;
 
 	bool isLoggedIn;
 	bool isSpawned;

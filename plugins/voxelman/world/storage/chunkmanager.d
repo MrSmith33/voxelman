@@ -154,31 +154,6 @@ final class ChunkManager {
 		}
 	}
 
-	private void saveChunk(ChunkWorldPos cwp)
-	{
-		assert(startChunkSave, "startChunkSave is null");
-		assert(pushLayer, "pushLayer is null");
-		assert(endChunkSave, "endChunkSave is null");
-		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
-		assert(state == ChunkState.added_loaded, "Save should only occur for added_loaded chunks");
-
-		size_t headerPos = startChunkSave();
-		// code lower does work of addCurrentSnapshotUsers too
-		ubyte numChunkLayers;
-		foreach(ubyte layerId; 0..numLayers)
-		{
-			if (auto snap = cwp in snapshots[layerId])
-			{
-				++numChunkLayers;
-				++snap.numUsers; // in case new snapshot replaces current one, we need to keep it while it is saved
-				pushLayer(ChunkLayerItem(*snap, layerId));
-			}
-		}
-		totalSnapshotUsers[cwp] = totalSnapshotUsers.get(cwp, 0) + numChunkLayers;
-
-		endChunkSave(headerPos, ChunkHeaderItem(cwp, numChunkLayers, 0));
-	}
-
 	/// Sets number of users of chunk at cwp.
 	/// If total chunk users if greater than zero, then chunk is loaded,
 	/// if equal to zero, chunk will be unloaded.
@@ -417,6 +392,31 @@ final class ChunkManager {
 
 	private void notifyLoaded(ChunkWorldPos cwp) {
 		if (onChunkLoadedHandler) onChunkLoadedHandler(cwp);
+	}
+
+	private void saveChunk(ChunkWorldPos cwp)
+	{
+		assert(startChunkSave, "startChunkSave is null");
+		assert(pushLayer, "pushLayer is null");
+		assert(endChunkSave, "endChunkSave is null");
+		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
+		assert(state == ChunkState.added_loaded, "Save should only occur for added_loaded chunks");
+
+		size_t headerPos = startChunkSave();
+		// code lower does work of addCurrentSnapshotUsers too
+		ubyte numChunkLayers;
+		foreach(ubyte layerId; 0..numLayers)
+		{
+			if (auto snap = cwp in snapshots[layerId])
+			{
+				++numChunkLayers;
+				++snap.numUsers; // in case new snapshot replaces current one, we need to keep it while it is saved
+				pushLayer(ChunkLayerItem(*snap, layerId));
+			}
+		}
+		totalSnapshotUsers[cwp] = totalSnapshotUsers.get(cwp, 0) + numChunkLayers;
+
+		endChunkSave(headerPos, ChunkHeaderItem(cwp, numChunkLayers, 0));
 	}
 
 	// Puts chunk in added state requesting load if needed.

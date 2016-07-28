@@ -34,8 +34,8 @@ import test.railroad.railtool;
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new TrainsPluginClient);
-	pluginRegistry.regServerPlugin(new TrainsPluginServer);
+	pluginRegistry.regClientPlugin(new RailroadPluginClient);
+	pluginRegistry.regServerPlugin(new RailroadPluginServer);
 }
 
 
@@ -46,10 +46,10 @@ struct PlaceRailPacket
 }
 
 
-final class TrainsPluginClient : IPlugin
+final class RailroadPluginClient : IPlugin
 {
 	mixin IdAndSemverFrom!(test.railroad.plugininfo);
-	mixin TrainsPluginCommon;
+	mixin RailroadPluginCommon;
 
 	ClientWorld clientWorld;
 	GraphicsPlugin graphics;
@@ -90,10 +90,10 @@ final class TrainsPluginClient : IPlugin
 	}
 }
 
-final class TrainsPluginServer : IPlugin
+final class RailroadPluginServer : IPlugin
 {
 	mixin IdAndSemverFrom!(test.railroad.plugininfo);
-	mixin TrainsPluginCommon;
+	mixin RailroadPluginCommon;
 
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
@@ -111,8 +111,13 @@ final class TrainsPluginServer : IPlugin
 	{
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
 		RailPos railPos = packet.pos;
-		ChunkWorldPos cwp = railPos.chunkPos();
 		RailData railData = RailData(packet.data);
+		placeRail(railPos, railData);
+	}
+
+	void placeRail(RailPos railPos, RailData railData)
+	{
+		ChunkWorldPos cwp = railPos.chunkPos();
 		ushort railEntityId = blockEntityManager.getId("rail");
 
 		RailData railOnGround = getRailAt(railPos, railEntityId,
@@ -144,11 +149,10 @@ final class TrainsPluginServer : IPlugin
 
 		connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 			PlaceBlockEntityPacket(blockBox, payload));
-		//infof("Place rail %s %s", packet.pos, blockBox);
 	}
 }
 
-mixin template TrainsPluginCommon()
+mixin template RailroadPluginCommon()
 {
 	BlockEntityManager blockEntityManager;
 	override void registerResources(IResourceManagerRegistry resmanRegistry)

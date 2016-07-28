@@ -33,6 +33,7 @@ struct ClientPositionPacket
 	float[3] pos = [0, 0, 0];
 	float[2] heading = [0, 0];
 	DimentionId dimention;
+	ubyte positionKey;
 }
 
 // sent by client after receiving SessionInfoPacket

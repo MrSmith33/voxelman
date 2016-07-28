@@ -116,6 +116,32 @@ struct WorldBox
 			iota(position.z, position.z + size.z))
 			.map!((a)=>ivec4(a[0], a[1], a[2], dimention));
 	}
+
+	bool opEquals()(auto const ref WorldBox other) const
+	{
+		return box == other.box && dimention == other.dimention;
+	}
+}
+
+TrisectResult trisect4d(WorldBox a, WorldBox b)
+{
+	WorldBox intersection = worldBoxIntersection(a, b);
+
+	// no intersection
+	if (intersection.empty)
+	{
+		return TrisectResult([a], Box(), [b]);
+	}
+
+	auto result = trisectIntersecting(a, b);
+	result.intersection = intersection;
+	return result;
+}
+
+unittest
+{
+	assert(WorldBox(Box(), 0) != WorldBox(Box(), 1));
+	assert(WorldBox(Box(), 0) == WorldBox(Box(), 0));
 }
 
 WorldBox worldBoxIntersection(WorldBox a, WorldBox b)
