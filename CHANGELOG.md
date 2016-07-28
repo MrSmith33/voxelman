@@ -109,6 +109,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
+- Fix dimention change code to prevent use of stale client positions after dimention change.
 - Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - Fix app not stopping when main thread crashes.
 - Fix world save on game stop.

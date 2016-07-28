@@ -6,7 +6,6 @@
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk. Can skip uniform chunks.
 - [ ] Add configurable meshing range.
 - [ ] Remove meshes outside of mesh range.
-- [ ] Implement graphics pipeline.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
 - [ ] Autocomplete in console
@@ -17,14 +16,17 @@
 - [x] Generic Box type
 
 - [ ] Translation strings.
-- [ ] Improve calculation of modified chunks.
+
+----
+### Graphics
+- [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 
 ----
 ### Railroad
 - [ ] Separate stub meshes and read adjacent rails for advanced meshing.
 - [ ] Use stone/gravel material for rail's bottom side and for slope's side.
 - [ ] Click-and-drag rail placement.
-- [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment. 
+- [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment.
 - [x] Multiple rails per tile.
 - [x] Add mesh rotation.
 - [x] Add rail mesh based on rail type.
@@ -34,6 +36,7 @@
 
 ----
 ### STORAGE
+- [ ] Improve calculation of modified chunks.
 - [ ] BUG: In chunk manager returned pointer points inside hash table. If new write buffer is added hash table can reallocate. Do not use more than one write buffer at a time.
 Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
@@ -44,11 +47,11 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### BLOCK ENTITIES
 
+- [ ] Problems with multichunk entities with unloaded parts.
 - [x] Add block entity rendering.
 - [x] Fix write buffer retrieval. Old snapshot was copied every time, not only when WB was created.
 - [x] Use block entity mesh handlers for meshing.
 - [x] Send block entity layer to mesh workers.
-- [ ] Problems with multichunk entities with unloaded parts.
 - [x] Multichunk block entity.
 
 ----

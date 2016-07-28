@@ -141,12 +141,16 @@ public:
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
+		commandPlugin.registerCommand("cl_stop|stop", &onStopCommand);
+
 		console.messageWindow.messageHandler = &onConsoleCommand;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 	}
 
 	override void postInit() {}
+
+	void onStopCommand(CommandParams) { isRunning = false; }
 
 	void printDebug()
 	{
