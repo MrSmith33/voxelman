@@ -14,7 +14,7 @@ import core.sync.condition;
 import cbor;
 
 import voxelman.block.utils;
-import voxelman.core.chunkgen;
+import voxelman.world.gen.chunkgen;
 import voxelman.core.config;
 import voxelman.utils.compression;
 import voxelman.utils.worker;
@@ -233,6 +233,8 @@ void storageWorker(
 		if (doGen) {
 			auto worker = nextGenWorker();
 			worker.taskQueue.pushItem!ulong(cwp);
+			auto _cwp = ChunkWorldPos(cwp);
+			worker.taskQueue.pushItem!GenDelegate(generators[_cwp.w % $]);
 			worker.notify();
 		}
 		taskTime.endTaskTiming();

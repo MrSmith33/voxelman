@@ -17,15 +17,15 @@ enum HEADER_STR = "end_header";
 enum VERTEX_STR = "element vertex ";
 enum FACE_STR = "element face ";
 
-VertexPosColor[] readPlyFile(string fileName)
+Vert[] readPlyFile(Vert)(string fileName)
 {
 	import std.file : read;
 	string data = cast(string)read(fileName);
-	Mesh mesh = parsePly(data);
+	Mesh!Vert mesh = parsePly!Vert(data);
 	return unrollFaces(mesh.vertices, mesh.faces);
 }
 
-Mesh parsePly(string fileData)
+Mesh!Vert parsePly(Vert)(string fileData)
 {
 	auto lines = fileData.lineSplitter;
 
@@ -54,14 +54,14 @@ Mesh parsePly(string fileData)
 		lines.popFront;
 	}
 
-	Buffer!VertexPosColor vertices;
+	Buffer!Vert vertices;
 
 	// parse vertices
 	foreach (i; 0..numVertices)
 	{
 		auto line = lines.front;
 
-		VertexPosColor v;
+		Vert v;
 		v.x = parse!float(line); line = stripLeft(line);
 		v.y = parse!float(line); line = stripLeft(line);
 		v.z = parse!float(line); line = stripLeft(line);
@@ -94,7 +94,7 @@ Mesh parsePly(string fileData)
 		lines.popFront;
 	}
 
-	return Mesh(
+	return Mesh!Vert(
 		vertices.data,
 		Faces(faceData.data, numFaces));
 }

@@ -143,9 +143,9 @@ void makeColoredBlockMesh(ref Appender!(MeshVertex[]) output,
 			for (size_t v = 0; v!=18; v+=3)
 			{
 				output ~= MeshVertex(
-					[faces[18*i+v  ] + bx,
-					 faces[18*i+v+1] + by,
-					 faces[18*i+v+2] + bz],
+					faces[18*i+v  ] + bx,
+					faces[18*i+v+1] + by,
+					faces[18*i+v+2] + bz,
 					finalColor);
 			} // for v
 		} // if

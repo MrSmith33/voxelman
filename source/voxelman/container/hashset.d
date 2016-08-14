@@ -3,16 +3,16 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.utils.hashset;
+module voxelman.container.hashset;
 
-struct HashSet(K) {
-	private void[0][K] set;
+struct HashSet(Key) {
+	private void[0][Key] set;
 
-	void put()(auto ref K key) {
+	void put()(auto ref Key key) {
 		set[key] = (void[0]).init;
 	}
 
-	bool remove()(auto ref K key) {
+	bool remove()(auto ref Key key) {
 		return set.remove(key);
 	}
 
@@ -28,7 +28,7 @@ struct HashSet(K) {
 		return !empty;
 	}
 
-	bool opBinaryRight(string op)(auto ref K key) const if(op == "in") {
+	bool opBinaryRight(string op)(auto ref Key key) const if(op == "in") {
 		return cast(bool)(key in set);
 	}
 

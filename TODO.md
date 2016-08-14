@@ -8,21 +8,23 @@
 - [ ] Remove meshes outside of mesh range.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
-- [ ] Autocomplete in console
 - [x] fix problem with dimention change when old position confuses server and box is not updated.
 	(Use position key. Client sends key with current position. Server only accepts positions with current key. Client and server increment position key when position changes)
 - [x] Add client view radius config option.
 - [x] Fix WorldBox equality checking.
 - [x] Generic Box type
 
+----
+### UI
+- [ ] Autocomplete in console
 - [ ] Translation strings.
 
 ----
-### Graphics
+### GRAPHICS
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 
 ----
-### Railroad
+### RAILROAD
 - [ ] Separate stub meshes and read adjacent rails for advanced meshing.
 - [ ] Use stone/gravel material for rail's bottom side and for slope's side.
 - [ ] Click-and-drag rail placement.
@@ -53,6 +55,16 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 - [x] Use block entity mesh handlers for meshing.
 - [x] Send block entity layer to mesh workers.
 - [x] Multichunk block entity.
+- [x] Add block entity removing.
+- [x] Add block entity type registry.
+- [x] Send block entity layer to client.
+- [x] Add block entity code.
+- [x] Add static entity layer code.
+
+----
+### ENTITIES
+
+- [ ] Send only observed entities.
 
 ----
 ### EDITING
@@ -63,11 +75,6 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### OTHER
 
-- [x] Add block entity removing.
-- [x] Add block entity type registry.
-- [x] Send block entity layer to client.
-- [x] Add block entity code.
-- [x] Add static entity layer code.
 - [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.
 - [x] remove _saving states in chunk manager
 - [x] Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.

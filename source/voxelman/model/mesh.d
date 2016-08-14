@@ -13,9 +13,9 @@ align(1) struct VertexPosColor
 	ubyte _pad;
 }
 
-struct Mesh
+struct Mesh(V)
 {
-	VertexPosColor[] vertices;
+	V[] vertices;
 	Faces faces;
 }
 

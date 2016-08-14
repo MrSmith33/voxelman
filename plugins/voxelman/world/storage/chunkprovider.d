@@ -14,7 +14,7 @@ import core.thread : Thread;
 import dlib.math.vector;
 
 import voxelman.block.utils : BlockInfoTable;
-import voxelman.core.chunkgen;
+import voxelman.world.gen.chunkgen;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage.chunk;

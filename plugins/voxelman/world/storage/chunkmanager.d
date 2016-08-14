@@ -15,7 +15,7 @@ import voxelman.core.config;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates : ChunkWorldPos, adjacentPositions;
 import voxelman.world.storage.utils;
-import voxelman.utils.hashset;
+import voxelman.container.hashset;
 import voxelman.world.storage.chunkprovider;
 
 

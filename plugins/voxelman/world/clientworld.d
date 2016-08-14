@@ -16,7 +16,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.utils.compression;
-import voxelman.utils.hashset;
+import voxelman.container.hashset;
 
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;

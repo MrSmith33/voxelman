@@ -8,6 +8,7 @@ module test.railroad.mesh;
 import std.experimental.logger;
 import std.array : Appender;
 import dlib.math.vector;
+import gfm.integers.half;
 
 import voxelman.geometry.utils;
 
@@ -17,6 +18,8 @@ import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;
 
 import test.railroad.utils;
+
+alias hvec3 = Vector!(half, 3);
 
 void makeRailMesh(
 	Appender!(MeshVertex[])[] output,
@@ -48,7 +51,8 @@ void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
 		vec3 meshSize = vec3(meshSizes[meshIndex]);
 		foreach(v; mesh)
 		{
-			sink.put(MeshVertex((rotator(vec3(v.position), meshSize) + offset).arrayof, v.color));
+			vec3 pos = rotator(vec3(v.position), meshSize) + offset;
+			sink.put(MeshVertex(hvec3(pos).arrayof, v.color));
 		}
 	}
 }

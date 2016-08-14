@@ -16,7 +16,7 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunkmanager;
 import voxelman.utils.worker;
-import voxelman.utils.hashset;
+import voxelman.container.hashset;
 import voxelman.utils.renderutils;
 
 
