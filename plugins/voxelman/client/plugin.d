@@ -9,7 +9,7 @@ import core.thread : thread_joinAll;
 import core.time;
 import std.experimental.logger;
 
-import dlib.math.vector;
+import voxelman.math;
 import dlib.math.matrix : Matrix4f;
 import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
@@ -45,7 +45,6 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.world.storage.worldaccess;
-import voxelman.utils.math;
 import voxelman.utils.textformatter;
 
 import voxelman.client.appstatistics;

@@ -9,16 +9,12 @@ module voxelman.utils.renderutils;
 import std.experimental.logger;
 
 import derelict.opengl3.gl3;
-import dlib.math.vector;
+import voxelman.math;
+import voxelman.model.vertex;
 
 import voxelman.block.utils : Side, faces;
 
-
-align(4) struct ColoredVertex
-{
-	vec3 pos;
-	Vector!(ubyte, 3) color;
-}
+alias ColoredVertex = VertexPosColor!(float, ubyte);
 
 alias Color3ub = Vector!(ubyte, 3);
 
@@ -138,11 +134,11 @@ void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub co
 
 	for (size_t i = 0; i!=18*6; i+=3)
 	{
-		ColoredVertex v;
-		v.pos.x = faces[i]*size.x + pos.x;
-		v.pos.y = faces[i+1]*size.y + pos.y;
-		v.pos.z = faces[i+2]*size.z + pos.z;
-		v.color = color;
+		auto v = ColoredVertex(
+			faces[i  ]*size.x + pos.x,
+			faces[i+1]*size.y + pos.y,
+			faces[i+2]*size.z + pos.z,
+			color);
 		output ~= v;
 	}
 }
@@ -153,11 +149,11 @@ void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub colo
 
 	for (size_t i = 0; i!=12*2*3; i+=3)
 	{
-		ColoredVertex v;
-		v.pos.x = cubeLines[i]*size.x + pos.x;
-		v.pos.y = cubeLines[i+1]*size.y + pos.y;
-		v.pos.z = cubeLines[i+2]*size.z + pos.z;
-		v.color = color;
+		auto v = ColoredVertex(
+			cubeLines[i  ]*size.x + pos.x,
+			cubeLines[i+1]*size.y + pos.y,
+			cubeLines[i+2]*size.z + pos.z,
+			color);
 		output ~= v;
 	}
 }
@@ -168,11 +164,11 @@ void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, C
 
 	for (size_t i = side * 18; i!=side*18+18; i+=3)
 	{
-		ColoredVertex v;
-		v.pos.x = faces[i]*size.x + pos.x;
-		v.pos.y = faces[i+1]*size.y + pos.y;
-		v.pos.z = faces[i+2]*size.z + pos.z;
-		v.color = color;
+		auto v = ColoredVertex(
+			faces[i  ]*size.x + pos.x,
+			faces[i+1]*size.y + pos.y,
+			faces[i+2]*size.z + pos.z,
+			color);
 		output ~= v;
 	}
 }
@@ -183,11 +179,11 @@ void putLineSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Col
 
 	for (size_t i = side * 24; i!=side*24+24; i+=3)
 	{
-		ColoredVertex v;
-		v.pos.x = cubeLineSides[i]*size.x + pos.x;
-		v.pos.y = cubeLineSides[i+1]*size.y + pos.y;
-		v.pos.z = cubeLineSides[i+2]*size.z + pos.z;
-		v.color = color;
+		auto v = ColoredVertex(
+			cubeLineSides[i  ]*size.x + pos.x,
+			cubeLineSides[i+1]*size.y + pos.y,
+			cubeLineSides[i+2]*size.z + pos.z,
+			color);
 		output ~= v;
 	}
 }

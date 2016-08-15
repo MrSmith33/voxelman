@@ -7,8 +7,8 @@ module voxelman.block.utils;
 
 import std.experimental.logger;
 import std.array : Appender;
-import dlib.math.vector : vec3, ivec3;
 
+import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunk;

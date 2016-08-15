@@ -23,6 +23,7 @@ shared struct Worker
 	bool running = true;
 	SharedQueue taskQueue;
 	SharedQueue resultQueue;
+	// also notified on stop
 	Semaphore workAvaliable;
 
 	// for owner
@@ -59,6 +60,10 @@ shared struct Worker
 	}
 
 	// for worker
+	void waitForNotify() shared const {
+		(cast(Semaphore)workAvaliable).wait();
+	}
+
 	bool needsToRun() shared @property {
 		return atomicLoad!(MemoryOrder.acq)(running);
 	}

@@ -6,8 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.worldbox;
 
 import std.experimental.logger;
-import std.math : floor;
-import dlib.math.vector;
+import voxelman.math;
 
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;

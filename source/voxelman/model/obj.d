@@ -9,7 +9,7 @@ import std.algorithm : splitter, startsWith;
 import std.conv : to;
 import std.string : lineSplitter, stripLeft;
 
-import dlib.math.vector : Vector;
+import voxelman.math;
 
 import voxelman.container.buffer : Buffer;
 import voxelman.model.utils : unrollFaces;

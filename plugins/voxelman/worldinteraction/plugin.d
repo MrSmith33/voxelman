@@ -11,6 +11,7 @@ import core.time;
 import std.datetime : StopWatch;
 
 import pluginlib;
+import voxelman.math;
 import voxelman.core.config;
 import voxelman.utils.trace : traceRay;
 import voxelman.block.utils;

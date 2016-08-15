@@ -14,7 +14,8 @@ import core.sync.condition;
 import cbor;
 
 import voxelman.block.utils;
-import voxelman.world.gen.chunkgen;
+import voxelman.world.gen.generators;
+import voxelman.world.gen.utils;
 import voxelman.core.config;
 import voxelman.utils.compression;
 import voxelman.utils.worker;

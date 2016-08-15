@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.utils.trace;
 
 import std.math : floor, abs;
-import dlib.math.vector;
+import voxelman.math;
 import voxelman.utils.renderutils : Batch;
 import voxelman.block.utils : sideFromNormal;
 

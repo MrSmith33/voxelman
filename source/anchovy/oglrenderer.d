@@ -9,7 +9,7 @@ module anchovy.oglrenderer;
 import derelict.opengl3.gl3;
 
 
-import dlib.math.vector;
+import voxelman.math;
 import anchovy.irenderer;
 import anchovy.iwindow;
 import anchovy.shaderprogram;

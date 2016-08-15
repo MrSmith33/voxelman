@@ -9,6 +9,7 @@ import std.experimental.logger;
 import std.algorithm : clamp;
 import netlib;
 import pluginlib;
+import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.utils.textformatter;
 

@@ -13,6 +13,7 @@ import core.atomic : atomicStore, atomicLoad;
 import cbor;
 import netlib;
 import pluginlib;
+import voxelman.math;
 
 import voxelman.core.config;
 import voxelman.core.events;

@@ -9,6 +9,7 @@ import std.experimental.logger;
 import std.array : Appender;
 
 import pluginlib;
+import voxelman.math;
 
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;

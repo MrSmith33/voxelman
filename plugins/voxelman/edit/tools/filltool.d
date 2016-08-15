@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.edit.tools.filltool;
 
+import voxelman.math;
 import voxelman.core.config;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;

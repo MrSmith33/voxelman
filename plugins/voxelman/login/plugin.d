@@ -8,7 +8,7 @@ module voxelman.login.plugin;
 import std.experimental.logger;
 import netlib;
 import pluginlib;
-import dlib.math.vector : vec2, vec3;
+import voxelman.math;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -124,8 +124,6 @@ public:
 
 	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)
 	{
-		import voxelman.utils.math : nansToZero;
-
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
 		//tracef("Received ClientPositionPacket(%s, %s, %s, %s)",
 		//	packet.pos, packet.heading, packet.dimention, packet.positionKey);

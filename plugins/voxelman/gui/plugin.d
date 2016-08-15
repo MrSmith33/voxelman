@@ -8,7 +8,7 @@ module voxelman.gui.plugin;
 
 import std.experimental.logger;
 import std.string : format;
-import dlib.math.vector;
+import voxelman.math;
 
 import anchovy.glfwwindow;
 import anchovy.input;

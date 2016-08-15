@@ -8,7 +8,7 @@ module voxelman.graphics.plugin;
 
 import std.experimental.logger;
 import derelict.opengl3.gl3;
-import dlib.math.vector;
+import voxelman.math;
 import dlib.math.matrix;
 
 import pluginlib;

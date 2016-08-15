@@ -6,11 +6,8 @@ Authors: Andrey Penechko.
 
 module voxelman.core.chunkmesh;
 
-import core.atomic : atomicLoad, atomicOp;
-import std.concurrency : thisTid;
-
-import dlib.math.vector;
-import gfm.integers.half;
+import voxelman.math;
+import voxelman.model.vertex;
 import derelict.opengl3.gl3;
 import voxelman.core.config : DimentionId;
 import voxelman.utils.renderutils;
@@ -92,61 +89,8 @@ struct ChunkMesh
 
 	ulong numVertexes() {return data.length;}
 	ulong numTris() {return data.length/3;}
-	ulong dataBytes() { return data.length * MeshVertex.Size; }
+	ulong dataBytes() { return data.length * MeshVertex.sizeof; }
 }
 
-align(1) struct MeshVertex
-{
-	align(1):
-	alias PosType = half;
-	enum PositionSize = position.sizeof;
-	enum ColorSize = color.sizeof;
-	enum Size = PositionSize + ColorSize + 1;
+alias MeshVertex = VertexPosColor!(float, ubyte);
 
-	union
-	{
-		struct {
-			PosType[3] position;
-			ubyte[3] color;
-		}
-		struct {
-			PosType x;
-			PosType y;
-			PosType z;
-			ubyte r;
-			ubyte g;
-			ubyte b;
-		}
-	}
-	ubyte _pad;
-
-	this(T)(T x, T y, T z, ubyte[3] color)
-	{
-		position = [cast(PosType)x, cast(PosType)y, cast(PosType)z];
-		this.color = color;
-	}
-
-	this(PosType[3] p, ubyte[3] color)
-	{
-		position = p;
-		this.color = color;
-	}
-
-	static void setAttributes() {
-		glEnableVertexAttribArray(0);
-		glEnableVertexAttribArray(1);
-		// positions
-		glVertexAttribPointer(0, 3, GL_HALF_FLOAT, GL_FALSE, Size, null);
-		// color
-		glVertexAttribPointer(1, 3, GL_UNSIGNED_BYTE, GL_TRUE, Size, cast(void*)(PositionSize));
-	}
-
-	ColoredVertex toColoredVertex()
-	{
-		return *cast(ColoredVertex*)&this;
-	}
-
-	alias toColoredVertex this;
-}
-
-static assert(MeshVertex.sizeof == MeshVertex.Size);

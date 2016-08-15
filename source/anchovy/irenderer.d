@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module anchovy.irenderer;
 
-import dlib.math.vector;
+import voxelman.math;
 import anchovy.texture;
 import anchovy.shaderprogram;
 

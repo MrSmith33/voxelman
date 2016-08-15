@@ -7,8 +7,9 @@ module test.railroad.mesh;
 
 import std.experimental.logger;
 import std.array : Appender;
-import dlib.math.vector;
-import gfm.integers.half;
+import std.range;
+import std.conv : to;
+import voxelman.math;
 
 import voxelman.geometry.utils;
 
@@ -18,8 +19,6 @@ import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;
 
 import test.railroad.utils;
-
-alias hvec3 = Vector!(half, 3);
 
 void makeRailMesh(
 	Appender!(MeshVertex[])[] output,
@@ -32,12 +31,13 @@ void makeRailMesh(
 {
 	if (data.type == BlockEntityType.localBlockEntity && entityPos == ivec3(0,0,0))
 	{
-		putRailMesh(output[Solidity.solid], chunkPos, RailData(data));
+		putRailMesh!MeshVertex(output[Solidity.solid], chunkPos, RailData(data));
 	}
 }
 
-void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
+void putRailMesh(Vert, Sink)(ref Sink sink, ivec3 chunkPos, RailData data)
 {
+	alias Pos = typeof(Vert.position);
 	ivec3 tilePos = railTilePos(chunkPos);
 	auto chunkPosF = vec3(tilePos);
 
@@ -52,7 +52,7 @@ void putRailMesh(S)(ref S sink, ivec3 chunkPos, RailData data)
 		foreach(v; mesh)
 		{
 			vec3 pos = rotator(vec3(v.position), meshSize) + offset;
-			sink.put(MeshVertex(hvec3(pos).arrayof, v.color));
+			sink.put(Vert(Pos(pos), v.color));
 		}
 	}
 }

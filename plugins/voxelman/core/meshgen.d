@@ -9,18 +9,18 @@ import std.experimental.logger;
 import std.array : Appender;
 import std.conv : to;
 import core.exception : Throwable;
-import core.sync.semaphore;
 
+import voxelman.math;
 
-import voxelman.core.chunkmesh;
 import voxelman.block.plugin;
-import voxelman.block.utils;
 import voxelman.blockentity.plugin;
 
+import voxelman.block.utils;
+import voxelman.core.chunkmesh;
 import voxelman.core.config;
+import voxelman.utils.worker;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
-import voxelman.utils.worker;
 
 
 enum MeshGenTaskType : ubyte
@@ -43,7 +43,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 	{
 		while (workerInfo.needsToRun)
 		{
-			(cast(Semaphore)workerInfo.workAvaliable).wait();
+			workerInfo.waitForNotify();
 
 			// receive
 			//   MeshGenTaskHeader taskHeader;

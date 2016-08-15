@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module anchovy.iwindow;
 
-import dlib.math.vector;
+import voxelman.math;
 import anchovy.signal;
 
 abstract class IWindow

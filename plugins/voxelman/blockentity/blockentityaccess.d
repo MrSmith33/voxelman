@@ -7,6 +7,7 @@ module voxelman.blockentity.blockentityaccess;
 
 import std.experimental.logger;
 import std.string;
+import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.block.utils;

@@ -5,8 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.core.config;
 
+import voxelman.math;
 public import voxelman.globalconfig;
-public import dlib.math.vector : vec3, ivec3, ivec4, uvec2, uvec3;
 
 alias BlockId = ushort;
 alias TimestampType = uint;

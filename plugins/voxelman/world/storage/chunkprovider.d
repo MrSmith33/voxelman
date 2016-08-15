@@ -8,15 +8,15 @@ module voxelman.world.storage.chunkprovider;
 import std.experimental.logger;
 import core.sync.condition;
 import core.atomic;
-import std.concurrency : Tid, spawn;
 import core.thread : Thread;
 
-import dlib.math.vector;
+import voxelman.math;
 
 import voxelman.block.utils : BlockInfoTable;
-import voxelman.world.gen.chunkgen;
 import voxelman.core.config;
 import voxelman.utils.worker;
+import voxelman.world.gen.utils;
+import voxelman.world.gen.worker;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.storageworker;

@@ -16,7 +16,7 @@ import std.stdio;
 import std.string : format, fromStringz;
 import std.typecons : Flag, Yes, No;
 
-import dlib.math.vector;
+import voxelman.math;
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
 import derelict.opengl3.gl3;

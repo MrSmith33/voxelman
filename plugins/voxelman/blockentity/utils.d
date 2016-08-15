@@ -7,7 +7,7 @@ module voxelman.blockentity.utils;
 
 import std.experimental.logger;
 import std.array : Appender;
-import dlib.math.vector;
+import voxelman.math;
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;

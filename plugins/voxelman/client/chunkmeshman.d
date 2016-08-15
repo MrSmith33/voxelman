@@ -7,6 +7,7 @@ module voxelman.client.chunkmeshman;
 
 import std.experimental.logger;
 
+import voxelman.math;
 import voxelman.block.utils;
 import voxelman.blockentity.utils;
 import voxelman.core.chunkmesh;
@@ -318,7 +319,7 @@ struct ChunkMeshMan
 				unloadChunkSubmesh(cwp, i);
 				continue;
 			}
-			totalMeshDataBytes += meshData.length * MeshVertex.Size;
+			totalMeshDataBytes += meshData.length * MeshVertex.sizeof;
 			auto mesh = cwp in chunkMeshes[i];
 			if (mesh)
 			{

@@ -16,7 +16,7 @@ import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 
-import voxelman.utils.math;
+import voxelman.math;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
 
@@ -77,7 +77,7 @@ final class RailTool : ITool
 			auto triBuffer = Buffer!ColoredVertex(graphics.debugBatch.triBuffer,
 				graphics.debugBatch.triBuffer.length);
 
-			putRailMesh(triBuffer, box.position, railData);
+			putRailMesh!ColoredVertex(triBuffer, box.position, railData);
 
 			graphics.debugBatch.triBuffer = triBuffer.data;
 

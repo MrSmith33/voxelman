@@ -8,7 +8,7 @@ module voxelman.container.hashmap;
 import std.experimental.logger;
 import std.stdio;
 import std.string;
-import voxelman.utils.math : nextPOT;
+import voxelman.math : nextPOT;
 
 struct HashMap(Key, Value, Key nullKey = Key.max)
 {

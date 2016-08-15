@@ -21,7 +21,7 @@ import voxelman.worldinteraction.plugin;
 import voxelman.blockentity.blockentityaccess;
 
 import voxelman.block.utils;
-import voxelman.utils.math;
+import voxelman.math;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
 

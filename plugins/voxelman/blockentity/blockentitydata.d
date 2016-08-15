@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.blockentity.blockentitydata;
 
-import dlib.math.vector;
+import voxelman.math;
 
 enum BlockEntityType : ubyte
 {

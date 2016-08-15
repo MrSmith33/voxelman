@@ -5,9 +5,9 @@ Authors: Andrey Penechko.
 */
 module test.railroad.utils;
 
+import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.geometry.utils;
-import voxelman.utils.math;
 import voxelman.block.utils;
 import voxelman.blockentity.blockentitydata;
 import voxelman.blockentity.blockentityaccess;

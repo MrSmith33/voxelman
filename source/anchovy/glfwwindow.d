@@ -11,7 +11,7 @@ import std.string : toStringz, fromStringz, format;
 
 import derelict.glfw3.glfw3;
 import derelict.opengl3.gl3;
-import dlib.math.vector;
+import voxelman.math;
 import anchovy.iwindow : IWindow;
 
 class GlfwWindow : IWindow

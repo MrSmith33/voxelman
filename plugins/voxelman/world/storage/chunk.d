@@ -11,7 +11,7 @@ import std.string : format;
 import std.typecons : Nullable;
 
 import cbor;
-import dlib.math.vector;
+import voxelman.math;
 import voxelman.geometry.box;
 
 import voxelman.core.config;

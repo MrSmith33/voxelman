@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.core.packets;
 
 import netlib.connection;
-import dlib.math.vector;
+import voxelman.math;
 
 void registerPackets(Connection c)
 {

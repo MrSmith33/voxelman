@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.chunkobservermanager;
 
 import std.experimental.logger;
-import dlib.math.vector : ivec3;
+import voxelman.math;
 import netlib.connection : ClientId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect4d, calcBox;

@@ -5,14 +5,6 @@ Authors: Andrey Penechko.
 */
 module voxelman.model.mesh;
 
-align(1) struct VertexPosColor
-{
-	align(1):
-	float x, y, z;
-	ubyte r, g, b;
-	ubyte _pad;
-}
-
 struct Mesh(V)
 {
 	V[] vertices;

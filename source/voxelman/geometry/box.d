@@ -7,7 +7,7 @@ module voxelman.geometry.box;
 
 import std.algorithm : alg_min = min, alg_max = max;
 import std.range : chain, only;
-import dlib.math.vector;
+import voxelman.math;
 
 Box boxFromCorners(ivec3 a, ivec3 b)
 {

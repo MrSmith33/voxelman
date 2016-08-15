@@ -8,7 +8,7 @@ module voxelman.movement.plugin;
 
 import std.experimental.logger;
 
-import dlib.math.vector;
+import voxelman.math;
 
 import pluginlib;
 import voxelman.core.events;

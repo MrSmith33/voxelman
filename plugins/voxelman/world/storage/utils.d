@@ -8,8 +8,8 @@ module voxelman.world.storage.utils;
 import std.experimental.logger;
 import std.math : floor;
 import std.range : chain, only;
-import dlib.math.vector;
 
+import voxelman.math;
 import voxelman.core.config;
 
 size_t manhattanDist(ivec3 position, ivec3 other)

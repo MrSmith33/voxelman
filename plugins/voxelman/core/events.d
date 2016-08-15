@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.core.events;
 
 import anchovy.irenderer;
-import dlib.math.vector;
+import voxelman.math;
 
 struct GameStartEvent {}
 struct GameStopEvent {}

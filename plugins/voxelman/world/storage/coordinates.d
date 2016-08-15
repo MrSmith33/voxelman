@@ -7,7 +7,7 @@ module voxelman.world.storage.coordinates;
 
 import voxelman.core.config;
 import voxelman.world.storage.utils;
-import voxelman.utils.math;
+import voxelman.math;
 public import voxelman.core.config : DimentionId;
 
 ivec3 blockToChunkPosition(ivec3 blockPos)
