@@ -6,10 +6,10 @@ Authors: Andrey Penechko.
 module voxelman.core.meshgen;
 
 import std.experimental.logger;
-import std.array : Appender;
 import std.conv : to;
 import core.exception : Throwable;
 
+import voxelman.container.buffer;
 import voxelman.math;
 
 import voxelman.block.plugin;
@@ -102,7 +102,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 	ChunkLayerItem[7] entityLayers, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
-	Appender!(MeshVertex[])[3] geometry; // 2 - solid, 1 - semiTransparent
+	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
 
 	foreach (layer; blockLayers)
 		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");

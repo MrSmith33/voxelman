@@ -28,14 +28,14 @@ struct Buffer(T)
 
 	void put(T[] items ...)
 	{
-		assumeCapacity(items.length);
+		reserve(items.length);
 		buf[length..length+items.length] = items;
 		length += items.length;
 	}
 
 	void put(T[] items)
 	{
-		assumeCapacity(items.length);
+		reserve(items.length);
 		buf[length..length+items.length] = items;
 		length += items.length;
 	}
@@ -48,8 +48,7 @@ struct Buffer(T)
 		length = 0;
 	}
 
-	alias reserve = assumeCapacity;
-	void assumeCapacity(size_t items)
+	void reserve(size_t items)
 	{
 		if (buf.length - length < items)
 		{

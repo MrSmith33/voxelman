@@ -6,9 +6,9 @@ Authors: Andrey Penechko.
 module test.railroad.mesh;
 
 import std.experimental.logger;
-import std.array : Appender;
 import std.range;
 import std.conv : to;
+import voxelman.container.buffer;
 import voxelman.math;
 
 import voxelman.geometry.utils;
@@ -21,7 +21,7 @@ import voxelman.blockentity.blockentitydata;
 import test.railroad.utils;
 
 void makeRailMesh(
-	Appender!(MeshVertex[])[] output,
+	Buffer!MeshVertex[] output,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,

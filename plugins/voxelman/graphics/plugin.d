@@ -8,6 +8,7 @@ module voxelman.graphics.plugin;
 
 import std.experimental.logger;
 import derelict.opengl3.gl3;
+import voxelman.container.buffer;
 import voxelman.math;
 import dlib.math.matrix;
 
@@ -217,7 +218,7 @@ public:
 
 private:
 
-	void drawBuffer(ref ColoredVertex[] buffer, uint mode)
+	void drawBuffer(ref Buffer!ColoredVertex buffer, uint mode)
 	{
 		if (buffer.length == 0) return;
 
@@ -226,7 +227,7 @@ private:
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, cast(const float*)camera.perspective.arrayof);
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.buf.ptr, GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		// positions

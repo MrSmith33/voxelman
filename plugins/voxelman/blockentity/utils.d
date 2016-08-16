@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.blockentity.utils;
 
 import std.experimental.logger;
-import std.array : Appender;
+import voxelman.container.buffer;
 import voxelman.math;
 import voxelman.block.utils;
 import voxelman.core.config;
@@ -37,7 +37,7 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 
 
 alias BlockEntityMeshhandler = void function(
-	Appender!(MeshVertex[])[] output,
+	Buffer!MeshVertex[] output,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,
@@ -54,7 +54,7 @@ WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 }
 
 void nullBlockEntityMeshhandler(
-	Appender!(MeshVertex[])[] output, BlockEntityData data,
+	Buffer!MeshVertex[] output, BlockEntityData data,
 	ubyte[3] color, ubyte sides, //ivec3 worldPos,
 	ivec3 chunkPos, ivec3 entityPos) {}
 

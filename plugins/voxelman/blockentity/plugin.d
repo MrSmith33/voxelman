@@ -6,9 +6,9 @@ Authors: Andrey Penechko.
 module voxelman.blockentity.plugin;
 
 import std.experimental.logger;
-import std.array : Appender;
 
 import pluginlib;
+import voxelman.container.buffer;
 import voxelman.math;
 
 import derelict.imgui.imgui;
@@ -191,7 +191,7 @@ mixin template BlockEntityCommon()
 }
 
 void multichunkMeshHandler(
-	Appender!(MeshVertex[])[] output,
+	Buffer!MeshVertex[] output,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,

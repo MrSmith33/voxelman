@@ -74,12 +74,7 @@ final class RailTool : ITool
 			graphics.debugBatch.putCube(vec3(box.position) - cursorOffset,
 				vec3(box.size) + cursorOffset, Colors.green, false);
 
-			auto triBuffer = Buffer!ColoredVertex(graphics.debugBatch.triBuffer,
-				graphics.debugBatch.triBuffer.length);
-
-			putRailMesh!ColoredVertex(triBuffer, box.position, railData);
-
-			graphics.debugBatch.triBuffer = triBuffer.data;
+			putRailMesh!ColoredVertex(graphics.debugBatch.triBuffer, box.position, railData);
 
 			import derelict.imgui.imgui;
 			import voxelman.utils.textformatter;

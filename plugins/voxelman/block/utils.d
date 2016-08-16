@@ -6,8 +6,8 @@ Authors: Andrey Penechko.
 module voxelman.block.utils;
 
 import std.experimental.logger;
-import std.array : Appender;
 
+import voxelman.container.buffer;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
@@ -112,9 +112,9 @@ Side sideFromNormal(ivec3 normal)
 	return Side.north;
 }
 
-void makeNullMesh(ref Appender!(MeshVertex[]), ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
+void makeNullMesh(ref Buffer!MeshVertex, ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
 
-void makeColoredBlockMesh(ref Appender!(MeshVertex[]) output,
+void makeColoredBlockMesh(ref Buffer!MeshVertex output,
 	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides)
 {
 	import std.random;
@@ -142,11 +142,11 @@ void makeColoredBlockMesh(ref Appender!(MeshVertex[]) output,
 				cast(ubyte)(shadowMultipliers[i] * b)];
 			for (size_t v = 0; v!=18; v+=3)
 			{
-				output ~= MeshVertex(
+				output.put(MeshVertex(
 					faces[18*i+v  ] + bx,
 					faces[18*i+v+1] + by,
 					faces[18*i+v+2] + bz,
-					finalColor);
+					finalColor));
 			} // for v
 		} // if
 		flag <<= 1;
@@ -161,7 +161,7 @@ ushort packColor(ubyte r, ubyte g, ubyte b) {
 }
 
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
-alias Meshhandler = void function(ref Appender!(MeshVertex[]) output,
+alias Meshhandler = void function(ref Buffer!MeshVertex output,
 	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
 
 // solidity number increases with solidity

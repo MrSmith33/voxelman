@@ -9,6 +9,7 @@ module voxelman.utils.renderutils;
 import std.experimental.logger;
 
 import derelict.opengl3.gl3;
+import voxelman.container.buffer;
 import voxelman.math;
 import voxelman.model.vertex;
 
@@ -41,9 +42,9 @@ Colors.magenta, Colors.yellow
 
 struct Batch
 {
-	ColoredVertex[] triBuffer;
-	ColoredVertex[] lineBuffer;
-	ColoredVertex[] pointBuffer;
+	Buffer!ColoredVertex triBuffer;
+	Buffer!ColoredVertex lineBuffer;
+	Buffer!ColoredVertex pointBuffer;
 
 	void putCube(vec3 pos, vec3 size, Color3ub color, bool fill)
 	{
@@ -63,19 +64,14 @@ struct Batch
 
 	void putLine(vec3 start, vec3 end, Color3ub color)
 	{
-		if (lineBuffer.capacity - lineBuffer.length < 2)
-			lineBuffer.reserve(lineBuffer.capacity + 1024);
-
-		lineBuffer ~= ColoredVertex(start, color);
-		lineBuffer ~= ColoredVertex(end, color);
+		lineBuffer.put(
+			ColoredVertex(start, color),
+			ColoredVertex(end, color));
 	}
 
 	void putPoint(vec3 pos, Color3ub color)
 	{
-		if (pointBuffer.capacity - pointBuffer.length < 1)
-			pointBuffer.reserve(pointBuffer.capacity + 1024);
-
-		pointBuffer ~= ColoredVertex(pos, color);
+		pointBuffer.put(ColoredVertex(pos, color));
 	}
 
 	void put3dGrid(vec3 pos, ivec3 count, vec3 offset, Color3ub color)
@@ -116,19 +112,13 @@ struct Batch
 
 	void reset()
 	{
-		resetBuffer(triBuffer);
-		resetBuffer(lineBuffer);
-		resetBuffer(pointBuffer);
+		triBuffer.clear();
+		lineBuffer.clear();
+		pointBuffer.clear();
 	}
 }
 
-void resetBuffer(ref ColoredVertex[] buffer)
-{
-	buffer.length = 0;
-	assumeSafeAppend(buffer);
-}
-
-void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub color)
+void putFilledBlock(ref Buffer!ColoredVertex output, vec3 pos, vec3 size, Color3ub color)
 {
 	output.reserve(6 * 6); // 6 faces, 6 points per edge
 
@@ -139,11 +129,11 @@ void putFilledBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub co
 			faces[i+1]*size.y + pos.y,
 			faces[i+2]*size.z + pos.z,
 			color);
-		output ~= v;
+		output.put(v);
 	}
 }
 
-void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub color)
+void putLineBlock(ref Buffer!ColoredVertex output, vec3 pos, vec3 size, Color3ub color)
 {
 	output.reserve(12 * 2); // 12 edges, 2 points per edge
 
@@ -154,11 +144,11 @@ void putLineBlock(ref ColoredVertex[] output, vec3 pos, vec3 size, Color3ub colo
 			cubeLines[i+1]*size.y + pos.y,
 			cubeLines[i+2]*size.z + pos.z,
 			color);
-		output ~= v;
+		output.put(v);
 	}
 }
 
-void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Color3ub color)
+void putFilledSide(ref Buffer!ColoredVertex output, vec3 pos, vec3 size, Side side, Color3ub color)
 {
 	output.reserve(6);
 
@@ -169,13 +159,13 @@ void putFilledSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, C
 			faces[i+1]*size.y + pos.y,
 			faces[i+2]*size.z + pos.z,
 			color);
-		output ~= v;
+		output.put(v);
 	}
 }
 
-void putLineSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Color3ub color)
+void putLineSide(ref Buffer!ColoredVertex output, vec3 pos, vec3 size, Side side, Color3ub color)
 {
-	output.reserve(6);
+	output.reserve(8); // 4 edges, 2 points per edge
 
 	for (size_t i = side * 24; i!=side*24+24; i+=3)
 	{
@@ -184,7 +174,7 @@ void putLineSide(ref ColoredVertex[] output, vec3 pos, vec3 size, Side side, Col
 			cubeLineSides[i+1]*size.y + pos.y,
 			cubeLineSides[i+2]*size.z + pos.z,
 			color);
-		output ~= v;
+		output.put(v);
 	}
 }
 

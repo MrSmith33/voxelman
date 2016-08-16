@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.block.plugin;
 
 import std.experimental.logger;
-import std.array : Appender, array;
+import std.array : array;
 import cbor;
 import pluginlib;
 import voxelman.core.config : BlockId;
