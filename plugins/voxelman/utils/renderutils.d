@@ -198,7 +198,7 @@ immutable ubyte[] cubeLines =
 
 immutable ubyte[] cubeLineSides =
 [
-	0, 0, 0, // north
+	0, 0, 0, // zneg
 	1, 0, 0,
 	0, 1, 0,
 	1, 1, 0,
@@ -207,7 +207,7 @@ immutable ubyte[] cubeLineSides =
 	1, 0, 0,
 	1, 1, 0,
 
-	0, 0, 1, // south
+	0, 0, 1, // zpos
 	1, 0, 1,
 	0, 1, 1,
 	1, 1, 1,
@@ -216,7 +216,7 @@ immutable ubyte[] cubeLineSides =
 	1, 0, 1,
 	1, 1, 1,
 
-	1, 0, 0, // east
+	1, 0, 0, // xpos
 	1, 0, 1,
 	1, 1, 0,
 	1, 1, 1,
@@ -225,7 +225,7 @@ immutable ubyte[] cubeLineSides =
 	1, 0, 1,
 	1, 1, 1,
 
-	0, 0, 0, // west
+	0, 0, 0, // xneg
 	0, 0, 1,
 	0, 1, 0,
 	0, 1, 1,
@@ -234,7 +234,7 @@ immutable ubyte[] cubeLineSides =
 	0, 0, 1,
 	0, 1, 1,
 
-	1, 1, 1, // top
+	1, 1, 1, // ypos
 	0, 1, 1,
 	1, 1, 0,
 	0, 1, 0,
@@ -243,7 +243,7 @@ immutable ubyte[] cubeLineSides =
 	0, 1, 1,
 	0, 1, 0,
 
-	1, 0, 1, // bottom
+	1, 0, 1, // yneg
 	0, 0, 1,
 	1, 0, 0,
 	0, 0, 0,

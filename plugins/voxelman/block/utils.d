@@ -17,47 +17,47 @@ import voxelman.core.chunkmesh;
 
 enum Side : ubyte
 {
-	north	= 0,
-	south	= 1,
+	zneg = 0,
+	zpos = 1,
 
-	east	= 2,
-	west	= 3,
+	xpos = 2,
+	xneg = 3,
 
-	top		= 4,
-	bottom	= 5,
+	ypos = 4,
+	yneg = 5,
 }
 
 enum SideMask : ubyte
 {
-	north	= 0b_00_0001,
-	south	= 0b_00_0010,
+	zneg = 0b_00_0001,
+	zpos = 0b_00_0010,
 
-	east	= 0b_00_0100,
-	west	= 0b_00_1000,
+	xpos = 0b_00_0100,
+	xneg = 0b_00_1000,
 
-	top		= 0b_01_0000,
-	bottom	= 0b_10_0000,
+	ypos = 0b_01_0000,
+	yneg = 0b_10_0000,
 }
 
 enum MetadataSideMask : ushort
 {
-	north	= 0b_11,
-	south	= 0b_11_00,
+	zneg = 0b_11,
+	zpos = 0b_11_00,
 
-	east	= 0b_11_00_00,
-	west	= 0b_11_00_00_00,
+	xpos = 0b_11_00_00,
+	xneg = 0b_11_00_00_00,
 
-	top		= 0b_11_00_00_00_00,
-	bottom	= 0b_11_00_00_00_00_00,
+	ypos = 0b_11_00_00_00_00,
+	yneg = 0b_11_00_00_00_00_00,
 }
 
 immutable Side[6] oppSide =
-[Side.south,
- Side.north,
- Side.west,
- Side.east,
- Side.bottom,
- Side.top];
+[Side.zpos,
+ Side.zneg,
+ Side.xneg,
+ Side.xpos,
+ Side.yneg,
+ Side.ypos];
 
 immutable byte[3][6] sideOffsets = [
 	[ 0, 0,-1],
@@ -80,14 +80,14 @@ ChunkAndBlockAt chunkAndBlockAt(int x, int y, int z)
 	ubyte bx = cast(ubyte)x;
 	ubyte by = cast(ubyte)y;
 	ubyte bz = cast(ubyte)z;
-	if(x == -1) return ChunkAndBlockAt(Side.west, CHUNK_SIZE-1, by, bz);
-	else if(x == CHUNK_SIZE) return ChunkAndBlockAt(Side.east, 0, by, bz);
+	if(x == -1) return ChunkAndBlockAt(Side.xneg, CHUNK_SIZE-1, by, bz);
+	else if(x == CHUNK_SIZE) return ChunkAndBlockAt(Side.xpos, 0, by, bz);
 
-	if(y == -1) return ChunkAndBlockAt(Side.bottom, bx, CHUNK_SIZE-1, bz);
-	else if(y == CHUNK_SIZE) return ChunkAndBlockAt(Side.top, bx, 0, bz);
+	if(y == -1) return ChunkAndBlockAt(Side.yneg, bx, CHUNK_SIZE-1, bz);
+	else if(y == CHUNK_SIZE) return ChunkAndBlockAt(Side.ypos, bx, 0, bz);
 
-	if(z == -1) return ChunkAndBlockAt(Side.north, bx, by, CHUNK_SIZE-1);
-	else if(z == CHUNK_SIZE) return ChunkAndBlockAt(Side.south, bx, by, 0);
+	if(z == -1) return ChunkAndBlockAt(Side.zneg, bx, by, CHUNK_SIZE-1);
+	else if(z == CHUNK_SIZE) return ChunkAndBlockAt(Side.zpos, bx, by, 0);
 
 	return ChunkAndBlockAt(6, bx, by, bz);
 }
@@ -95,21 +95,21 @@ ChunkAndBlockAt chunkAndBlockAt(int x, int y, int z)
 Side sideFromNormal(ivec3 normal)
 {
 	if (normal.x == 1)
-		return Side.east;
+		return Side.xpos;
 	else if (normal.x == -1)
-		return Side.west;
+		return Side.xneg;
 
 	if (normal.y == 1)
-		return Side.top;
+		return Side.ypos;
 	else if (normal.y == -1)
-		return Side.bottom;
+		return Side.yneg;
 
 	if (normal.z == 1)
-		return Side.south;
+		return Side.zpos;
 	else if (normal.z == -1)
-		return Side.north;
+		return Side.zneg;
 
-	return Side.north;
+	return Side.zneg;
 }
 
 void makeNullMesh(ref Buffer!MeshVertex, ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
@@ -380,7 +380,7 @@ ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {
 	ushort flags = 0b1_00_00_00_00_00_00; // all sides are solid
 	Solidity sideSolidity = Solidity.solid;
-	foreach(index; 0..CHUNK_SIZE_SQR) // bottom
+	foreach(index; 0..CHUNK_SIZE_SQR) // yneg
 	{
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
@@ -389,70 +389,70 @@ ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 				break;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.bottom*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.yneg*2)));
 
 	sideSolidity = Solidity.solid;
-	outer_north:
+	outer_zneg:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(x; 0..CHUNK_SIZE)
 	{
-		size_t index = y*CHUNK_SIZE_SQR | x; // north
+		size_t index = y*CHUNK_SIZE_SQR | x; // zneg
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
 			sideSolidity -= 1;
 			if (sideSolidity == Solidity.transparent)
-				break outer_north;
+				break outer_zneg;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.north*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.zneg*2)));
 
 	sideSolidity = Solidity.solid;
-	outer_south:
+	outer_zpos:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(x; 0..CHUNK_SIZE)
 	{
-		size_t index = (CHUNK_SIZE-1) * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x; // south
+		size_t index = (CHUNK_SIZE-1) * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x; // zpos
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
 			sideSolidity -= 1;
 			if (sideSolidity == Solidity.transparent)
-				break outer_south;
+				break outer_zpos;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.south*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.zpos*2)));
 
 	sideSolidity = Solidity.solid;
-	outer_east:
+	outer_xpos:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(z; 0..CHUNK_SIZE)
 	{
-		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | (CHUNK_SIZE-1); // east
+		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | (CHUNK_SIZE-1); // xpos
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
 			sideSolidity -= 1;
 			if (sideSolidity == Solidity.transparent)
-				break outer_east;
+				break outer_xpos;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.east*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.xpos*2)));
 
 	sideSolidity = Solidity.solid;
-	outer_west:
+	outer_xneg:
 	foreach(y; 0..CHUNK_SIZE)
 	foreach(z; 0..CHUNK_SIZE)
 	{
-		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR; // west
+		size_t index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR; // xneg
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
 			sideSolidity -= 1;
 			if (sideSolidity == Solidity.transparent)
-				break outer_west;
+				break outer_xneg;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.west*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.xneg*2)));
 
 	sideSolidity = Solidity.solid;
-	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
+	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // ypos
 	{
 		if (sideSolidity > blockInfos[blocks[index]].solidity)
 		{
@@ -461,7 +461,7 @@ ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 				break;
 		}
 	}
-	flags = cast(ushort)(flags | (sideSolidity << (Side.top*2)));
+	flags = cast(ushort)(flags | (sideSolidity << (Side.ypos*2)));
 
 	return flags;
 }
@@ -470,37 +470,37 @@ ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 /*
 void iterateSides()
 {
-	foreach(index; 0..CHUNK_SIZE_SQR) // bottom
+	foreach(index; 0..CHUNK_SIZE_SQR) // yneg
 
-	{// north
+	{// zneg
 		ubyte z = 0;
 		foreach(y; 0..CHUNK_SIZE)
 			foreach(x; 0..CHUNK_SIZE)
 				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
 	}
 
-	{// south
+	{// zpos
 		ubyte z = CHUNK_SIZE-1;
 		foreach(y; 0..CHUNK_SIZE)
 			foreach(x; 0..CHUNK_SIZE)
 				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
 	}
 
-	{// east
+	{// xpos
 		ubyte x = CHUNK_SIZE-1;
 		foreach(y; 0..CHUNK_SIZE)
 			foreach(z; 0..CHUNK_SIZE)
 				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
 	}
 
-	{// west
+	{// xneg
 		ubyte x = 0;
 		foreach(y; 0..CHUNK_SIZE)
 			foreach(z; 0..CHUNK_SIZE)
 				index = z * CHUNK_SIZE | y*CHUNK_SIZE_SQR | x;
 	}
 
-	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // top
+	foreach(index; CHUNK_SIZE_CUBE-CHUNK_SIZE_SQR..CHUNK_SIZE_CUBE) // ypos
 }
 */
 
@@ -509,42 +509,42 @@ enum POS_SCALE = ushort.max / CHUNK_SIZE;
 // mesh for single block
 immutable ubyte[18 * 6] faces =
 [
-	0, 0, 0, // triangle 1 : begin // north
+	0, 0, 0, // triangle 1 : begin // zneg
 	1, 1, 0,
 	1, 0, 0, // triangle 1 : end
 	0, 0, 0, // triangle 2 : begin
 	0, 1, 0,
 	1, 1, 0, // triangle 2 : end
 
-	1, 0, 1, // south
+	1, 0, 1, // zpos
 	0, 1, 1,
 	0, 0, 1,
 	1, 0, 1,
 	1, 1, 1,
 	0, 1, 1,
 
-	1, 0, 0, // east
+	1, 0, 0, // xpos
 	1, 1, 1,
 	1, 0, 1,
 	1, 0, 0,
 	1, 1, 0,
 	1, 1, 1,
 
-	0, 0, 1, // west
+	0, 0, 1, // xneg
 	0, 1, 0,
 	0, 0, 0,
 	0, 0, 1,
 	0, 1, 1,
 	0, 1, 0,
 
-	1, 1, 1, // top
+	1, 1, 1, // ypos
 	0, 1, 0,
 	0, 1, 1,
 	1, 1, 1,
 	1, 1, 0,
 	0, 1, 0,
 
-	0, 0, 1, // bottom
+	0, 0, 1, // yneg
 	1, 0, 0,
 	1, 0, 1,
 	0, 0, 1,

@@ -21,8 +21,8 @@
 
 ----
 ### GRAPHICS
-- [ ] Replace arrays with Buffers in Batch.
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
+- [x] Replace arrays and Appenders with Buffers in Batch and meshing.
 - [x] Use half-floats for chunk meshes.
 - [x] Make generic vertex.
 

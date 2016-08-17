@@ -49,6 +49,9 @@ void putRailMesh(Vert, Sink)(ref Sink sink, ivec3 chunkPos, RailData data)
 		auto rotator = getCCWRotationShiftOriginFunction!vec3(rotation);
 		vec3 offset = chunkPosF + vec3(railSegmentOffsets[segment]);
 		vec3 meshSize = vec3(meshSizes[meshIndex]);
+
+		sink.reserve(mesh.length);
+
 		foreach(v; mesh)
 		{
 			vec3 pos = rotator(vec3(v.position), meshSize) + offset;

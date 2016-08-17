@@ -143,7 +143,7 @@ struct RailData
 	{
 		if (isSlope)
 		{
-			auto segment = data - SLOPE_RAIL_BIT + RailSegment.northUp;
+			auto segment = data - SLOPE_RAIL_BIT + RailSegment.znegUp;
 			ivec3 tilePos = railTilePos(bwp.xyz);
 			ivec3 railPos = tilePos + railSegmentOffsets[segment];
 			ivec3 railSize = railSegmentSizes[segment];
@@ -191,7 +191,7 @@ struct SegmentRange
 	{
 		if ((data & SLOPE_RAIL_BIT) != 0)
 		{
-			ubyte segment = cast(ubyte)(data - SLOPE_RAIL_BIT + RailSegment.northUp);
+			ubyte segment = cast(ubyte)(data - SLOPE_RAIL_BIT + RailSegment.znegUp);
 			if (auto ret = del(segment))
 				return ret;
 		}
@@ -202,7 +202,7 @@ struct SegmentRange
 			ubyte segment = cast(ubyte)bsf(data);
 			ubyte flag = cast(ubyte)(1 << segment);
 
-			while(segment <= RailSegment.eastNorth)
+			while(segment <= RailSegment.xposZneg)
 			{
 				if (flag & data)
 					if (auto ret = del(segment))
@@ -217,23 +217,23 @@ struct SegmentRange
 
 enum RailSegment
 {
-	north,
-	east,
+	zneg,
+	xpos,
 
-	westNorth,
-	westSouth,
-	eastSouth,
-	eastNorth,
+	xnegZneg,
+	xnegZpos,
+	xposZpos,
+	xposZneg,
 
-	northUp,
-	westUp,
-	southUp,
-	eastUp,
+	znegUp,
+	xnegUp,
+	zposUp,
+	xposUp,
 
-	//northDown = southUp,
-	//southDown = northUp,
-	//eastDown = westUp,
-	//westDown = eastUp,
+	//znegDown = zposUp,
+	//zposDown = znegUp,
+	//xposDown = xnegUp,
+	//xnegDown = xposUp,
 }
 
 enum SLOPE_RAIL_BIT = 0b0100_0000;
@@ -252,43 +252,43 @@ ubyte[] railSegmentData =
 	SLOPE_RAIL_BIT + 2,
 	SLOPE_RAIL_BIT + 3];
 
-enum NORTH_RAIL_SIZE = ivec3(4, 1, 8);
-enum EAST_RAIL_SIZE = ivec3(8, 1, 4);
+enum Z_RAIL_SIZE = ivec3(4, 1, 8);
+enum X_RAIL_SIZE = ivec3(8, 1, 4);
 enum DIAGONAL_RAIL_SIZE = ivec3(6, 1, 6);
 
 // [x, z]
 ivec3[] railSegmentSizes = [
-	NORTH_RAIL_SIZE, // north
-	EAST_RAIL_SIZE, // east
+	Z_RAIL_SIZE, // zneg
+	X_RAIL_SIZE, // xpos
 
-	DIAGONAL_RAIL_SIZE, // westNorth
-	DIAGONAL_RAIL_SIZE, // westSouth
-	DIAGONAL_RAIL_SIZE, // eastSouth
-	DIAGONAL_RAIL_SIZE, // eastNorth
+	DIAGONAL_RAIL_SIZE, // xnegZneg
+	DIAGONAL_RAIL_SIZE, // xnegZpos
+	DIAGONAL_RAIL_SIZE, // xposZpos
+	DIAGONAL_RAIL_SIZE, // xposZneg
 
-	NORTH_RAIL_SIZE, // northUp
-	EAST_RAIL_SIZE, // westUp
-	NORTH_RAIL_SIZE, // southUp
-	EAST_RAIL_SIZE, // eastUp
+	Z_RAIL_SIZE, // znegUp
+	X_RAIL_SIZE, // xnegUp
+	Z_RAIL_SIZE, // zposUp
+	X_RAIL_SIZE, // xposUp
 ];
 
-enum NORTH_RAIL_OFFSET = ivec3(2, 0, 0);
-enum EAST_RAIL_OFFSET = ivec3(0, 0, 2);
+enum Z_RAIL_OFFSET = ivec3(2, 0, 0);
+enum X_RAIL_OFFSET = ivec3(0, 0, 2);
 
 // [x, z]
 ivec3[] railSegmentOffsets = [
-	NORTH_RAIL_OFFSET, // north
-	EAST_RAIL_OFFSET, // east
+	Z_RAIL_OFFSET, // zneg
+	X_RAIL_OFFSET, // xpos
 
-	ivec3(0, 0, 0), // westNorth
-	ivec3(0, 0, 2), // westSouth
-	ivec3(2, 0, 2), // eastSouth
-	ivec3(2, 0, 0), // eastNorth
+	ivec3(0, 0, 0), // xnegZneg
+	ivec3(0, 0, 2), // xnegZpos
+	ivec3(2, 0, 2), // xposZpos
+	ivec3(2, 0, 0), // xposZneg
 
-	NORTH_RAIL_OFFSET, // northUp
-	EAST_RAIL_OFFSET, // westUp
-	NORTH_RAIL_OFFSET, // southUp
-	EAST_RAIL_OFFSET, // eastUp
+	Z_RAIL_OFFSET, // znegUp
+	X_RAIL_OFFSET, // xnegUp
+	Z_RAIL_OFFSET, // zposUp
+	X_RAIL_OFFSET, // xposUp
 ];
 
 
@@ -306,13 +306,14 @@ bool isSegmentSolid(ubyte segment, ivec3 blockTilePos)
 {
 	import core.bitop : bt;
 	auto bitmapId = bt(cast(size_t*)&railSegmentBottomSolidityIndex, segment);
-	ulong bitmap = railBottomSolidityBitmaps[bitmapId];
+	alias Bitmap = size_t[ulong.sizeof / size_t.sizeof];
+	Bitmap bitmap = *cast(Bitmap*)&railBottomSolidityBitmaps[bitmapId];
 	ubyte rotation = railSegmentMeshRotation[segment];
 	// Size needs to me less by 1 for correct shift
 	ivec3 rotatedPos = rotatePointShiftOriginCW!ivec3(blockTilePos, ivec3(7,0,7), rotation);
 	// Invert bit order (63 - bit num)
 	auto tileIndex = 63 - (rotatedPos.x + rotatedPos.z * RAIL_TILE_SIZE);
-	return !!bt(&bitmap, tileIndex);
+	return !!bt(bitmap.ptr, tileIndex);
 }
 
 ushort railSegmentBottomSolidityIndex = 0b0000_1111_00;

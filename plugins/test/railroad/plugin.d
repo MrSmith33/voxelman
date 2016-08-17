@@ -173,7 +173,7 @@ WorldBox railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 
 Solidity railSideSolidity(Side side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
 {
-	if (side == Side.bottom)
+	if (side == Side.yneg)
 	{
 		return RailData(data).bottomSolidity(calcBlockTilePos(chunkPos));
 	}
