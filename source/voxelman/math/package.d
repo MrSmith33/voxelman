@@ -9,5 +9,6 @@ public import gfm.integers.half;
 public import dlib.math.vector;
 public import std.math : isNaN, floor;
 public import voxelman.math.utils;
+public import voxelman.math.simplex;
 
 alias hvec3 = Vector!(half, 3);

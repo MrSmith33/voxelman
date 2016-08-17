@@ -5,9 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.gen.generators;
 
-import voxelman.math : ivec3;
+import voxelman.math : ivec3, SimplexNoise;
 
-import anchovy.simplex;
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 import voxelman.world.gen.utils;
@@ -45,8 +44,8 @@ struct Generator2d3d
 				return WATER;
 		}
 
-		float noise3d = Simplex.noise(cast(float)(chunkOffset.x+x)/NOISE_SCALE_3D,
-			cast(float)(chunkOffset.y+y)/NOISE_SCALE_3D, cast(float)(chunkOffset.z+z)/NOISE_SCALE_3D);
+		double noise3d = SimplexNoise.noise(cast(double)(chunkOffset.x+x)/NOISE_SCALE_3D,
+			cast(double)(chunkOffset.y+y)/NOISE_SCALE_3D, cast(double)(chunkOffset.z+z)/NOISE_SCALE_3D);
 		if (noise3d < NOISE_TRESHOLD_3D) return AIR;
 
 		if (height + 5 < 0)

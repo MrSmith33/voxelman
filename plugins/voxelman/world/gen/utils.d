@@ -6,8 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.gen.utils;
 
 import std.experimental.logger;
-import voxelman.math : ivec3;
-import anchovy.simplex;
+import voxelman.math : ivec3, SimplexNoise;
 
 import voxelman.block.utils;
 import voxelman.core.config;
@@ -144,17 +143,17 @@ void genChunk(Generator)(ChunkWorldPos cwp, shared(Worker)* workerInfo,
 	workerInfo.resultQueue.endMessage();
 }
 
-float noise2d(int x, int z)
+double noise2d(int x, int z)
 {
 	enum NUM_OCTAVES = 8;
 	enum DIVIDER = 50; // bigger - smoother
 	enum HEIGHT_MODIFIER = 4; // bigger - higher
 
-	float noise = 0.0;
+	double noise = 0.0;
 	foreach(i; 1..NUM_OCTAVES+1)
 	{
 		// [-1; 1]
-		noise += Simplex.noise(cast(float)x/(DIVIDER*i), cast(float)z/(DIVIDER*i))*i*HEIGHT_MODIFIER;
+		noise += SimplexNoise.noise(cast(double)x/(DIVIDER*i), cast(double)z/(DIVIDER*i))*i*HEIGHT_MODIFIER;
 	}
 
 	return noise;

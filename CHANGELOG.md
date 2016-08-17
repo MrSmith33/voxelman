@@ -61,6 +61,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Use optimized simplex noise.
 - Split Box into WorldBox and Box.
 - Rename Volume to Box.
 - Use typed mesh vertices instead of ubyte array.
