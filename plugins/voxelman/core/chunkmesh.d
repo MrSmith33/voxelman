@@ -52,7 +52,7 @@ struct ChunkMesh
 		hasBuffers = false;
 	}
 
-	private void loadBuffer()
+	void uploadBuffer()
 	{
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
@@ -78,7 +78,7 @@ struct ChunkMesh
 
 		if (isDataDirty)
 		{
-			loadBuffer();
+			uploadBuffer();
 			isDataDirty = false;
 		}
 		if (trianlges)
@@ -86,6 +86,8 @@ struct ChunkMesh
 		else
 			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());//data.length/12);
 	}
+
+	bool empty() { return data.length == 0; }
 
 	ulong numVertexes() {return data.length;}
 	ulong numTris() {return data.length/3;}

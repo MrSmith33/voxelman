@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add camera_speed and camera_boost client options.
 - Add server telemetry. Debug plugin can send variables.
 - Add chunk heightmap caching while generating world. Gives massive perf boost.
 - Add generator abstraction. Generator is fully responsible for chunk gen. More optimization opportunities. Flat generator now generates only uniform chunks. Generation function now uses utilities for metadata generation.
@@ -64,6 +65,7 @@
 - Add current frame number to update events.
 
 ### Changed
+- Dont save unmodified chunks.
 - Use optimized simplex noise.
 - Split Box into WorldBox and Box.
 - Rename Volume to Box.

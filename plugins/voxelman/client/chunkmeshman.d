@@ -38,6 +38,7 @@ struct MeshGenResult
 	MeshGenTaskType type;
 	ChunkWorldPos cwp;
 	MeshVertex[][2] meshes;
+	ChunkMesh[2] preloadedMeshes;
 }
 
 ///
@@ -149,7 +150,9 @@ struct ChunkMeshMan
 			}
 
 			// save result for later. All new meshes are loaded at once to prevent holes in geometry.
-			newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
+			auto result = MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
+			preloadMesh(result);
+			newChunkMeshes ~= result;
 
 			// Remove root, added on chunk load and gen.
 			// Data can be collected by GC if no-one is referencing it.
@@ -171,16 +174,17 @@ struct ChunkMeshMan
 		import std.algorithm : remove, SwapStrategy;
 		if (meshingPasses[0].chunksMeshed != meshingPasses[0].chunksToMesh) return;
 
-		foreach(meshResult; newChunkMeshes)
+		foreach(ref meshResult; newChunkMeshes)
 		{
 			if (meshResult.type == MeshGenTaskType.genMesh)
 			{
-				loadMeshData(meshResult.cwp, meshResult.meshes);
+				loadMeshData(meshResult);
 			}
 			else // taskHeader.type == MeshGenTaskType.unloadMesh
 			{
 				unloadChunkMesh(meshResult.cwp);
 			}
+			meshResult = MeshGenResult.init;
 		}
 		newChunkMeshes.length = 0;
 		newChunkMeshes.assumeSafeAppend();
@@ -299,52 +303,57 @@ struct ChunkMeshMan
 		return true;
 	}
 
-	void loadMeshData(ChunkWorldPos cwp, MeshVertex[][2] meshes)
+	void preloadMesh(ref MeshGenResult result)
 	{
+		ChunkWorldPos cwp = result.cwp;
+		if (!chunkManager.isChunkLoaded(cwp))
+			return;
+
+		foreach(i, meshData; result.meshes)
+		{
+			if (meshData.length == 0) continue;
+			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w, meshData);
+
+			mesh.bind;
+			mesh.uploadBuffer;
+			mesh.unbind;
+
+			result.preloadedMeshes[i] = mesh;
+		}
+	}
+
+	void loadMeshData(MeshGenResult result)
+	{
+		ChunkWorldPos cwp = result.cwp;
 		if (!chunkManager.isChunkLoaded(cwp))
 		{
 			import core.memory : GC;
 
 			version(DBG) tracef("loadMeshData %s chunk unloaded", cwp);
-			GC.free(meshes[0].ptr);
-			GC.free(meshes[1].ptr);
+			result.preloadedMeshes[0].deleteBuffers();
+			GC.free(result.preloadedMeshes[0].data.ptr);
+			result.preloadedMeshes[1].deleteBuffers();
+			GC.free(result.preloadedMeshes[1].data.ptr);
 			return;
 		}
 
 		// Attach mesh
 		bool hasMesh = false;
-		foreach(i, meshData; meshes)
+		foreach(i, chunkMesh; result.preloadedMeshes)
 		{
-			if (meshData.length == 0) {
-				unloadChunkSubmesh(cwp, i);
+			unloadChunkSubmesh(cwp, i);
+			if (chunkMesh.empty) {
 				continue;
 			}
-			totalMeshDataBytes += meshData.length * MeshVertex.sizeof;
-			auto mesh = cwp in chunkMeshes[i];
-			if (mesh)
-			{
-				assert(mesh.data);
-				totalMeshDataBytes -= mesh.dataBytes;
 
-				import core.memory : GC;
-				GC.free(mesh.data.ptr);
-
-				mesh.data = meshData;
-				mesh.isDataDirty = true;
-			}
-			else
-			{
-				chunkMeshes[i][cwp] = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w, meshData);
-			}
-
+			totalMeshDataBytes += chunkMesh.dataBytes;
+			chunkMeshes[i][cwp] = result.preloadedMeshes[i];
 			hasMesh = true;
 		}
 
 		++totalMeshedChunks;
 		if (hasMesh)
 		{
-			version(DBG) tracef("loadMeshData %s [%s %s]",
-				cwp, cast(int)(meshes[0] !is null), cast(int)(meshes[1] !is null));
 			++totalMeshes;
 		}
 		else
