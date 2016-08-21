@@ -210,47 +210,67 @@ struct BlockInfoSetter
 	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
 }
 
+void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
+{
+	regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh);
+	regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh);
+	regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
+	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
+	regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
+	regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
+	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh).solidity(Solidity.semiTransparent);
+}
+
 // Chunk metadata
 // 00 1 22_22_22_22_22_22
 // 00 - 2 bits representing chunk's minimal solidity
 // 1 - 1 bit representing if metadata is presented
 // 2 - 12 bits -- solidity of each side
 
-ushort calcChunkFullMetadata(WriteBuffer* writeBuffer, BlockInfoTable blockInfos)
+// Works only with uncompressed data.
+ushort calcChunkFullMetadata(Layer)(const ref Layer blockLayer, BlockInfoTable blockInfos)
 {
-	if (writeBuffer.isUniform) {
-		ushort sideMeta = calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
-		ushort solidityBits = calcSolidityBits(writeBuffer.getUniform!BlockId, blockInfos);
-		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
-	} else {
-		ushort sideMeta = calcChunkSideMetadata(writeBuffer.getArray!BlockId, blockInfos);
-		ushort solidityBits = calcSolidityBits(writeBuffer.getArray!BlockId, blockInfos);
-		return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
-	}
+	if (blockLayer.type == StorageType.uniform) {
+		return calcChunkFullMetadata(blockLayer.getUniform!BlockId, blockInfos);
+	} else if (blockLayer.type == StorageType.fullArray) {
+		return calcChunkFullMetadata(blockLayer.getArray!BlockId, blockInfos);
+	} else assert(false);
 }
 
-ushort calcChunkSideMetadata(WriteBuffer* writeBuffer, BlockInfoTable blockInfos)
+ushort calcChunkFullMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {
-	if (writeBuffer.isUniform) return calcChunkSideMetadata(writeBuffer.getUniform!BlockId, blockInfos);
-	else return calcChunkSideMetadata(writeBuffer.getArray!BlockId, blockInfos);
+	ushort sideMeta = calcChunkSideMetadata(blocks, blockInfos);
+	ushort solidityBits = calcSolidityBits(blocks, blockInfos);
+	return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
 }
 
+ushort calcChunkFullMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
+{
+	ushort sideMeta = calcChunkSideMetadata(uniformBlock, blockInfos);
+	ushort solidityBits = calcSolidityBits(uniformBlock, blockInfos);
+	return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
+}
+
+// ditto
+ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
+{
+	if (blockLayer.isUniform) return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
+	else return calcChunkSideMetadata(blockLayer.getArray!BlockId, blockInfos);
+}
+
+// ditto
 ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
 	if (isSomeLayer!Layer)
 {
-	if (blockLayer.type == StorageType.uniform)
-	{
+	if (blockLayer.type == StorageType.uniform) {
 		return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
-	}
-	else if (blockLayer.type == StorageType.fullArray)
-	{
+	} else if (blockLayer.type == StorageType.fullArray) {
 		BlockId[] blocks = blockLayer.getArray!BlockId;
 		return calcChunkSideMetadata(blocks, blockInfos);
-	}
-	else
-		assert(false);
+	} else assert(false);
 }
 
+// ditto
 ubyte calcSolidityBits(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
 	if (isSomeLayer!Layer)
 {

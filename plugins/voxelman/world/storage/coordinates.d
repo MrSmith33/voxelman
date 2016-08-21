@@ -179,9 +179,6 @@ struct ChunkRegionIndex
 	alias getIndex this;
 }
 
-alias Vector!(short, 4) svec4;
-alias Vector!(short, 3) svec3;
-
 // Position of chunk in world space. -int.max..int.max
 struct ChunkWorldPos
 {

@@ -68,6 +68,61 @@ struct TimeMeasurer
 	}
 }
 
+struct GenWorkerControl
+{
+	this(shared Worker[] genWorkers_)
+	{
+		genWorkers = genWorkers_;
+		queueLengths.length = genWorkers.length;
+	}
+
+	shared Worker[] genWorkers;
+
+	// last worker, we sent work to.
+	size_t lastWorker;
+	// last work item.
+	ChunkWorldPos lastCwp;
+	static struct QLen {size_t i; size_t len;}
+	QLen[] queueLengths;
+
+	// returns worker with smallest queue.
+	size_t getWorker()
+	{
+		import std.algorithm : sort;
+		foreach(i; 0..genWorkers.length)
+		{
+			queueLengths[i].i = i;
+			queueLengths[i].len = genWorkers[i].taskQueue.length;
+		}
+		sort!((a,b) => a.len < b.len)(queueLengths);// balance worker queues
+		return queueLengths[0].i;
+	}
+
+	// Sends chunks with the same x and z to the same worker.
+	// There is thread local heightmap cache.
+	void sendGenTask(ulong cwp)
+	{
+		auto _cwp = ChunkWorldPos(cwp);
+		size_t workerIndex;
+		// send task from the same chunk column
+		// to the same worker to improve cache hit rate
+		if (_cwp.x == lastCwp.x && _cwp.z == lastCwp.z)
+		{
+			workerIndex = lastWorker;
+		}
+		else
+		{
+			workerIndex = getWorker();
+		}
+		shared(Worker)* worker = &genWorkers[workerIndex];
+		worker.taskQueue.pushItem!ulong(cwp);
+		worker.taskQueue.pushItem(generators[_cwp.w % $]);
+		worker.notify();
+		lastWorker = workerIndex;
+		lastCwp = _cwp;
+	}
+}
+
 //version = DBG_OUT;
 //version = DBG_COMPR;
 void storageWorker(
@@ -96,6 +151,8 @@ void storageWorker(
 	TimeMeasurer readTime;
 	taskTime.nested = &readTime;
 	readTime.next = &workTime;
+
+	auto workerControl = GenWorkerControl(genWorkers);
 
 	void writeChunk()
 	{
@@ -148,25 +205,6 @@ void storageWorker(
 		taskTime.endTaskTiming();
 		taskTime.printTime();
 		version(DBG_OUT)infof("task save %s", header.cwp);
-	}
-
-	size_t _nextWorker;
-	immutable size_t numWorkers = genWorkers.length;
-	assert(numWorkers > 0);
-	static struct QLen {size_t i; size_t len;}
-	QLen[] queueLengths;
-	queueLengths.length = numWorkers;
-	shared(Worker)* nextGenWorker()
-	{
-		import std.algorithm : sort;
-		foreach(i; 0..numWorkers)
-		{
-			queueLengths[i].i = i;
-			queueLengths[i].len = genWorkers[i].taskQueue.length;
-		}
-		sort!((a,b) => a.len < b.len)(queueLengths);// balance worker queues
-		//_nextWorker = (_nextWorker + 1) % numWorkers;
-		return &genWorkers[queueLengths[0].i];
 	}
 
 	void readChunk()
@@ -232,11 +270,7 @@ void storageWorker(
 			doGen = true;
 		}
 		if (doGen) {
-			auto worker = nextGenWorker();
-			worker.taskQueue.pushItem!ulong(cwp);
-			auto _cwp = ChunkWorldPos(cwp);
-			worker.taskQueue.pushItem!GenDelegate(generators[_cwp.w % $]);
-			worker.notify();
+			workerControl.sendGenTask(cwp);
 		}
 		taskTime.endTaskTiming();
 		taskTime.printTime();

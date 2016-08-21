@@ -5,30 +5,37 @@ Authors: Andrey Penechko.
 */
 module voxelman.dbg.plugin;
 
+import std.experimental.logger;
 import std.array;
 import pluginlib;
 import derelict.imgui.imgui;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
+import voxelman.net.plugin;
 import voxelman.utils.textformatter;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new DebugClient);
-	pluginRegistry.regServerPlugin(new DebugServer);
-}
 
 final class DebugClient : IPlugin
 {
-	mixin DebugCommon;
+	mixin IdAndSemverFrom!(voxelman.dbg.plugininfo);
+
+	Debugger dbg;
+	NetClientPlugin connection;
+
+	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
+	{
+		registerHandler(dbg = new Debugger);
+	}
 
 	override void init(IPluginManager pluginman)
 	{
 		auto evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
+		evDispatcher.subscribeToEvent(&handleDoGuiEvent);
+		connection = pluginman.getPlugin!NetClientPlugin;
+		connection.registerPacket!TelemetryPacket(&handleTelemetryPacket);
 	}
 
-	void handlePostUpdateEvent(ref DoGuiEvent event)
+	void handleDoGuiEvent(ref DoGuiEvent event)
 	{
 		igBegin("Debug");
 		foreach(key, var; dbg.vars) {
@@ -38,6 +45,12 @@ final class DebugClient : IPlugin
 			igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
 		}
 		igEnd();
+	}
+
+	private void handleTelemetryPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacketNoDup!TelemetryPacket(packetData);
+		dbg.setVar(packet.name, packet.val);
 	}
 }
 
@@ -49,17 +62,30 @@ extern(C) float get_val(void* data, int index)
 
 final class DebugServer : IPlugin
 {
-	mixin DebugCommon;
-}
-
-mixin template DebugCommon()
-{
-	Debugger dbg;
-
 	mixin IdAndSemverFrom!(voxelman.dbg.plugininfo);
+
+	Debugger dbg;
+	NetServerPlugin connection;
+
+	override void init(IPluginManager pluginman)
+	{
+		auto evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
+		connection = pluginman.getPlugin!NetServerPlugin;
+		connection.registerPacket!TelemetryPacket();
+	}
+
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
 		registerHandler(dbg = new Debugger);
+	}
+
+	void handlePostUpdateEvent(ref PostUpdateEvent event)
+	{
+		foreach(pair; dbg.vars.byKeyValue())
+		{
+			connection.sendToAll(TelemetryPacket(pair.key, pair.value));
+		}
 	}
 }
 
@@ -112,3 +138,8 @@ final class Debugger : IResourceManager
 	}
 }
 
+struct TelemetryPacket
+{
+	string name;
+	float val;
+}

@@ -26,8 +26,7 @@ public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
 	override void preInit()
 	{
-		regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh);
-		regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh);
+		regBaseBlocks(&regBlock);
 	}
 
 	BlockInfoSetter regBlock(string name) {
@@ -40,8 +39,6 @@ public:
 mixin template BlockPluginCommonImpl()
 {
 	private BlockManager bm;
-	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
 	immutable string blockMappingKey = "voxelman.block.block_mapping";
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
@@ -51,11 +48,6 @@ mixin template BlockPluginCommonImpl()
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		bm.regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
-		bm.regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh).solidity(Solidity.semiTransparent);
 		registerResourcesImpl(resmanRegistry);
 	}
 
@@ -68,6 +60,8 @@ mixin template BlockPluginCommonImpl()
 final class BlockPluginClient : IPlugin
 {
 	mixin BlockPluginCommonImpl;
+	// IPlugin stuff
+	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
 
 	override void init(IPluginManager pluginman)
 	{
@@ -86,6 +80,8 @@ final class BlockPluginClient : IPlugin
 final class BlockPluginServer : IPlugin
 {
 	mixin BlockPluginCommonImpl;
+	// IPlugin stuff
+	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
 
 	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry)
 	{

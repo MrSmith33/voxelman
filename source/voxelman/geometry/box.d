@@ -54,9 +54,9 @@ struct Box
 	{
 		return cartesianProduct(
 			iota(position.x, position.x + size.x),
-			iota(position.y, position.y + size.y),
-			iota(position.z, position.z + size.z))
-			.map!((a)=>ivec3(a[0], a[1], a[2]));
+			iota(position.z, position.z + size.z),
+			iota(position.y, position.y + size.y),)
+			.map!((a)=>ivec3(a[0], a[2], a[1]));
 	}
 
 	unittest

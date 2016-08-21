@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add server telemetry. Debug plugin can send variables.
+- Add chunk heightmap caching while generating world. Gives massive perf boost.
+- Add generator abstraction. Generator is fully responsible for chunk gen. More optimization opportunities. Flat generator now generates only uniform chunks. Generation function now uses utilities for metadata generation.
 - Add generic Box type
 - Add multiple rails per tile.
 - Add .obj and .ply model loading.

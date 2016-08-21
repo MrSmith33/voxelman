@@ -12,3 +12,6 @@ public import voxelman.math.utils;
 public import voxelman.math.simplex;
 
 alias hvec3 = Vector!(half, 3);
+alias svec2 = Vector!(short, 2);
+alias svec3 = Vector!(short, 3);
+alias svec4 = Vector!(short, 4);

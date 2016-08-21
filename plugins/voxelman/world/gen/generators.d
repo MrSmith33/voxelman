@@ -5,18 +5,17 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.gen.generators;
 
-import voxelman.math : ivec3, SimplexNoise;
+import voxelman.math : ivec3, svec2, svec3, SimplexNoise;
+import voxelman.container.cache;
 
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 import voxelman.world.gen.utils;
+import voxelman.world.gen.generator;
 
-GenDelegate[5] generators = [
-	&genChunk!GeneratorFlat,
-	&genChunk!Generator2d,
-	&genChunk!Generator2d3d,
-	&genChunk!TestGeneratorSmallCubes2,
-	&genChunk!TestGeneratorSmallCubes3
+IGenerator[2] generators = [
+	new Generator2d,
+	new GeneratorFlat,
 ];
 
 
@@ -62,20 +61,54 @@ struct Generator2d3d
 	}
 }
 
-struct Generator2d
-{
-	ivec3 chunkOffset;
-	HeightmapChunkData heightMap;
+shared size_t cache_hits;
+shared size_t cache_misses;
+import core.atomic;
 
-	void genPerChunkData()
+final class Generator2d : IGenerator
+{
+	ChunkGeneratorResult generateChunk(
+		svec3 cwp,
+		ref BlockId[CHUNK_SIZE_CUBE] blocks) const
 	{
-		heightMap.generate(chunkOffset);
+		svec2 cachePos = cwp.xz;
+		ivec3 chunkOffset = ivec3(cwp) * CHUNK_SIZE;
+
+		HeightmapChunkData* heightMap;
+		if (auto val = heightmapCache.get(cachePos))
+		{
+			atomicOp!"+="(cache_hits, 1);
+			heightMap = val;
+		}
+		else
+		{
+			atomicOp!"+="(cache_misses, 1);
+			heightMap = heightmapCache.put(cachePos);
+			heightMap.generate(chunkOffset);
+		}
+
+		if (chunkOffset.y > heightMap.maxHeight &&
+			chunkOffset.y > 0)
+		{
+			return ChunkGeneratorResult(true, AIR);
+		}
+		else
+		{
+			foreach(i; 0..CHUNK_SIZE_CUBE)
+			{
+				int bx = i & CHUNK_SIZE_BITS;
+				int by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+				int bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+				int blockY = chunkOffset.y + by;
+				int height = heightMap.heightMap[bz * CHUNK_SIZE + bx];
+				blocks[i] = generateBlock(blockY, height);
+			}
+			return ChunkGeneratorResult(false);
+		}
 	}
 
-	BlockId generateBlock(int x, int y, int z)
+	BlockId generateBlock(int blockY, int height) const
 	{
-		int height = heightMap.heightMap[z * CHUNK_SIZE + x];
-		int blockY = chunkOffset.y + y;
 		if (blockY > height) {
 			if (blockY > 0)
 				return AIR;
@@ -95,12 +128,18 @@ struct Generator2d
 			else return STONE;
 		}
 	}
+
+	static Cache!(svec2, HeightmapChunkData, 16) heightmapCache;
 }
 
 struct TestGeneratorSmallCubes2
 {
 	ivec3 chunkOffset;
 	void genPerChunkData(){}
+
+	bool uniformChunkGen(out BlockId uniformBlockId) {
+		return false;
+	}
 
 	BlockId generateBlock(int x, int y, int z)
 	{
@@ -116,6 +155,10 @@ struct TestGeneratorSmallCubes3
 	ivec3 chunkOffset;
 	void genPerChunkData(){}
 
+	bool uniformChunkGen(out BlockId uniformBlockId) {
+		return false;
+	}
+
 	BlockId generateBlock(int x, int y, int z)
 	{
 		if (x % cubeOffsets < cubesSizes &&
@@ -125,22 +168,15 @@ struct TestGeneratorSmallCubes3
 	}
 }
 
-struct GeneratorFlat
+final class GeneratorFlat : IGenerator
 {
-	ivec3 chunkOffset;
-	HeightmapChunkData heightMap;
-
-	void genPerChunkData()
+	ChunkGeneratorResult generateChunk(
+		svec3 chunkOffset,
+		ref BlockId[CHUNK_SIZE_CUBE] blocks) const
 	{
-		heightMap.minHeight = heightMap.maxHeight = 0;
-	}
-
-	BlockId generateBlock(int x, int y, int z)
-	{
-		int blockY = chunkOffset.y + y;
-		if (blockY >= 0)
-			return AIR;
+		if (chunkOffset.y >= 0)
+			return ChunkGeneratorResult(true, AIR);
 		else
-			return STONE;
+			return ChunkGeneratorResult(true, STONE);
 	}
 }

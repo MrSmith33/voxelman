@@ -111,9 +111,9 @@ struct WorldBox
 	{
 		return cartesianProduct(
 			iota(position.x, position.x + size.x),
-			iota(position.y, position.y + size.y),
-			iota(position.z, position.z + size.z))
-			.map!((a)=>ivec4(a[0], a[1], a[2], dimention));
+			iota(position.z, position.z + size.z),
+			iota(position.y, position.y + size.y),)
+			.map!((a)=>ivec4(a[0], a[2], a[1], dimention));
 	}
 
 	bool opEquals()(auto const ref WorldBox other) const

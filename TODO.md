@@ -4,8 +4,6 @@
 - [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view box.
 
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk. Can skip uniform chunks.
-- [ ] Add configurable meshing range.
-- [ ] Remove meshes outside of mesh range.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
 - [x] fix problem with dimention change when old position confuses server and box is not updated.
@@ -21,6 +19,8 @@
 
 ----
 ### GRAPHICS
+- [ ] Add configurable meshing range.
+- [ ] Remove meshes outside of mesh range.
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 - [x] Replace arrays and Appenders with Buffers in Batch and meshing.
 - [x] Use half-floats for chunk meshes.
@@ -48,10 +48,10 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 - [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
 - [ ] Remove BlockData.
+- [x] Implement heightmap caching in chunk gen.
 
 ----
 ### BLOCK ENTITIES
-
 - [ ] Problems with multichunk entities with unloaded parts.
 - [x] Add block entity rendering.
 - [x] Fix write buffer retrieval. Old snapshot was copied every time, not only when WB was created.

@@ -38,7 +38,7 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return;
 		applyChanges(writeBuffer, changes);
-		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
+		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer.layer, blockInfos);
 	}
 
 	bool setBlock(BlockWorldPos bwp, BlockId blockId) {
@@ -108,7 +108,7 @@ final class WorldAccess
 	}
 
 	private void updateWriteBufferMetadata(WriteBuffer* writeBuffer) {
-		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer, blockInfos);
+		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer.layer, blockInfos);
 	}
 
 	BlockId getBlock(BlockWorldPos bwp) {

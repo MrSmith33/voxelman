@@ -28,6 +28,7 @@ import voxelman.net.plugin : NetServerPlugin;
 import voxelman.login.plugin;
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
+import voxelman.dbg.plugin;
 import voxelman.server.plugin : WorldSaveInternalEvent;
 
 import voxelman.net.packets;
@@ -220,6 +221,7 @@ private:
 	BlockPluginServer blockPlugin;
 	BlockEntityServer blockEntityPlugin;
 
+	Debugger dbg;
 	IoManager ioManager;
 
 	ConfigOption numGenWorkersOpt;
@@ -257,6 +259,7 @@ public:
 		numGenWorkersOpt = config.registerOption!uint("num_workers", 4);
 		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
 		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
+		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
 
 	override void preInit()
@@ -392,6 +395,11 @@ public:
 		chunkManager.commitSnapshots(currentTimestamp);
 		sendChanges(worldAccess.blockChanges);
 		worldAccess.blockChanges = null;
+
+		import voxelman.world.gen.generators;
+		import core.atomic;
+		dbg.setVar("cacheHits", atomicLoad(cache_hits));
+		dbg.setVar("cacheMiss", atomicLoad(cache_misses));
 	}
 
 	private void handleStopEvent(ref GameStopEvent event)
