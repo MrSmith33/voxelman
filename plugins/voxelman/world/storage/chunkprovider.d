@@ -22,6 +22,8 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.storageworker;
 import voxelman.world.worlddb : WorldDb;
 
+enum saveUnmodifiedChunks = false;
+
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData
 {
@@ -94,7 +96,7 @@ struct ChunkProvider
 
 	shared Worker[] genWorkers;
 
-	void delegate(LoadedChunkData loadedChunk, bool generated) onChunkLoadedHandler;
+	void delegate(LoadedChunkData loadedChunk, bool needsSave) onChunkLoadedHandler;
 	void delegate(SavedChunkData savedChunk) onChunkSavedHandler;
 
 	size_t loadQueueSpaceAvaliable() @property const {
@@ -177,7 +179,7 @@ struct ChunkProvider
 		//		loadTaskQueue.length, saveTaskQueue.length);
 		while(loadResQueue.length > 0)
 		{
-			onChunkLoadedHandler(LoadedChunkData(&loadResQueue), true);
+			onChunkLoadedHandler(LoadedChunkData(&loadResQueue), false);
 			++numReceived;
 		}
 		while(!saveResQueue.empty)
@@ -191,7 +193,7 @@ struct ChunkProvider
 			while(!w.resultQueue.empty)
 			{
 				//infof("Save res received");
-				onChunkLoadedHandler(LoadedChunkData(&w.resultQueue), false);
+				onChunkLoadedHandler(LoadedChunkData(&w.resultQueue), saveUnmodifiedChunks);
 				++numReceived;
 			}
 		}

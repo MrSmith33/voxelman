@@ -359,7 +359,7 @@ public:
 		}
 		else
 		{
-			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), false);
+			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), true);
 		}
 
 		chunksToRemesh.put(cwp);

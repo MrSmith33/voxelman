@@ -275,7 +275,7 @@ final class ChunkManager {
 	/// LoadedChunk is a type that has following memeber:
 	///   ChunkHeaderItem getHeader()
 	///   ChunkLayerItem getLayer()
-	void onSnapshotLoaded(LoadedChunk)(LoadedChunk chunk, bool isSaved) {
+	void onSnapshotLoaded(LoadedChunk)(LoadedChunk chunk, bool needsSave) {
 		ChunkHeaderItem header = chunk.getHeader();
 
 		version(DBG_OUT)infof("res loaded %s", header.cwp);
@@ -305,7 +305,7 @@ final class ChunkManager {
 			case added_loaded:
 				assert(false, "On loaded should not occur for already loaded chunk");
 			case removed_loading:
-				if (isSaved || !isChunkSavingEnabled) {
+				if (!needsSave || !isChunkSavingEnabled) {
 					chunkStates[cwp] = non_loaded;
 					clearChunkData(cwp);
 				} else {
@@ -317,7 +317,7 @@ final class ChunkManager {
 				break;
 			case added_loading:
 				chunkStates[cwp] = added_loaded;
-				if (!isSaved) modifiedChunks.put(cwp);
+				if (needsSave) modifiedChunks.put(cwp);
 				notifyLoaded(cwp);
 				break;
 			case removed_loaded_used:
@@ -753,7 +753,7 @@ version(unittest) {
 					break;
 				case added_loaded:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
-					cm.onSnapshotLoaded(TestLoadedChunkData(), true);
+					cm.onSnapshotLoaded(TestLoadedChunkData(), false);
 					break;
 				case removed_loading:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
@@ -896,7 +896,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.removed_loading);
 	// removed_loading -> non_loaded
-	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
+	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
 	assertState(ChunkState.non_loaded);
 	assertHasNoSnapshot();
 	h.assertCalled(0b0000_0000);
@@ -904,7 +904,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
 	// added_loading -> added_loaded + modified
-	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
+	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
 	assertState(ChunkState.added_loaded);
 	assertHasSnapshot();
 	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled
@@ -913,7 +913,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
 	// added_loading -> added_loaded
-	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
+	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
 	assertState(ChunkState.added_loaded);
 	assertHasSnapshot();
 	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled

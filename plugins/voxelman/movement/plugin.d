@@ -14,6 +14,7 @@ import pluginlib;
 import voxelman.core.events;
 
 import voxelman.client.plugin;
+import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
@@ -34,6 +35,8 @@ class MovementPlugin : IPlugin
 	InputPlugin input;
 
 	bool autoMove;
+	ConfigOption cameraSpeedOpt;
+	ConfigOption cameraBoostOpt;
 
 	mixin IdAndSemverFrom!(voxelman.movement.plugininfo);
 
@@ -47,6 +50,10 @@ class MovementPlugin : IPlugin
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
+
+		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
+		cameraSpeedOpt = config.registerOption!uint("camera_speed", 20);
+		cameraBoostOpt = config.registerOption!uint("camera_boost", 5);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -77,9 +84,9 @@ class MovementPlugin : IPlugin
 			}
 			input.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
 
-			uint cameraSpeed = 10;
+			uint cameraSpeed = cameraSpeedOpt.get!uint;
 			vec3 posDelta = vec3(0,0,0);
-			if(input.isKeyPressed("key.fast")) cameraSpeed = 60;
+			if(input.isKeyPressed("key.fast")) cameraSpeed *= cameraBoostOpt.get!uint;
 
 			if(input.isKeyPressed("key.right")) posDelta.x = 1;
 			else if(input.isKeyPressed("key.left")) posDelta.x = -1;

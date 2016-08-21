@@ -23,7 +23,7 @@ import std.math;
 // Simplex noise in 2D, 3D and 4D
 struct SimplexNoise {
 	// 2D simplex noise
-	static double noise(double xin, double yin) {
+	static double noise(double xin, double yin) pure @nogc nothrow {
 		double n0, n1, n2; // Noise contributions from the three corners
 		// Skew the input space to determine which simplex cell we're in
 		double s = (xin+yin)*F2; // Hairy factor for 2D
@@ -77,7 +77,7 @@ struct SimplexNoise {
 	}
 
 	// 3D simplex noise
-	static double noise(double xin, double yin, double zin) {
+	static double noise(double xin, double yin, double zin) pure @nogc nothrow {
 		double n0, n1, n2, n3; // Noise contributions from the four corners
 		// Skew the input space to determine which simplex cell we're in
 		double s = (xin+yin+zin)*F3; // Very nice and simple skew factor for 3D
@@ -158,7 +158,7 @@ struct SimplexNoise {
 	}
 
 	// 4D simplex noise, better simplex rank ordering method 2012-03-09
-	static double noise(double x, double y, double z, double w) {
+	static double noise(double x, double y, double z, double w) pure @nogc nothrow {
 
 		double n0, n1, n2, n3, n4; // Noise contributions from the five corners
 		// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
