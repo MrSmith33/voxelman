@@ -10,7 +10,7 @@ import voxelman.math;
 import voxelman.model.vertex;
 import derelict.opengl3.gl3;
 import voxelman.core.config : DimentionId;
-import voxelman.utils.renderutils;
+import voxelman.graphics;
 
 struct Attribute
 {

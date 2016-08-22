@@ -6,7 +6,7 @@ num_workers 4
 
 resolution 1280 720
 max_fps 120
-view_distance 4
+view_distance 5
 
 camera_sensivity 0.1
 camera_fov 60.0

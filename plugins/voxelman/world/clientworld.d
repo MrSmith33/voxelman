@@ -9,6 +9,7 @@ import std.experimental.logger;
 import netlib;
 import pluginlib;
 import voxelman.math;
+import voxelman.geometry.cube;
 import voxelman.geometry.box;
 import voxelman.utils.textformatter;
 
@@ -245,10 +246,10 @@ public:
 			if (snap.isNull) continue;
 			foreach(ubyte side; 0..6)
 			{
-				Solidity solidity = chunkSideSolidity(snap.metadata, cast(Side)side);
+				Solidity solidity = chunkSideSolidity(snap.metadata, cast(CubeSide)side);
 				static Color3ub[3] colors = [Colors.white, Colors.gray, Colors.black];
 				Color3ub color = colors[solidity];
-				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(Side)side, color, true);
+				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(CubeSide)side, color, true);
 			}
 
 			if (snap.isUniform) {

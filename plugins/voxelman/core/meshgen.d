@@ -11,6 +11,7 @@ import core.exception : Throwable;
 
 import voxelman.container.buffer;
 import voxelman.math;
+import voxelman.geometry.cube;
 
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
@@ -116,7 +117,7 @@ MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 		return BlockEntityData(*entity);
 	}
 
-	Solidity solidity(int tx, int ty, int tz, Side side)
+	Solidity solidity(int tx, int ty, int tz, CubeSide side)
 	{
 		ChunkAndBlockAt chAndBlock = chunkAndBlockAt(tx, ty, tz);
 		BlockId blockId = blockLayers[chAndBlock.chunk].getBlockId(

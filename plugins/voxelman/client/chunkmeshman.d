@@ -18,7 +18,8 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunkmanager;
 import voxelman.utils.worker;
 import voxelman.container.hashset;
-import voxelman.utils.renderutils;
+import voxelman.graphics;
+import voxelman.geometry.cube;
 
 
 struct MeshingPass
@@ -227,7 +228,7 @@ struct ChunkMeshMan
 				return false;
 			}
 
-			foreach(Side side, adj; snapWithAdjacent.adjacentSnapshots)
+			foreach(CubeSide side, adj; snapWithAdjacent.adjacentSnapshots)
 			{
 				Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
 				if (solidity.isMoreSolidThan(adjSideSolidity)) return true;

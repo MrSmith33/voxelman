@@ -11,7 +11,7 @@ import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 
-import voxelman.utils.renderutils;
+import voxelman.graphics;
 import voxelman.geometry.box;
 
 void putCube(ref Batch batch, Box box, Color3ub color, bool fill, bool offset = true)

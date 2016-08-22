@@ -8,6 +8,8 @@ module voxelman.blockentity.utils;
 import std.experimental.logger;
 import voxelman.container.buffer;
 import voxelman.math;
+import voxelman.geometry.cube;
+
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
@@ -45,7 +47,7 @@ alias BlockEntityMeshhandler = void function(
 	ivec3 chunkPos,
 	ivec3 entityPos);
 
-alias SolidityHandler = Solidity function(Side side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
+alias SolidityHandler = Solidity function(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
 alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
 alias EntityDebugHandler = void function(BlockWorldPos bwp, BlockEntityData data);
 WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
@@ -58,7 +60,7 @@ void nullBlockEntityMeshhandler(
 	ubyte[3] color, ubyte sides, //ivec3 worldPos,
 	ivec3 chunkPos, ivec3 entityPos) {}
 
-Solidity nullSolidityHandler(Side side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data) {
+Solidity nullSolidityHandler(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data) {
 	return Solidity.solid;
 }
 

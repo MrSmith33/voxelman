@@ -21,7 +21,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.gui.plugin;
 import voxelman.config.configmanager;
 import voxelman.utils.fpscamera;
-public import voxelman.utils.renderutils;
+public import voxelman.graphics;
 
 
 shared static this()

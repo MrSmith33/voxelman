@@ -22,6 +22,7 @@ import voxelman.blockentity.blockentityaccess;
 
 import voxelman.block.utils;
 import voxelman.math;
+import voxelman.geometry.cube;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
 
@@ -171,9 +172,9 @@ WorldBox railBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 	return RailData(data).boundingBox(bwp);
 }
 
-Solidity railSideSolidity(Side side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
+Solidity railSideSolidity(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
 {
-	if (side == Side.yneg)
+	if (side == CubeSide.yneg)
 	{
 		return RailData(data).bottomSolidity(calcBlockTilePos(chunkPos));
 	}

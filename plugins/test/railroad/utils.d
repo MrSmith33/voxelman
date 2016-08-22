@@ -338,7 +338,7 @@ mixin("0b"
 "00000000"
 "00000000")];
 
-import voxelman.utils.renderutils;
+import voxelman.graphics;
 void drawSolidityDebug(ref Batch b, RailData data, BlockWorldPos bwp)
 {
 	ivec3 tilePos = railTilePos(bwp.xyz);
