@@ -153,8 +153,6 @@ public:
 
 	void printDebug()
 	{
-		igSetNextWindowSize(ImVec2(400, 300), ImGuiSetCond_FirstUseEver);
-		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
 		igBegin("Debug");
 		with(stats) {
 			igTextf("FPS: %s", fps); igSameLine();

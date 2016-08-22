@@ -50,6 +50,8 @@ class MovementPlugin : IPlugin
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_SPACE, "key.up"));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_CONTROL, "key.down"));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_KP_ADD, "key.speed_up", null, &speedUp));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_KP_SUBTRACT, "key.speed_down", null, &speedDown));
 
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		cameraSpeedOpt = config.registerOption!uint("camera_speed", 20);
@@ -65,6 +67,13 @@ class MovementPlugin : IPlugin
 		input = pluginman.getPlugin!InputPlugin;
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+	}
+
+	void speedUp(string) {
+		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint + 1, 1, 20));
+	}
+	void speedDown(string)	 {
+		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint - 1, 1, 20));
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)

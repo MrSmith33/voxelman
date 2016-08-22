@@ -23,21 +23,14 @@ void main(string[] args)
 		import std.process;
 		import std.stdio;
 		JobParams params;
-		params.runParameters["pack"] = "default";
-		params.appType = AppType.client;
 		params.arch64 = releaseBuild == 64 ? Yes.arch64 : No.arch64;
 		params.nodeps = Yes.nodeps;
 		params.force = No.force;
 		params.release = Yes.release;
 
-		writefln("Building client %sbit", releaseBuild);
-		string comClient = makeCompileCommand(params);
-		executeShell(comClient);
-
-		params.appType = AppType.server;
-		writefln("Building server %sbit", releaseBuild);
-		string comServer = makeCompileCommand(params);
-		executeShell(comServer);
+		writefln("Building voxelman %sbit", releaseBuild);
+		string comBuild = makeCompileCommand(params);
+		executeShell(comBuild);
 	}
 	else
 	{

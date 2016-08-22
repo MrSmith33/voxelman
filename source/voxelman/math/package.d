@@ -10,6 +10,7 @@ public import dlib.math.vector;
 public import std.math : isNaN, floor;
 public import voxelman.math.utils;
 public import voxelman.math.simplex;
+public import std.algorithm : clamp;
 
 alias hvec3 = Vector!(half, 3);
 alias svec2 = Vector!(short, 2);

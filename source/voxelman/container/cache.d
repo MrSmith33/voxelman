@@ -8,6 +8,7 @@ module voxelman.container.cache;
 // entries are sorted based on last access time.
 // successfull gets bring entries to the front of list,
 // thus preventing them from being replaces on put
+// LRU (least recently used) are dropped when cache is filled.
 struct Cache(Key, Value, uint maxEntries)
 {
 	enum lastEntryIndex = maxEntries - 1;

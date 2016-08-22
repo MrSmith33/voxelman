@@ -9,6 +9,7 @@ module voxelman.gui.plugin;
 import std.experimental.logger;
 import std.string : format;
 import voxelman.math;
+import derelict.imgui.imgui;
 
 import anchovy.glfwwindow;
 import anchovy.input;
@@ -94,6 +95,18 @@ public:
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onRender3Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
+	}
+
+	override void postInit()
+	{
+		igState.newFrame();
+		// set debug window size
+		igSetNextWindowSize(ImVec2(270, 500), ImGuiSetCond_FirstUseEver);
+		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
+		igBegin("Debug");
+		igSameLine();
+		igEnd();
+		igState.render();
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)

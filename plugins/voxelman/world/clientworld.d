@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.world.clientworld;
 
 import std.experimental.logger;
-import std.algorithm : clamp;
 import netlib;
 import pluginlib;
 import voxelman.math;

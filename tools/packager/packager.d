@@ -15,14 +15,19 @@ import std.process;
 import std.datetime;
 
 enum ROOT_PATH = "../..";
+string testDir;
 
 void main(string[] args)
 {
-	string semver = "0.6.1";
+	string semver = "0.7.0";
+	testDir = buildNormalizedPath(ROOT_PATH, "test");
+	if (exists(testDir))
+		rmdirRecurse(testDir);
 
 	StopWatch sw;
 	sw.start();
 	completeBuild(Arch.x32, semver);
+	writeln;
 	completeBuild(Arch.x64, semver);
 	sw.stop();
 	writefln("Finished in %.1fs", sw.peek().to!("seconds", real));
@@ -32,17 +37,21 @@ void completeBuild(Arch arch, string semver)
 {
 	string dub_arch = arch == Arch.x32 ? "x86" : "x86_64";
 	string launcher_arch = arch == Arch.x32 ? "32" : "64";
+
 	string dubCom(Arch arch) {
-		return format(`dub run --root="tools/launcher" -q --build=release --arch=%s --nodeps -- --release=%s`,
+		return format(`dub run --root="tools/launcher" -q --nodeps --build=release --arch=%s -- --release=%s`,
 				dub_arch, launcher_arch);
 	}
 
 	string com = dubCom(arch);
 	writefln("Executing '%s'", com); stdout.flush();
+
 	auto dub = executeShell(com, null, Config.none, size_t.max, ROOT_PATH);
+
 	if (dub.status != 0)
 		writeln("Failed to run launcher");
-	else dub.output.write;
+	dub.output.write;
+
 	writefln("Packing %sbit", launcher_arch); stdout.flush();
 	pack(semver, arch, Platform.windows);
 }
@@ -69,11 +78,12 @@ void pack(string semver, Arch arch, Platform pl)
 	pack.archRoot = archName;
 
 	makePackage(&pack);
-	writePackage(&pack, buildNormalizedPath(ROOT_PATH, archName) ~ ".zip");
+	string archiveName = buildNormalizedPath(ROOT_PATH, archName) ~ ".zip";
+	writePackage(&pack, archiveName);
+
+	extractArchive(archiveName, testDir);
 }
 
-//enum allowedExt = ["exe", "d", "txt", "dll"];
-//enum dirs = ["builds/default", "config", "lib", "pluginpacks", "plugins", "source"];
 enum Arch { x64, x32 }
 enum Platform { windows, linux, macos }
 string[Platform] platformToString;
@@ -87,6 +97,7 @@ static this()
 void makePackage(ReleasePackage* pack)
 {
 	pack.addFiles("builds/default", "*.exe");
+	pack.addFiles("res", "*");
 	pack.addFiles("config", "*.sdl");
 	pack.addFiles("lib/"~archToString[pack.arch], "*.dll");
 	pack.addFile("README.md");
@@ -142,4 +153,20 @@ void addFile(ZipArchive arch, string fs_name, string arch_name)
 	am.compressionMethod = CompressionMethod.deflate;
 	am.expandedData(cast(ubyte[])data);
 	arch.addMember(am);
+}
+
+void extractArchive(string archive, string pathTo)
+{
+	extractArchive(new ZipArchive(std.file.read(archive)), pathTo);
+}
+
+void extractArchive(ZipArchive archive, string pathTo)
+{
+	foreach (ArchiveMember am; archive.directory)
+	{
+		string targetPath = buildPath(pathTo, am.name);
+		mkdirRecurse(dirName(targetPath));
+		archive.expand(am);
+		std.file.write(targetPath, am.expandedData);
+	}
 }
