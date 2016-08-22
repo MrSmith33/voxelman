@@ -1,6 +1,9 @@
 # Change Log
 
 ## [Unreleased]
+
+
+## [0.7.0] - 2016-08-22
 ### Added
 - Add camera_speed and camera_boost client options.
 - Add server telemetry. Debug plugin can send variables.
