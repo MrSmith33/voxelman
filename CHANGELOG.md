@@ -1,7 +1,12 @@
 # Change Log
 
 ## [Unreleased]
+### Added
+- Implement launcher server connection feature.
 
+### Fixed
+- Fix client disconnection code.
+- Fix client repeated connection to the same server.
 
 ## [0.7.0] - 2016-08-22
 ### Added

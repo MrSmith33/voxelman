@@ -59,7 +59,6 @@ final class NetClientPlugin : IPlugin
 
 	ConfigOption serverIpOpt;
 	ConfigOption serverPortOpt;
-	bool isDisconnecting = false;
 
 	mixin NetCommon;
 
@@ -108,8 +107,6 @@ final class NetClientPlugin : IPlugin
 	void connect(string ip, ushort port)
 	{
 		infof("Connecting to %s:%s", ip, port);
-		if (connection.isConnecting)
-			connection.disconnect();
 		connection.connect(ip, port);
 	}
 
@@ -143,8 +140,7 @@ final class NetClientPlugin : IPlugin
 		}
 	}
 
-	void onConnect(ref ENetEvent event) {
-	}
+	void onConnect(ref ENetEvent event) {}
 
 	void onDisconnect(ref ENetEvent event) {
 		event.peer.data = null;
@@ -158,8 +154,7 @@ final class NetClientPlugin : IPlugin
 
 	void handleThisClientDisconnected(ref ThisClientDisconnectedEvent event)
 	{
-		infof("disconnected with data %s", event.data);
-		isDisconnecting = false;
+		tracef("disconnected with data %s", event.data);
 	}
 
 	void handlePacketMapPacket(ubyte[] packetData, ClientId clientId)
@@ -175,23 +170,18 @@ final class NetClientPlugin : IPlugin
 
 		connection.disconnect();
 
-		isDisconnecting = true;
 		MonoTime start = MonoTime.currTime;
 
 		size_t counter;
-		while (connection.isConnected && counter < 100)
+		while (connection.isConnected && counter < 1000)
 		{
 			connection.update();
-			Thread.sleep(1.msecs);
+			Thread.sleep(5.msecs);
 			++counter;
 		}
 
-		isDisconnecting = false;
 		Duration disconTime = MonoTime.currTime - start;
-		infof("disconnected in %s seconds",
-			disconTime.total!"seconds" +
-			0.001 * disconTime.total!"msecs" +
-			0.000_001 * disconTime.total!"usecs");
+		infof("disconnected in %s msecs", disconTime.total!"msecs");
 	}
 }
 

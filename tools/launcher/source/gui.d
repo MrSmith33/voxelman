@@ -292,13 +292,13 @@ struct PlayMenu
 		pluginPacks.update();
 		igBeginGroup();
 
-		if (igButton("New"))
-			selectedMenu = SelectedMenu.newGame;
-		igSameLine();
-		if (igButton("Connect"))
+		if (igButton("Connect##Play"))
 			selectedMenu = SelectedMenu.connect;
 		igSameLine();
-		if (igButton("Load"))
+		if (igButton("New##Play"))
+			selectedMenu = SelectedMenu.newGame;
+		igSameLine();
+		if (igButton("Load##Play"))
 			selectedMenu = SelectedMenu.load;
 
 		if (selectedMenu == SelectedMenu.newGame)
@@ -345,15 +345,15 @@ struct PlayMenu
 		}
 
 		// ------------------------ BUTTONS ------------------------------------
-		igBeginGroup();
-			startButtons(launcher, pluginpack);
-			igSameLine();
-			if (igButton("Stop"))
-			{
-				size_t numKilled = launcher.stopProcesses();
-				launcher.appLog.put(format("killed %s processes\n", numKilled));
-			}
-		igEndGroup();
+		//igBeginGroup();
+		//	startButtons(launcher, pluginpack);
+		//	igSameLine();
+		//	if (igButton("Stop"))
+		//	{
+		//		size_t numKilled = launcher.stopProcesses();
+		//		launcher.appLog.put(format("killed %s processes\n", numKilled));
+		//	}
+		//igEndGroup();
 	}
 
 	void drawConnect()
@@ -382,13 +382,10 @@ struct PlayMenu
 				launcher.removeServer(servers.currentItem);
 			igSameLine();
 			if (igButton("Connect"))
-				connect();
+			{
+				launcher.connect(servers.selected, pluginPacks.selected);
+			}
 		}
-	}
-
-	void connect()
-	{
-
 	}
 
 	void pluginPackPlugins()

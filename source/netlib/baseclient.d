@@ -20,12 +20,31 @@ abstract class BaseClient : Connection
 	ENetAddress serverAddress;
 	ENetPeer* server;
 	bool isConnecting;
+	bool isConnected;
 
 	void connect(string address, ushort port)
 	{
-		enet_address_set_host(&serverAddress, address.toStringz);
-		serverAddress.port = port;
+		ENetAddress addr;
+		enet_address_set_host(&addr, address.toStringz);
+		addr.port = port;
 
+		if (isConnecting)
+		{
+			if (addr == serverAddress)
+			{
+				return;
+			}
+			else
+			{
+				disconnect();
+			}
+		}
+		serverAddress = addr;
+		connect();
+	}
+
+	void connect()
+	{
 		server = enet_host_connect(host, &serverAddress, 2, 42);
 		//enet_peer_timeout(server, 0, 0, 5000);
 
@@ -38,18 +57,17 @@ abstract class BaseClient : Connection
 		isConnecting = true;
 	}
 
-	bool isConnected() @property
-	{
-		return host.connectedPeers > 0;
-	}
-
 	void disconnect()
 	{
 		if (isConnecting)
+		{
 			enet_peer_disconnect_now(server, 0);
+			isConnecting = false;
+		}
 		else
+		{
 			enet_peer_disconnect(server, 0);
-		isConnecting = false;
+		}
 	}
 
 	void send(ubyte[] data, ubyte channel = 0)
@@ -116,6 +134,7 @@ abstract class BaseClient : Connection
 					break;
 				case ENET_EVENT_TYPE_CONNECT:
 					isConnecting = false;
+					isConnected = true;
 					onConnect(event);
 					break;
 				case ENET_EVENT_TYPE_RECEIVE:
@@ -124,6 +143,7 @@ abstract class BaseClient : Connection
 				case ENET_EVENT_TYPE_DISCONNECT:
 					onDisconnect(event);
 					isConnecting = false;
+					isConnected = false;
 					break;
 			}
 		}

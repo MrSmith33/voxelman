@@ -80,6 +80,10 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### OTHER
 
+- [ ] Color blind mode
+- [ ] 2d rendering
+- [ ] Minecraft save import
+- [x] Implement launcher server connection feature.
 - [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.
 - [x] remove _saving states in chunk manager
 - [x] Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.

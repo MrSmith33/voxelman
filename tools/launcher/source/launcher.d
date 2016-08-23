@@ -94,6 +94,9 @@ struct Job
 
 	JobState jobState = JobState.build;
 	string title;
+	bool autoClose;
+	void delegate() onClose;
+
 	bool isRunning;
 	bool needsClose;
 	bool needsRestart;
@@ -138,12 +141,14 @@ struct Launcher
 	PluginPack*[] pluginPacks;
 	PluginPack*[string] pluginsPacksById;
 	ServerInfo*[] servers;
+	Job* clientProcess;
+	Job* serverProcess;
 
 	Job*[] jobs;
 	size_t numRunningJobs;
 	LineBuffer appLog;
 
-	void createJob(JobParams params = JobParams.init)
+	Job* createJob(JobParams params = JobParams.init)
 	{
 		auto job = new Job(params);
 		job.messageWindow.init();
@@ -152,6 +157,7 @@ struct Launcher
 		restartJobState(job);
 		updateTitle(job);
 		jobs ~= job;
+		return job;
 	}
 
 	static void updateTitle(Job* job)
@@ -225,8 +231,13 @@ struct Launcher
 
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
 
-		(*job) = Job(job.params, command, job.messageWindow, pipes, job.jobState, job.title);
+		job.command = command;
+		job.pipes = pipes;
+
 		job.isRunning = true;
+		job.needsClose = false;
+		job.needsRestart = false;
+		job.status = 0;
 	}
 
 	size_t stopProcesses()
@@ -279,10 +290,27 @@ struct Launcher
 			}
 
 			job.needsRestart = false;
+
+			if (!job.isRunning && job.autoClose)
+			{
+				job.needsClose = true;
+			}
 		}
 
-		jobs = remove!(a => a.needsClose && !a.isRunning)(jobs);
-		jobs.each!(j => j.needsClose = false);
+		Job*[] newJobs;
+		foreach(job; jobs)
+		{
+			if (job.needsClose && !job.isRunning)
+			{
+				if (job.onClose) job.onClose();
+			}
+			else
+			{
+				job.needsClose = false;
+				newJobs ~= job;
+			}
+		}
+		jobs = newJobs;
 	}
 
 	void setRootPath(string pluginFolder, string pluginPackFolder, string toolFolder)
@@ -375,6 +403,27 @@ struct Launcher
 		{
 			error(e);
 		}
+	}
+
+	void connect(ServerInfo* server, PluginPack* pack)
+	{
+		if (!clientProcess)
+		{
+			JobParams params;
+			params.runParameters["pack"] = pack.id;
+			params.appType = AppType.client;
+			params.jobType = JobType.run;
+			clientProcess = createJob(params);
+			clientProcess.autoClose = true;
+			clientProcess.onClose = &onClientClose;
+			startJob(clientProcess);
+		}
+		sendCommand(clientProcess, format("connect --ip=%s --port=%s", server.ip, server.port));
+	}
+
+	void onClientClose()
+	{
+		clientProcess = null;
 	}
 }
 
