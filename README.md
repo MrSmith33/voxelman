@@ -19,12 +19,22 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - Unpack.
 - Follow instructions below.
 
-## Starting game
+## Starting game with launcher
+### Single player
 - Start launcher
-- Goto `Code`
-- Open Server and Client windows by using buttons at the top
-- Hit `Run` for each of them.
-- When done hit `Stop` button.
+- Press `New` in __worlds__ tab to create new world
+- Select new world and press `Start`
+
+### Multiplayer
+- To start a server select world and press `Server` button.
+- Connect to your server in `Connect` tab
+- Select local server and press `Connect` at the bottom.
+- To stop the server, go to the `Code` menu and hit `Stop` button of your server instance.
+
+## Starting game with command line
+- `voxelman --app=[client|server|combined] --world_name="new world" --name="Player"`.
+- You can override any config options by passing switch in a form `--option=value`.
+- Array config options are passed using comma between items. Like `--resolution=1280,800`.
 
 ## Controls (Can be changed in `config/client.sdl`)
 - `Q` to lock mouse.

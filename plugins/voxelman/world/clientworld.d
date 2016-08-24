@@ -102,8 +102,8 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		numWorkersOpt = config.registerOption!uint("num_workers", 4);
-		viewRadiusOpt = config.registerOption!uint("view_distance", DEFAULT_VIEW_RADIUS);
+		numWorkersOpt = config.registerOption!int("num_workers", 4);
+		viewRadiusOpt = config.registerOption!int("view_distance", DEFAULT_VIEW_RADIUS);
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));

@@ -31,6 +31,12 @@ shared static this()
 
 struct WorldSaveInternalEvent {}
 
+enum ServerMode
+{
+	dedicated,
+	internal
+}
+
 class ServerPlugin : IPlugin
 {
 private:
@@ -38,6 +44,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 
 public:
+	ServerMode mode;
 	bool isRunning = false;
 	bool isAutosaveEnabled = true;
 	Duration autosavePeriod = dur!"seconds"(10);
@@ -70,10 +77,15 @@ public:
 		pluginman.initPlugins();
 	}
 
-	void run(string[] args)
+	void run(string[] args, bool dedicated)
 	{
 		import core.thread : Thread, thread_joinAll;
 		import core.memory;
+
+		if (dedicated)
+			mode = ServerMode.dedicated;
+		else
+			mode = ServerMode.internal;
 
 		load(args);
 		infof("Starting game...");
@@ -88,7 +100,8 @@ public:
 
 		// Main loop
 		isRunning = true;
-		while (isRunning)
+		import voxelman.client.servercontrol : isServerRunning;
+		while (isRunning && isServerRunning())
 		{
 			MonoTime newTime = MonoTime.currTime;
 			double delta = (newTime - prevTime).total!"usecs" / 1_000_000.0;
@@ -118,7 +131,11 @@ public:
 		save();
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
-		thread_joinAll();
+
+		if (mode == ServerMode.dedicated)
+		{
+			thread_joinAll();
+		}
 		infof("[Stopped]");
 	}
 

@@ -18,6 +18,7 @@ import std.file;
 import std.path;
 import std.conv : to;
 
+import voxelman.world.worlddb;
 import voxelman.utils.messagewindow;
 import voxelman.utils.linebuffer;
 import gui;
@@ -45,8 +46,12 @@ struct PluginPack
 enum AppType
 {
 	client,
-	server
+	server,
+	combined
 }
+
+string[] appTypeString = ["client", "server", "combined"];
+string[] appTypeTitle = ["Client", "Server", "Combined"];
 
 enum JobType : int
 {
@@ -129,9 +134,20 @@ struct ServerInfo
 	ushort port;
 }
 
+struct SaveInfo
+{
+	string name;
+	string displaySize;
+	string path;
+	ulong size;
+}
+
 immutable buildFolder = "builds/default";
 immutable configFolder = "config";
 immutable serversFname = "config/servers.txt";
+immutable saveFolder = "saves";
+immutable saveExtention = ".db";
+
 struct Launcher
 {
 	string pluginFolderPath;
@@ -140,13 +156,22 @@ struct Launcher
 	PluginInfo*[string] pluginsById;
 	PluginPack*[] pluginPacks;
 	PluginPack*[string] pluginsPacksById;
+
 	ServerInfo*[] servers;
+	SaveInfo*[] saves;
+	WorldDb worldDb;
+
 	Job* clientProcess;
 	Job* serverProcess;
 
 	Job*[] jobs;
 	size_t numRunningJobs;
 	LineBuffer appLog;
+
+	void init()
+	{
+		worldDb = new WorldDb;
+	}
 
 	Job* createJob(JobParams params = JobParams.init)
 	{
@@ -162,8 +187,7 @@ struct Launcher
 
 	static void updateTitle(Job* job)
 	{
-		string title = job.params.appType == AppType.client ? `Client` : `Server`;
-		job.title = title;
+		job.title = appTypeTitle[job.params.appType];
 	}
 
 	static void updateJobType(Job* job)
@@ -325,6 +349,8 @@ struct Launcher
 		pluginsById = null;
 		pluginPacks = null;
 		pluginsPacksById = null;
+		servers = null;
+		saves = null;
 	}
 
 	void readPlugins()
@@ -405,6 +431,40 @@ struct Launcher
 		}
 	}
 
+	void createSave(string name)
+	{
+		auto saveFilename = buildPath(saveFolder, name~saveExtention).absolutePath;
+		worldDb.open(saveFilename);
+		worldDb.close();
+		ulong fileSize = std.file.getSize(saveFilename);
+		string displaySize = formatFileSize(fileSize);
+		saves ~= new SaveInfo(name, displaySize, saveFilename, fileSize);
+	}
+
+	void readSaves()
+	{
+		if (!exists(saveFolder)) return;
+		foreach (entry; dirEntries(saveFolder, SpanMode.shallow))
+		{
+			if (entry.isFile && extension(entry.name) == saveExtention)
+			{
+				string name = entry.name.baseName.stripExtension.toCString;
+				ulong fileSize = entry.size;
+				string displaySize = formatFileSize(fileSize);
+				saves ~= new SaveInfo(name, displaySize, entry.name.absolutePath, fileSize);
+			}
+		}
+	}
+
+	void deleteSave(size_t saveIndex)
+	{
+		auto save = saves[saveIndex];
+		infof("delete %s", *save);
+		try	std.file.remove(save.path);
+		catch (FileException e) warningf("error deleting save '%s': %s", save.path, e.msg);
+		saves = remove(saves, saveIndex);
+	}
+
 	void connect(ServerInfo* server, PluginPack* pack)
 	{
 		if (!clientProcess)
@@ -421,9 +481,48 @@ struct Launcher
 		sendCommand(clientProcess, format("connect --ip=%s --port=%s", server.ip, server.port));
 	}
 
+	void startCombined(PluginPack* pack, SaveInfo* save)
+	{
+		if (!clientProcess)
+		{
+			JobParams params;
+			params.runParameters["pack"] = pack.id;
+			params.runParameters["world_name"] = save.name;
+			params.appType = AppType.combined;
+			params.jobType = JobType.run;
+			clientProcess = createJob(params);
+			clientProcess.autoClose = true;
+			clientProcess.onClose = &onClientClose;
+			startJob(clientProcess);
+			infof("%s", clientProcess.command);
+		}
+	}
+
+	void startServer(PluginPack* pack, SaveInfo* save)
+	{
+		if (!serverProcess)
+		{
+			JobParams params;
+			params.runParameters["pack"] = pack.id;
+			params.runParameters["world_name"] = save.name;
+			params.appType = AppType.server;
+			params.jobType = JobType.run;
+			serverProcess = createJob(params);
+			serverProcess.autoClose = true;
+			serverProcess.onClose = &onServerClose;
+			startJob(serverProcess);
+			infof("%s", serverProcess.command);
+		}
+	}
+
 	void onClientClose()
 	{
 		clientProcess = null;
+	}
+
+	void onServerClose()
+	{
+		serverProcess = null;
 	}
 }
 
@@ -439,8 +538,7 @@ string makeCompileCommand(JobParams params)
 
 string makeRunCommand(JobParams params)
 {
-	string conf = params.appType == AppType.client ? `voxelman.exe --app=client` : `voxelman.exe --app=server`;
-	string command = conf;
+	string command = format("voxelman.exe --app=%s", appTypeString[params.appType]);
 
 	foreach(paramName, paramValue; params.runParameters)
 	{
@@ -561,6 +659,16 @@ PluginPack* readPluginPack(string fileData)
 	}
 
 	return pack;
+}
+
+string formatFileSize(ulong fileSize)
+{
+	import voxelman.utils.scale;
+	int scale = calcScale(fileSize);
+	double scaledSize = scaled(fileSize, scale);
+	auto prec = stepPrecision(scaledSize);
+	string unitPrefix = scales[scale];
+	return format("%.*f %sB", prec, scaledSize, unitPrefix);
 }
 
 string toCString(in const(char)[] s)

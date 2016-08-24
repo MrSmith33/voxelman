@@ -13,7 +13,7 @@ import pluginlib;
 /// register plugins here inside shared static this
 __gshared PluginRegistry pluginRegistry;
 
-alias MainDel = void delegate(string[] args);
+alias MainDel = void delegate(string[] args, bool dedicated);
 
 struct PluginRegistry
 {

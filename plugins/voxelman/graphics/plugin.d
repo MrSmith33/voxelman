@@ -120,8 +120,8 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto config = resmanRegistry.getResourceManager!ConfigManager;
-		cameraSensivity = config.registerOption!float("camera_sensivity", 0.4);
-		cameraFov = config.registerOption!float("camera_fov", 60.0);
+		cameraSensivity = config.registerOption!double("camera_sensivity", 0.4);
+		cameraFov = config.registerOption!double("camera_fov", 60.0);
 	}
 
 	override void preInit()

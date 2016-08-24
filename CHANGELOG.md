@@ -3,6 +3,11 @@
 ## [Unreleased]
 ### Added
 - Implement launcher server connection feature.
+- Implement integrated server. Used with --app=combined switch.
+- Implement command line options override. Can override any config option (--option=value).
+- Add save manipulation to launcher.
+- Add ability to connect to a server from server list.
+- Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Fixed
 - Fix client disconnection code.

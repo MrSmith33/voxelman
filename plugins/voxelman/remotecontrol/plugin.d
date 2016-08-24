@@ -13,6 +13,7 @@ import pluginlib;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.command.plugin;
+import voxelman.server.plugin;
 
 shared static this()
 {
@@ -33,11 +34,20 @@ final class RemoteControl(bool clientSide) : IPlugin
 	override void preInit() {
 		buf = new char[](2048);
 	}
+
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		commandPlugin = pluginman.getPlugin!CommandPlugin;
+		bool enable = true;
+		static if (!clientSide)
+		{
+			ServerPlugin serverPlugin = pluginman.getPlugin!ServerPlugin;
+			enable = serverPlugin.mode == ServerMode.dedicated;
+		}
+
+		if (enable)
+			evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)

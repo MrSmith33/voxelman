@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.plugin;
 
-import core.thread : thread_joinAll;
+import core.thread : Thread, thread_joinAll;
 import core.time;
 import std.experimental.logger;
 
@@ -82,6 +82,9 @@ private:
 	NetClientPlugin connection;
 	Debugger dbg;
 
+	// valid when !dedicated
+	Thread serverThread;
+
 public:
 	AppStatistics stats;
 	Console console;
@@ -107,7 +110,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		maxFpsOpt = config.registerOption!uint("max_fps", true);
+		maxFpsOpt = config.registerOption!int("max_fps", true);
 
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
@@ -157,12 +160,12 @@ public:
 		with(stats) {
 			igTextf("FPS: %s", fps); igSameLine();
 
-			int fpsLimitVal = maxFpsOpt.get!uint;
+			int fpsLimitVal = maxFpsOpt.get!int;
 			igPushItemWidth(60);
 			//igInputInt("limit", &fpsLimitVal, 5, 20, 0);
 			igSliderInt(limitFps ? "limited##limit" : "unlimited##limit", &fpsLimitVal, 0, 240, null);
 			igPopItemWidth();
-			maxFpsOpt.set!uint(fpsLimitVal);
+			maxFpsOpt.set!int(fpsLimitVal);
 			updateFrameTime();
 
 			ulong totalRendered = chunksRenderedSemitransparent + chunksRendered;
@@ -232,12 +235,27 @@ public:
 		pluginman.initPlugins();
 	}
 
-	void run(string[] args)
+	void startServer(string[] args)
+	{
+		void exec()
+		{
+			pluginRegistry.serverMain(args, false/*internal*/);
+		}
+		serverThread = new Thread(&exec);
+		serverThread.start();
+	}
+
+	void run(string[] args, bool dedicated)
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
 		version(manualGC) GC.disable;
+
+		if (!dedicated)
+		{
+			startServer(args);
+		}
 
 		load(args);
 		evDispatcher.postEvent(GameStartEvent());
@@ -273,6 +291,14 @@ public:
 
 				++frame;
 		}
+
+		if (!dedicated)
+		{
+			// Stop the server
+			import voxelman.client.servercontrol : stopServer;
+			stopServer();
+		}
+
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
 		thread_joinAll();

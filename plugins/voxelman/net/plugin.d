@@ -75,7 +75,7 @@ final class NetClientPlugin : IPlugin
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		serverIpOpt = config.registerOption!string("ip", "127.0.0.1");
-		serverPortOpt = config.registerOption!ushort("port", 1234);
+		serverPortOpt = config.registerOption!int("port", 1234);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -202,8 +202,8 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		portOpt = config.registerOption!ushort("port", 1234);
-		maxPlayers = config.registerOption!uint("max_players", 32);
+		portOpt = config.registerOption!int("port", 1234);
+		maxPlayers = config.registerOption!int("max_players", 32);
 	}
 
 	this()

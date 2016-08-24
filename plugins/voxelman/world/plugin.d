@@ -256,7 +256,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		numGenWorkersOpt = config.registerOption!uint("num_workers", 4);
+		numGenWorkersOpt = config.registerOption!int("num_workers", 4);
 		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
 		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
 		dbg = resmanRegistry.getResourceManager!Debugger;

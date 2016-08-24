@@ -89,6 +89,8 @@ struct LauncherGui
 		logger.insertLogger("stdoutLogger", new ConciseLogger(stdout));
 		sharedLog = logger;
 
+		launcher.init();
+
 		playMenu.init(&launcher);
 		codeMenu.init(&launcher);
 		refresh();
@@ -102,9 +104,6 @@ struct LauncherGui
 		window.mousePressed.connect(&igState.onMousePressed);
 		window.mouseReleased.connect(&igState.onMouseReleased);
 		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
-
-		selectedMenu = SelectedMenu.play;
-		playMenu.selectedMenu = PlayMenu.SelectedMenu.connect;
 
 		if (window is null)
 			isRunning = false;
@@ -140,6 +139,7 @@ struct LauncherGui
 		launcher.readPlugins();
 		launcher.readPluginPacks();
 		launcher.readServers();
+		launcher.readSaves();
 		plugins.items = &launcher.plugins;
 		playMenu.refresh();
 		codeMenu.refresh();
@@ -265,46 +265,57 @@ struct PlayMenu
 {
 	enum SelectedMenu
 	{
-		newGame,
+		worlds,
 		connect,
-		load,
+		newGame,
 	}
 	Launcher* launcher;
 	SelectedMenu selectedMenu;
 	ItemList!(PluginPack*) pluginPacks;
 	ItemList!(ServerInfo*) servers;
+	ItemList!(SaveInfo*) saves;
 	AddServerDialog addServerDlg;
+	NewSaveDialog newSaveDlg;
 
 	void init(Launcher* launcher)
 	{
 		this.launcher = launcher;
 		addServerDlg.launcher = launcher;
+		newSaveDlg.launcher = launcher;
 	}
 
 	void refresh()
 	{
 		pluginPacks.items = &launcher.pluginPacks;
 		servers.items = &launcher.servers;
+		saves.items = &launcher.saves;
 	}
 
 	void draw()
 	{
 		pluginPacks.update();
+		servers.update();
+		saves.update();
 		igBeginGroup();
 
+		if (igButton("Worlds##Play"))
+			selectedMenu = SelectedMenu.worlds;
+		igSameLine();
 		if (igButton("Connect##Play"))
 			selectedMenu = SelectedMenu.connect;
-		igSameLine();
-		if (igButton("New##Play"))
-			selectedMenu = SelectedMenu.newGame;
-		igSameLine();
-		if (igButton("Load##Play"))
-			selectedMenu = SelectedMenu.load;
+		//if (igButton("New##Play"))
+		//	selectedMenu = SelectedMenu.newGame;
+		//igSameLine();
 
-		if (selectedMenu == SelectedMenu.newGame)
-			drawNewGame();
-		else if (selectedMenu == SelectedMenu.connect)
-			drawConnect();
+		final switch(selectedMenu)
+		{
+			case SelectedMenu.worlds:
+				drawWorlds(); break;
+			case SelectedMenu.connect:
+				drawConnect(); break;
+			case SelectedMenu.newGame:
+				drawNewGame(); break;
+		}
 
 		igEndGroup();
 	}
@@ -375,10 +386,10 @@ struct PlayMenu
 			refresh();
 		}
 
-		if (servers.items.length > 0)
+		if (servers.hasSelected)
 		{
 			igSameLine();
-			if (igButton("Remove"))
+			if (igButton("Remove##Servers"))
 				launcher.removeServer(servers.currentItem);
 			igSameLine();
 			if (igButton("Connect"))
@@ -388,9 +399,105 @@ struct PlayMenu
 		}
 	}
 
-	void pluginPackPlugins()
+	void drawWorlds()
 	{
+		enum tableWidth = 300;
+		igBeginChild("Saves", ImVec2(tableWidth, -igGetItemsLineHeightWithSpacing()), true);
+		igColumns(2);
+		igSetColumnOffset(1, tableWidth - 90);
+			foreach(int i, save; *saves.items)
+			{
+				igPushIdInt(cast(int)i);
+				immutable bool itemSelected = (i == saves.currentItem);
 
+				if (igSelectable(save.name.ptr, itemSelected, ImGuiSelectableFlags_SpanAllColumns))
+					saves.currentItem = i;
+				igNextColumn();
+				igTextUnformatted(save.displaySize.ptr, save.displaySize.ptr+save.displaySize.length);
+				igNextColumn();
+				igPopId();
+			}
+		igColumns(1);
+		igEndChild();
+
+		if (newSaveDlg.show()) { refresh(); } igSameLine();
+
+		if (saves.hasSelected)
+		{
+			if (igButton("Delete##Saves"))
+				igOpenPopup("Confirm");
+			if (igBeginPopupModal("Confirm", null, ImGuiWindowFlags_AlwaysAutoResize))
+			{
+				if (igButton("Delete##Confirm"))
+				{
+					launcher.deleteSave(saves.currentItem);
+					refresh();
+					igCloseCurrentPopup();
+				}
+				igSameLine();
+				if (igButton("Cancel##Confirm"))
+					igCloseCurrentPopup();
+				igEndPopup();
+			}
+		}
+
+
+		if (saves.hasSelected)
+		{
+			igSameLine();
+			igSetCursorPosX(tableWidth - 50);
+			if (igButton("Server##Saves"))
+			{
+				launcher.startServer(pluginPacks.selected, saves.selected);
+			}
+			igSameLine();
+			igSetCursorPosX(tableWidth + 10);
+			if (igButton("Start##Saves"))
+			{
+				launcher.startCombined(pluginPacks.selected, saves.selected);
+			}
+		}
+	}
+}
+
+struct NewSaveDialog
+{
+	char[128] saveInputBuffer;
+	Launcher* launcher;
+
+	bool show()
+	{
+		bool result;
+		if (igButton("New"))
+			igOpenPopup("New world");
+		if (igBeginPopupModal("New world", null, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			bool entered;
+			if (igInputText("World name", saveInputBuffer.ptr, saveInputBuffer.length, ImGuiInputTextFlags_EnterReturnsTrue))
+			{
+				entered = true;
+			}
+
+			if (igButton("Create") || entered)
+			{
+				launcher.createSave(saveInputBuffer.fromCString);
+				resetFields();
+
+				igCloseCurrentPopup();
+				result = true;
+			}
+			igSameLine();
+			if (igButton("Cancel"))
+				igCloseCurrentPopup();
+
+			igEndPopup();
+		}
+		return result;
+	}
+
+	void resetFields()
+	{
+		saveInputBuffer[] = '\0';
 	}
 }
 
@@ -509,7 +616,10 @@ void startButtons(Launcher* launcher, string pack)
 	if (igButton("Client")) launcher.createJob(params); igSameLine();
 
 	params.appType = AppType.server;
-	if (igButton("Server")) launcher.createJob(params);
+	if (igButton("Server")) launcher.createJob(params); igSameLine();
+
+	params.appType = AppType.combined;
+	if (igButton("Combined")) launcher.createJob(params);
 }
 
 void jobParams(JobParams* params)

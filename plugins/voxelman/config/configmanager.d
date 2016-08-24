@@ -10,13 +10,16 @@ import std.file : read, exists;
 public import std.variant;
 import std.traits : isArray;
 import std.conv : to;
+import core.runtime : Runtime;
 
 import pluginlib;
 import sdlang;
 
+alias ConfigValue = Algebraic!(int, double, string, bool, int[], double[]);
+
 final class ConfigOption
 {
-	this(Variant value, Variant defaultValue)
+	this(ConfigValue value, ConfigValue defaultValue)
 	{
 		this.value = value;
 		this.defaultValue = defaultValue;
@@ -36,8 +39,8 @@ final class ConfigOption
 		return newValue;
 	}
 
-	Variant value;
-	Variant defaultValue;
+	ConfigValue value;
+	ConfigValue defaultValue;
 }
 
 final class ConfigManager : IResourceManager
@@ -65,7 +68,7 @@ public:
 	{
 		if (auto opt = optionName in options)
 			return *opt;
-		auto option = new ConfigOption(Variant(defaultValue), Variant(defaultValue));
+		auto option = new ConfigOption(ConfigValue(defaultValue), ConfigValue(defaultValue));
 		options[optionName] = option;
 		return option;
 	}
@@ -77,11 +80,11 @@ public:
 
 	void load()
 	{
-		if (!exists(filename))
-			return;
-
+		bool readConfigFile = exists(filename);
 		Tag root;
+		string[] args = Runtime.args;
 
+		if (readConfigFile)
 		try
 		{
 			string fileData = cast(string)read(filename);
@@ -93,51 +96,65 @@ public:
 			return;
 		}
 
+		auto tempSep = std.getopt.arraySep;
+		std.getopt.arraySep = ",";
 		foreach(optionPair; options.byKeyValue)
 		{
-			if (optionPair.key !in root.tags) continue;
-			auto tags = root.tags[optionPair.key];
-
-			if (tags.length == 1)
+			if (readConfigFile)
 			{
-				try
-				{
-					parseValue(optionPair.value, optionPair.key, tags[0].values);
-					//infof("%s %s %s", optionPair.key, optionPair.value.value, optionPair.value.defaultValue);
-				}
-				catch(VariantException e)
-				{
-					warningf("Error parsing config option: %s - %s", optionPair.key, e.msg);
-				}
+				parseValueFromConfig(optionPair.key, optionPair.value, root);
 			}
-			else if (tags.length > 1)
-				warningf("Multiple definitions of '%s'", optionPair.key);
-			else
-				warningf("Empty option '%s'", optionPair.key);
+
+			// override from console
+			parseValueFromCmd(optionPair.key, optionPair.value, args);
 		}
+		std.getopt.arraySep = tempSep;
 	}
 
 	void save() {}
 
 private:
 
-	static void parseValue(ConfigOption option, string optionName, Value[] values)
+	static void parseValueFromConfig(string optionName, ConfigOption option, Tag root)
+	{
+		if (optionName !in root.tags) return;
+		auto tags = root.tags[optionName];
+
+		if (tags.length == 1)
+		{
+			try
+			{
+				parseValue(optionName, option, tags[0].values);
+				//infof("%s %s %s", optionName, option.value, option.defaultValue);
+			}
+			catch(VariantException e)
+			{
+				warningf("Error parsing config option: %s - %s", optionName, e.msg);
+			}
+		}
+		else if (tags.length > 1)
+			warningf("Multiple definitions of '%s'", optionName);
+		else
+			warningf("Empty option '%s'", optionName);
+	}
+
+	static void parseValue(string optionName, ConfigOption option, Value[] values)
 	{
 		if (values.length == 1)
 		{
 			Value value = values[0];
 
 			if (option.value.type == typeid(bool)) {
-				option.value = Variant(value.coerce!bool);
+				option.value = ConfigValue(value.coerce!bool);
 			}
 			else if (option.value.type == typeid(string)) {
-				option.value = Variant(value.coerce!string);
+				option.value = ConfigValue(value.coerce!string);
 			}
-			else if (option.value.convertsTo!long) {
-				option.value = Variant(value.coerce!long);
+			else if (option.value.type == typeid(int)) {
+				option.value = ConfigValue(value.coerce!int);
 			}
-			else if (option.value.convertsTo!real) {
-				option.value = Variant(value.coerce!double);
+			else if (option.value.type == typeid(double)) {
+				option.value = ConfigValue(value.coerce!double);
 			}
 			else
 			{
@@ -151,47 +168,63 @@ private:
 				T[] items;
 				foreach(v; values)
 					items ~= v.coerce!T;
-				option.value = Variant(items);
+				option.value = ConfigValue(items);
 			}
+			if (option.value.length != values.length)
+				return;
 
-			info(option.value.convertsTo!(long[]));
-
-			if (option.value.type == typeid(long[])) {
-				if (option.value.length != values.length)
-					return;
-
-				parseArray!long;
-			}
-			else if (option.value.type == typeid(int[])) {
-				if (option.value.length != values.length)
-					return;
-
+			if (option.value.type == typeid(int[])) {
 				parseArray!int;
-			}
-			if (option.value.type == typeid(ulong[])) {
-				if (option.value.length != values.length)
-					return;
-
-				parseArray!ulong;
-			}
-			else if (option.value.type == typeid(uint[])) {
-				if (option.value.length != values.length)
-					return;
-
-				parseArray!uint;
-			}
-			else if (option.value.type == typeid(real[]) ||
-				option.value.type == typeid(double[]) ||
-				option.value.type == typeid(float[])) {
-				if (option.value.length != values.length)
-					return;
-
+			} else if (option.value.type == typeid(double[])) {
 				parseArray!double;
-			}
-			else
-			{
+			} else {
 				warningf("Cannot parse '%s' from '%s'", optionName, values.to!string);
 			}
+			//infof("conf %s %s", optionName, option.value);
 		}
 	}
+
+	static void parseValueFromCmd(string optionName, ConfigOption option, string[] args)
+	{
+		if (option.value.type == typeid(int)) {
+			parseSingle!int(optionName, option, args);
+		}
+		else if (option.value.type == typeid(double)) {
+			parseSingle!double(optionName, option, args);
+		}
+		else if (option.value.type == typeid(string)) {
+			parseSingle!string(optionName, option, args);
+		}
+		else if (option.value.type == typeid(bool)) {
+			parseSingle!bool(optionName, option, args);
+		}
+		else if (option.value.type == typeid(int[])) {
+			parseSingle!(int[])(optionName, option, args);
+		}
+		else if (option.value.type == typeid(double[])) {
+			parseSingle!(double[])(optionName, option, args);
+		}
+	}
+}
+
+import std.getopt;
+void parseSingle(T)(string optionName, ConfigOption option, string[] args)
+{
+	T val = option.get!T;
+	//infof("cmd1 %s %s", optionName, val);
+
+	static if(is(T == int[]) || is(T == double[]))
+	{
+		T newArray;
+		auto res = getopt(args, std.getopt.config.passThrough, optionName, &newArray);
+		if (newArray != newArray.init)
+			val = newArray;
+	}
+	else
+	{
+		getopt(args, std.getopt.config.passThrough, optionName, &val);
+	}
+	//infof("cmd2 %s %s", optionName, val);
+
+	option.value = ConfigValue(val);
 }

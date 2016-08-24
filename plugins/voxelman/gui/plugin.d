@@ -53,7 +53,7 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto config = resmanRegistry.getResourceManager!ConfigManager;
-		resolution = config.registerOption!(uint[])("resolution", [1280, 720]);
+		resolution = config.registerOption!(int[])("resolution", [1280, 720]);
 	}
 
 	override void preInit()
@@ -61,7 +61,7 @@ public:
 		initLibs();
 
 		window = new GlfwWindow();
-		window.init(uvec2(resolution.get!(uint[])), "Voxelman client");
+		window.init(uvec2(resolution.get!(int[])), "Voxelman client");
 		renderer = new OglRenderer(window);
 		igState.init((cast(GlfwWindow)window).handle);
 

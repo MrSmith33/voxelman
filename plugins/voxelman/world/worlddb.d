@@ -23,16 +23,19 @@ final class WorldDb
 
 	//-----------------------------------------------
 	void open(string filename) {
-		buffer = cast(ubyte[])Mallocator.instance.allocate(4096*64);
 		version(Lmdb) mdb_load_libs();
 		db.open(filename);
 	}
 	void close() {
 		db.close();
-		Mallocator.instance.deallocate(buffer);
+		if (buffer !is null) Mallocator.instance.deallocate(buffer);
 	}
 
-	ubyte[] tempBuffer() @property { return buffer; }
+	ubyte[] tempBuffer() @property {
+		if (buffer is null) buffer = cast(ubyte[])Mallocator.instance.allocate(4096*64);
+
+		return buffer;
+	}
 
 	//-----------------------------------------------
 	version(Lmdb) {

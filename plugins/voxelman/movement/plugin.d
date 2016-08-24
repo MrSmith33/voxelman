@@ -54,8 +54,8 @@ class MovementPlugin : IPlugin
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_KP_SUBTRACT, "key.speed_down", null, &speedDown));
 
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		cameraSpeedOpt = config.registerOption!uint("camera_speed", 20);
-		cameraBoostOpt = config.registerOption!uint("camera_boost", 5);
+		cameraSpeedOpt = config.registerOption!int("camera_speed", 20);
+		cameraBoostOpt = config.registerOption!int("camera_boost", 5);
 	}
 
 	override void init(IPluginManager pluginman)

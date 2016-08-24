@@ -8,6 +8,7 @@ module main;
 import std.file : mkdirRecurse;
 import std.getopt;
 
+
 import voxelman.utils.log;
 import pluginlib;
 
@@ -15,7 +16,7 @@ void main(string[] args)
 {
 	mkdirRecurse("../logs");
 
-	enum AppType { client, server }
+	enum AppType { client, server, combined }
 	AppType appType;
 
 	std.getopt.getopt(args,
@@ -23,14 +24,19 @@ void main(string[] args)
 		std.getopt.config.required,
 		"app", &appType);
 
-	if (appType == AppType.client)
+	final switch(appType) with(AppType)
 	{
-		setupLogger("../logs/client.log");
-		pluginRegistry.clientMain(args);
-	}
-	else if (appType == AppType.server)
-	{
-		setupLogger("../logs/server.log");
-		pluginRegistry.serverMain(args);
+		case client:
+			setupLogger("../logs/client.log");
+			pluginRegistry.clientMain(args, true/*dedicated*/);
+			break;
+		case server:
+			setupLogger("../logs/server.log");
+			pluginRegistry.serverMain(args, true/*dedicated*/);
+			break;
+		case combined:
+			setupLogger("../logs/client.log");
+			pluginRegistry.clientMain(args, false/*combined*/);
+			break;
 	}
 }
