@@ -433,6 +433,10 @@ struct Launcher
 
 	void createSave(string name)
 	{
+		if (!exists(saveFolder))
+		{
+			mkdirRecurse(saveFolder);
+		}
 		auto saveFilename = buildPath(saveFolder, name~saveExtention).absolutePath;
 		worldDb.open(saveFilename);
 		worldDb.close();
