@@ -32,16 +32,16 @@ WorldBox calcBox(ChunkWorldPos cwp, int viewRadius)
 		ivec3(size, size, size), cwp.w);
 }
 
-WorldBox worldBoxFromCorners(ivec3 a, ivec3 b, ushort dimention)
+WorldBox worldBoxFromCorners(ivec3 a, ivec3 b, ushort dimension)
 {
-	return WorldBox(boxFromCorners(a, b), dimention);
+	return WorldBox(boxFromCorners(a, b), dimension);
 }
 
 WorldBox blockBoxToChunkBox(WorldBox blockBox)
 {
 	auto startPosition = blockToChunkPosition(blockBox.position);
 	auto endPosition = blockToChunkPosition(blockBox.endPosition);
-	return worldBoxFromCorners(startPosition, endPosition, blockBox.dimention);
+	return worldBoxFromCorners(startPosition, endPosition, blockBox.dimension);
 }
 
 // makes block box in chunk-local space out of world space
@@ -65,12 +65,12 @@ WorldBox calcModifiedMeshesBox(WorldBox modificationBox)
 }
 
 WorldBox chunkToBlockBox(ChunkWorldPos cwp) {
-	return chunkToBlockBox(cwp.ivector3, cwp.dimention);
+	return chunkToBlockBox(cwp.ivector3, cwp.dimension);
 }
 
-WorldBox chunkToBlockBox(ivec3 cwp, ushort dimention) {
+WorldBox chunkToBlockBox(ivec3 cwp, ushort dimension) {
 	ivec3 startPosition = chunkToBlockPosition(cwp);
-	return WorldBox(startPosition, CHUNK_SIZE_VECTOR, dimention);
+	return WorldBox(startPosition, CHUNK_SIZE_VECTOR, dimension);
 }
 
 Box chunkToBlockBox(ivec3 cwp) {
@@ -82,23 +82,23 @@ struct WorldBox
 {
 	Box box;
 	alias box this;
-	ushort dimention;
+	ushort dimension;
 
 	this(ivec3 pos, ivec3 size, ushort dim)
 	{
 		box = Box(pos, size);
-		dimention = dim;
+		dimension = dim;
 	}
 
 	this(Box box, ushort dim)
 	{
 		this.box = box;
-		dimention = dim;
+		dimension = dim;
 	}
 
-	bool contains(ivec3 point, ushort dimention) const
+	bool contains(ivec3 point, ushort dimension) const
 	{
-		if (this.dimention != dimention) return false;
+		if (this.dimension != dimension) return false;
 		return box.contains(point);
 	}
 
@@ -113,12 +113,12 @@ struct WorldBox
 			iota(position.x, position.x + size.x),
 			iota(position.z, position.z + size.z),
 			iota(position.y, position.y + size.y),)
-			.map!((a)=>ivec4(a[0], a[2], a[1], dimention));
+			.map!((a)=>ivec4(a[0], a[2], a[1], dimension));
 	}
 
 	bool opEquals()(auto const ref WorldBox other) const
 	{
-		return box == other.box && dimention == other.dimention;
+		return box == other.box && dimension == other.dimension;
 	}
 }
 
@@ -145,11 +145,11 @@ unittest
 
 WorldBox worldBoxIntersection(WorldBox a, WorldBox b)
 {
-	if (a.dimention != b.dimention)
+	if (a.dimension != b.dimension)
 	{
 		return WorldBox();
 	}
 
 	auto box = boxIntersection(a.box, b.box);
-	return WorldBox(box, a.dimention);
+	return WorldBox(box, a.dimension);
 }

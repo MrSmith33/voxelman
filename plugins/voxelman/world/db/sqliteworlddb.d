@@ -25,9 +25,9 @@ struct SqliteWorldDb
 	Statement perWorldDeleteStmt;
 	Statement* statementToReset;
 
-	//Statement perDimentionInsertStmt;
-	//Statement perDimentionSelectStmt;
-	//Statement perDimentionDeleteStmt;
+	//Statement perDimensionInsertStmt;
+	//Statement perDimensionSelectStmt;
+	//Statement perDimensionDeleteStmt;
 
 	Statement perChunkInsertStmt;
 	Statement perChunkSelectStmt;
@@ -53,16 +53,16 @@ struct SqliteWorldDb
 		db.execute(`PRAGMA page_size = "4096"; VACUUM`);
 
 		db.execute(perWorldTableCreate);
-		//db.execute(perDimentionTableCreate);
+		//db.execute(perDimensionTableCreate);
 		db.execute(perChunkTableCreate);
 
 		perWorldInsertStmt = db.prepare(perWorldTableInsert);
 		perWorldSelectStmt = db.prepare(perWorldTableSelect);
 		perWorldDeleteStmt = db.prepare(perWorldTableDelete);
 
-		//perDimentionInsertStmt = db.prepare(perDimentionTableInsert);
-		//perDimentionSelectStmt = db.prepare(perDimentionTableSelect);
-		//perDimentionDeleteStmt = db.prepare(perDimentionTableDelete);
+		//perDimensionInsertStmt = db.prepare(perDimensionTableInsert);
+		//perDimensionSelectStmt = db.prepare(perDimensionTableSelect);
+		//perDimensionDeleteStmt = db.prepare(perDimensionTableDelete);
 
 		perChunkInsertStmt = db.prepare(perChunkTableInsert);
 		perChunkSelectStmt = db.prepare(perChunkTableSelect);
@@ -75,9 +75,9 @@ struct SqliteWorldDb
 		destroy(perWorldInsertStmt);
 		destroy(perWorldSelectStmt);
 		destroy(perWorldDeleteStmt);
-		//destroy(perDimentionInsertStmt);
-		//destroy(perDimentionSelectStmt);
-		//destroy(perDimentionDeleteStmt);
+		//destroy(perDimensionInsertStmt);
+		//destroy(perDimensionSelectStmt);
+		//destroy(perDimensionDeleteStmt);
 		destroy(perChunkInsertStmt);
 		destroy(perChunkSelectStmt);
 		destroy(perChunkDeleteStmt);
@@ -109,9 +109,9 @@ struct SqliteWorldDb
 		perWorldDeleteStmt.inject(key);
 	}
 
-	//void savePerDimentionData(string key, int dim, ubyte[] data)
+	//void savePerDimensionData(string key, int dim, ubyte[] data)
 
-	//ubyte[] loadPerDimentionData(string key, int dim)
+	//ubyte[] loadPerDimensionData(string key, int dim)
 	import voxelman.core.config;
 	void savePerChunkData(ulong cwp, ubyte[] data)
 	{
@@ -166,20 +166,20 @@ immutable perWorldTableInsert = `insert or replace into per_world_data values (:
 immutable perWorldTableSelect = `select data from per_world_data where id = :id`;
 immutable perWorldTableDelete = `delete from per_world_data where id = :id`;
 
-immutable perDimentionTableCreate = `
-create table if not exists per_dimention_data(
+immutable perDimensionTableCreate = `
+create table if not exists per_dimension_data(
   id text,
-  dimention integer,
+  dimension integer,
   data blob not null,
-  primary key (id, dimention)
+  primary key (id, dimension)
 )` ~ withoutRowidStr;
 
-immutable perDimentionTableInsert =
-`insert or replace into per_dimention_data values (:dim, :id, :value)`;
-immutable perDimentionTableSelect = `
-select data from per_dimention_data where dimention = :dim and id = :id`;
-immutable perDimentionTableDelete = `
-delete from per_dimention_data where dimention = :dim and id = :id`;
+immutable perDimensionTableInsert =
+`insert or replace into per_dimension_data values (:dim, :id, :value)`;
+immutable perDimensionTableSelect = `
+select data from per_dimension_data where dimension = :dim and id = :id`;
+immutable perDimensionTableDelete = `
+delete from per_dimension_data where dimension = :dim and id = :id`;
 
 immutable perChunkTableCreate = `
 create table if not exists per_chunk_data(

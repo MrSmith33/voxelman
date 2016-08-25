@@ -10,7 +10,7 @@ public import voxelman.globalconfig;
 
 alias BlockId = ushort;
 alias TimestampType = uint;
-alias DimentionId = short;
+alias DimensionId = short;
 
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;

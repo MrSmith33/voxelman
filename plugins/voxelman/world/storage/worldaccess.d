@@ -57,14 +57,14 @@ final class WorldAccess
 
 	bool fillBox(WorldBox blockFillBox, BlockId blockId) {
 		WorldBox affectedChunks = blockBoxToChunkBox(blockFillBox);
-		ushort dimention = blockFillBox.dimention;
+		ushort dimension = blockFillBox.dimension;
 
 		foreach(chunkPos; affectedChunks.positions) {
 			Box chunkBlockBox = chunkToBlockBox(chunkPos);
 			auto intersection = boxIntersection(chunkBlockBox, blockFillBox);
 			assert(!intersection.empty);
 
-			auto cwp = ChunkWorldPos(chunkPos, dimention);
+			auto cwp = ChunkWorldPos(chunkPos, dimension);
 			auto chunkLocalBox = intersection;
 			chunkLocalBox.position -= chunkBlockBox.position;
 

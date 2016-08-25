@@ -126,7 +126,7 @@ public:
 	{
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
 		//tracef("Received ClientPositionPacket(%s, %s, %s, %s)",
-		//	packet.pos, packet.heading, packet.dimention, packet.positionKey);
+		//	packet.pos, packet.heading, packet.dimension, packet.positionKey);
 
 		nansToZero(packet.pos);
 		graphics.camera.position = vec3(packet.pos);
@@ -134,7 +134,7 @@ public:
 		nansToZero(packet.heading);
 		graphics.camera.setHeading(vec2(packet.heading));
 
-		clientWorld.setCurrentDimention(packet.dimention, packet.positionKey);
+		clientWorld.setCurrentDimension(packet.dimension, packet.positionKey);
 	}
 
 	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
@@ -180,7 +180,7 @@ public:
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawn);
-		commandPlugin.registerCommand("dim", &changeDimentionCommand);
+		commandPlugin.registerCommand("dim", &changeDimensionCommand);
 		commandPlugin.registerCommand("add_active", &onAddActive);
 		commandPlugin.registerCommand("remove_active", &onRemoveActive);
 	}
@@ -203,10 +203,10 @@ public:
 		if(info is null) return;
 		info.pos = START_POS;
 		info.heading = vec2(0,0);
-		info.dimention = 0;
+		info.dimension = 0;
 		info.positionKey = 0;
 		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
-			info.heading.arrayof, info.dimention, info.positionKey));
+			info.heading.arrayof, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -245,14 +245,14 @@ public:
 		return clients.byKeyValue.filter!(a=>a.value.isLoggedIn).map!(a=>a.value.id);
 	}
 
-	void spawnClient(vec3 pos, vec2 heading, ushort dimention, ClientId clientId)
+	void spawnClient(vec3 pos, vec2 heading, ushort dimension, ClientId clientId)
 	{
 		ClientInfo* info = clients[clientId];
 		info.pos = pos;
 		info.heading = heading;
-		info.dimention = dimention;
+		info.dimension = dimension;
 		++info.positionKey;
-		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimention, info.positionKey));
+		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimension, info.positionKey));
 		connection.sendTo(clientId, SpawnPacket());
 		updateObserverBox(info);
 	}
@@ -271,7 +271,7 @@ public:
 		clients.remove(event.clientId);
 	}
 
-	void changeDimentionCommand(CommandParams params)
+	void changeDimensionCommand(CommandParams params)
 	{
 		import std.conv : to, ConvException;
 
@@ -280,16 +280,16 @@ public:
 		{
 			if (params.args.length > 1)
 			{
-				auto dim = to!DimentionId(params.args[1]);
-				if (dim == info.dimention)
+				auto dim = to!DimensionId(params.args[1]);
+				if (dim == info.dimension)
 					return;
 
-				info.dimention = dim;
+				info.dimension = dim;
 				++info.positionKey;
 				updateObserverBox(info);
 
 				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
-					info.heading.arrayof, info.dimention, info.positionKey));
+					info.heading.arrayof, info.dimension, info.positionKey));
 			}
 		}
 	}
@@ -323,7 +323,7 @@ public:
 		{
 			ClientInfo* info = clients[clientId];
 			info.isSpawned = true;
-			spawnClient(info.pos, info.heading, info.dimention, clientId);
+			spawnClient(info.pos, info.heading, info.dimension, clientId);
 		}
 	}
 
@@ -344,7 +344,7 @@ public:
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
 			ClientInfo* info = clients[clientId];
 
-			// reject stale position. Dimention already have changed.
+			// reject stale position. Dimension already have changed.
 			if (packet.positionKey != info.positionKey)
 				return;
 

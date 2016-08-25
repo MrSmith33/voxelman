@@ -42,7 +42,7 @@ final class WorldDb
 		private enum Table : ulong
 		{
 			world,
-			dimention,
+			dimension,
 			region,
 			chunk,
 		}

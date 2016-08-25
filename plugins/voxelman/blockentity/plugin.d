@@ -69,7 +69,7 @@ final class BlockEntityClient : IPlugin {
 			override void onUpdate() {
 				auto cursor = worldInteraction.sideBlockPos;
 				selection = worldBoxFromCorners(startingPos.xyz,
-					cursor.xyz, cast(DimentionId)cursor.w);
+					cursor.xyz, cast(DimensionId)cursor.w);
 				drawSelection();
 			}
 

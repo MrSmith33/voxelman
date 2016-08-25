@@ -29,10 +29,10 @@ void registerPackets(Connection c)
 // sent by client when position/heading changes.
 struct ClientPositionPacket
 {
-	import voxelman.core.config : DimentionId;
+	import voxelman.core.config : DimensionId;
 	float[3] pos = [0, 0, 0];
 	float[2] heading = [0, 0];
-	DimentionId dimention;
+	DimensionId dimension;
 	ubyte positionKey;
 }
 

@@ -189,13 +189,13 @@ final class ChunkObserverManager {
 
 		// remove observer
 		foreach(a; tsect.aPositions) {
-			removeChunkObserver(ChunkWorldPos(a, oldBox.dimention), clientId);
+			removeChunkObserver(ChunkWorldPos(a, oldBox.dimension), clientId);
 			//infof("Rem %s", a);
 		}
 
 		// add observer
 		foreach(b; tsect.bPositions) {
-			addChunkObserver(ChunkWorldPos(b, newBox.dimention), clientId);
+			addChunkObserver(ChunkWorldPos(b, newBox.dimension), clientId);
 		}
 
 		if (newBox.empty)

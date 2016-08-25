@@ -99,7 +99,7 @@ class WorldInteractionPlugin : IPlugin
 
 		auto isBlockSolid = (ivec3 blockWorldPos) {
 			auto block = clientWorld.worldAccess.getBlock(
-				BlockWorldPos(blockWorldPos, clientWorld.currentDimention));
+				BlockWorldPos(blockWorldPos, clientWorld.currentDimension));
 			return blockPlugin.getBlocks()[block].isVisible;
 		};
 
@@ -123,8 +123,8 @@ class WorldInteractionPlugin : IPlugin
 			cameraInSolidBlock = false;
 		}
 
-		blockPos = BlockWorldPos(hitPosition, clientWorld.currentDimention);
-		sideBlockPos = BlockWorldPos(blockPos.xyz + hitNormal, clientWorld.currentDimention);
+		blockPos = BlockWorldPos(hitPosition, clientWorld.currentDimension);
+		sideBlockPos = BlockWorldPos(blockPos.xyz + hitNormal, clientWorld.currentDimension);
 		cursorTraceTime = cast(Duration)sw.peek;
 	}
 

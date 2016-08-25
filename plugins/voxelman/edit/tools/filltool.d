@@ -45,7 +45,7 @@ final class FillTool : ITool
 		{
 			startingPos = currentCursorPos;
 		}
-		selection = worldBoxFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimentionId)currentCursorPos.w);
+		selection = worldBoxFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimensionId)currentCursorPos.w);
 		drawSelection();
 		if (showCursor && !worldInteraction.cameraInSolidBlock)
 		{

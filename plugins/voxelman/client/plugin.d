@@ -185,9 +185,9 @@ public:
 
 		ChunkWorldPos chunkPos = clientWorld.observerPosition;
 		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
-		igTextf("Dimention: %s", chunkPos.w); igSameLine();
-			if (igButton("-##decDimention")) clientWorld.decDimention(); igSameLine();
-			if (igButton("+##incDimention")) clientWorld.incDimention();
+		igTextf("Dimension: %s", chunkPos.w); igSameLine();
+			if (igButton("-##decDimension")) clientWorld.decDimension(); igSameLine();
+			if (igButton("+##incDimension")) clientWorld.incDimension();
 
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;

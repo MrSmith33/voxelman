@@ -8,7 +8,7 @@ module voxelman.world.storage.coordinates;
 import voxelman.core.config;
 import voxelman.world.storage.utils;
 import voxelman.math;
-public import voxelman.core.config : DimentionId;
+public import voxelman.core.config : DimensionId;
 
 ivec3 blockToChunkPosition(ivec3 blockPos)
 {
@@ -201,7 +201,7 @@ struct ChunkWorldPos
 		vector = svec4(chunkWorldPos);
 	}
 
-	this(ivec3 chunkWorldPos, DimentionId dim)
+	this(ivec3 chunkWorldPos, DimensionId dim)
 	{
 		vector = svec4(chunkWorldPos.x, chunkWorldPos.y, chunkWorldPos.z, dim);
 	}
@@ -234,7 +234,7 @@ struct ChunkWorldPos
 		return ivec3(vector);
 	}
 
-	ushort dimention() @property
+	ushort dimension() @property
 	{
 		return vector.w;
 	}

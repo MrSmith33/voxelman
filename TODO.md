@@ -1,12 +1,12 @@
-- [ ] Isolate client position, view box and dimention.
-	- [x] draw avatar based on dimention.
-	- [x] send dimention with avatar.
+- [ ] Isolate client position, view box and dimension.
+	- [x] draw avatar based on dimension.
+	- [x] send dimension with avatar.
 - [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view box.
 
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk. Can skip uniform chunks.
 - [ ] Add server options for autosave and autosave period.
 - [ ] Detach worker threads so GC does not stop them.
-- [x] fix problem with dimention change when old position confuses server and box is not updated.
+- [x] fix problem with dimension change when old position confuses server and box is not updated.
 	(Use position key. Client sends key with current position. Server only accepts positions with current key. Client and server increment position key when position changes)
 - [x] Add client view radius config option.
 - [x] Fix WorldBox equality checking.

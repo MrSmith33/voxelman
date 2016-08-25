@@ -17,11 +17,11 @@ struct ClientInfo
 	string name;
 	vec3 pos = START_POS;
 	vec2 heading = vec2(-90, 0);
-	DimentionId dimention;
+	DimensionId dimension;
 	/// Used to reject wrong positions from client.
 	/// Client sends positions updates with latest known key and server only accepts
 	/// positions matching this key.
-	/// After dimention change key is incremented.
+	/// After dimension change key is incremented.
 	ubyte positionKey;
 
 	int viewRadius = DEFAULT_VIEW_RADIUS;
@@ -30,7 +30,7 @@ struct ClientInfo
 	bool isSpawned;
 
 	ChunkWorldPos chunk() {
-		ChunkWorldPos cwp = BlockWorldPos(pos, dimention);
+		ChunkWorldPos cwp = BlockWorldPos(pos, dimension);
 		return cwp;
 	}
 }

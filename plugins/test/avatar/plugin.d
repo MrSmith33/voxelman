@@ -54,7 +54,7 @@ final class AvatarClient : IPlugin
 		batch.reset();
 		foreach (avatar; packet.avatars)
 		{
-			if (avatar.clientId != clientDb.thisClientId && avatar.dimention == clientWorld.currentDimention)
+			if (avatar.clientId != clientDb.thisClientId && avatar.dimension == clientWorld.currentDimension)
 			{
 				batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
 			}
@@ -86,7 +86,7 @@ final class AvatarServer : IPlugin
 		Appender!(Avatar[]) avatars;
 		avatars.reserve(clientDb.clients.length);
 		foreach (cinfo; clientDb.clients.byValue.filter!(a=>a.isLoggedIn))
-			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.dimention, cinfo.heading));
+			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.dimension, cinfo.heading));
 
 		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
@@ -99,7 +99,7 @@ struct Avatar
 {
 	ClientId clientId;
 	vec3 position;
-	DimentionId dimention;
+	DimensionId dimension;
 	vec2 heading;
 }
 

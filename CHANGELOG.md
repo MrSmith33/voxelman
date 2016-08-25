@@ -40,7 +40,7 @@
 - Add remesh command.
 - Add max_players option for server config.
 - Add cancelLoad option for chunkmanager. Unloads 'loading' chunk immidiately. Makes chunkmanager usable by client.
-- Add multiple dimentions.
+- Add multiple dimensions.
 - Add semi-transparent solidity state for blocks.
 - Add transparent meshes to chunks.
 - Add minSolidity calculation to chunk meta data.
@@ -128,7 +128,7 @@
 - Remove voxelman/storage/world.d.
 
 ### Fixed
-- Fix dimention change code to prevent use of stale client positions after dimention change.
+- Fix dimension change code to prevent use of stale client positions after dimension change.
 - Fix case in chunk manager when old snapshot was saved and current snapshot is added_loaded.
 - Fix app not stopping when main thread crashes.
 - Fix world save on game stop.

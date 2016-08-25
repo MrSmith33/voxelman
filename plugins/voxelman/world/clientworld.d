@@ -226,7 +226,7 @@ public:
 	void drawDebugChunkInfo()
 	{
 		enum nearRadius = 2;
-		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimention);
+		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimension);
 		WorldBox nearBox = calcBox(chunkPos, nearRadius);
 
 		drawDebugChunkMetadata(nearBox);
@@ -241,7 +241,7 @@ public:
 			vec3 blockPos = pos * CHUNK_SIZE;
 
 			auto snap = chunkManager.getChunkSnapshot(
-				ChunkWorldPos(pos, box.dimention), FIRST_LAYER);
+				ChunkWorldPos(pos, box.dimension), FIRST_LAYER);
 
 			if (snap.isNull) continue;
 			foreach(ubyte side; 0..6)
@@ -394,7 +394,7 @@ public:
 		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
 		foreach(pos; box.positions)
-			chunksToRemesh.put(ChunkWorldPos(pos, box.dimention));
+			chunksToRemesh.put(ChunkWorldPos(pos, box.dimension));
 	}
 
 	void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId peer)
@@ -427,7 +427,7 @@ public:
 
 		HashSet!ChunkWorldPos remeshedChunks;
 		foreach(pos; box.positions) {
-			remeshedChunks.put(ChunkWorldPos(pos, box.dimention));
+			remeshedChunks.put(ChunkWorldPos(pos, box.dimension));
 		}
 		if (printTime)
 			chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
@@ -458,22 +458,22 @@ public:
 		prevChunkPos = observerPosition;
 	}
 
-	void setCurrentDimention(DimentionId dimention, ubyte positionKey) {
-		observerPosition.w = dimention;
+	void setCurrentDimension(DimensionId dimension, ubyte positionKey) {
+		observerPosition.w = dimension;
 		this.positionKey = positionKey;
 		updateObserverPosition();
 	}
 
-	DimentionId currentDimention() @property {
+	DimensionId currentDimension() @property {
 		return observerPosition.w;
 	}
 
-	void incDimention() {
-		string com = cast(string)makeFormattedText("dim %s", currentDimention() + 1);
+	void incDimension() {
+		string com = cast(string)makeFormattedText("dim %s", currentDimension() + 1);
 		connection.send(CommandPacket(com));
 	}
-	void decDimention() {
-		string com = cast(string)makeFormattedText("dim %s", currentDimention() - 1);
+	void decDimension() {
+		string com = cast(string)makeFormattedText("dim %s", currentDimension() - 1);
 		connection.send(CommandPacket(com));
 	}
 

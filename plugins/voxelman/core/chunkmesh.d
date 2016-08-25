@@ -9,7 +9,7 @@ module voxelman.core.chunkmesh;
 import voxelman.math;
 import voxelman.model.vertex;
 import derelict.opengl3.gl3;
-import voxelman.core.config : DimentionId;
+import voxelman.core.config : DimensionId;
 import voxelman.graphics;
 
 struct Attribute
@@ -25,7 +25,7 @@ struct Attribute
 struct ChunkMesh
 {
 	vec3 position;
-	DimentionId dimention;
+	DimensionId dimension;
 	MeshVertex[] data;
 
 	bool isDataDirty = true;

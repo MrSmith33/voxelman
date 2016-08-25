@@ -44,16 +44,16 @@ Box chunkLocalBlockBox(ChunkWorldPos cwp, Box blockBox) {
 void placeEntity(WorldBox blockBox, ulong payload,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess)
 {
-	auto mainCwp = ChunkWorldPos(BlockWorldPos(blockBox.position, blockBox.dimention));
+	auto mainCwp = ChunkWorldPos(BlockWorldPos(blockBox.position, blockBox.dimension));
 	Box mainChunkBox = chunkLocalBlockBox(mainCwp, blockBox);
 	ushort mainBlockIndex = boxEntityIndex(mainChunkBox);
 	auto mainData = BlockEntityData(
 		BlockEntityType.localBlockEntity, payload);
 
 	Box affectedChunks = blockBoxToChunkBox(blockBox);
-	ushort dimention = blockBox.dimention;
+	ushort dimension = blockBox.dimension;
 	foreach(chunkPos; affectedChunks.positions) {
-		auto cwp = ChunkWorldPos(chunkPos, dimention);
+		auto cwp = ChunkWorldPos(chunkPos, dimension);
 		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
 		ushort blockIndex = boxEntityIndex(chunkLocalBox);
@@ -79,7 +79,7 @@ void placeEntity(WorldBox blockBox, ulong payload,
 void placeChunkEntity(WorldBox blockBox, ulong payload,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess)
 {
-	auto corner = BlockWorldPos(blockBox.position, blockBox.dimention);
+	auto corner = BlockWorldPos(blockBox.position, blockBox.dimension);
 	auto cwp = ChunkWorldPos(corner);
 
 	// limit entity to a single chunk
@@ -130,9 +130,9 @@ WorldBox removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
 	WorldBox blockBox = getBlockEntityBox(mainCwp, mainBlockIndex, beInfos, entityAccess);
 
 	Box affectedChunks = blockBoxToChunkBox(blockBox);
-	ushort dimention = blockBox.dimention;
+	ushort dimension = blockBox.dimension;
 	foreach(chunkPos; affectedChunks.positions) {
-		auto cwp = ChunkWorldPos(chunkPos, dimention);
+		auto cwp = ChunkWorldPos(chunkPos, dimension);
 		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
 		ushort blockIndex = boxEntityIndex(chunkLocalBox);
