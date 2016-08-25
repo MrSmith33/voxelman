@@ -343,6 +343,15 @@ struct Launcher
 		pluginPackFolderPath = pluginPackFolder;
 	}
 
+	void refresh()
+	{
+		clear();
+		readPlugins();
+		readPluginPacks();
+		readServers();
+		readSaves();
+	}
+
 	void clear()
 	{
 		plugins = null;
@@ -522,6 +531,7 @@ struct Launcher
 	void onClientClose()
 	{
 		clientProcess = null;
+		refresh();
 	}
 
 	void onServerClose()
@@ -547,7 +557,7 @@ string makeRunCommand(JobParams params)
 	foreach(paramName, paramValue; params.runParameters)
 	{
 		if (paramValue)
-			command ~= format(" --%s=%s", paramName, paramValue);
+			command ~= format(` --%s="%s"`, paramName, paramValue);
 		else
 			command ~= format(" --%s", paramName);
 	}

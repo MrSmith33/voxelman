@@ -134,12 +134,8 @@ struct LauncherGui
 
 	void refresh()
 	{
-		launcher.clear();
 		launcher.setRootPath(pluginFolder, pluginPackFolder, toolFolder);
-		launcher.readPlugins();
-		launcher.readPluginPacks();
-		launcher.readServers();
-		launcher.readSaves();
+		launcher.refresh();
 		plugins.items = &launcher.plugins;
 		playMenu.refresh();
 		codeMenu.refresh();
