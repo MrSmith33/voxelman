@@ -115,7 +115,7 @@ struct ChunkProvider
 	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks)
 	{
 		import std.algorithm.comparison : clamp;
-		numGenWorkers = clamp(numGenWorkers, 1, 16);
+		numGenWorkers = clamp(numGenWorkers, 0, 16);
 		genWorkers.length = numGenWorkers;
 		foreach(i; 0..numGenWorkers)
 		{

@@ -123,6 +123,14 @@ struct GenWorkerControl
 	}
 }
 
+void sendEmptyChunk(shared SharedQueue* queue, ulong cwp)
+{
+	queue.startMessage();
+	queue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), 1/*numLayers*/, 0));
+	queue.pushMessagePart(ChunkLayerItem(StorageType.uniform, FIRST_LAYER, 0, 0, 0, 0));
+	queue.endMessage();
+}
+
 //version = DBG_OUT;
 //version = DBG_COMPR;
 void storageWorker(
@@ -137,8 +145,8 @@ void storageWorker(
 			shared Worker[] genWorkers,
 			)
 {
-	version(DBG_OUT)infof("Storage worker started");
-	infof("genWorkers.length %s", genWorkers.length);
+	version(DBG_OUT) infof("Storage worker started");
+	version(DBG_OUT) infof("genWorkers.length %s", genWorkers.length);
 	try
 	{
 	ubyte[] compressBuffer = new ubyte[](4096*16);
@@ -153,6 +161,7 @@ void storageWorker(
 	readTime.next = &workTime;
 
 	auto workerControl = GenWorkerControl(genWorkers);
+	bool genEnabled = genWorkers.length > 0;
 
 	void writeChunk()
 	{
@@ -270,7 +279,11 @@ void storageWorker(
 			doGen = true;
 		}
 		if (doGen) {
-			workerControl.sendGenTask(cwp);
+			if (genEnabled) {
+				workerControl.sendGenTask(cwp);
+			} else {
+				sendEmptyChunk(loadResQueue, cwp);
+			}
 		}
 		taskTime.endTaskTiming();
 		taskTime.printTime();

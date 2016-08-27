@@ -19,28 +19,29 @@ string testDir;
 
 void main(string[] args)
 {
-	string semver = "0.7.0";
+	string semver = "0.8.0-dev.1";
+	string compiler = "ldc";
 	testDir = buildNormalizedPath(ROOT_PATH, "test");
 	if (exists(testDir))
 		rmdirRecurse(testDir);
 
 	StopWatch sw;
 	sw.start();
-	completeBuild(Arch.x32, semver);
+	completeBuild(Arch.x32, semver, compiler);
 	writeln;
-	completeBuild(Arch.x64, semver);
+	completeBuild(Arch.x64, semver, compiler);
 	sw.stop();
 	writefln("Finished in %.1fs", sw.peek().to!("seconds", real));
 }
 
-void completeBuild(Arch arch, string semver)
+void completeBuild(Arch arch, string semver, string compiler)
 {
 	string dub_arch = arch == Arch.x32 ? "x86" : "x86_64";
 	string launcher_arch = arch == Arch.x32 ? "32" : "64";
 
 	string dubCom(Arch arch) {
-		return format(`dub run --root="tools/launcher" -q --nodeps --build=release --arch=%s -- --release=%s`,
-				dub_arch, launcher_arch);
+		return format(`dub run --root="tools/launcher" -q --nodeps --compiler=dmd --build=release --arch=%s -- --release=%s --compiler=%s`,
+				dub_arch, launcher_arch, compiler);
 	}
 
 	string com = dubCom(arch);
@@ -99,6 +100,7 @@ void makePackage(ReleasePackage* pack)
 	pack.addFiles("builds/default", "*.exe");
 	pack.addFiles("res", "*");
 	pack.addFiles("config", "*.sdl");
+	pack.addFile("config/servers.txt");
 	pack.addFiles("lib/"~archToString[pack.arch], "*.dll");
 	pack.addFile("README.md");
 	pack.addFile("CHANGELOG.md");

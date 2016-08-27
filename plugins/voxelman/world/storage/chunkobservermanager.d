@@ -18,11 +18,11 @@ struct ViewInfo
 	ClientId clientId;
 	WorldBox viewBox;
 	//ivec3 viewRadius;
-	ChunkWorldPos observerPosition;
-	int viewRadius;
+	//ChunkWorldPos observerPosition;
+	//int viewRadius;
 
-	size_t numObservedRings;
-	size_t currentChunkIndex;
+	//size_t numObservedRings;
+	//size_t currentChunkIndex;
 }
 
 // Manages lists of observers per chunk
@@ -57,6 +57,8 @@ final class ChunkObserverManager {
 			{
 				immutable size_t currentRing = info.numObservedRings;
 				// fully loaded
+				// TODO
+				assert(false, "fix viewRadius usage");
 				if (currentRing > info.viewRadius)
 					break;
 
@@ -174,15 +176,18 @@ final class ChunkObserverManager {
 	}
 
 	void changeObserverBox(ClientId clientId, ChunkWorldPos observerPosition, int viewRadius) {
-		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
-
-		WorldBox oldBox = info.viewBox;
 		WorldBox newBox = calcBox(observerPosition, viewRadius);
+		changeObserverBox(clientId, newBox);
+	}
+
+	void changeObserverBox(ClientId clientId, WorldBox newBox) {
+		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
+		WorldBox oldBox = info.viewBox;
 
 		if (newBox == oldBox)
 			return;
 
-		info = ViewInfo(clientId, newBox, observerPosition, viewRadius);
+		info = ViewInfo(clientId, newBox);//, observerPosition, viewRadius);
 
 		//infof("oldV %s newV %s", oldBox, newBox);
 		TrisectResult tsect = trisect4d(oldBox, newBox);

@@ -7,15 +7,18 @@ Authors: Andrey Penechko.
 module main;
 
 import gui;
+import launcher;
 import std.getopt;
 
 void main(string[] args)
 {
 	uint releaseBuild;
+	Compiler compiler;
 
 	getopt(
 		args,
-		"release", &releaseBuild);
+		"release", &releaseBuild,
+		"compiler", &compiler);
 
 	if (releaseBuild == 32 || releaseBuild == 64)
 	{
@@ -27,9 +30,10 @@ void main(string[] args)
 		params.nodeps = Yes.nodeps;
 		params.force = No.force;
 		params.release = Yes.release;
+		params.compiler = compiler;
 
-		writefln("Building voxelman %sbit", releaseBuild);
 		string comBuild = makeCompileCommand(params);
+		writefln("Building voxelman %sbit '%s'", releaseBuild, comBuild);
 		executeShell(comBuild);
 	}
 	else
