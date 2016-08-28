@@ -348,13 +348,12 @@ public:
 			}
 		}
 
-
 		if (chunkManager.isChunkLoaded(cwp))
 		{
 			foreach(layer; layers)
 			{
 				WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, layer.layerId);
-				applyLayer(layer, writeBuffer.layer);
+				copyLayer(layer, writeBuffer.layer);
 			}
 		}
 		else

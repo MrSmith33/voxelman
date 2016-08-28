@@ -201,6 +201,22 @@ void expandUniformLayer(Layer)(ref Layer layer)
 	layer.type = StorageType.fullArray;
 }
 
+// copies layer array without umcompressing
+void copyLayer(Layer1, Layer2)(const Layer1 source, ref Layer2 dest)
+	if (isSomeLayer!Layer1 && isSomeLayer!Layer2)
+{
+	dest = source;
+	if (!dest.isUniform)
+	{
+		auto data = dest.getArray!ubyte;
+		auto copy = allocLayerArray(data.length);
+		copy[] = data;
+		dest.dataPtr = copy.ptr;
+		dest.dataLength = cast(LayerDataLenType)copy.length;
+	}
+}
+
+// copies layer's data into write buffer filling fullArray
 void applyLayer(Layer1, Layer2)(const Layer1 layer, ref Layer2 writeBuffer)
 	if (isSomeLayer!Layer1 && isSomeLayer!Layer2)
 {

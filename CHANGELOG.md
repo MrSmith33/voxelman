@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Do not uncompress chunks on client until requested. Less memory consumption.
+- Minecraft save import tool.
 - Implement launcher server connection feature.
 - Implement integrated server. Used with --app=combined switch.
 - Implement command line options override. Can override any config option (--option=value).

@@ -47,9 +47,11 @@
 - [ ] BUG: In chunk manager returned pointer points inside hash table. If new write buffer is added hash table can reallocate. Do not use more than one write buffer at a time.
 Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
-- [ ] Move metadata update to commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
+- [ ] Move metadata update on commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
 - [ ] Remove BlockData.
+- [ ] Do not uncompress unneeded chunks (non-visible). Decide by metadata.
+- [x] Do not uncompress chunks on client until requested.
 - [x] Implement heightmap caching in chunk gen.
 
 ----
@@ -82,7 +84,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 
 - [ ] Color blind mode
 - [ ] 2d rendering
-- [ ] Minecraft save import
+- [x] Minecraft save import
 - [x] Implement launcher server connection feature.
 - [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.
 - [x] remove _saving states in chunk manager
