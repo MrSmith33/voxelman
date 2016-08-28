@@ -209,14 +209,21 @@ final class ChunkManager {
 	/// After commit this buffer becomes next immutable snapshot.
 	/// Returns null if chunk is not added and/or not loaded.
 	/// If write buffer was not yet created then it is created based on policy.
+	///
+	/// If allowNonLoaded is enabled, then will create write buffer even if chunk is in non_loaded state.
+	///   Useful for offline generation and conversion tools that write directly to chunk manager.
+	///   You can write all chunk at once and then commit. Internal user will prevent write buffers from unloading.
+	///   And on commit a save will be performed automatically.
+	///
 	/// BUG: returned pointer points inside hash table.
 	///      If new write buffer is added hash table can reallocate.
 	///      Do not use more than one write buffer at a time.
 	///      Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 	WriteBuffer* getOrCreateWriteBuffer(ChunkWorldPos cwp, ubyte layer,
-		WriteBufferPolicy policy = WriteBufferPolicy.createUniform)
+		WriteBufferPolicy policy = WriteBufferPolicy.createUniform,
+		bool allowNonLoaded = false)
 	{
-		if (!isChunkLoaded(cwp)) return null;
+		if (!isChunkLoaded(cwp) && !allowNonLoaded) return null;
 		auto writeBuffer = cwp in writeBuffers[layer];
 		if (writeBuffer is null) {
 			writeBuffer = createWriteBuffer(cwp, layer);
@@ -361,6 +368,10 @@ final class ChunkManager {
 				{
 					modifiedChunks.put(cwp);
 					commitLayerSnapshot(cwp, writeBuffer, currentTime, layer);
+					if (!isChunkLoaded(cwp)) {
+						chunkStates[cwp] = ChunkState.added_loaded;
+						notifyLoaded(cwp);
+					}
 				}
 				else
 				{
@@ -616,11 +627,9 @@ final class ChunkManager {
 				writeBuffer.getArray!ubyte, writeBuffer.layer.metadata);
 			totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);
 		}
-
-		assert(isChunkLoaded(cwp), "Commit is only possible for loaded chunk");
 	}
 
-	void handleCurrentSnapCommit(ChunkWorldPos cwp, ubyte layer, ChunkLayerSnap currentSnapshot)
+	private void handleCurrentSnapCommit(ChunkWorldPos cwp, ubyte layer, ChunkLayerSnap currentSnapshot)
 	{
 		if (currentSnapshot.numUsers == 0) {
 			version(TRACE_SNAP_USERS) tracef("#%s:%s (commit:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers.get(cwp, 0), currentTime);

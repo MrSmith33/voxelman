@@ -22,7 +22,7 @@ struct Box
 	ivec3 position;
 	ivec3 size;
 
-	int box() @property const
+	int volume() @property const
 	{
 		return size.x * size.y * size.z;
 	}
