@@ -437,6 +437,11 @@ struct PlayMenu
 			}
 		}
 
+		igSameLine();
+		if (igButton("Refresh##Saves")) {
+			launcher.refreshSaves();
+			refresh();
+		}
 
 		if (saves.hasSelected)
 		{

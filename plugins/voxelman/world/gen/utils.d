@@ -20,6 +20,8 @@ enum DIRT = 3;
 enum STONE = 4;
 enum SAND = 5;
 enum WATER = 6;
+enum LAVA = 7;
+enum SNOW = 8;
 
 struct ChunkGeneratorResult
 {

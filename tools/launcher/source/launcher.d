@@ -349,7 +349,7 @@ struct Launcher
 		readPlugins();
 		readPluginPacks();
 		readServers();
-		readSaves();
+		refreshSaves();
 	}
 
 	void clear()
@@ -359,7 +359,11 @@ struct Launcher
 		pluginPacks = null;
 		pluginsPacksById = null;
 		servers = null;
+	}
+
+	void refreshSaves() {
 		saves = null;
+		readSaves();
 	}
 
 	void readPlugins()

@@ -14,9 +14,9 @@ import voxelman.world.gen.utils;
 import voxelman.world.gen.generator;
 
 IGenerator[3] generators = [
+	new GeneratorFlat,
 	new Generator2d,
 	new Generator2d3d,
-	new GeneratorFlat,
 ];
 
 
