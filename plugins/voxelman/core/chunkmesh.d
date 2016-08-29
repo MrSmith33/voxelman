@@ -22,11 +22,14 @@ struct Attribute
 	bool normalized;
 }
 
+//enum Store_mesh = true;
+enum Store_mesh = false;
+
 struct ChunkMesh
 {
 	vec3 position;
 	DimensionId dimension;
-	MeshVertex[] data;
+	static if(Store_mesh) MeshVertex[] data;
 	size_t uploadedLength;
 
 	bool isDataDirty = true;
@@ -51,22 +54,29 @@ struct ChunkMesh
 		glDeleteVertexArrays(1, &vao);
 		--numBuffersAllocated;
 		hasBuffers = false;
+		static if(Store_mesh) freeChunkMesh(data);
 	}
 
 	void uploadBuffer(MeshVertex[] data)
 	{
-		this.data = data;
+		assert(!hasBuffers);
+		genBuffers();
+		bind();
+
+		static if(Store_mesh) this.data = data;
 		uploadedLength = data.length;
+
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		MeshVertex.setAttributes();
 		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		unbind();
+		static if(!Store_mesh) freeChunkMesh(data);
 	}
 
 	void bind()
 	{
-		if (!hasBuffers)
-			genBuffers();
 		glBindVertexArray(vao);
 	}
 
@@ -94,3 +104,10 @@ struct ChunkMesh
 
 alias MeshVertex = VertexPosColor!(float, ubyte);
 
+void freeChunkMesh(ref MeshVertex[] data)
+{
+	import std.experimental.allocator;
+	import std.experimental.allocator.mallocator;
+	Mallocator.instance.dispose(data);
+	data = null;
+}

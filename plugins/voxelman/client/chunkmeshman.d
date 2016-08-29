@@ -320,9 +320,7 @@ struct ChunkMeshMan
 			if (meshData.length == 0) continue;
 			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w);
 
-			mesh.bind;
 			mesh.uploadBuffer(meshData);
-			mesh.unbind;
 
 			result.preloadedMeshes[i] = mesh;
 		}
@@ -337,9 +335,6 @@ struct ChunkMeshMan
 
 			result.preloadedMeshes[0].deleteBuffers();
 			result.preloadedMeshes[1].deleteBuffers();
-
-			freeChunkMesh(result.preloadedMeshes[0].data);
-			freeChunkMesh(result.preloadedMeshes[1].data);
 
 			return;
 		}
@@ -389,16 +384,7 @@ struct ChunkMeshMan
 		{
 			totalMeshDataBytes -= mesh.dataBytes;
 			mesh.deleteBuffers();
-			freeChunkMesh(mesh.data);
 			chunkMeshes[index].remove(cwp);
 		}
 	}
-}
-
-void freeChunkMesh(ref MeshVertex[] data)
-{
-	import std.experimental.allocator;
-	import std.experimental.allocator.mallocator;
-	Mallocator.instance.dispose(data);
-	data = null;
 }

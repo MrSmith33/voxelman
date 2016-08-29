@@ -12,6 +12,7 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Free chunk meshes immediately after upload. Saves huge amount of memory.
 - Reuse buffers for meshing (Significantly lowers memory consumption).
 - Optimize getting snapshots for meshing.
 - Use Mallocator for chunk meshes instead of GC.
