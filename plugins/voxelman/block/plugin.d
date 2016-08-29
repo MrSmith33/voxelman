@@ -97,7 +97,7 @@ final class BlockPluginServer : IPlugin
 
 	void readBlockMap(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readEntry(blockMappingKey);
+		ubyte[] data = loader.readWorldEntry(blockMappingKey);
 
 		if (data.length)
 		{
@@ -114,6 +114,6 @@ final class BlockPluginServer : IPlugin
 		size = encodeCborArrayHeader(sink[], blockInfos.length);
 		foreach(info; blockInfos)
 			size += encodeCbor(sink[size..$], info.name);
-		saver.writeEntry(blockMappingKey, size);
+		saver.writeWorldEntry(blockMappingKey, size);
 	}
 }

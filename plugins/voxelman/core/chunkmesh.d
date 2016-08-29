@@ -27,6 +27,7 @@ struct ChunkMesh
 	vec3 position;
 	DimensionId dimension;
 	MeshVertex[] data;
+	size_t uploadedLength;
 
 	bool isDataDirty = true;
 	static int numBuffersAllocated;
@@ -52,11 +53,13 @@ struct ChunkMesh
 		hasBuffers = false;
 	}
 
-	void uploadBuffer()
+	void uploadBuffer(MeshVertex[] data)
 	{
+		this.data = data;
+		uploadedLength = data.length;
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
 		MeshVertex.setAttributes();
+		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	}
 
@@ -76,22 +79,17 @@ struct ChunkMesh
 	{
 		assert(hasBuffers);
 
-		if (isDataDirty)
-		{
-			uploadBuffer();
-			isDataDirty = false;
-		}
 		if (trianlges)
-			glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());//data.length/12);
+			glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());
 		else
-			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());//data.length/12);
+			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());
 	}
 
-	bool empty() { return data.length == 0; }
+	bool empty() { return uploadedLength == 0; }
 
-	ulong numVertexes() {return data.length;}
-	ulong numTris() {return data.length/3;}
-	ulong dataBytes() { return data.length * MeshVertex.sizeof; }
+	ulong numVertexes() {return uploadedLength;}
+	ulong numTris() {return uploadedLength/3;}
+	ulong dataBytes() { return uploadedLength * MeshVertex.sizeof; }
 }
 
 alias MeshVertex = VertexPosColor!(float, ubyte);

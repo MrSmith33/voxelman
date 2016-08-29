@@ -120,11 +120,17 @@ struct PluginDataSaver
 		return dataBuf[dataLen..$];
 	}
 
-	void writeEntry(string key, size_t bytesWritten) {
+	void writeWorldEntry(string key, size_t bytesWritten) {
 		keyLen += encodeCbor(keyBuf[keyLen..$], key);
 		keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
 		dataLen += bytesWritten;
 	}
+
+	//void writeDimensionEntry(string key, DimensionId dim, size_t bytesWritten) {
+	//	keyLen += encodeCbor(keyBuf[keyLen..$], key);
+	//	keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
+	//	dataLen += bytesWritten;
+	//}
 
 	private void reset() @nogc {
 		dataLen = 0;
@@ -152,12 +158,19 @@ struct PluginDataLoader
 {
 	private WorldDb worldDb;
 
-	ubyte[] readEntry(string key) {
+	ubyte[] readWorldEntry(string key) {
 		ubyte[] data = worldDb.getPerWorldValue(key);
 		//infof("Reading %s %s", key, data.length);
 		//printCborStream(data[]);
 		return data;
 	}
+
+	//ubyte[] readDimensionEntry(string key, DimensionId dim) {
+	//	ubyte[] data = worldDb.getPerDimensionValue(key, dim);
+	//	//infof("Reading %s %s", key, data.length);
+	//	//printCborStream(data[]);
+	//	return data;
+	//}
 }
 
 struct WorldInfo
@@ -192,7 +205,7 @@ struct ActiveChunks
 	}
 
 	private void read(ref PluginDataLoader loader) {
-		ubyte[] data = loader.readEntry(dbKey);
+		ubyte[] data = loader.readWorldEntry(dbKey);
 		if (!data.empty) {
 			auto token = decodeCborToken(data);
 			assert(token.type == CborTokenType.arrayHeader);
@@ -207,7 +220,7 @@ struct ActiveChunks
 		size_t encodedSize = encodeCborArrayHeader(sink[], chunks.length);
 		foreach(cwp; chunks.items)
 			encodedSize += encodeCbor(sink[encodedSize..$], cwp);
-		saver.writeEntry(dbKey, encodedSize);
+		saver.writeWorldEntry(dbKey, encodedSize);
 	}
 }
 
@@ -368,7 +381,7 @@ public:
 	private void readWorldInfo(ref PluginDataLoader loader)
 	{
 		import std.path : absolutePath, buildNormalizedPath;
-		ubyte[] data = loader.readEntry(worldInfoKey);
+		ubyte[] data = loader.readWorldEntry(worldInfoKey);
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
@@ -380,7 +393,7 @@ public:
 	private void writeWorldInfo(ref PluginDataSaver saver)
 	{
 		size_t encodedSize = encodeCbor(saver.tempBuffer, worldInfo);
-		saver.writeEntry(worldInfoKey, encodedSize);
+		saver.writeWorldEntry(worldInfoKey, encodedSize);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)

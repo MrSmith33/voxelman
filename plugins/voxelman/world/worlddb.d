@@ -58,6 +58,12 @@ final class WorldDb
 		ubyte[] getPerChunkValue(ulong key) {
 			return get(key, Table.chunk);
 		}
+		void putPerDimensionValue(uint key, ushort dimension, ubyte[] value) {
+			put(key, Table.dimension, value);
+		}
+		ubyte[] getPerDimensionValue(uint key, ushort dimension) {
+			return get(key, Table.dimension);
+		}
 
 		private void put(ulong key, ulong table, ubyte[] value) {
 			ubyte[16] dbKey;

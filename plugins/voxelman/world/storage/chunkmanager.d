@@ -32,43 +32,50 @@ private enum traceStateStr = q{
 	//	chunkStates.get(cwp, ChunkState.non_loaded));
 };
 
-struct ChunkSnapWithAdjacent
+
+struct AdjChunk7Positions
 {
+	this(ChunkWorldPos cwp) {
+		central = cwp;
+		adjacent = adjacentPositions(cwp);
+	}
+
 	union
 	{
-		ChunkWorldPos[7] positions;
+		ChunkWorldPos[7] all;
 		struct
 		{
-			ChunkWorldPos[6] adjacentPositions;
-			ChunkWorldPos centralPosition;
+			ChunkWorldPos[6] adjacent;
+			ChunkWorldPos central;
 		}
 	}
-	union
-	{
-		Nullable!ChunkLayerSnap[7] snapshots;
-		struct
-		{
-			Nullable!ChunkLayerSnap[6] adjacentSnapshots;
-			Nullable!ChunkLayerSnap centralSnapshot;
-		}
-	}
-	bool allLoaded = true;
 }
 
-ChunkSnapWithAdjacent getSnapWithAdjacent(ChunkManager cm, ChunkWorldPos cwp, ubyte layer)
+struct AdjChunk7Layers
 {
-	ChunkSnapWithAdjacent result;
-
-	result.centralSnapshot = cm.getChunkSnapshot(cwp, layer);
-	result.centralPosition = cwp;
-
-	result.adjacentPositions = adjacentPositions(cwp);
-
-	result.allLoaded = !result.centralSnapshot.isNull();
-	foreach(i, pos; result.adjacentPositions)
+	union
 	{
-		result.adjacentSnapshots[i] = cm.getChunkSnapshot(pos, layer);
-		result.allLoaded = result.allLoaded && !result.adjacentSnapshots[i].isNull();
+		Nullable!ChunkLayerSnap[7] all;
+		struct
+		{
+			Nullable!ChunkLayerSnap[6] adjacent;
+			Nullable!ChunkLayerSnap central;
+		}
+	}
+}
+
+Nullable!ChunkLayerSnap[len] getChunkSnapshots
+	(size_t len)
+	(ChunkManager cm,
+	ChunkWorldPos[len] positions,
+	ubyte layer,
+	Flag!"Uncompress" uncompress = No.Uncompress)
+{
+	typeof(return) result;
+
+	foreach(i, cwp; positions)
+	{
+		result[i] = cm.getChunkSnapshot(cwp, layer, uncompress);
 	}
 
 	return result;
@@ -140,14 +147,19 @@ final class ChunkManager {
 		return modifiedChunks;
 	}
 
-	bool isChunkLoaded(ChunkWorldPos cwp)
-	{
+	bool areChunksLoaded(ChunkWorldPos[] positions) {
+		foreach(pos; positions)
+			if (!isChunkLoaded(pos))
+				return false;
+		return true;
+	}
+
+	bool isChunkLoaded(ChunkWorldPos cwp) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		return state == ChunkState.added_loaded;
 	}
 
-	bool isChunkAdded(ChunkWorldPos cwp)
-	{
+	bool isChunkAdded(ChunkWorldPos cwp) {
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		with(ChunkState) {
 			return state == added_loaded || state == added_loading;
@@ -166,8 +178,8 @@ final class ChunkManager {
 
 	/// returned value isNull if chunk is not loaded/added
 	/// If uncompress is Yes then tries to convert snapshot to uncompressed.
-	/// If has users, then compressed snapshot is returned.
-	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, ubyte layer, Flag!"Uncompress" uncompress = Flag!"Uncompress".no) {
+	/// If has users, then uncompressed snapshot copy is returned. Original will not be uncompressed.
+	Nullable!ChunkLayerSnap getChunkSnapshot(ChunkWorldPos cwp, ubyte layer, Flag!"Uncompress" uncompress = No.Uncompress) {
 		if (isChunkLoaded(cwp))
 		{
 			auto snap = cwp in snapshots[layer];
@@ -180,6 +192,7 @@ final class ChunkManager {
 						recycleSnapshotMemory(*snap);
 						snap.dataPtr = decompressedData.ptr;
 						snap.dataLength = cast(LayerDataLenType)decompressedData.length;
+						totalLayerDataBytes += snap.dataLength;
 						snap.type = StorageType.fullArray;
 					}
 					else

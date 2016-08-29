@@ -40,6 +40,8 @@ struct MeshGenTaskHeader
 //version = DBG_OUT;
 void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
+	// reusable buffers
+	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
 	try
 	{
 		while (workerInfo.needsToRun)
@@ -70,7 +72,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 					ChunkLayerItem[7] blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
 					ChunkLayerItem[7] entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
 
-					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos);
+					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
 
 					uint[7] blockTimestamps;
 					uint[7] entityTimestamps;
@@ -100,11 +102,13 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 	version(DBG_OUT)infof("Mesh worker stopped");
 }
 
-MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
-	ChunkLayerItem[7] entityLayers, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
+MeshVertex[][2] chunkMeshWorker(
+	ChunkLayerItem[7] blockLayers,
+	ChunkLayerItem[7] entityLayers,
+	BlockInfoTable blockInfos,
+	BlockEntityInfoTable beInfos,
+	ref Buffer!MeshVertex[3] geometry)
 {
-	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
-
 	foreach (layer; blockLayers)
 		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");
 
@@ -224,16 +228,15 @@ MeshVertex[][2] chunkMeshWorker(ChunkLayerItem[7] blockLayers,
 	}
 
 	MeshVertex[][2] meshes;
-	meshes[0] = geometry[2].data; // solid geometry
-	meshes[1] = geometry[1].data; // semi-transparent geometry
 
-	// Add root to data.
-	// Data can be collected by GC if no-one is referencing it.
-	// It is needed to pass array trough shared queue.
-	// Root is removed inside ChunkMeshMan
-	import core.memory : GC;
-	if (meshes[0]) GC.addRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
-	if (meshes[1]) GC.addRoot(meshes[1].ptr); //
+	import std.experimental.allocator;
+	import std.experimental.allocator.mallocator;
+	meshes[0] = makeArray!MeshVertex(Mallocator.instance, geometry[2].data); // solid geometry
+	meshes[1] = makeArray!MeshVertex(Mallocator.instance, geometry[1].data); // semi-transparent geometry
+
+
+	geometry[1].clear();
+	geometry[2].clear();
 
 	return meshes;
 }

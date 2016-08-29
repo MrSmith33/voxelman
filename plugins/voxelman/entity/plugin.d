@@ -179,7 +179,7 @@ mixin template EntityPluginServerImpl()
 	import cbor;
 	void read(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readEntry(eidKey);
+		ubyte[] data = loader.readWorldEntry(eidKey);
 		if (data.length)
 			decodeCbor(data, entityManager.lastEntityId);
 	}
@@ -188,6 +188,6 @@ mixin template EntityPluginServerImpl()
 	{
 		auto sink = saver.tempBuffer;
 		size_t size = encodeCbor(sink[], entityManager.lastEntityId);
-		saver.writeEntry(eidKey, size);
+		saver.writeWorldEntry(eidKey, size);
 	}
 }

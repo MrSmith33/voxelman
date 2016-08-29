@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Added
-- Do not uncompress chunks on client until requested. Less memory consumption.
+- Add teleport command.
 - Minecraft save import tool.
 - Implement launcher server connection feature.
 - Implement integrated server. Used with --app=combined switch.
@@ -11,7 +11,15 @@
 - Add ability to connect to a server from server list.
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
+### Changed
+- Reuse buffers for meshing (Significantly lowers memory consumption).
+- Optimize getting snapshots for meshing.
+- Use Mallocator for chunk meshes instead of GC.
+- Uncompress snapshots when needed, not on receive.
+- Do not uncompress chunks on client until requested. Less memory consumption.
+
 ### Fixed
+- Fix gui order for task and result queues.
 - Fix client disconnection code.
 - Fix client repeated connection to the same server.
 

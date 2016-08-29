@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.login.plugin;
 
 import std.experimental.logger;
+import std.string : format;
 import netlib;
 import pluginlib;
 import voxelman.math;
@@ -146,8 +147,56 @@ public:
 
 	string clientName(ClientId clientId)
 	{
-		import std.string : format;
 		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
+	}
+}
+
+struct ClientStorage
+{
+	ClientInfo*[ClientId] clientsById;
+	ClientInfo*[string] clientsByName;
+
+	void put(ClientInfo* info) {
+		assert(info);
+		clientsById[info.id] = info;
+	}
+
+	size_t length() {
+		return clientsById.length;
+	}
+
+	void setClientName(ClientInfo* info, string newName) {
+		assert(info);
+		assert(info.id in clientsById);
+
+		if (info.name == newName) return;
+
+		assert(info.name !in clientsByName);
+		clientsByName.remove(info.name);
+		if (newName) {
+			clientsByName[newName] = info;
+		}
+		info.name = newName;
+	}
+
+	ClientInfo* opIndex(ClientId clientId) {
+		return clientsById.get(clientId, null);
+	}
+
+	ClientInfo* opIndex(string name) {
+		return clientsByName.get(name, null);
+	}
+
+	void remove(ClientId clientId) {
+		auto info = clientsById.get(clientId, null);
+		if (info) {
+			clientsByName.remove(info.name);
+		}
+		clientsById.remove(clientId);
+	}
+
+	auto byValue() {
+		return clientsById.byValue;
 	}
 }
 
@@ -159,7 +208,7 @@ private:
 	ServerWorld serverWorld;
 
 public:
-	ClientInfo*[ClientId] clients;
+	ClientStorage clients;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.login.plugininfo);
@@ -180,6 +229,7 @@ public:
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawn);
+		commandPlugin.registerCommand("tp", &onTeleport);
 		commandPlugin.registerCommand("dim", &changeDimensionCommand);
 		commandPlugin.registerCommand("add_active", &onAddActive);
 		commandPlugin.registerCommand("remove_active", &onRemoveActive);
@@ -199,13 +249,85 @@ public:
 
 	void onSpawn(CommandParams params)
 	{
-		ClientInfo* info = clients.get(params.source, null);
+		ClientInfo* info = clients[params.source];
 		if(info is null) return;
 		info.pos = START_POS;
 		info.heading = vec2(0,0);
 		info.dimension = 0;
 		info.positionKey = 0;
 		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
+			info.heading.arrayof, info.dimension, info.positionKey));
+		updateObserverBox(info);
+	}
+
+	void onTeleport(CommandParams params)
+	{
+		import std.regex : matchFirst, regex;
+		import std.conv : to;
+		ClientInfo* info = clients[params.source];
+		if(info is null) return;
+
+		vec3 pos;
+
+		auto regex3 = regex(`(-?\d+)\W+(-?\d+)\W+(-?\d+)`, "m");
+		auto captures3 = matchFirst(params.rawArgs, regex3);
+
+
+		if (!captures3.empty)
+		{
+			pos.x = to!int(captures3[1]);
+			pos.y = to!int(captures3[2]);
+			pos.z = to!int(captures3[3]);
+			return tpToPos(info, pos);
+		}
+
+		auto regex2 = regex(`(-?\d+)\W+(-?\d+)`, "m");
+		auto captures2 = matchFirst(params.rawArgs, regex2);
+		if (!captures2.empty)
+		{
+			pos.x = to!int(captures2[1]);
+			pos.y = info.pos.y;
+			pos.z = to!int(captures2[2]);
+			return tpToPos(info, pos);
+		}
+
+		auto regex1 = regex(`[a-Z]+[_a-Z0-9]+`);
+		auto captures1 = matchFirst(params.rawArgs, regex1);
+		if (!captures1.empty)
+		{
+			string destName = to!string(captures1[1]);
+			ClientInfo* destination = clients[destName];
+			if(destination is null)
+			{
+				connection.sendTo(params.source, MessagePacket(0,
+					format(`Player "%s" is not online`, destName)));
+				return;
+			}
+			return tpToPlayer(info, destination);
+		}
+
+		connection.sendTo(params.source, MessagePacket(0,
+			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>"`));
+	}
+
+	void tpToPos(ClientInfo* info, vec3 pos) {
+		connection.sendTo(info.id, MessagePacket(0,
+			format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
+
+		info.pos = pos;
+		++info.positionKey;
+		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
+			info.heading.arrayof, info.dimension, info.positionKey));
+		updateObserverBox(info);
+	}
+
+	void tpToPlayer(ClientInfo* info, ClientInfo* destination) {
+		connection.sendTo(info.id, MessagePacket(0,
+			format("Teleporting to %s", destination.name)));
+
+		info.pos = destination.pos;
+		++info.positionKey;
+		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
 			info.heading.arrayof, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
@@ -225,8 +347,8 @@ public:
 	string[ClientId] clientNames()
 	{
 		string[ClientId] names;
-		foreach(id, client; clients) {
-			names[id] = client.name;
+		foreach(client; clients.byValue) {
+			names[client.id] = client.name;
 		}
 
 		return names;
@@ -234,15 +356,14 @@ public:
 
 	string clientName(ClientId clientId)
 	{
-		import std.string : format;
-		auto cl = clients.get(clientId, null);
+		auto cl = clients[clientId];
 		return cl ? cl.name : format("%s", clientId);
 	}
 
 	auto loggedInClients()
 	{
 		import std.algorithm : filter, map;
-		return clients.byKeyValue.filter!(a=>a.value.isLoggedIn).map!(a=>a.value.id);
+		return clients.byValue.filter!(a=>a.isLoggedIn).map!(a=>a.id);
 	}
 
 	void spawnClient(vec3 pos, vec2 heading, ushort dimension, ClientId clientId)
@@ -259,7 +380,7 @@ public:
 
 	void handleClientConnected(ref ClientConnectedEvent event)
 	{
-		clients[event.clientId] = new ClientInfo(event.clientId);
+		clients.put(new ClientInfo(event.clientId));
 	}
 
 	void handleClientDisconnected(ref ClientDisconnectedEvent event)
@@ -305,8 +426,8 @@ public:
 	{
 		auto packet = unpackPacket!LoginPacket(packetData);
 		ClientInfo* info = clients[clientId];
-		info.name = packet.clientName;
-		info.id = clientId;
+		// TODO: correctly handle clients with the same name.
+		clients.setClientName(info, packet.clientName);
 		info.isLoggedIn = true;
 
 		infof("%s %s logged in", clientId, clients[clientId].name);

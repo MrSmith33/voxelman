@@ -36,6 +36,10 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - You can override any config options by passing switch in a form `--option=value`.
 - Array config options are passed using comma between items. Like `--resolution=1280,800`.
 
+## Server commands
+- `tp <x> [<y>] <z> | tp <player name>` - teleports to position or other player's location
+- `spawn` teleports to starting world position
+
 ## Controls (Can be changed in `config/client.sdl`)
 - `Q` to lock mouse.
 - `WASD`, `LCtrl`, `Space` to move. `LShift` to boost.

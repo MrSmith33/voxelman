@@ -16,6 +16,8 @@
 ### UI
 - [ ] Autocomplete in console
 - [ ] Translation strings.
+- [ ] Launcher nick option/
+- [ ] Launcher menu for world conversion tool/
 
 ----
 ### GRAPHICS
@@ -82,6 +84,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### OTHER
 
+- [ ] Correctly handle clients with the same name.
 - [ ] Color blind mode
 - [ ] 2d rendering
 - [x] Minecraft save import

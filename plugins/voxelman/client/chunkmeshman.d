@@ -154,12 +154,6 @@ struct ChunkMeshMan
 			auto result = MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
 			preloadMesh(result);
 			newChunkMeshes ~= result;
-
-			// Remove root, added on chunk load and gen.
-			// Data can be collected by GC if no-one is referencing it.
-			import core.memory : GC;
-			if (meshes[0].ptr) GC.removeRoot(meshes[0].ptr); // TODO remove when moved to non-GC allocator
-			if (meshes[1].ptr) GC.removeRoot(meshes[1].ptr); //
 		}
 		else // taskHeader.type == MeshGenTaskType.unloadMesh
 		{
@@ -214,12 +208,12 @@ struct ChunkMeshMan
 		}
 	}
 
-	bool producesMesh(ChunkSnapWithAdjacent snapWithAdjacent)
+	bool producesMesh(AdjChunk7Layers snapshots)
 	{
 		import voxelman.block.utils;
 
 		Solidity solidity;
-		bool singleSolidity = hasSingleSolidity(snapWithAdjacent.centralSnapshot.metadata, solidity);
+		bool singleSolidity = hasSingleSolidity(snapshots.central.metadata, solidity);
 
 		if (singleSolidity)
 		{
@@ -228,7 +222,7 @@ struct ChunkMeshMan
 				return false;
 			}
 
-			foreach(CubeSide side, adj; snapWithAdjacent.adjacentSnapshots)
+			foreach(CubeSide side, adj; snapshots.adjacent)
 			{
 				Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
 				if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
@@ -248,18 +242,22 @@ struct ChunkMeshMan
 	// returns true if was sent to mesh
 	bool meshChunk(ChunkWorldPos cwp)
 	{
-		ChunkSnapWithAdjacent snapWithAdjacentBlocks = chunkManager.getSnapWithAdjacent(cwp, FIRST_LAYER);
-		ChunkSnapWithAdjacent snapWithAdjacentEntities = chunkManager.getSnapWithAdjacent(cwp, ENTITY_LAYER);
+		auto snapsPositions = AdjChunk7Positions(cwp);
 
-		if (!snapWithAdjacentBlocks.allLoaded)
+		if (!chunkManager.areChunksLoaded(snapsPositions.all))
 		{
 			version(DBG) tracef("meshChunk %s !allLoaded", cwp);
 			return false;
 		}
 
+		AdjChunk7Layers snapsBlocks;
+
+		// get compressed layers to use metadata.
+		snapsBlocks.all = chunkManager.getChunkSnapshots(snapsPositions.all, FIRST_LAYER);
+
 		++numMeshChunkTasks;
 
-		if (!producesMesh(snapWithAdjacentBlocks))
+		if (!producesMesh(snapsBlocks))
 		{
 			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
 
@@ -270,13 +268,20 @@ struct ChunkMeshMan
 				notify();
 			}
 
-			//unloadChunkMesh(cwp);
 			return true;
 		}
 
 		version(DBG) tracef("meshChunk %s", cwp);
 
-		foreach(pos; snapWithAdjacentBlocks.positions)
+		// get uncompressed blocks to use for meshing
+		snapsBlocks.all = chunkManager.getChunkSnapshots(
+			snapsPositions.all, FIRST_LAYER, Yes.Uncompress);
+
+		AdjChunk7Layers snapsEntities;
+		snapsEntities.all = chunkManager.getChunkSnapshots(
+			snapsPositions.all, ENTITY_LAYER, Yes.Uncompress);
+
+		foreach(pos; snapsPositions.all)
 		{
 			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
 			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
@@ -286,8 +291,8 @@ struct ChunkMeshMan
 		ChunkLayerItem[7] entityLayers;
 		foreach(i; 0..7)
 		{
-			blockLayers[i] = ChunkLayerItem(snapWithAdjacentBlocks.snapshots[i].get(), FIRST_LAYER);
-			entityLayers[i] = ChunkLayerItem(snapWithAdjacentEntities.snapshots[i].get(), ENTITY_LAYER);
+			blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), FIRST_LAYER);
+			entityLayers[i] = ChunkLayerItem(snapsEntities.all[i].get(), ENTITY_LAYER);
 		}
 
 		// send mesh task
@@ -313,10 +318,10 @@ struct ChunkMeshMan
 		foreach(i, meshData; result.meshes)
 		{
 			if (meshData.length == 0) continue;
-			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w, meshData);
+			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w);
 
 			mesh.bind;
-			mesh.uploadBuffer;
+			mesh.uploadBuffer(meshData);
 			mesh.unbind;
 
 			result.preloadedMeshes[i] = mesh;
@@ -328,13 +333,14 @@ struct ChunkMeshMan
 		ChunkWorldPos cwp = result.cwp;
 		if (!chunkManager.isChunkLoaded(cwp))
 		{
-			import core.memory : GC;
-
 			version(DBG) tracef("loadMeshData %s chunk unloaded", cwp);
+
 			result.preloadedMeshes[0].deleteBuffers();
-			GC.free(result.preloadedMeshes[0].data.ptr);
 			result.preloadedMeshes[1].deleteBuffers();
-			GC.free(result.preloadedMeshes[1].data.ptr);
+
+			freeChunkMesh(result.preloadedMeshes[0].data);
+			freeChunkMesh(result.preloadedMeshes[1].data);
+
 			return;
 		}
 
@@ -381,11 +387,18 @@ struct ChunkMeshMan
 	{
 		if (auto mesh = cwp in chunkMeshes[index])
 		{
-			import core.memory : GC;
 			totalMeshDataBytes -= mesh.dataBytes;
 			mesh.deleteBuffers();
-			GC.free(mesh.data.ptr);
+			freeChunkMesh(mesh.data);
 			chunkMeshes[index].remove(cwp);
 		}
 	}
+}
+
+void freeChunkMesh(ref MeshVertex[] data)
+{
+	import std.experimental.allocator;
+	import std.experimental.allocator.mallocator;
+	Mallocator.instance.dispose(data);
+	data = null;
 }

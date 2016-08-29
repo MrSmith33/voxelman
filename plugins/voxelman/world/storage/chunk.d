@@ -457,7 +457,7 @@ ChunkLayerItem fromBlockData(const ref BlockData bd)
 	if (bd.uniform)
 		return ChunkLayerItem(StorageType.uniform, bd.layerId, bd.dataLength, 0, bd.uniformType, bd.metadata);
 	else
-		return ChunkLayerItem(StorageType.fullArray, bd.layerId, 0, bd.blocks, bd.metadata);
+		return ChunkLayerItem(StorageType.compressedArray, bd.layerId, 0, bd.blocks, bd.metadata);
 }
 
 void copyToBuffer(Layer)(Layer layer, BlockId[] outBuffer)
@@ -626,7 +626,7 @@ ubyte[] decompressLayerData(const ubyte[] _compressedData)
 {
 	ubyte[] compressedData = cast(ubyte[])_compressedData;
 	auto dataSize = decodeCborSingle!size_t(compressedData);
-	ubyte[] buffer = uninitializedArray!(ubyte[])(dataSize);
+	ubyte[] buffer = allocLayerArray(dataSize);
 	ubyte[] decompressedData = decompress(compressedData, buffer);
 	return decompressedData;
 }

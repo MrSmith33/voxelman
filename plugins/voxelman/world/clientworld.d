@@ -309,22 +309,6 @@ public:
 		ubyte numChunkLayers;
 		foreach(layer; packet.layers)
 		{
-			if (!layer.uniform)
-			{
-				version(DBG_COMPR)infof("Receive %s %s\n(%(%02x%))", packet.chunkPos, layer.blocks.length, cast(ubyte[])layer.blocks);
-				auto decompressed = decompressLayerData(layer.blocks);
-				if (decompressed is null)
-				{
-					auto b = layer.blocks;
-					infof("Fail %s %s\n(%(%02x%))", packet.chunkPos, b.length, cast(ubyte[])b);
-					return;
-				}
-				else
-				{
-					layer.blocks = decompressed;
-					layer.validate();
-				}
-			}
 			layers[numChunkLayers] = fromBlockData(layer);
 			++numChunkLayers;
 		}

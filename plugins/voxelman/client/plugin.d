@@ -199,10 +199,10 @@ public:
 			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
 			igTextf("New meshes: %s", newChunkMeshes.length);
 			size_t sum;
-			foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
+			foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
 			igTextf("Task Queues: %s", sum);
 			sum = 0;
-			foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
+			foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
 			igTextf("Res Queues: %s", sum);
 			float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
 			igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);

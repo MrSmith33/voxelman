@@ -206,7 +206,7 @@ mixin template EntityTestPluginServer()
 
 	void read(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readEntry(transformKey);
+		ubyte[] data = loader.readWorldEntry(transformKey);
 		if (data.length) transformStorage.deserialize(data);
 	}
 
@@ -214,7 +214,7 @@ mixin template EntityTestPluginServer()
 	{
 		auto sink = saver.tempBuffer;
 		size_t size = transformStorage.serialize(sink);
-		saver.writeEntry(transformKey, size);
+		saver.writeWorldEntry(transformKey, size);
 	}
 }
 
