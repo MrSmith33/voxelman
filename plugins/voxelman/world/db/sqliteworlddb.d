@@ -7,7 +7,6 @@ module voxelman.world.db.sqliteworlddb;
 
 public import sqlite.d2sqlite3;
 
-import std.array : uninitializedArray;
 import std.conv;
 import std.stdio;
 import voxelman.world.storage.coordinates : ChunkWorldPos;

@@ -250,6 +250,13 @@ final class ChunkManager {
 		return writeBuffer;
 	}
 
+	/// Returns all write buffers. You can modify data in write buffers, but not
+	/// hashmap itself.
+	/// Can be used for metadata update before commit.
+	WriteBuffer[ChunkWorldPos] getWriteBuffers(ubyte layer) {
+		return writeBuffers[layer];
+	}
+
 	/// Returns timestamp of current chunk snapshot.
 	/// Store this timestamp to use in removeSnapshotUser
 	TimestampType addCurrentSnapshotUser(ChunkWorldPos cwp, ubyte layer) {
@@ -635,7 +642,7 @@ final class ChunkManager {
 					currentTime, writeBuffer.layer.uniformData, writeBuffer.layer.metadata);
 			}
 		} else {
-			assert(writeBuffer.layer.type == StorageType.fullArray);
+			//assert(writeBuffer.layer.type == StorageType.fullArray);
 			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime,
 				writeBuffer.getArray!ubyte, writeBuffer.layer.metadata);
 			totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);

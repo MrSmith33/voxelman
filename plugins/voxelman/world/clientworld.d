@@ -334,6 +334,7 @@ public:
 
 		if (chunkManager.isChunkLoaded(cwp))
 		{
+			// TODO possible bug, copyLayer could be called when write buffer is not empty
 			foreach(layer; layers)
 			{
 				WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, layer.layerId);
@@ -342,6 +343,15 @@ public:
 		}
 		else
 		{
+			foreach(ref layer; layers)
+			{
+				if (!layer.isUniform)
+				{
+					ubyte[] data = allocLayerArray(layer.getArray!ubyte);
+					layer.dataLength = cast(LayerDataLenType)data.length;
+					layer.dataPtr = data.ptr;
+				}
+			}
 			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), true);
 		}
 

@@ -52,7 +52,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 - [ ] Move metadata update on commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
 - [ ] Remove BlockData.
-- [ ] Do not uncompress unneeded chunks (non-visible). Decide by metadata.
+- [x] Do not uncompress unneeded chunks (non-visible). Decide by metadata.
 - [x] Do not uncompress chunks on client until requested.
 - [x] Implement heightmap caching in chunk gen.
 

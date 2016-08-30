@@ -253,19 +253,12 @@ void storageWorker(
 					}
 					else
 					{
-						import core.memory : GC;
 						assert(type == StorageType.compressedArray);
 						ubyte[] compactBlocks = decodeCborSingle!(ubyte[])(cborData);
-						compactBlocks = compactBlocks.dup;
-						LayerDataLenType dataLength = cast(LayerDataLenType)compactBlocks.length;
-						ubyte* data = cast(ubyte*)compactBlocks.ptr;
+						compactBlocks = allocLayerArray(compactBlocks);
 
-						// Add root to data.
-						// Data can be collected by GC if no-one is referencing it.
-						// It is needed to pass array trough shared queue.
-						GC.addRoot(data); // TODO remove when moved to non-GC allocator
 						version(DBG_COMPR)infof("Load %s L %s C (%(%02x%))", ChunkWorldPos(cwp), compactBlocks.length, cast(ubyte[])compactBlocks);
-						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.compressedArray, layerId, dataLength, timestamp, data, metadata));
+						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.compressedArray, layerId, timestamp, compactBlocks, metadata));
 					}
 				}
 				loadResQueue.endMessage();

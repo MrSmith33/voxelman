@@ -12,8 +12,10 @@ import std.path;
 import std.stdio;
 
 import voxelman.math;
+import voxelman.utils.mapping;
+
 import voxelman.core.config;
-import voxelman.block.utils : BlockInfoTable;
+import voxelman.block.utils;
 import voxelman.world.storage.chunkmanager : ChunkManager, WriteBufferPolicy;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.chunkobservermanager : ChunkObserverManager;
@@ -99,7 +101,15 @@ void transferRegions(string regionDir, string outputWorld, DimensionId dimension
 	WorldDb worldDb = new WorldDb;
 	worldDb.open(outputWorld); // closed by storage thread
 
-	BlockInfoTable blocks;
+	Mapping!BlockInfo blockMapping;
+	BlockInfoSetter regBlock(string name) {
+		size_t id = blockMapping.put(BlockInfo(name));
+		assert(id <= BlockId.max);
+		return BlockInfoSetter(&blockMapping, id);
+	}
+	regBaseBlocks(&regBlock);
+
+	BlockInfoTable blocks = BlockInfoTable(cast(immutable)blockMapping.infoArray);
 
 	ChunkProvider chunkProvider;
 	chunkProvider.init(worldDb, 0, blocks);
@@ -139,12 +149,23 @@ void transferRegions(string regionDir, string outputWorld, DimensionId dimension
 			++numChunkColumns;
 		}
 		++numRegions;
+
+		updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 		chunkManager.commitSnapshots(TimestampType(0));
 	}
 
+	updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 	chunkManager.commitSnapshots(TimestampType(0));
 
 	chunkProvider.stop(); // updates until everything is saved
+}
+
+void updateMetadata(WriteBuffer[ChunkWorldPos] writeBuffers, BlockInfoTable blockInfos)
+{
+	foreach(ref writeBuffer; writeBuffers.byValue)
+	{
+		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer.layer, blockInfos);
+	}
 }
 
 void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkManager, DimensionId dimensionId)

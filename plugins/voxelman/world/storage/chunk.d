@@ -63,14 +63,34 @@ enum StorageType : ubyte
 	fullArray,
 }
 
+import std.experimental.allocator;
+import std.experimental.allocator.mallocator;
+
+ubyte[] allocLayerArray(ubyte[] dataToCopy) {
+	auto res = makeArray!ubyte(Mallocator.instance, dataToCopy);
+	return res;
+}
+
+ubyte[] reallocLayerArray(Layer)(ref Layer layer, size_t newLength) {
+	assert(layer.type != StorageType.uniform);
+	void[] data = layer.getArray!ubyte;
+	assert(data);
+	Mallocator.instance.reallocate(data, newLength);
+	layer.dataPtr = data.ptr;
+	layer.dataLength = cast(LayerDataLenType)data.length;
+	return cast(ubyte[])data;
+}
+
 ubyte[] allocLayerArray(size_t length) {
-	return uninitializedArray!(ubyte[])(length);
+	auto res = makeArray!ubyte(Mallocator.instance, length);
+	return res;
 }
 
 void freeLayerArray(Layer)(ref Layer layer) {
-	import core.memory : GC;
 	assert(layer.type != StorageType.uniform);
-	GC.free(layer.dataPtr);
+	ubyte[] data = layer.getArray!ubyte;
+	assert(data);
+	dispose(Mallocator.instance, data);
 	layer.dataPtr = null;
 	layer.dataLength = 0;
 }
@@ -205,6 +225,7 @@ void expandUniformLayer(Layer)(ref Layer layer)
 void copyLayer(Layer1, Layer2)(const Layer1 source, ref Layer2 dest)
 	if (isSomeLayer!Layer1 && isSomeLayer!Layer2)
 {
+	assert(dest.isUniform);
 	dest = source;
 	if (!dest.isUniform)
 	{
@@ -275,6 +296,7 @@ ubyte[] ensureLayerArrayLength(Layer)(ref Layer layer, size_t length)
 		}
 		else
 		{
+			//buffer = reallocLayerArray(layer, length);
 			freeLayerArray(layer); // TODO realloc
 			buffer = allocLayerArray(length);
 		}
@@ -503,7 +525,7 @@ void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
 	}
 }
 
-void setSubArray(BlockId[] buffer, Box box, BlockId blockId)
+void setSubArray(BlockId[] buffer, Box box, BlockId blockId) @nogc
 {
 	assert(buffer.length == CHUNK_SIZE_CUBE);
 
@@ -550,7 +572,7 @@ void setSubArray(BlockId[] buffer, Box box, BlockId blockId)
 }
 
 /// writes source to a box within dest
-void setSubArray(T)(T[] dest, Box box, T[] source)
+void setSubArray(T)(T[] dest, Box box, T[] source) @nogc
 {
 	assert(dest.length == CHUNK_SIZE_CUBE);
 	assert(source.length == box.volume);

@@ -78,38 +78,11 @@ void genChunk(
 	else
 	{
 		ushort metadata = calcChunkFullMetadata(blocks, blockInfos);
-
 		ubyte[] compactBlocks = compressLayerData(cast(ubyte[])blocks, compressBuffer);
+		StorageType storageType = StorageType.compressedArray;
+		ubyte[] data = allocLayerArray(compactBlocks);
 
-		StorageType storageType;
-		LayerDataLenType dataLength;
-		ubyte* data;
-
-		if (compactBlocks.length <= LayerDataLenType.max)
-		{
-			version(DBG_COMPR)infof("Gen1 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
-			compactBlocks = compactBlocks.dup;
-			version(DBG_COMPR)infof("Gen2 %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
-			dataLength = cast(LayerDataLenType)compactBlocks.length;
-			data = cast(ubyte*)compactBlocks.ptr;
-			storageType = StorageType.compressedArray;
-		}
-		else
-		{
-			infof("Gen non-compressed %s", cwp);
-			dataLength = cast(LayerDataLenType)blocks.length;
-			assert(dataLength == CHUNK_SIZE_CUBE);
-			data = cast(ubyte*)blocks.dup.ptr;
-			storageType = StorageType.fullArray;
-		}
-
-		// Add root to data.
-		// Data can be collected by GC if no-one is referencing it.
-		// It is needed to pass array trough shared queue.
-		// Root is removed inside ChunkProvider
-		import core.memory : GC;
-		GC.addRoot(data); // TODO remove when moved to non-GC allocator
-		auto layer = ChunkLayerItem(storageType, layerId, dataLength, timestamp, data, metadata);
+		auto layer = ChunkLayerItem(storageType, layerId, timestamp, data, metadata);
 		resultQueue.pushMessagePart(layer);
 	}
 	resultQueue.endMessage();

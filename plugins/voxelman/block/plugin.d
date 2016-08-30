@@ -34,6 +34,10 @@ public:
 		assert(id <= BlockId.max);
 		return BlockInfoSetter(&blockMapping, id);
 	}
+
+	BlockInfoTable getBlocks() {
+		return BlockInfoTable(cast(immutable)blockMapping.infoArray);
+	}
 }
 
 mixin template BlockPluginCommonImpl()
@@ -53,7 +57,7 @@ mixin template BlockPluginCommonImpl()
 
 	BlockInfoTable getBlocks()
 	{
-		return BlockInfoTable(cast(immutable)bm.blockMapping.infoArray);
+		return bm.getBlocks;
 	}
 }
 

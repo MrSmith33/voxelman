@@ -38,16 +38,7 @@ struct LoadedChunkData
 	}
 	ChunkLayerItem getLayer()
 	{
-		ChunkLayerItem layer;
-		queue.popItem(layer);
-		if (layer.type != StorageType.uniform)
-		{
-			// Remove root, added on chunk load and gen.
-			// Data can be collected by GC if no-one is referencing it.
-			import core.memory : GC;
-			GC.removeRoot(layer.dataPtr); // TODO remove when moved to non-GC allocator
-		}
-		return layer;
+		return queue.popItem!ChunkLayerItem;
 	}
 }
 
