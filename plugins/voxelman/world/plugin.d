@@ -6,8 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.world.plugin;
 
 import std.experimental.logger;
-import std.experimental.allocator.mallocator;
-import std.concurrency : spawn, thisTid;
 import std.array : empty;
 import core.atomic : atomicStore, atomicLoad;
 import cbor;
@@ -19,7 +17,6 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.utils.compression;
-import voxelman.container.hashset;
 
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
@@ -34,59 +31,10 @@ import voxelman.server.plugin : WorldSaveInternalEvent;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkmanager;
-import voxelman.world.storage.chunkobservermanager;
-import voxelman.world.storage.chunkprovider;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.storageworker;
-import voxelman.world.storage.worldbox;
-import voxelman.world.storage.worldaccess;
 import voxelman.blockentity.blockentityaccess;
+import voxelman.world.storage;
 
 public import voxelman.world.worlddb : WorldDb;
-
-
-alias SaveHandler = void delegate(ref PluginDataSaver);
-alias LoadHandler = void delegate(ref PluginDataLoader);
-
-final class IoManager : IResourceManager
-{
-private:
-	ConfigOption saveDirOpt;
-	ConfigOption worldNameOpt;
-	void delegate(string) onPostInit;
-
-	LoadHandler[] worldLoadHandlers;
-	SaveHandler[] worldSaveHandlers;
-
-public:
-	this(void delegate(string) onPostInit)
-	{
-		this.onPostInit = onPostInit;
-	}
-
-	override string id() @property { return "voxelman.world.iomanager"; }
-
-	override void init(IResourceManagerRegistry resmanRegistry) {
-		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		saveDirOpt = config.registerOption!string("save_dir", "../../saves");
-		worldNameOpt = config.registerOption!string("world_name", "world");
-	}
-	override void postInit() {
-		import std.path : buildPath;
-		import std.file : mkdirRecurse;
-		auto saveFilename = buildPath(saveDirOpt.get!string, worldNameOpt.get!string~".db");
-		mkdirRecurse(saveDirOpt.get!string);
-		onPostInit(saveFilename);
-	}
-
-	void registerWorldLoadSaveHandlers(LoadHandler loadHandler, SaveHandler saveHandler)
-	{
-		worldLoadHandlers ~= loadHandler;
-		worldSaveHandlers ~= saveHandler;
-	}
-}
 
 struct IdMapManagerServer
 {
@@ -97,131 +45,11 @@ struct IdMapManagerServer
 	}
 }
 
-struct PluginDataSaver
-{
-	enum DATA_BUF_SIZE = 1024*1024*2;
-	enum KEY_BUF_SIZE = 1024*20;
-	private ubyte[] dataBuf;
-	private ubyte[] keyBuf;
-	private size_t dataLen;
-	private size_t keyLen;
-
-	private void alloc() @nogc {
-		dataBuf = cast(ubyte[])Mallocator.instance.allocate(DATA_BUF_SIZE);
-		keyBuf = cast(ubyte[])Mallocator.instance.allocate(KEY_BUF_SIZE);
-	}
-
-	private void free() @nogc {
-		Mallocator.instance.deallocate(dataBuf);
-		Mallocator.instance.deallocate(keyBuf);
-	}
-
-	ubyte[] tempBuffer() @property @nogc {
-		return dataBuf[dataLen..$];
-	}
-
-	void writeWorldEntry(string key, size_t bytesWritten) {
-		keyLen += encodeCbor(keyBuf[keyLen..$], key);
-		keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
-		dataLen += bytesWritten;
-	}
-
-	//void writeDimensionEntry(string key, DimensionId dim, size_t bytesWritten) {
-	//	keyLen += encodeCbor(keyBuf[keyLen..$], key);
-	//	keyLen += encodeCbor(keyBuf[keyLen..$], bytesWritten);
-	//	dataLen += bytesWritten;
-	//}
-
-	private void reset() @nogc {
-		dataLen = 0;
-		keyLen = 0;
-	}
-
-	private int opApply(int delegate(string key, ubyte[] data) dg)
-	{
-		ubyte[] keyEntriesData = keyBuf[0..keyLen];
-		ubyte[] data = dataBuf;
-		while(!keyEntriesData.empty)
-		{
-			auto key = decodeCborSingle!string(keyEntriesData);
-			auto dataSize = decodeCborSingle!size_t(keyEntriesData);
-			auto result = dg(key, data[0..dataSize]);
-			data = data[dataSize..$];
-
-			if (result) return result;
-		}
-		return 0;
-	}
-}
-
-struct PluginDataLoader
-{
-	private WorldDb worldDb;
-
-	ubyte[] readWorldEntry(string key) {
-		ubyte[] data = worldDb.getPerWorldValue(key);
-		//infof("Reading %s %s", key, data.length);
-		//printCborStream(data[]);
-		return data;
-	}
-
-	//ubyte[] readDimensionEntry(string key, DimensionId dim) {
-	//	ubyte[] data = worldDb.getPerDimensionValue(key, dim);
-	//	//infof("Reading %s %s", key, data.length);
-	//	//printCborStream(data[]);
-	//	return data;
-	//}
-}
-
 struct WorldInfo
 {
 	string name = DEFAULT_WORLD_NAME;
 	TimestampType simulationTick;
 	ivec3 spawnPosition;
-}
-
-struct ActiveChunks
-{
-	private immutable string dbKey = "voxelman.world.active_chunks";
-	HashSet!ChunkWorldPos chunks;
-	void delegate(ChunkWorldPos cwp) loadChunk;
-	void delegate(ChunkWorldPos cwp) unloadChunk;
-
-	void add(ChunkWorldPos cwp) {
-		chunks.put(cwp);
-		loadChunk(cwp);
-	}
-
-	void remove(ChunkWorldPos cwp) {
-		if (chunks.remove(cwp))
-			unloadChunk(cwp);
-	}
-
-	void loadActiveChunks() {
-		foreach(cwp; chunks.items) {
-			loadChunk(cwp);
-			infof("load active: %s", cwp);
-		}
-	}
-
-	private void read(ref PluginDataLoader loader) {
-		ubyte[] data = loader.readWorldEntry(dbKey);
-		if (!data.empty) {
-			auto token = decodeCborToken(data);
-			assert(token.type == CborTokenType.arrayHeader);
-			foreach(_; 0..token.uinteger)
-				chunks.put(decodeCborSingle!ChunkWorldPos(data));
-			assert(data.empty);
-		}
-	}
-
-	private void write(ref PluginDataSaver saver) {
-		auto sink = saver.tempBuffer;
-		size_t encodedSize = encodeCborArrayHeader(sink[], chunks.length);
-		foreach(cwp; chunks.items)
-			encodedSize += encodeCbor(sink[encodedSize..$], cwp);
-		saver.writeWorldEntry(dbKey, encodedSize);
-	}
 }
 
 //version = DBG_COMPR;
@@ -463,8 +291,18 @@ public:
 			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
 			if (layer.isNull) continue;
 
-			if (layer.dataLength == 5 && layerId == 1)
-				infof("CM Loaded %s %s", cwp, layer.type);
+			//if (layer.dataLength == 5 && layerId == 1)
+			//	infof("CM Loaded %s %s", cwp, layer.type);
+			if (cwp == ChunkWorldPos(-17, 1, 69, 0))
+				infof("Send %s %s", cwp, layer);
+			if (layerId == 0 && cwp == ChunkWorldPos(-17, 1, 69, 0))
+			{
+				if (layer.type == StorageType.fullArray)
+				{
+					auto array = layer.getArray!ubyte;
+					infof("Send %s %s\n(%(%02x%))", cwp, array.length, array);
+				}
+			}
 
 			version(DBG_COMPR)if (layer.type != StorageType.uniform)
 			{

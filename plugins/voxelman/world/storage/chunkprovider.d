@@ -17,9 +17,7 @@ import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.gen.utils;
 import voxelman.world.gen.worker;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.storageworker;
+import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 
 enum saveUnmodifiedChunks = false;

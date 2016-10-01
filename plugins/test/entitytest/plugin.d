@@ -14,7 +14,7 @@ import datadriven.api;
 import datadriven.storage;
 import voxelman.core.events;
 import voxelman.core.config : BlockId;
-import voxelman.world.storage.coordinates : BlockWorldPos;
+import voxelman.world.storage : BlockWorldPos;
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 
@@ -24,6 +24,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
 import voxelman.world.plugin;
+import voxelman.world.storage;
 
 shared static this()
 {

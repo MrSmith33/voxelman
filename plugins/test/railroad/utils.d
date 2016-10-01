@@ -12,9 +12,7 @@ import voxelman.block.utils;
 import voxelman.blockentity.blockentitydata;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.utils;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
-import voxelman.world.storage.worldaccess;
+import voxelman.world.storage;
 
 enum RAIL_TILE_SIZE = 8;
 immutable ivec3 railSizeVector = ivec3(RAIL_TILE_SIZE, 1, RAIL_TILE_SIZE);

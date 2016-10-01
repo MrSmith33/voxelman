@@ -20,8 +20,7 @@ import voxelman.block.utils;
 import voxelman.core.chunkmesh;
 import voxelman.core.config;
 import voxelman.utils.worker;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.coordinates;
+import voxelman.world.storage;
 
 
 enum MeshGenTaskType : ubyte

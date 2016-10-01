@@ -22,9 +22,7 @@ import voxelman.imgui_glfw;
 
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.utils;
+import voxelman.world.storage;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.config.configmanager;

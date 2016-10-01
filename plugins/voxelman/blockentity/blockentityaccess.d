@@ -11,11 +11,7 @@ import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.block.utils;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkmanager;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
-import voxelman.world.storage.worldaccess;
+import voxelman.world.storage;
 import voxelman.blockentity.plugin;
 
 import voxelman.blockentity.blockentitymap;

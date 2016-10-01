@@ -10,7 +10,7 @@ import std.array : array;
 import cbor;
 import pluginlib;
 import voxelman.core.config : BlockId;
-import voxelman.world.storage.coordinates;
+import voxelman.world.storage;
 import voxelman.block.utils;
 import voxelman.utils.mapping;
 

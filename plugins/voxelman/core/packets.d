@@ -7,6 +7,7 @@ module voxelman.core.packets;
 
 import netlib.connection;
 import voxelman.math;
+import voxelman.world.storage.worldbox : WorldBox;
 
 void registerPackets(Connection c)
 {
@@ -58,7 +59,6 @@ struct MultiblockChangePacket
 
 struct FillBlockBoxPacket
 {
-	import voxelman.world.storage.worldbox : WorldBox;
 	import voxelman.core.config : BlockId;
 	WorldBox box;
 	BlockId blockId;
@@ -66,14 +66,12 @@ struct FillBlockBoxPacket
 
 struct PlaceBlockEntityPacket
 {
-	import voxelman.world.storage.worldbox : WorldBox;
 	WorldBox box;
 	ulong data;
 }
 
 struct RemoveBlockEntityPacket
 {
-	import voxelman.world.storage.worldbox : WorldBox;
 	int[4] blockPos;
 }
 

@@ -9,8 +9,7 @@ module voxelman.edit.tools.filltool;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.core.packets;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
+import voxelman.world.storage;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;

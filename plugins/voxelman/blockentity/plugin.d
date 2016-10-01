@@ -20,8 +20,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.core.chunkmesh;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
+import voxelman.world.storage;
 
 import voxelman.block.plugin;
 import voxelman.edit.plugin;
@@ -130,12 +129,12 @@ final class BlockEntityClient : IPlugin {
 					auto entityBwp = BlockWorldPos(cwp, blockIndex);
 					WorldBox eVol = eInfo.boxHandler(entityBwp, entity);
 
-					igTextf("Entity(main): ind %s: id %s %s %s",
-						blockIndex, entity.id, eInfo.name, eVol);
+					igTextf("Entity(main): id %s %s ind %s %s",
+						entity.id, eInfo.name, blockIndex, eVol);
 					if (eInfo.debugHandler)
 						eInfo.debugHandler(entityBwp, entity);
 
-					voxelman.world.storage.worldbox.putCube(graphics.debugBatch, eVol, Colors.red, false);
+					putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
 				case foreignBlockEntity:
 					auto mainPtr = entity.mainChunkPointer;
@@ -152,7 +151,7 @@ final class BlockEntityClient : IPlugin {
 						mainPtr.blockIndex, mainPtr.mainChunkOffset);
 					igTextf(" %s %s", eInfo.name, eVol);
 
-					voxelman.world.storage.worldbox.putCube(graphics.debugBatch, eVol, Colors.red, false);
+					putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
 				//case componentId:
 				//	igTextf("Entity: @%s: entity id %s", blockIndex, entity.payload); break;

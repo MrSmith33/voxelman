@@ -13,8 +13,7 @@ import voxelman.geometry.cube;
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
+import voxelman.world.storage;
 import voxelman.core.chunkmesh;
 
 import voxelman.blockentity.blockentityaccess;

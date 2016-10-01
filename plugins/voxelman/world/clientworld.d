@@ -31,13 +31,7 @@ import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkmanager;
-import voxelman.world.storage.chunkobservermanager;
-import voxelman.world.storage.chunkprovider;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
-import voxelman.world.storage.worldaccess;
+import voxelman.world.storage;
 import voxelman.blockentity.blockentityaccess;
 
 import voxelman.client.chunkmeshman;

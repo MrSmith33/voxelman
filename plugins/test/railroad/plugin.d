@@ -17,17 +17,15 @@ import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.world.plugin;
 import voxelman.worldinteraction.plugin;
+import voxelman.world.storage;
 
 import voxelman.blockentity.blockentityaccess;
 
 import voxelman.block.utils;
 import voxelman.math;
 import voxelman.geometry.cube;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
 
 import voxelman.blockentity.blockentityaccess;
-import voxelman.world.storage.worldaccess;
 
 import test.railroad.mesh;
 import test.railroad.utils;

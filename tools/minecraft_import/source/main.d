@@ -16,14 +16,9 @@ import voxelman.utils.mapping;
 
 import voxelman.core.config;
 import voxelman.block.utils;
-import voxelman.world.storage.chunkmanager : ChunkManager, WriteBufferPolicy;
-import voxelman.world.storage.chunkprovider;
-import voxelman.world.storage.chunkobservermanager : ChunkObserverManager;
+import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 import voxelman.geometry.box;
-import voxelman.world.storage.worldbox;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.coordinates;
 import voxelman.world.gen.utils;
 
 import mc_region;

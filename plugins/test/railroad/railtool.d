@@ -17,8 +17,7 @@ import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 
 import voxelman.math;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
+import voxelman.world.storage;
 
 import test.railroad.plugin;
 import test.railroad.mesh;

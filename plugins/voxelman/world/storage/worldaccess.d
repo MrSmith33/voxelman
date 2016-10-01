@@ -10,10 +10,7 @@ import std.string;
 import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.block.utils;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkmanager;
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.worldbox;
+import voxelman.world.storage;
 
 final class WorldAccess
 {
