@@ -37,16 +37,18 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 	return blockIndex | BLOCK_ENTITY_FLAG;
 }
 
+struct BlockEntityMeshingData
+{
+	Buffer!MeshVertex[] output;
+	ubvec3 color;
+	ivec3 chunkPos;
+	ivec3 entityPos;
+	ubyte sides;
+	BlockEntityData data;
+	Solidity[27]* solidities;
+}
 
-alias BlockEntityMeshhandler = void function(
-	Buffer!MeshVertex[] output,
-	const ref Solidity[27] solidities,
-	BlockEntityData data,
-	ubyte[3] color,
-	ubyte sides,
-	//ivec3 worldPos,
-	ivec3 chunkPos,
-	ivec3 entityPos);
+alias BlockEntityMeshhandler = void function(BlockEntityMeshingData);
 
 alias SolidityHandler = Solidity function(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
 alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
@@ -56,11 +58,7 @@ WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 	return WorldBox(bwp.xyz, ivec3(1,1,1), cast(ushort)bwp.w);
 }
 
-void nullBlockEntityMeshhandler(
-	Buffer!MeshVertex[] output, const ref Solidity[27] solidities,
-	BlockEntityData data,
-	ubyte[3] color, ubyte sides, //ivec3 worldPos,
-	ivec3 chunkPos, ivec3 entityPos) {}
+void nullBlockEntityMeshhandler(BlockEntityMeshingData) {}
 
 Solidity nullSolidityHandler(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data) {
 	return Solidity.solid;
@@ -75,7 +73,7 @@ struct BlockEntityInfo
 	SolidityHandler sideSolidity = &nullSolidityHandler;
 	EntityBoxHandler boxHandler = &nullBoxHandler;
 	EntityDebugHandler debugHandler = &nullDebugHandler;
-	ubyte[3] color;
+	ubvec3 color;
 	//bool isVisible = true;
 	size_t id;
 }

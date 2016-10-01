@@ -114,31 +114,28 @@ CubeSide sideFromNormal(ivec3 normal)
 	return CubeSide.zneg;
 }
 
-void makeNullMesh(ref Buffer!MeshVertex, const ref Solidity[27],
-	ubvec3, ubvec3, ubyte) {}
+void makeNullMesh(BlockMeshingData) {}
 
-void makeColoredBlockMesh(ref Buffer!MeshVertex output,
-	const ref Solidity[27] solidities,
-	ubvec3 color, ubvec3 bpos, ubyte sides)
+void makeColoredBlockMesh(BlockMeshingData data)
 {
 	import std.random;
 	static immutable(float)[] shadowMultipliers = [
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
-	auto index = BlockChunkIndex(bpos).index;
+	auto index = BlockChunkIndex(data.blockPos).index;
 	auto rnd = Xorshift32(index);
 	float randomTint = uniform(0.90f, 1.0f, rnd);
 
-	float r = color.r * randomTint;
-	float g = color.g * randomTint;
-	float b = color.b * randomTint;
+	float r = data.color.r * randomTint;
+	float g = data.color.g * randomTint;
+	float b = data.color.b * randomTint;
 	ubvec3 finalColor;
 
 	ubyte flag = 1;
 	foreach(ubyte i; 0..6)
 	{
-		if (sides & flag)
+		if (data.sides & flag)
 		{
 			finalColor = ubvec3(
 				shadowMultipliers[i] * r,
@@ -146,10 +143,10 @@ void makeColoredBlockMesh(ref Buffer!MeshVertex output,
 				shadowMultipliers[i] * b);
 			for (size_t v = 0; v!=18; v+=3)
 			{
-				output.put(MeshVertex(
-					cubeFaces[18*i+v  ] + bpos.x,
-					cubeFaces[18*i+v+1] + bpos.y,
-					cubeFaces[18*i+v+2] + bpos.z,
+				data.buffer.put(MeshVertex(
+					cubeFaces[18*i+v  ] + data.blockPos.x,
+					cubeFaces[18*i+v+1] + data.blockPos.y,
+					cubeFaces[18*i+v+2] + data.blockPos.z,
 					finalColor));
 			} // for v
 		} // if
@@ -165,8 +162,15 @@ ushort packColor(ubyte r, ubyte g, ubyte b) {
 }
 
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
-alias Meshhandler = void function(ref Buffer!MeshVertex,
-	const ref Solidity[27], ubvec3, ubvec3, ubyte);
+struct BlockMeshingData
+{
+	Buffer!MeshVertex* buffer;
+	ubvec3 color;
+	ubvec3 blockPos;
+	ubyte sides;
+	Solidity[27]* solidities;
+}
+alias Meshhandler = void function(BlockMeshingData);
 
 // solidity number increases with solidity
 enum Solidity : ubyte

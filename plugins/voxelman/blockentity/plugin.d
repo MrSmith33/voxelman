@@ -190,27 +190,23 @@ mixin template BlockEntityCommon()
 	}
 }
 
-void multichunkMeshHandler(
-	Buffer!MeshVertex[] output,
-	const ref Solidity[27] solidities,
-	BlockEntityData data,
-	ubyte[3] color,
-	ubyte sides,
-	//ivec3 worldPos,
-	ivec3 chunkPos,
-	ivec3 entityPos)
+void multichunkMeshHandler(BlockEntityMeshingData meshingData)
 {
 	static ubvec3 mainColor = ubvec3(60,0,0);
 	static ubvec3 otherColor = ubvec3(0,0,60);
 
 	ubvec3 col;
-	if (data.type == BlockEntityType.localBlockEntity)
+	if (meshingData.data.type == BlockEntityType.localBlockEntity)
 		col = mainColor;
 	else
 		col = otherColor;
 
-	makeColoredBlockMesh(output[Solidity.solid],
-		solidities, col, ubvec3(chunkPos), sides);
+	auto blockMeshingData = BlockMeshingData(
+				&meshingData.output[Solidity.solid],
+				col,
+				ubvec3(meshingData.chunkPos),
+				meshingData.sides);
+	makeColoredBlockMesh(blockMeshingData);
 }
 
 WorldBox multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
@@ -233,8 +229,8 @@ struct BlockEntityInfoSetter
 	private size_t blockId;
 	private ref BlockEntityInfo info() {return (*mapping)[blockId]; }
 
-	ref BlockEntityInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
-	ref BlockEntityInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
+	ref BlockEntityInfoSetter color(ubyte[3] color ...) { info.color = ubvec3(color); return this; }
+	ref BlockEntityInfoSetter colorHex(uint hex) { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
 	//ref BlockEntityInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockEntityInfoSetter meshHandler(BlockEntityMeshhandler val) { info.meshHandler = val; return this; }
 	ref BlockEntityInfoSetter sideSolidity(SolidityHandler val) { info.sideSolidity = val; return this; }

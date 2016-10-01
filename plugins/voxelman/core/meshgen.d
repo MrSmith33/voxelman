@@ -193,31 +193,34 @@ MeshVertex[][2] chunkMeshWorker(
 		if (isBlockEntity(blockId))
 		{
 			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[6]);
+			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
 
 			// entity chunk pos
 			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
 
-			//ivec3 worldPos;
 			ivec3 blockChunkPos = ivec3(bpos);
 			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
 
 			auto entityInfo = beInfos[data.id];
 
-			entityInfo.meshHandler(
-				geometry[],
-				solidities,
-				data,
+			auto meshingData = BlockEntityMeshingData(
+				geometry,
 				entityInfo.color,
-				sides,
-				//worldPos,
 				blockChunkPos,
-				blockEntityPos);
+				blockEntityPos,
+				sides,
+				data);
+
+			entityInfo.meshHandler(meshingData);
 		}
 		else
 		{
-			blockInfos[blockId].meshHandler(geometry[curSolidity], solidities,
-				blockInfos[blockId].color, bpos, sides);
+			auto data = BlockMeshingData(
+				&geometry[curSolidity],
+				blockInfos[blockId].color,
+				bpos,
+				sides);
+			blockInfos[blockId].meshHandler(data);
 		}
 	}
 

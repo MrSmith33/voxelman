@@ -17,22 +17,19 @@ import voxelman.core.chunkmesh;
 import voxelman.block.utils;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;
+import voxelman.blockentity.utils;
 
 import test.railroad.utils;
 
-void makeRailMesh(
-	Buffer!MeshVertex[] output,
-	const ref Solidity[27] solidities,
-	BlockEntityData data,
-	ubyte[3] color,
-	ubyte sides,
-	//ivec3 worldPos,
-	ivec3 chunkPos,
-	ivec3 entityPos)
+void makeRailMesh(BlockEntityMeshingData meshingData)
 {
-	if (data.type == BlockEntityType.localBlockEntity && entityPos == ivec3(0,0,0))
+	if (meshingData.data.type == BlockEntityType.localBlockEntity &&
+		meshingData.entityPos == ivec3(0,0,0))
 	{
-		putRailMesh!MeshVertex(output[Solidity.solid], chunkPos, RailData(data));
+		putRailMesh!MeshVertex(
+			meshingData.output[Solidity.solid],
+			meshingData.chunkPos,
+			RailData(meshingData.data));
 	}
 }
 
