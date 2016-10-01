@@ -15,7 +15,7 @@ import voxelman.edit.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
-import voxelman.world.plugin;
+import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 import voxelman.world.storage;
 

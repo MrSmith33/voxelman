@@ -16,7 +16,7 @@ import datadriven.api;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
-import voxelman.world.plugin;
+import voxelman.world.serverworld;
 import voxelman.world.storage : IoManager, PluginDataLoader, PluginDataSaver;
 
 shared static this()

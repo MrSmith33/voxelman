@@ -22,7 +22,7 @@ import voxelman.config.configmanager : ConfigManager, ConfigOption;
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
-import voxelman.world.plugin;
+import voxelman.world.serverworld;
 import voxelman.world.clientworld;
 import voxelman.graphics.plugin;
 

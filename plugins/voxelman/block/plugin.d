@@ -14,7 +14,7 @@ import voxelman.world.storage;
 import voxelman.block.utils;
 import voxelman.utils.mapping;
 
-import voxelman.world.plugin;
+import voxelman.world.serverworld;
 import voxelman.world.clientworld;
 
 final class BlockManager : IResourceManager
