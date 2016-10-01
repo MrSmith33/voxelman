@@ -135,7 +135,7 @@ shared struct WorkerGroup
 	bool queuesEmpty()
 	{
 		bool empty = true;
-		foreach(ref worker; workers) empty = empty && worker.queuesEmpty;
+		foreach(ref worker; workers) empty = empty && (worker.queuesEmpty || worker.isStopped);
 		return empty;
 	}
 

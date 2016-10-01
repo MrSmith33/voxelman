@@ -68,16 +68,16 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 
 				if (taskHeader.type == MeshGenTaskType.genMesh)
 				{
-					// mesh task.
-					ChunkLayerItem[7] blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
-					ChunkLayerItem[7] entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[7])();
+					// get mesh task.
+					auto blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
+					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 
 					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
 
-					uint[7] blockTimestamps;
-					uint[7] entityTimestamps;
-					foreach(i; 0..7) blockTimestamps[i] = blockLayers[i].timestamp;
-					foreach(i; 0..7) entityTimestamps[i] = entityLayers[i].timestamp;
+					uint[27] blockTimestamps;
+					uint[27] entityTimestamps;
+					foreach(i; 0..27) blockTimestamps[i] = blockLayers[i].timestamp;
+					foreach(i; 0..27) entityTimestamps[i] = entityLayers[i].timestamp;
 
 					workerInfo.resultQueue.startMessage();
 					workerInfo.resultQueue.pushMessagePart(taskHeader);
@@ -103,16 +103,21 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 }
 
 MeshVertex[][2] chunkMeshWorker(
-	ChunkLayerItem[7] blockLayers,
-	ChunkLayerItem[7] entityLayers,
+	ChunkLayerItem[27] blockLayers,
+	ChunkLayerItem[27] entityLayers,
 	BlockInfoTable blockInfos,
 	BlockEntityInfoTable beInfos,
 	ref Buffer!MeshVertex[3] geometry)
 {
-	foreach (layer; blockLayers)
-		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed");
+	foreach (layer; blockLayers) {
+		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 1");
+		if (!layer.isUniform)
+			assert(layer.getArray!ubyte.length == BLOCKS_DATA_LENGTH);
+	}
+	foreach (layer; entityLayers)
+		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 2");
 
-	BlockEntityMap[7] maps;
+	BlockEntityMap[27] maps;
 	foreach (i, layer; entityLayers) maps[i] = getHashMapFromLayer(layer);
 
 	BlockEntityData getBlockEntity(ushort blockIndex, BlockEntityMap map) {
@@ -123,7 +128,7 @@ MeshVertex[][2] chunkMeshWorker(
 
 	Solidity solidity(int tx, int ty, int tz, CubeSide side)
 	{
-		ChunkAndBlockAt chAndBlock = chunkAndBlockAt(tx, ty, tz);
+		ChunkAndBlockAt chAndBlock = chunkAndBlockAt6(tx, ty, tz);
 		BlockId blockId = blockLayers[chAndBlock.chunk].getBlockId(
 			chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
 
@@ -143,13 +148,30 @@ MeshVertex[][2] chunkMeshWorker(
 		}
 	}
 
-	ubyte checkSideSolidities(Solidity curSolidity, ubyte bx, ubyte by, ubyte bz)
+	BlockId[27] collectBlocks3by3(ubvec3 bpos) const {
+		BlockId[27] result;
+		foreach(i, offset; offsets3by3) {
+			auto cb = chunkAndBlockAt27(bpos.x+offset[0], bpos.y+offset[1], bpos.z+offset[2]);
+			result[i] = blockLayers[cb.chunk].getBlockId(cb.blockX, cb.blockY, cb.blockZ);
+		}
+		return result;
+	}
+
+	Solidity[27] collectSolidities3by3(ubvec3 bpos) const {
+		Solidity[27] result;
+		foreach(i, blockId; collectBlocks3by3(bpos)) {
+			result[i] = blockInfos[blockId].solidity;
+		}
+		return result;
+	}
+
+	ubyte checkSideSolidities(Solidity curSolidity, ubvec3 bpos)
 	{
 		ubyte sides = 0;
 		ubyte flag = 1;
 		foreach(ubyte side; 0..6) {
-			byte[3] offset = sideOffsets[side]; // Offset to adjacent block
-			if(curSolidity > solidity(bx+offset[0], by+offset[1], bz+offset[2], oppSide[side])) {
+			byte[3] offset = sideOffsets6[side]; // Offset to adjacent block
+			if(curSolidity > solidity(bpos.x+offset[0], bpos.y+offset[1], bpos.z+offset[2], oppSide[side])) {
 				sides |= flag;
 			}
 			flag <<= 1;
@@ -159,12 +181,14 @@ MeshVertex[][2] chunkMeshWorker(
 
 	void meshBlock(BlockId blockId, ushort blockIndex, Solidity curSolidity)
 	{
-		ubyte bx = blockIndex & CHUNK_SIZE_BITS;
-		ubyte by = (blockIndex / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-		ubyte bz = (blockIndex / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+		ubvec3 bpos;
+		bpos.x = blockIndex & CHUNK_SIZE_BITS;
+		bpos.y = (blockIndex / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		bpos.z = (blockIndex / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 
 		// Bit flags of sides to render
-		ubyte sides = checkSideSolidities(curSolidity, bx, by, bz);
+		ubyte sides = checkSideSolidities(curSolidity, bpos);
+		Solidity[27] solidities;// = collectSolidities3by3(bpos);
 
 		if (isBlockEntity(blockId))
 		{
@@ -175,13 +199,14 @@ MeshVertex[][2] chunkMeshWorker(
 			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
 
 			//ivec3 worldPos;
-			ivec3 blockChunkPos = ivec3(bx, by, bz);
+			ivec3 blockChunkPos = ivec3(bpos);
 			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
 
 			auto entityInfo = beInfos[data.id];
 
 			entityInfo.meshHandler(
 				geometry[],
+				solidities,
 				data,
 				entityInfo.color,
 				sides,
@@ -191,15 +216,16 @@ MeshVertex[][2] chunkMeshWorker(
 		}
 		else
 		{
-			blockInfos[blockId].meshHandler(geometry[curSolidity], blockInfos[blockId].color, bx, by, bz, sides);
+			blockInfos[blockId].meshHandler(geometry[curSolidity], solidities,
+				blockInfos[blockId].color, bpos, sides);
 		}
 	}
 
-	if (blockLayers[6].isUniform)
+	if (blockLayers[26].isUniform)
 	{
-		BlockId blockId = blockLayers[6].getUniform!BlockId;
+		BlockId blockId = blockLayers[26].getUniform!BlockId;
 		Meshhandler meshHandler = blockInfos[blockId].meshHandler;
-		ubyte[3] color = blockInfos[blockId].color;
+		ubvec3 color = blockInfos[blockId].color;
 		Solidity curSolidity = blockInfos[blockId].solidity;
 
 		if (curSolidity != Solidity.transparent)
@@ -212,7 +238,7 @@ MeshVertex[][2] chunkMeshWorker(
 	}
 	else
 	{
-		auto blocks = blockLayers[6].getArray!BlockId();
+		auto blocks = blockLayers[26].getArray!BlockId();
 		assert(blocks.length == CHUNK_SIZE_CUBE);
 		foreach (ushort index, BlockId blockId; blocks)
 		{

@@ -192,6 +192,7 @@ mixin template BlockEntityCommon()
 
 void multichunkMeshHandler(
 	Buffer!MeshVertex[] output,
+	const ref Solidity[27] solidities,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,
@@ -199,20 +200,17 @@ void multichunkMeshHandler(
 	ivec3 chunkPos,
 	ivec3 entityPos)
 {
-	static ubyte[3] mainColor = [60,0,0];
-	static ubyte[3] otherColor = [0,0,60];
+	static ubvec3 mainColor = ubvec3(60,0,0);
+	static ubvec3 otherColor = ubvec3(0,0,60);
 
-	ubyte[3] col;
+	ubvec3 col;
 	if (data.type == BlockEntityType.localBlockEntity)
 		col = mainColor;
 	else
 		col = otherColor;
 
-	makeColoredBlockMesh(output[Solidity.solid], col,
-		cast(ubyte)chunkPos.x,
-		cast(ubyte)chunkPos.y,
-		cast(ubyte)chunkPos.z,
-		sides);
+	makeColoredBlockMesh(output[Solidity.solid],
+		solidities, col, ubvec3(chunkPos), sides);
 }
 
 WorldBox multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)

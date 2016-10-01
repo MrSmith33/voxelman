@@ -33,32 +33,29 @@ private enum traceStateStr = q{
 };
 
 
-struct AdjChunk7Positions
-{
+struct AdjChunkPositions27 {
 	this(ChunkWorldPos cwp) {
 		central = cwp;
-		adjacent = adjacentPositions(cwp);
+		adjacentPositions!26(cwp, adjacent26);
 	}
-
-	union
-	{
-		ChunkWorldPos[7] all;
-		struct
-		{
-			ChunkWorldPos[6] adjacent;
+	union {
+		ChunkWorldPos[27] all;
+		ChunkWorldPos[26] adjacent26;
+		struct {
+			ChunkWorldPos[6] adjacent6;
+			ChunkWorldPos[20] adjacent20;
 			ChunkWorldPos central;
 		}
 	}
 }
 
-struct AdjChunk7Layers
-{
-	union
-	{
-		Nullable!ChunkLayerSnap[7] all;
-		struct
-		{
-			Nullable!ChunkLayerSnap[6] adjacent;
+struct AdjChunkLayers27 {
+	union {
+		Nullable!ChunkLayerSnap[27] all;
+		Nullable!ChunkLayerSnap[26] adjacent26;
+		struct {
+			Nullable!ChunkLayerSnap[6] adjacent6;
+			Nullable!ChunkLayerSnap[20] adjacent20;
 			Nullable!ChunkLayerSnap central;
 		}
 	}

@@ -22,6 +22,7 @@ import test.railroad.utils;
 
 void makeRailMesh(
 	Buffer!MeshVertex[] output,
+	const ref Solidity[27] solidities,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,

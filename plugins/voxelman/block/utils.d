@@ -41,6 +41,12 @@ enum MetadataSideMask : ushort
 	yneg = 0b_11_00_00_00_00_00,
 }
 
+struct ChunkAndBlockAdjacent
+{
+	ubyte[27] chunks;
+	ubyte[3][27] blocks;
+}
+
 struct ChunkAndBlockAt
 {
 	ubyte chunk;
@@ -48,7 +54,7 @@ struct ChunkAndBlockAt
 }
 
 // 0-5 sides, or 6 if center
-ChunkAndBlockAt chunkAndBlockAt(int x, int y, int z)
+ChunkAndBlockAt chunkAndBlockAt6(int x, int y, int z)
 {
 	ubyte bx = cast(ubyte)x;
 	ubyte by = cast(ubyte)y;
@@ -62,7 +68,30 @@ ChunkAndBlockAt chunkAndBlockAt(int x, int y, int z)
 	if(z == -1) return ChunkAndBlockAt(CubeSide.zneg, bx, by, CHUNK_SIZE-1);
 	else if(z == CHUNK_SIZE) return ChunkAndBlockAt(CubeSide.zpos, bx, by, 0);
 
-	return ChunkAndBlockAt(6, bx, by, bz);
+	return ChunkAndBlockAt(26, bx, by, bz);
+}
+
+// convert -1..33 -> 0..34 to use as index
+ubyte[34] position_in_target_chunk = [CHUNK_SIZE-1, // CHUNK_SIZE-1 is in adjacent chunk
+	0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+	17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, 0]; // 0 is in adjacent chunk
+// 0 chunk in neg direction, 1 this chunk, 1 pos dir
+ubyte[34] target_chunk =
+[0, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 2];
+
+ChunkAndBlockAt chunkAndBlockAt27(int x, int y, int z)
+{
+	ubyte bx = position_in_target_chunk[x+1];
+	ubyte by = position_in_target_chunk[y+1];
+	ubyte bz = position_in_target_chunk[z+1];
+
+	ubyte cx = target_chunk[x+1];
+	ubyte cy = target_chunk[y+1];
+	ubyte cz = target_chunk[z+1];
+
+	ubyte chunk_index = cast(ubyte)(cx + cz * 3 + cy * 9);
+
+	return ChunkAndBlockAt(chunk_index, bx, by, bz);
 }
 
 CubeSide sideFromNormal(ivec3 normal)
@@ -85,40 +114,42 @@ CubeSide sideFromNormal(ivec3 normal)
 	return CubeSide.zneg;
 }
 
-void makeNullMesh(ref Buffer!MeshVertex, ubyte[3], ubyte, ubyte, ubyte, ubyte) {}
+void makeNullMesh(ref Buffer!MeshVertex, const ref Solidity[27],
+	ubvec3, ubvec3, ubyte) {}
 
 void makeColoredBlockMesh(ref Buffer!MeshVertex output,
-	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides)
+	const ref Solidity[27] solidities,
+	ubvec3 color, ubvec3 bpos, ubyte sides)
 {
 	import std.random;
 	static immutable(float)[] shadowMultipliers = [
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
-	auto index = BlockChunkIndex(bx, by, bz).index;
+	auto index = BlockChunkIndex(bpos).index;
 	auto rnd = Xorshift32(index);
 	float randomTint = uniform(0.90f, 1.0f, rnd);
 
-	float r = cast(ubyte)(color[0] * randomTint);
-	float g = cast(ubyte)(color[1] * randomTint);
-	float b = cast(ubyte)(color[2] * randomTint);
-	ubyte[3] finalColor;
+	float r = color.r * randomTint;
+	float g = color.g * randomTint;
+	float b = color.b * randomTint;
+	ubvec3 finalColor;
 
 	ubyte flag = 1;
 	foreach(ubyte i; 0..6)
 	{
 		if (sides & flag)
 		{
-			finalColor = [
-				cast(ubyte)(shadowMultipliers[i] * r),
-				cast(ubyte)(shadowMultipliers[i] * g),
-				cast(ubyte)(shadowMultipliers[i] * b)];
+			finalColor = ubvec3(
+				shadowMultipliers[i] * r,
+				shadowMultipliers[i] * g,
+				shadowMultipliers[i] * b);
 			for (size_t v = 0; v!=18; v+=3)
 			{
 				output.put(MeshVertex(
-					cubeFaces[18*i+v  ] + bx,
-					cubeFaces[18*i+v+1] + by,
-					cubeFaces[18*i+v+2] + bz,
+					cubeFaces[18*i+v  ] + bpos.x,
+					cubeFaces[18*i+v+1] + bpos.y,
+					cubeFaces[18*i+v+2] + bpos.z,
 					finalColor));
 			} // for v
 		} // if
@@ -126,16 +157,16 @@ void makeColoredBlockMesh(ref Buffer!MeshVertex output,
 	} // for i
 }
 
-ushort packColor(ubyte[3] c) {
-	return (c[0]>>3) | (c[1]&31) << 5 | (c[2]&31) << 10;
+ushort packColor(ubvec3 c) {
+	return (c.r>>3) | (c.g&31) << 5 | (c.b&31) << 10;
 }
 ushort packColor(ubyte r, ubyte g, ubyte b) {
 	return (r>>3) | (g&31) << 5 | (b&31) << 10;
 }
 
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
-alias Meshhandler = void function(ref Buffer!MeshVertex output,
-	ubyte[3] color, ubyte bx, ubyte by, ubyte bz, ubyte sides);
+alias Meshhandler = void function(ref Buffer!MeshVertex,
+	const ref Solidity[27], ubvec3, ubvec3, ubyte);
 
 // solidity number increases with solidity
 enum Solidity : ubyte
@@ -149,7 +180,7 @@ struct BlockInfo
 {
 	string name;
 	Meshhandler meshHandler = &makeNullMesh;
-	ubyte[3] color;
+	ubvec3 color;
 	bool isVisible = true;
 	Solidity solidity = Solidity.solid;
 	//bool isSolid() @property const { return solidity == Solidity.solid; }
@@ -177,8 +208,8 @@ struct BlockInfoSetter
 	private ref BlockInfo info() {return (*mapping)[blockId]; }
 
 	ref BlockInfoSetter meshHandler(Meshhandler val) { info.meshHandler = val; return this; }
-	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = color; return this; }
-	ref BlockInfoSetter colorHex(uint hex) { info.color = [(hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF]; return this; }
+	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = ubvec3(color); return this; }
+	ref BlockInfoSetter colorHex(uint hex) { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
 }

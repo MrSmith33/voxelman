@@ -74,7 +74,6 @@ ubyte[] allocLayerArray(ubyte[] dataToCopy) {
 ubyte[] reallocLayerArray(Layer)(ref Layer layer, size_t newLength) {
 	assert(layer.type != StorageType.uniform);
 	void[] data = layer.getArray!ubyte;
-	assert(data);
 	Mallocator.instance.reallocate(data, newLength);
 	layer.dataPtr = data.ptr;
 	layer.dataLength = cast(LayerDataLenType)data.length;
@@ -89,7 +88,6 @@ ubyte[] allocLayerArray(size_t length) {
 void freeLayerArray(Layer)(ref Layer layer) {
 	assert(layer.type != StorageType.uniform);
 	ubyte[] data = layer.getArray!ubyte;
-	assert(data);
 	dispose(Mallocator.instance, data);
 	layer.dataPtr = null;
 	layer.dataLength = 0;

@@ -355,9 +355,8 @@ public:
 			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), true);
 		}
 
-		chunksToRemesh.put(cwp);
-		foreach(adj; adjacentPositions(cwp))
-			chunksToRemesh.put(adj);
+		foreach(pos; AdjChunkPositions27(cwp).all)
+			chunksToRemesh.put(pos);
 	}
 
 	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
@@ -367,9 +366,8 @@ public:
 
 		worldAccess.applyBlockChanges(cwp, packet.blockChanges);
 
-		chunksToRemesh.put(cwp);
-		foreach(adj; adjacentPositions(cwp))
-			chunksToRemesh.put(adj);
+		foreach(pos; AdjChunkPositions27(cwp).all)
+			chunksToRemesh.put(pos);
 	}
 
 	void handleFillBlockBoxPacket(ubyte[] packetData, ClientId peer)

@@ -12,6 +12,8 @@ public import voxelman.math.utils;
 public import voxelman.math.simplex;
 public import std.algorithm : clamp;
 
+alias bvec3 = Vector!(byte, 3);
+alias ubvec3 = Vector!(ubyte, 3);
 alias hvec3 = Vector!(half, 3);
 alias svec2 = Vector!(short, 2);
 alias svec3 = Vector!(short, 3);

@@ -54,7 +54,7 @@ struct BlockChunkIndex
 		index = cast(ushort)(x + y * CHUNK_SIZE_SQR + z * CHUNK_SIZE);
 	}
 
-	this(ivec3 pos)
+	this(T)(Vector!(T, 3) pos)
 	{
 		index = cast(ushort)(pos.x + pos.y * CHUNK_SIZE_SQR + pos.z * CHUNK_SIZE);
 	}
@@ -260,17 +260,24 @@ struct ChunkWorldPos
 	}
 }
 
-T[6] adjacentPositions(T)(T center)
+void adjacentPositions(size_t numAdjacent, T)(T center, out T[numAdjacent] positions)
+	if (numAdjacent == 6 || numAdjacent == 26)
 {
 	import voxelman.block.utils : sideOffsets;
-	T[6] positions;
-	foreach(i, offset; sideOffsets)
+	foreach(i, offset; sideOffsets!numAdjacent)
 	{
 		positions[i] = T(center.x + offset[0],
 			center.y + offset[1],
 			center.z + offset[2],
 			center.w);
 	}
+}
+
+T[numAdjacent] adjacentPositions(size_t numAdjacent, T)(T center)
+	if (numAdjacent == 6 || numAdjacent == 26)
+{
+	T[numAdjacent] positions;
+	adjacentPositions(center, positions);
 	return positions;
 }
 

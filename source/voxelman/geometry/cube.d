@@ -26,14 +26,94 @@ immutable CubeSide[6] oppSide = [
 	CubeSide.yneg,
 	CubeSide.ypos];
 
-immutable byte[3][6] sideOffsets = [
+template sideOffsets(size_t numAdjacent) {
+	static if (numAdjacent == 6)
+		alias sideOffsets = sideOffsets6;
+	else static if (numAdjacent == 26)
+		alias sideOffsets = sideOffsets26;
+}
+
+// does not include center
+immutable byte[3][26] sideOffsets26 = [
+	// 6 adjacent
 	[ 0, 0,-1],
 	[ 0, 0, 1],
 	[ 1, 0, 0],
 	[-1, 0, 0],
 	[ 0, 1, 0],
 	[ 0,-1, 0],
+
+	// bottom 8
+	[-1,-1,-1],
+	[ 0,-1,-1],
+	[ 1,-1,-1],
+	[-1,-1, 0],
+	[ 1,-1, 0],
+	[-1,-1, 1],
+	[ 0,-1, 1],
+	[ 1,-1, 1],
+
+	// middle 4
+	[-1, 0,-1],
+	[ 1, 0,-1],
+	[-1, 0, 1],
+	[ 1, 0, 1],
+
+	// top 8
+	[-1, 1,-1],
+	[ 0, 1,-1],
+	[ 1, 1,-1],
+	[-1, 1, 0],
+	[ 1, 1, 0],
+	[-1, 1, 1],
+	[ 0, 1, 1],
+	[ 1, 1, 1],
 ];
+
+immutable byte[3][27] offsets3by3 = [
+	// bottom 9
+	[-1,-1,-1],
+	[ 0,-1,-1],
+	[ 1,-1,-1],
+
+	[-1,-1, 0],
+	[ 0,-1, 0],
+	[ 1,-1, 0],
+
+	[-1,-1, 1],
+	[ 0,-1, 1],
+	[ 1,-1, 1],
+
+	// middle 9
+	[-1, 0,-1],
+	[ 0, 0,-1],
+	[ 1, 0,-1],
+
+	[-1, 0, 0],
+	[ 0, 0, 0],
+	[ 1, 0, 0],
+
+	[-1, 0, 1],
+	[ 0, 0, 1],
+	[ 1, 0, 1],
+
+	// top 9
+	[-1, 1,-1],
+	[ 0, 1,-1],
+	[ 1, 1,-1],
+
+	[-1, 1, 0],
+	[ 0, 1, 0],
+	[ 1, 1, 0],
+
+	[-1, 1, 1],
+	[ 0, 1, 1],
+	[ 1, 1, 1],
+];
+
+// does not include center and other 20 adjacent
+immutable byte[3][6] sideOffsets6 = sideOffsets26[0..6];
+immutable byte[3][20] sideOffsets20 = sideOffsets26[6..26];
 
 // mesh for single block
 immutable ubyte[18 * 6] cubeFaces =

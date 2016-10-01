@@ -15,7 +15,6 @@ private import std.utf : byChar;
 private import std.range : isInputRange, isOutputRange, ElementType;
 private import std.typecons : isTuple;
 
-//enum testFile = `D:\voxelman\tools\minecraft_import\King's Landing\players\Brendan_Li`;
 enum testFile = `D:\voxelman\tools\minecraft_import\test.data`;
 enum VisitRes {r_break, r_continue}
 unittest

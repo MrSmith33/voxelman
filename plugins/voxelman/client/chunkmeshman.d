@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.client.chunkmeshman;
 
 import std.experimental.logger;
+import std.typecons : Nullable;
 
 import voxelman.math;
 import voxelman.block.utils;
@@ -137,14 +138,12 @@ struct ChunkMeshMan
 		if (taskHeader.type == MeshGenTaskType.genMesh)
 		{
 			MeshVertex[][2] meshes = w.resultQueue.popItem!(MeshVertex[][2])();
-			uint[7] blockTimestamps = w.resultQueue.popItem!(uint[7])();
-			uint[7] entityTimestamps = w.resultQueue.popItem!(uint[7])();
+			uint[27] blockTimestamps = w.resultQueue.popItem!(uint[27])();
+			uint[27] entityTimestamps = w.resultQueue.popItem!(uint[27])();
 
 			// Remove users
-			ChunkWorldPos[7] positions;
-			positions[0..6] = adjacentPositions(taskHeader.cwp);
-			positions[6] = taskHeader.cwp;
-			foreach(i, pos; positions)
+			auto positions = AdjChunkPositions27(taskHeader.cwp);
+			foreach(i, pos; positions.all)
 			{
 				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], FIRST_LAYER);
 				chunkManager.removeSnapshotUser(pos, entityTimestamps[i], ENTITY_LAYER);
@@ -208,12 +207,14 @@ struct ChunkMeshMan
 		}
 	}
 
-	bool producesMesh(AdjChunk7Layers snapshots)
+	bool producesMesh(
+		const ref Nullable!ChunkLayerSnap[6] adjacent,
+		const ref Nullable!ChunkLayerSnap central)
 	{
 		import voxelman.block.utils;
 
 		Solidity solidity;
-		bool singleSolidity = hasSingleSolidity(snapshots.central.metadata, solidity);
+		bool singleSolidity = hasSingleSolidity(central.metadata, solidity);
 
 		if (singleSolidity)
 		{
@@ -222,7 +223,7 @@ struct ChunkMeshMan
 				return false;
 			}
 
-			foreach(CubeSide side, adj; snapshots.adjacent)
+			foreach(CubeSide side, adj; adjacent)
 			{
 				Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
 				if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
@@ -242,7 +243,7 @@ struct ChunkMeshMan
 	// returns true if was sent to mesh
 	bool meshChunk(ChunkWorldPos cwp)
 	{
-		auto snapsPositions = AdjChunk7Positions(cwp);
+		auto snapsPositions = AdjChunkPositions27(cwp);
 
 		if (!chunkManager.areChunksLoaded(snapsPositions.all))
 		{
@@ -250,14 +251,15 @@ struct ChunkMeshMan
 			return false;
 		}
 
-		AdjChunk7Layers snapsBlocks;
+		AdjChunkLayers27 snapsBlocks;
 
-		// get compressed layers to use metadata.
-		snapsBlocks.all = chunkManager.getChunkSnapshots(snapsPositions.all, FIRST_LAYER);
+		// get compressed layers first to look at metadata.
+		snapsBlocks.adjacent6 = chunkManager.getChunkSnapshots(snapsPositions.adjacent6, FIRST_LAYER);
+		snapsBlocks.central = chunkManager.getChunkSnapshot(snapsPositions.central, FIRST_LAYER);
 
 		++numMeshChunkTasks;
 
-		if (!producesMesh(snapsBlocks))
+		if (!producesMesh(snapsBlocks.adjacent6, snapsBlocks.central))
 		{
 			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
 
@@ -277,7 +279,7 @@ struct ChunkMeshMan
 		snapsBlocks.all = chunkManager.getChunkSnapshots(
 			snapsPositions.all, FIRST_LAYER, Yes.Uncompress);
 
-		AdjChunk7Layers snapsEntities;
+		AdjChunkLayers27 snapsEntities;
 		snapsEntities.all = chunkManager.getChunkSnapshots(
 			snapsPositions.all, ENTITY_LAYER, Yes.Uncompress);
 
@@ -287,13 +289,26 @@ struct ChunkMeshMan
 			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
 		}
 
-		ChunkLayerItem[7] blockLayers;
-		ChunkLayerItem[7] entityLayers;
-		foreach(i; 0..7)
+		ChunkLayerItem[27] blockLayers;
+		ChunkLayerItem[27] entityLayers;
+		foreach(i; 0..27)
 		{
 			blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), FIRST_LAYER);
 			entityLayers[i] = ChunkLayerItem(snapsEntities.all[i].get(), ENTITY_LAYER);
 		}
+
+		// debug
+		foreach (i, layer; blockLayers) {
+			import std.string : format;
+			assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 1");
+			if (!layer.isUniform) {
+				auto length = layer.getArray!ubyte.length;
+				if (length != BLOCKS_DATA_LENGTH) infof("Wrong length of %s: %s", snapsPositions.all[i], length);
+				assert(length == BLOCKS_DATA_LENGTH, format("Wrong length of %s: %s", snapsPositions.all[i], length));
+			}
+		}
+		foreach (i, layer; entityLayers)
+			assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 2");
 
 		// send mesh task
 		auto header = MeshGenTaskHeader(MeshGenTaskType.genMesh, currentMeshGroupId, cwp);

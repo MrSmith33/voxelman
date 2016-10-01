@@ -56,14 +56,14 @@ int main(string[] args)
 {
 	string inputDirectory;
 	string outputFile;
-	ushort dimension;
+	ushort outDimension;
 	bool appendDimention;
 
 	getopt(args, config.passThrough, config.required,
 		"i|input", &inputDirectory,
 		"o|output", &outputFile,
 		"a", &appendDimention,
-		"d|dimension", &dimension);
+		"d|dimension", &outDimension);
 
 	inputDirectory = inputDirectory.absolutePath;
 
@@ -91,12 +91,12 @@ int main(string[] args)
 		return 1;
 	}
 
-	transferRegions(regionDir, outputFile, dimension);
+	transferRegions(regionDir, outputFile, outDimension);
 
 	return 0;
 }
 
-void transferRegions(string regionDir, string outputWorld, DimensionId dimensionId)
+void transferRegions(string regionDir, string outputWorld, DimensionId outDimension)
 {
 	WorldDb worldDb = new WorldDb;
 	worldDb.open(outputWorld); // closed by storage thread
@@ -145,7 +145,7 @@ void transferRegions(string regionDir, string outputWorld, DimensionId dimension
 		foreach(chunkInfo; region)
 		{
 			//writefln("chunk %s %s", chunkInfo.x, chunkInfo.z);
-			importChunk(region, chunkInfo, chunkManager, dimensionId);
+			importChunk(region, chunkInfo, chunkManager, outDimension);
 			++numChunkColumns;
 		}
 		++numRegions;
@@ -168,7 +168,7 @@ void updateMetadata(WriteBuffer[ChunkWorldPos] writeBuffers, BlockInfoTable bloc
 	}
 }
 
-void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkManager, DimensionId dimensionId)
+void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkManager, DimensionId outDimension)
 {
 	ubyte[] data = chunkInfo.data;
 	//std.file.write("test.data", data);
@@ -185,7 +185,7 @@ void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkM
 		if (y_counter == blocks_counter)
 		{
 			auto cwp = ivec3(region.x * MC_REGION_WIDTH + chunkInfo.x, y, region.z * MC_REGION_WIDTH + chunkInfo.z);
-			importSection(blocks, cwp, chunkManager, dimensionId);
+			importSection(blocks, cwp, chunkManager, outDimension);
 		}
 	}
 
@@ -216,7 +216,7 @@ void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkM
 	visitNbtStream(data, &visitor);
 }
 
-void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, DimensionId dimensionId)
+void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, DimensionId outDimension)
 {
 	//writefln("section %s", mc_cwp);
 	ivec3 pos = ivec3(
@@ -235,7 +235,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 	// box within voxelman chunk.
 	Box mcChunkBox = Box(offset, size);
 
-	auto cwp = ChunkWorldPos(pos, dimensionId);
+	auto cwp = ChunkWorldPos(pos, outDimension);
 
 	WriteBuffer* wb = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER, WriteBufferPolicy.createUniform, true);
 	if (wb.isUniform)

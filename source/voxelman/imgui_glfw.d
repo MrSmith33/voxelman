@@ -29,7 +29,7 @@ struct ImguiState
 	uint        elementsHandle;
 	ClipboardHelper clipboardHelper;
 
-	void init(GLFWwindow* window)
+	void init(GLFWwindow* window, string[] fonts = null)
 	{
 		this.window = window;
 		clipboardHelper.window = window;

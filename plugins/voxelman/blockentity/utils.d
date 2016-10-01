@@ -40,6 +40,7 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 
 alias BlockEntityMeshhandler = void function(
 	Buffer!MeshVertex[] output,
+	const ref Solidity[27] solidities,
 	BlockEntityData data,
 	ubyte[3] color,
 	ubyte sides,
@@ -56,7 +57,8 @@ WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 }
 
 void nullBlockEntityMeshhandler(
-	Buffer!MeshVertex[] output, BlockEntityData data,
+	Buffer!MeshVertex[] output, const ref Solidity[27] solidities,
+	BlockEntityData data,
 	ubyte[3] color, ubyte sides, //ivec3 worldPos,
 	ivec3 chunkPos, ivec3 entityPos) {}
 
