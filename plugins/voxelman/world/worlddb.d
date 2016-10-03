@@ -58,17 +58,16 @@ final class WorldDb
 	}
 
 	version(Sqlite) {
-		void putPerWorldValue(K)(K key, ubyte[] value) {
-			db.savePerWorldData(key, value);
+		void put(ubyte[16] key, ubyte[] value) {
+			ulong[2] keys = *cast(ulong[2]*)&key;
+			db.savePerWorldData(keys[0], keys[1], value);
 		}
-		ubyte[] getPerWorldValue(K)(K key) {
-			return db.loadPerWorldData(key);
+		ubyte[] get(ubyte[16] key) {
+			ulong[2] keys = *cast(ulong[2]*)&key;
+			return db.loadPerWorldData(keys[0], keys[1]);
 		}
-		void putPerChunkValue(ulong key, ubyte[] value) {
-			db.savePerChunkData(key, value);
-		}
-		ubyte[] getPerChunkValue(ulong key) {
-			return db.loadPerChunkData(key);
+		private void del(ubyte[16] key) {
+			ulong[2] keys = *cast(ulong[2]*)&key;
 		}
 	}
 

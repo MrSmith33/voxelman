@@ -88,29 +88,29 @@ struct SqliteWorldDb
 
 	//-----------------------------------------------
 	// key should contain only alphanum chars and .
-	void savePerWorldData(string key, ubyte[] data)
+	void savePerWorldData(ulong key1, ulong key2, ubyte[] data)
 	{
-		perWorldInsertStmt.inject(key, data);
+		perWorldInsertStmt.inject(cast(long)key1, cast(long)key2, data);
 	}
 
 	// Reset statement after returned data is no longer needed
-	ubyte[] loadPerWorldData(string key)
+	ubyte[] loadPerWorldData(ulong key1, ulong key2)
 	{
 		if (statementToReset) statementToReset.reset();
 		statementToReset = &perWorldSelectStmt;
-		perWorldSelectStmt.bindAll(key);
+		perWorldSelectStmt.bindAll(cast(long)key1, cast(long)key2);
 		auto result = perWorldSelectStmt.execute();
 		if (result.empty) return null;
 		return result.front.peekNoDup!(ubyte[])(0);
 	}
-	void removePerWorldData(string key)
+	void removePerWorldData(ulong key1, ulong key2)
 	{
-		perWorldDeleteStmt.inject(key);
+		perWorldDeleteStmt.inject(cast(long)key1, cast(long)key2);
 	}
 
-	//void savePerDimensionData(string key, int dim, ubyte[] data)
+	//void savePerDimensionData(ulong key, int dim, ubyte[] data)
 
-	//ubyte[] loadPerDimensionData(string key, int dim)
+	//ubyte[] loadPerDimensionData(ulong key, int dim)
 	import voxelman.core.config;
 	void savePerChunkData(ulong cwp, ubyte[] data)
 	{
@@ -157,17 +157,19 @@ enum string withoutRowidStr = withoutRowid ? ` without rowid;` : ``;
 
 immutable perWorldTableCreate = `
 create table if not exists per_world_data (
-  id text primary key,
-  data blob not null
+  id1 integer,
+  id2 integer,
+  data blob not null,
+  primary key (id, dimension)
 )` ~ withoutRowidStr;
 
-immutable perWorldTableInsert = `insert or replace into per_world_data values (:id, :value)`;
-immutable perWorldTableSelect = `select data from per_world_data where id = :id`;
-immutable perWorldTableDelete = `delete from per_world_data where id = :id`;
+immutable perWorldTableInsert = `insert or replace into per_world_data values (:id, :id2, :value)`;
+immutable perWorldTableSelect = `select data from per_world_data where id1 = :id1 and id2 = :id2`;
+immutable perWorldTableDelete = `delete from per_world_data where id1 = :id1 and id2 = :id2`;
 
 immutable perDimensionTableCreate = `
 create table if not exists per_dimension_data(
-  id text,
+  id integer,
   dimension integer,
   data blob not null,
   primary key (id, dimension)
