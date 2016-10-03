@@ -12,6 +12,7 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Use string map for DB keys.
 - Allow committing compressed layers.
 - Convert chunk storage to Mallocator.
 - Free chunk meshes immediately after upload. Saves huge amount of memory.

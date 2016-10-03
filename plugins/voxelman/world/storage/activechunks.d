@@ -10,12 +10,11 @@ import std.array : empty;
 import cbor;
 import voxelman.container.hashset;
 
-import voxelman.world.storage.coordinates;
-import voxelman.world.storage.plugindata;
+import voxelman.world.storage;
 
 struct ActiveChunks
 {
-	private immutable string dbKey = "voxelman.world.active_chunks";
+	private auto dbKey = IoKey("voxelman.world.active_chunks");
 	HashSet!ChunkWorldPos chunks;
 	void delegate(ChunkWorldPos cwp) loadChunk;
 	void delegate(ChunkWorldPos cwp) unloadChunk;
@@ -38,7 +37,7 @@ struct ActiveChunks
 	}
 
 	package(voxelman.world) void read(ref PluginDataLoader loader) {
-		ubyte[] data = loader.readWorldEntry(dbKey);
+		ubyte[] data = loader.readEntryRaw(loader.formKey(dbKey));
 		if (!data.empty) {
 			auto token = decodeCborToken(data);
 			assert(token.type == CborTokenType.arrayHeader);
@@ -49,10 +48,10 @@ struct ActiveChunks
 	}
 
 	package(voxelman.world) void write(ref PluginDataSaver saver) {
-		auto sink = saver.tempBuffer;
-		size_t encodedSize = encodeCborArrayHeader(sink[], chunks.length);
+		auto sink = saver.beginWrite();
+		encodeCborArrayHeader(sink, chunks.length);
 		foreach(cwp; chunks.items)
-			encodedSize += encodeCbor(sink[encodedSize..$], cwp);
-		saver.writeWorldEntry(dbKey, encodedSize);
+			encodeCbor(sink, cwp);
+		saver.endWrite(saver.formKey(dbKey));
 	}
 }

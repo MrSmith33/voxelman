@@ -63,16 +63,16 @@ private:
 	BlockEntityServer blockEntityPlugin;
 
 	Debugger dbg;
-	IoManager ioManager;
 
 	ConfigOption numGenWorkersOpt;
 
 	ubyte[] buf;
 	WorldInfo worldInfo;
-	immutable string worldInfoKey = "voxelman.world.world_info";
+	auto worldInfoKey = IoKey("voxelman.world.world_info");
 	string worldFilename;
 
 	shared bool isSaving;
+	IoManager ioManager;
 	WorldDb worldDb;
 	PluginDataSaver pluginDataSaver;
 
@@ -105,6 +105,7 @@ public:
 
 	override void preInit()
 	{
+		pluginDataSaver.stringMap = &ioManager.stringMap;
 		pluginDataSaver.alloc();
 		buf = new ubyte[](1024*64*4);
 		chunkManager = new ChunkManager();
@@ -181,11 +182,8 @@ public:
 	// executed on io thread. Stores values written into pluginDataSaver.
 	private void worldSaver(WorldDb wdb)
 	{
-		foreach(string key, ubyte[] data; pluginDataSaver) {
-			//infof("Writing %s", key);
-			//printCborStream(data[]);
-
-			wdb.putPerWorldValue(key, data);
+		foreach(ubyte[16] key, ubyte[] data; pluginDataSaver) {
+			wdb.put(key, data);
 		}
 		pluginDataSaver.reset();
 		atomicStore(isSaving, false);
@@ -200,7 +198,7 @@ public:
 		worldDb.beginTxn();
 		scope(exit) worldDb.abortTxn();
 
-		auto dataLoader = PluginDataLoader(worldDb);
+		auto dataLoader = PluginDataLoader(&ioManager.stringMap, worldDb);
 		foreach(loadHandler; ioManager.worldLoadHandlers) {
 			loadHandler(dataLoader);
 		}
@@ -209,7 +207,7 @@ public:
 	private void readWorldInfo(ref PluginDataLoader loader)
 	{
 		import std.path : absolutePath, buildNormalizedPath;
-		ubyte[] data = loader.readWorldEntry(worldInfoKey);
+		ubyte[] data = loader.readEntryRaw(loader.formKey(worldInfoKey));
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
@@ -220,8 +218,7 @@ public:
 
 	private void writeWorldInfo(ref PluginDataSaver saver)
 	{
-		size_t encodedSize = encodeCbor(saver.tempBuffer, worldInfo);
-		saver.writeWorldEntry(worldInfoKey, encodedSize);
+		saver.writeEntryEncoded(saver.formKey(worldInfoKey), worldInfo);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)

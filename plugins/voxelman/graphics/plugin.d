@@ -210,15 +210,15 @@ public:
 	void draw(Batch batch)
 	{
 		solidShader.bind;
-		drawBuffer(batch.triBuffer, GL_TRIANGLES);
-		drawBuffer(batch.lineBuffer, GL_LINES);
-		drawBuffer(batch.pointBuffer, GL_POINTS);
+		drawBuffer(batch.triBuffer.data, GL_TRIANGLES);
+		drawBuffer(batch.lineBuffer.data, GL_LINES);
+		drawBuffer(batch.pointBuffer.data, GL_POINTS);
 		solidShader.unbind;
 	}
 
 private:
 
-	void drawBuffer(ref Buffer!ColoredVertex buffer, uint mode)
+	void drawBuffer(ColoredVertex[] buffer, uint mode)
 	{
 		if (buffer.length == 0) return;
 
@@ -227,7 +227,7 @@ private:
 		glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, cast(const float*)camera.perspective.arrayof);
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.buf.ptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, buffer.length*ColoredVertex.sizeof, buffer.ptr, GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glEnableVertexAttribArray(1);
 		// positions

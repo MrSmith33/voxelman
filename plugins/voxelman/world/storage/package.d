@@ -12,7 +12,6 @@ public import voxelman.world.storage.chunkobservermanager;
 public import voxelman.world.storage.chunkprovider;
 public import voxelman.world.storage.coordinates;
 public import voxelman.world.storage.iomanager;
-public import voxelman.world.storage.plugindata;
 public import voxelman.world.storage.storageworker;
 public import voxelman.world.storage.utils;
 public import voxelman.world.storage.worldaccess;

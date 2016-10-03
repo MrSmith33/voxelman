@@ -17,7 +17,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
 import voxelman.world.serverworld;
-import voxelman.world.storage : IoManager, PluginDataLoader, PluginDataSaver;
+import voxelman.world.storage : IoManager, IoKey, PluginDataLoader, PluginDataSaver;
 
 shared static this()
 {
@@ -140,7 +140,7 @@ mixin template EntityPluginClientImpl()
 mixin template EntityPluginServerImpl()
 {
 	NetServerPlugin connection;
-	immutable string eidKey = "voxelman.entity.lastEntityId";
+	IoKey eidKey = IoKey("voxelman.entity.lastEntityId");
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -177,18 +177,13 @@ mixin template EntityPluginServerImpl()
 	{
 	}
 
-	import cbor;
 	void read(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readWorldEntry(eidKey);
-		if (data.length)
-			decodeCbor(data, entityManager.lastEntityId);
+		loader.readEntryDecoded(loader.formKey(eidKey), entityManager.lastEntityId);
 	}
 
 	void write(ref PluginDataSaver saver)
 	{
-		auto sink = saver.tempBuffer;
-		size_t size = encodeCbor(sink[], entityManager.lastEntityId);
-		saver.writeWorldEntry(eidKey, size);
+		saver.writeEntryEncoded(saver.formKey(eidKey), entityManager.lastEntityId);
 	}
 }

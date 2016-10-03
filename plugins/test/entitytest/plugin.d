@@ -121,7 +121,7 @@ mixin template EntityTestPluginClient()
 
 mixin template EntityTestPluginServer()
 {
-	immutable string transformKey = "test.entitytest.transform_component";
+	auto transformKey = IoKey("test.entitytest.transform_component");
 	EntityPluginServer entityPlugin;
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
@@ -207,15 +207,15 @@ mixin template EntityTestPluginServer()
 
 	void read(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readWorldEntry(transformKey);
+		ubyte[] data = loader.readEntryRaw(loader.formKey(transformKey));
 		if (data.length) transformStorage.deserialize(data);
 	}
 
 	void write(ref PluginDataSaver saver)
 	{
-		auto sink = saver.tempBuffer;
-		size_t size = transformStorage.serialize(sink);
-		saver.writeWorldEntry(transformKey, size);
+		auto sink = saver.beginWrite();
+		transformStorage.serialize(sink);
+		saver.endWrite(saver.formKey(transformKey));
 	}
 }
 

@@ -207,7 +207,7 @@ void storageWorker(
 				saveResQueue.pushMessagePart(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
 			}
 
-			worldDb.putPerChunkValue(header.cwp.asUlong, buffer[0..encodedSize]);
+			worldDb.put(header.cwp.asUlong.formChunkKey, buffer[0..encodedSize]);
 		}
 		catch(Exception e) errorf("storage exception %s", e.to!string);
 		saveResQueue.endMessage();
@@ -226,8 +226,8 @@ void storageWorker(
 
 		try
 		{
-			readTime.startTaskTiming("getPerChunkValue");
-			ubyte[] cborData = worldDb.getPerChunkValue(cwp);
+			readTime.startTaskTiming("get");
+			ubyte[] cborData = worldDb.get(cwp.formChunkKey);
 			readTime.endTaskTiming();
 			//scope(exit) worldDb.perChunkSelectStmt.reset();
 

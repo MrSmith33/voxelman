@@ -24,7 +24,7 @@ T nextPOT(T)(T x) {
 struct Buffer(T)
 {
 	T[] buf;
-	size_t length;
+	private size_t length;
 
 	void put(T[] items ...)
 	{
@@ -46,6 +46,10 @@ struct Buffer(T)
 
 	void clear() {
 		length = 0;
+	}
+
+	size_t capacity() @property {
+		return buf.length - length;
 	}
 
 	void reserve(size_t items)

@@ -38,14 +38,13 @@ struct HashmapComponentStorage(ComponentType)
 		return components.byKeyValue;
 	}
 
-	size_t serialize(ubyte[] sink)
+	void serialize(Sink)(Sink sink)
 	{
-		size_t size = encodeCborMapHeader(sink[], components.length);
+		size_t size = encodeCborMapHeader(sink, components.length);
 		foreach(keyValue; components.byKeyValue) {
-			size += encodeCbor(sink[size..$], keyValue.key);
-			size += encodeCbor(sink[size..$], keyValue.value);
+			encodeCbor(sink, keyValue.key);
+			encodeCbor(sink, keyValue.value);
 		}
-		return size;
 	}
 
 	void deserialize(ubyte[] input)

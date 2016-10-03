@@ -28,6 +28,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
+import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 
 public import voxelman.blockentity.blockentityaccess;
@@ -57,7 +58,7 @@ final class BlockEntityClient : IPlugin {
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 
-		auto removeEntityTool = new class ITool
+		auto entityTool = new class ITool
 		{
 			this() { name = "test.blockentity.block_entity"; }
 
@@ -110,7 +111,7 @@ final class BlockEntityClient : IPlugin {
 		};
 
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
-		editPlugin.registerTool(removeEntityTool);
+		editPlugin.registerTool(entityTool);
 	}
 
 	void onUpdateEvent(ref UpdateEvent event)

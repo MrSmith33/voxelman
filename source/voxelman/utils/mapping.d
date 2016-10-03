@@ -87,7 +87,13 @@ struct Mapping(InfoType, bool withTypeMap = false)
 
 		InfoType[] newArray;
 		static if (hasLength!R)
+		{
+			if (names.length == 0)
+			{
+				return;
+			}
 			newArray.reserve(names.length);
+		}
 
 		foreach(i, name; names)
 		{

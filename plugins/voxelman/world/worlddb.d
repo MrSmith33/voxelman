@@ -15,6 +15,13 @@ version(Windows) {
 	version = Sqlite;
 }
 
+private enum Table : ulong
+{
+	world,
+	region,
+	chunk,
+}
+
 final class WorldDb
 {
 	version(Lmdb) LmdbWorldDb db;
@@ -39,49 +46,14 @@ final class WorldDb
 
 	//-----------------------------------------------
 	version(Lmdb) {
-		private enum Table : ulong
-		{
-			world,
-			dimension,
-			region,
-			chunk,
+		void put(ubyte[16] key, ubyte[] value) {
+			db.put(key, value);
 		}
-		void putPerWorldValue(K)(K key, ubyte[] value) {
-			put(formKey(key), Table.world, value);
+		ubyte[] get(ubyte[16] key) {
+			return db.get(key);
 		}
-		ubyte[] getPerWorldValue(K)(K key) {
-			return get(formKey(key), Table.world);
-		}
-		void putPerChunkValue(ulong key, ubyte[] value) {
-			put(key, Table.chunk, value);
-		}
-		ubyte[] getPerChunkValue(ulong key) {
-			return get(key, Table.chunk);
-		}
-		void putPerDimensionValue(uint key, ushort dimension, ubyte[] value) {
-			put(key, Table.dimension, value);
-		}
-		ubyte[] getPerDimensionValue(uint key, ushort dimension) {
-			return get(key, Table.dimension);
-		}
-
-		private void put(ulong key, ulong table, ubyte[] value) {
-			ubyte[16] dbKey;
-			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-			db.put(dbKey, value);
-		}
-		private ubyte[] get(ulong key, ulong table) {
-			ubyte[16] dbKey;
-			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-			return db.get(dbKey);
-		}
-		private void del(ulong key, ulong table) {
-			ubyte[16] dbKey;
-			(*cast(ulong[2]*)dbKey.ptr)[0] = key;
-			(*cast(ulong[2]*)dbKey.ptr)[1] = table;
-			return db.del(dbKey);
+		private void del(ubyte[16] key) {
+			return db.del(key);
 		}
 	}
 
@@ -112,21 +84,16 @@ final class WorldDb
 	}
 }
 
-ulong formKey(K)(K _key) @nogc
-	if (is(K == string) || is(K == ulong))
-{
-	static if (is(K == string))
-		return hashBytes(cast(ubyte[])_key);
-	else static if (is(K == ulong))
-		return _key;
+ubyte[16] formChunkKey(ulong chunkPos) {
+	ubyte[16] res;
+	(*cast(ulong[2]*)res.ptr)[0] = chunkPos;
+	(*cast(ulong[2]*)res.ptr)[1] = Table.chunk;
+	return res;
 }
 
-ulong hashBytes(ubyte[] bytes) @nogc
-{
-    ulong hash = 5381;
-
-    foreach(c; bytes)
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-
-    return hash;
+ubyte[16] formWorldKey(uint key) {
+	ubyte[16] res;
+	(*cast(ulong[2]*)res.ptr)[0] = key;
+	(*cast(ulong[2]*)res.ptr)[1] = Table.world;
+	return res;
 }

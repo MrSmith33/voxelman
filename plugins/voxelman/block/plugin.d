@@ -43,16 +43,11 @@ public:
 mixin template BlockPluginCommonImpl()
 {
 	private BlockManager bm;
-	immutable string blockMappingKey = "voxelman.block.block_mapping";
+	auto blockMappingKey = IoKey("voxelman.block.block_mapping");
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
 		registerHandler(bm = new BlockManager);
-	}
-
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
-	{
-		registerResourcesImpl(resmanRegistry);
 	}
 
 	BlockInfoTable getBlocks()
@@ -70,15 +65,13 @@ final class BlockPluginClient : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		auto clientWorld = pluginman.getPlugin!ClientWorld;
-		clientWorld.idMapManager.regIdMapHandler(blockMappingKey, &handleBlockMap);
+		clientWorld.idMapManager.regIdMapHandler(blockMappingKey.str, &handleBlockMap);
 	}
 
 	void handleBlockMap(string[] blocks)
 	{
 		bm.blockMapping.setMapping(blocks);
 	}
-
-	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry){}
 }
 
 final class BlockPluginServer : IPlugin
@@ -87,7 +80,7 @@ final class BlockPluginServer : IPlugin
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
 
-	void registerResourcesImpl(IResourceManagerRegistry resmanRegistry)
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
 		ioman.registerWorldLoadSaveHandlers(&readBlockMap, &writeBlockMap);
@@ -96,28 +89,18 @@ final class BlockPluginServer : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		auto serverWorld = pluginman.getPlugin!ServerWorld;
-		serverWorld.idMapManager.regIdMap(blockMappingKey, bm.blockMapping.nameRange.array);
+		serverWorld.idMapManager.regIdMap(blockMappingKey.str, bm.blockMapping.nameRange.array);
 	}
 
 	void readBlockMap(ref PluginDataLoader loader)
 	{
-		ubyte[] data = loader.readWorldEntry(blockMappingKey);
-
-		if (data.length)
-		{
-			string[] blocks = decodeCborSingleDup!(string[])(data);
-			bm.blockMapping.setMapping(blocks);
-		}
+		bm.blockMapping.setMapping(
+			loader.readEntryDecoded!(string[])(
+				loader.formKey(blockMappingKey)));
 	}
 
 	void writeBlockMap(ref PluginDataSaver saver)
 	{
-		auto sink = saver.tempBuffer;
-		size_t size = 0;
-		auto blockInfos = bm.blockMapping.infoArray;
-		size = encodeCborArrayHeader(sink[], blockInfos.length);
-		foreach(info; blockInfos)
-			size += encodeCbor(sink[size..$], info.name);
-		saver.writeWorldEntry(blockMappingKey, size);
+		saver.writeEntryEncoded(saver.formKey(blockMappingKey), bm.blockMapping.infoArray);
 	}
 }
