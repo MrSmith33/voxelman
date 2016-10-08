@@ -8,7 +8,6 @@ module main;
 import std.file : mkdirRecurse;
 import std.getopt;
 
-
 import voxelman.log;
 import pluginlib;
 
@@ -24,18 +23,23 @@ void main(string[] args)
 		std.getopt.config.required,
 		"app", &appType);
 
+	scope(exit) closeBinLog();
+
 	final switch(appType) with(AppType)
 	{
 		case client:
 			setupLogger("../logs/client.log");
+			initBinLog("../logs/client.bin");
 			pluginRegistry.clientMain(args, true/*dedicated*/);
 			break;
 		case server:
 			setupLogger("../logs/server.log");
+			initBinLog("../logs/server.bin");
 			pluginRegistry.serverMain(args, true/*dedicated*/);
 			break;
 		case combined:
 			setupLogger("../logs/client.log");
+			initBinLog("../logs/client.bin");
 			pluginRegistry.clientMain(args, false/*combined*/);
 			break;
 	}

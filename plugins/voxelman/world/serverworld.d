@@ -68,7 +68,7 @@ private:
 
 	ubyte[] buf;
 	WorldInfo worldInfo;
-	auto worldInfoKey = IoKey("voxelman.world.world_info");
+	auto dbKey = IoKey("voxelman.world.world_info");
 	string worldFilename;
 
 	shared bool isSaving;
@@ -210,7 +210,7 @@ public:
 	private void readWorldInfo(ref PluginDataLoader loader)
 	{
 		import std.path : absolutePath, buildNormalizedPath;
-		ubyte[] data = loader.readEntryRaw(loader.formKey(worldInfoKey));
+		ubyte[] data = loader.readEntryRaw(dbKey);
 		if (!data.empty) {
 			worldInfo = decodeCborSingleDup!WorldInfo(data);
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
@@ -221,7 +221,7 @@ public:
 
 	private void writeWorldInfo(ref PluginDataSaver saver)
 	{
-		saver.writeEntryEncoded(saver.formKey(worldInfoKey), worldInfo);
+		saver.writeEntryEncoded(dbKey, worldInfo);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)

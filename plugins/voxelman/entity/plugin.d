@@ -140,7 +140,7 @@ mixin template EntityPluginClientImpl()
 mixin template EntityPluginServerImpl()
 {
 	NetServerPlugin connection;
-	IoKey eidKey = IoKey("voxelman.entity.lastEntityId");
+	IoKey dbKey = IoKey("voxelman.entity.lastEntityId");
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -179,11 +179,11 @@ mixin template EntityPluginServerImpl()
 
 	void read(ref PluginDataLoader loader)
 	{
-		loader.readEntryDecoded(loader.formKey(eidKey), entityManager.lastEntityId);
+		loader.readEntryDecoded(dbKey, entityManager.lastEntityId);
 	}
 
 	void write(ref PluginDataSaver saver)
 	{
-		saver.writeEntryEncoded(saver.formKey(eidKey), entityManager.lastEntityId);
+		saver.writeEntryEncoded(dbKey, entityManager.lastEntityId);
 	}
 }

@@ -43,7 +43,7 @@ public:
 mixin template BlockPluginCommonImpl()
 {
 	private BlockManager bm;
-	auto blockMappingKey = IoKey("voxelman.block.block_mapping");
+	auto dbKey = IoKey("voxelman.block.block_mapping");
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
@@ -65,7 +65,7 @@ final class BlockPluginClient : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		auto clientWorld = pluginman.getPlugin!ClientWorld;
-		clientWorld.idMapManager.regIdMapHandler(blockMappingKey.str, &handleBlockMap);
+		clientWorld.idMapManager.regIdMapHandler(dbKey.str, &handleBlockMap);
 	}
 
 	void handleBlockMap(string[] blocks)
@@ -89,18 +89,16 @@ final class BlockPluginServer : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		auto serverWorld = pluginman.getPlugin!ServerWorld;
-		serverWorld.idMapManager.regIdMap(blockMappingKey.str, bm.blockMapping.nameRange.array);
+		serverWorld.idMapManager.regIdMap(dbKey.str, bm.blockMapping.nameRange.array);
 	}
 
 	void readBlockMap(ref PluginDataLoader loader)
 	{
-		bm.blockMapping.setMapping(
-			loader.readEntryDecoded!(string[])(
-				loader.formKey(blockMappingKey)));
+		loader.readMapping(dbKey, bm.blockMapping);
 	}
 
 	void writeBlockMap(ref PluginDataSaver saver)
 	{
-		saver.writeEntryEncoded(saver.formKey(blockMappingKey), bm.blockMapping.infoArray);
+		saver.writeMapping(dbKey, bm.blockMapping);
 	}
 }

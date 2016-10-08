@@ -24,11 +24,11 @@ struct DimensionManager {
 	auto dbKey = IoKey("voxelman.world.storage.dimensionman");
 
 	void load(ref PluginDataLoader loader) {
-		loader.readEntryDecoded(loader.formKey(dbKey), dimensions);
+		loader.readEntryDecoded(dbKey, dimensions);
 	}
 
 	void save(ref PluginDataSaver saver) {
-		saver.writeEntryEncoded(saver.formKey(dbKey), dimensions);
+		saver.writeEntryEncoded(dbKey, dimensions);
 	}
 
 	bool contains(DimensionId dim) {

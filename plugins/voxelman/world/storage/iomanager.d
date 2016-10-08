@@ -9,12 +9,15 @@ import voxelman.log;
 import std.experimental.allocator.mallocator;
 import std.bitmanip;
 import std.array : empty;
+import std.traits;
+
 import cbor;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.container.buffer;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.world.worlddb;
+import voxelman.utils.mapping;
 
 
 alias SaveHandler = void delegate(ref PluginDataSaver);
@@ -34,16 +37,14 @@ private:
 
 	auto dbKey = IoKey(null);
 	void loadStringKeys(ref PluginDataLoader loader) {
-		stringMap.load(loader.readEntryDecoded!(string[])(loader.formKey(dbKey)));
+		stringMap.load(loader.readEntryDecoded!(string[])(dbKey));
 		if (stringMap.strings.length == 0) {
 			stringMap.put(null); // reserve 0 index for string map
 		}
 	}
 
 	void saveStringKeys(ref PluginDataSaver saver) {
-		//infof("strings %s", stringMap.strings);
-		saver.writeEntryEncoded(saver.formKey(dbKey), stringMap.strings);
-		//infof("dbKey %s", dbKey);
+		saver.writeEntryEncoded(dbKey, stringMap.strings);
 	}
 
 public:
@@ -51,7 +52,6 @@ public:
 	{
 		this.onPostInit = onPostInit;
 		stringMap.put(null); // reserve 0 index for string map
-		//infof("strings %s", stringMap.strings);
 		worldLoadHandlers ~= &loadStringKeys;
 		worldSaveHandlers ~= &saveStringKeys;
 	}
@@ -131,7 +131,6 @@ struct PluginDataSaver
 
 	// HACK, duplicate
 	ubyte[16] formKey(ref IoKey ioKey) {
-		//infof("encode %s", ioKey.str);
 		return formWorldKey(stringMap.get(ioKey));
 	}
 
@@ -140,16 +139,27 @@ struct PluginDataSaver
 		return &buffer;
 	}
 
-	void endWrite(ubyte[16] key) {
+	void endWrite(ref IoKey key) {
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
-		//printCborStream(buffer.data[$-entrySize..$]);
 		buffer.put(*cast(ubyte[4]*)&entrySize);
-		buffer.put(key);
+		buffer.put(formKey(key));
 	}
 
-	void writeEntryEncoded(T)(ubyte[16] key, T data) {
+	void writeEntryEncoded(T)(ref IoKey key, T data) {
 		beginWrite();
 		encodeCbor(buffer, data);
+		endWrite(key);
+	}
+
+	void writeMapping(T)(ref IoKey key, T mapping)
+		if (__traits(isSame, TemplateOf!T, Mapping))
+	{
+		auto sink = beginWrite();
+		encodeCborArrayHeader(sink, mapping.infoArray.length);
+		foreach(const ref info; mapping.infoArray)
+		{
+			encodeCborString(sink, info.name);
+		}
 		endWrite(key);
 	}
 
@@ -163,9 +173,8 @@ struct PluginDataSaver
 		while(!data.empty)
 		{
 			ubyte[16] key = data[$-16..$];
-			uint entrySize = *cast(uint*)(data[$-4-16..$].ptr);
+			uint entrySize = *cast(uint*)(data[$-4-16..$-16].ptr);
 			ubyte[] entry = data[$-4-16-entrySize..$-4-16];
-
 			auto result = dg(key, entry);
 
 			data = data[0..$-4-16-entrySize];
@@ -183,12 +192,12 @@ unittest
 	saver.stringMap = &stringMap;
 
 	auto dbKey1 = IoKey("Key1");
-	saver.writeEntryEncoded(saver.formKey(dbKey1), 1);
+	saver.writeEntryEncoded(dbKey1, 1);
 
 	auto dbKey2 = IoKey("Key2");
 	auto sink = saver.beginWrite();
 		encodeCbor(sink, 2);
-	saver.endWrite(saver.formKey(dbKey2));
+	saver.endWrite(dbKey2);
 
 	// iteration
 	foreach(ubyte[16] key, ubyte[] data; saver) {
@@ -204,29 +213,40 @@ struct PluginDataLoader
 
 	// HACK, duplicate
 	ubyte[16] formKey(ref IoKey ioKey) {
-		//infof("decode %s", ioKey.str);
 		return formWorldKey(stringMap.get(ioKey));
 	}
 
-	ubyte[] readEntryRaw(ubyte[16] key) {
-		auto data = worldDb.get(key);
-		//printCborStream(data[]);
+	ubyte[] readEntryRaw(ref IoKey key) {
+		auto data = worldDb.get(formKey(key));
 		return data;
 	}
 
 	/// decodes entry if data in db is not empty. Leaves value untouched otherwise.
-	void readEntryDecoded(T)(ubyte[16] key, ref T value) {
+	void readEntryDecoded(T)(ref IoKey key, ref T value) {
 		ubyte[] data = readEntryRaw(key);
 		if (data)
 			decodeCbor!(Yes.Duplicate)(data, value);
 	}
 
-	T readEntryDecoded(T)(ubyte[16] key) {
+	T readEntryDecoded(T)(ref IoKey key) {
 		ubyte[] data = readEntryRaw(key);
 		T value;
 		if (data) {
 			decodeCbor!(Yes.Duplicate)(data, value);
 		}
 		return value;
+	}
+
+	void readMapping(T)(ref IoKey key, ref T mapping)
+		if (__traits(isSame, TemplateOf!T, Mapping))
+	{
+		ubyte[] data = readEntryRaw(key);
+		if (data)
+		{
+			string[] value;
+			decodeCbor!(Yes.Duplicate)(data, value);
+
+			mapping.setMapping(value);
+		}
 	}
 }

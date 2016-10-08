@@ -37,7 +37,7 @@ struct ActiveChunks
 	}
 
 	package(voxelman.world) void read(ref PluginDataLoader loader) {
-		ubyte[] data = loader.readEntryRaw(loader.formKey(dbKey));
+		ubyte[] data = loader.readEntryRaw(dbKey);
 		if (!data.empty) {
 			auto token = decodeCborToken(data);
 			assert(token.type == CborTokenType.arrayHeader);
@@ -52,6 +52,6 @@ struct ActiveChunks
 		encodeCborArrayHeader(sink, chunks.length);
 		foreach(cwp; chunks.items)
 			encodeCbor(sink, cwp);
-		saver.endWrite(saver.formKey(dbKey));
+		saver.endWrite(dbKey);
 	}
 }

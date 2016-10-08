@@ -7,3 +7,4 @@ module voxelman.log;
 
 public import std.experimental.logger;
 public import voxelman.log.utils;
+public import voxelman.log.binlog;
