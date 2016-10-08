@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.edit.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import pluginlib;
 import voxelman.core.events;

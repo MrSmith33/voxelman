@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunkmanager;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.typecons : Nullable;
 import std.string : format;
 public import std.typecons : Flag, Yes, No;
@@ -835,7 +835,7 @@ version(unittest) {
 
 
 unittest {
-	import voxelman.utils.log : setupLogger;
+	import voxelman.log : setupLogger;
 	setupLogger("test.log");
 
 	Handlers h;

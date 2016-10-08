@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module test.railroad.mesh;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.range;
 import std.conv : to;
 import voxelman.container.buffer;

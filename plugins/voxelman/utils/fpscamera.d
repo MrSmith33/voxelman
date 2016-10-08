@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.utils.fpscamera;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.math;
 import dlib.math.matrix;

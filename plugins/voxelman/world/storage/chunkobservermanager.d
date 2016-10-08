@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunkobservermanager;
 
-import std.experimental.logger;
+import voxelman.log;
 import voxelman.math;
 import netlib.connection : ClientId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;

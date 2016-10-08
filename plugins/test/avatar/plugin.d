@@ -1,7 +1,7 @@
 module test.avatar.plugin;
 
 import std.array;
-import std.experimental.logger;
+import voxelman.log;
 import dlib.math;
 
 import netlib;

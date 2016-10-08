@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunk;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.array : uninitializedArray;
 import std.string : format;
 import std.typecons : Nullable;

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.worldbox;
 
-import std.experimental.logger;
+import voxelman.log;
 import voxelman.math;
 
 import voxelman.core.config;

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.container.hashmap;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.stdio;
 import std.string;
 import voxelman.math : nextPOT;

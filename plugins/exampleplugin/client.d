@@ -1,6 +1,6 @@
 module exampleplugin.client;
 
-import std.experimental.logger;
+import voxelman.log;
 import pluginlib;
 
 shared static this()

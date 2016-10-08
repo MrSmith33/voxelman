@@ -9,7 +9,7 @@ import netlib;
 import pluginlib;
 public import netlib.connection : ClientId;
 public import std.getopt;
-import std.experimental.logger;
+import voxelman.log;
 import std.string : format;
 
 struct CommandParams

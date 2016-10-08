@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.block.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.array : array;
 import cbor;
 import pluginlib;

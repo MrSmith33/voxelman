@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.config.configmanager;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.file : read, exists;
 public import std.variant;
 import std.traits : isArray;

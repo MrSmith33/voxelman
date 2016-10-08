@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module test.entitytest.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import dlib.math;
 import std.array : Appender;
 

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.pluginlib.plugininforeader;
 
-import std.experimental.logger;
+import voxelman.log;
 import pluginlib;
 
 enum pluguinPackFolder = `../../pluginpacks`;

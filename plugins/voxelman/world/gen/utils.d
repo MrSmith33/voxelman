@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.gen.utils;
 
-import std.experimental.logger;
+import voxelman.log;
 import voxelman.math : ivec3, SimplexNoise;
 
 import voxelman.block.utils;

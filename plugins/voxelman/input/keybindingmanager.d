@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.input.keybindingmanager;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import pluginlib;
 import voxelman.config.configmanager;

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.console;
 
-import std.experimental.logger;
+import voxelman.log;
 
 struct Console
 {

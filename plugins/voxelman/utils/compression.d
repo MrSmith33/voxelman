@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.utils.compression;
 
-import std.experimental.logger;
+import voxelman.log;
 version(Windows)
 {
 	extern(C) nothrow {

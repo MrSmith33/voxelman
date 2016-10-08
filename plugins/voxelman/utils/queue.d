@@ -221,7 +221,7 @@ struct Queue(Item)
 unittest
 {
 	import std.algorithm : equal;
-	import std.experimental.logger;
+	import voxelman.log;
 	Queue!int q;
 	q.put(1);
 	q.put(2);

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.db.lmdbworlddb;
 
-import std.experimental.logger;
+import voxelman.log;
 
 version(Windows):
 
@@ -106,8 +106,22 @@ nothrow:
 
 static int mdb_cmp_long(const MDB_val *a, const MDB_val *b)
 {
-	return (*cast(size_t*)a.ptr < *cast(size_t*)b.ptr) ? -1 :
-		*cast(size_t*)a.ptr > *cast(size_t*)b.ptr;
+	immutable ulong a0 = (cast(ulong*)a.ptr)[0];
+	immutable ulong a1 = (cast(ulong*)a.ptr)[1];
+	immutable ulong b0 = (cast(ulong*)b.ptr)[0];
+	immutable ulong b1 = (cast(ulong*)b.ptr)[1];
+
+	if (a1 == b1)
+	{
+		if (a0 == b0)
+			return 0;
+		else
+			return (a0 < b0) ? -1 : 1;
+	}
+	else
+	{
+		return (a1 < b1) ? -1 : 1;
+	}
 }
 
 void mdb_load_libs();

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.activechunks;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.array : empty;
 import cbor;
 import voxelman.container.hashset;

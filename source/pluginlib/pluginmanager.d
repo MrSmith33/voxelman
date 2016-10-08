@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module pluginlib.pluginmanager;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.string : format;
 import pluginlib;
 

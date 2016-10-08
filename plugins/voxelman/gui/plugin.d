@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.gui.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.string : format;
 import voxelman.math;
 import derelict.imgui.imgui;

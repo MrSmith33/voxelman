@@ -10,7 +10,7 @@ module voxelman.utils.sharedqueue;
 import core.atomic;
 import core.thread : Thread;
 import std.experimental.allocator.mallocator;
-import std.experimental.logger;
+import voxelman.log;
 
 //version = DBG_QUEUE;
 private enum PAGE_SIZE = 4096;

@@ -1,6 +1,6 @@
 module voxelman.chat.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import pluginlib;
 import voxelman.utils.messagewindow : MessageWindow;
 

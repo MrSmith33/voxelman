@@ -9,7 +9,7 @@ module netlib.baseclient;
 import core.thread;
 import std.conv : to;
 import std.string : toStringz;
-import std.experimental.logger;
+import voxelman.log;
 
 import derelict.enet.enet;
 

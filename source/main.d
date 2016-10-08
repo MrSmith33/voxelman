@@ -9,7 +9,7 @@ import std.file : mkdirRecurse;
 import std.getopt;
 
 
-import voxelman.utils.log;
+import voxelman.log;
 import pluginlib;
 
 void main(string[] args)

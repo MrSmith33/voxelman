@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module test.railroad.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import pluginlib;
 import voxelman.core.config;
 import voxelman.core.packets;

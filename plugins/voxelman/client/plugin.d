@@ -7,7 +7,7 @@ module voxelman.client.plugin;
 
 import core.thread : Thread, thread_joinAll;
 import core.time;
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.math;
 import dlib.math.matrix : Matrix4f;

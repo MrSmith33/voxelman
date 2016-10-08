@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.gen.worker;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.block.utils;
 import voxelman.core.config;

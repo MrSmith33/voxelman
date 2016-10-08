@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.serverworld;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.array : empty;
 import core.atomic : atomicStore, atomicLoad;
 import cbor;
@@ -80,6 +80,7 @@ public:
 	ChunkManager chunkManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
+	DimensionManager dimMan;
 	ActiveChunks activeChunks;
 	IdMapManagerServer idMapManager;
 
@@ -100,6 +101,8 @@ public:
 		numGenWorkersOpt = config.registerOption!int("num_workers", 4);
 		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
 		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
+		ioManager.registerWorldLoadSaveHandlers(&dimMan.load, &dimMan.save);
+
 		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
 

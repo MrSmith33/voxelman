@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module main;
 
 import std.experimental.logger;
-import voxelman.utils.log;
+import voxelman.log;
 import server;
 import storage;
 

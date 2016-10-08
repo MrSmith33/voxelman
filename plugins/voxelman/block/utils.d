@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.block.utils;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.container.buffer;
 import voxelman.math;

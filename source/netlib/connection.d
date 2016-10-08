@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module netlib.connection;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.conv : to;
 
 import derelict.enet.enet;

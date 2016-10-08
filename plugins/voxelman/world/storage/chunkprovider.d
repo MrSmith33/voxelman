@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunkprovider;
 
-import std.experimental.logger;
+import voxelman.log;
 import core.sync.condition;
 import core.atomic;
 import core.thread : Thread;
@@ -20,7 +20,7 @@ import voxelman.world.gen.worker;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 
-enum saveUnmodifiedChunks = false;
+enum saveUnmodifiedChunks = true;
 
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData

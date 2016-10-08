@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.graphics.utils;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.container.buffer;
 

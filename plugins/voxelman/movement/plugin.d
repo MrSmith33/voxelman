@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.movement.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 
 import voxelman.math;
 

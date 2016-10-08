@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.remotecontrol.plugin;
 
 import std.stdio;
-import std.experimental.logger;
+import voxelman.log;
 import std.traits : Select;
 
 import pluginlib;

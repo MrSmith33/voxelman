@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.login.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.string : format;
 import netlib;
 import pluginlib;

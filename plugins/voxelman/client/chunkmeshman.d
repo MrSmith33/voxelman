@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.chunkmeshman;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.typecons : Nullable;
 
 import voxelman.math;

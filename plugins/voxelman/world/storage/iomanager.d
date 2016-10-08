@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.iomanager;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.experimental.allocator.mallocator;
 import std.bitmanip;
 import std.array : empty;
@@ -32,13 +32,18 @@ private:
 
 	void delegate(string) onPostInit;
 
-	auto dbKey = IoKey(null, 0);
+	auto dbKey = IoKey(null);
 	void loadStringKeys(ref PluginDataLoader loader) {
 		stringMap.load(loader.readEntryDecoded!(string[])(loader.formKey(dbKey)));
+		if (stringMap.strings.length == 0) {
+			stringMap.put(null); // reserve 0 index for string map
+		}
 	}
 
 	void saveStringKeys(ref PluginDataSaver saver) {
+		//infof("strings %s", stringMap.strings);
 		saver.writeEntryEncoded(saver.formKey(dbKey), stringMap.strings);
+		//infof("dbKey %s", dbKey);
 	}
 
 public:
@@ -46,6 +51,7 @@ public:
 	{
 		this.onPostInit = onPostInit;
 		stringMap.put(null); // reserve 0 index for string map
+		//infof("strings %s", stringMap.strings);
 		worldLoadHandlers ~= &loadStringKeys;
 		worldSaveHandlers ~= &saveStringKeys;
 	}
@@ -125,6 +131,7 @@ struct PluginDataSaver
 
 	// HACK, duplicate
 	ubyte[16] formKey(ref IoKey ioKey) {
+		//infof("encode %s", ioKey.str);
 		return formWorldKey(stringMap.get(ioKey));
 	}
 
@@ -135,6 +142,7 @@ struct PluginDataSaver
 
 	void endWrite(ubyte[16] key) {
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
+		//printCborStream(buffer.data[$-entrySize..$]);
 		buffer.put(*cast(ubyte[4]*)&entrySize);
 		buffer.put(key);
 	}
@@ -196,11 +204,14 @@ struct PluginDataLoader
 
 	// HACK, duplicate
 	ubyte[16] formKey(ref IoKey ioKey) {
+		//infof("decode %s", ioKey.str);
 		return formWorldKey(stringMap.get(ioKey));
 	}
 
 	ubyte[] readEntryRaw(ubyte[16] key) {
-		return worldDb.get(key);
+		auto data = worldDb.get(key);
+		//printCborStream(data[]);
+		return data;
 	}
 
 	/// decodes entry if data in db is not empty. Leaves value untouched otherwise.

@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.utils;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.math : floor;
 import std.range : chain, only;
 

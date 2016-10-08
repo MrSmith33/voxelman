@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.clientworld;
 
-import std.experimental.logger;
+import voxelman.log;
 import netlib;
 import pluginlib;
 import voxelman.math;

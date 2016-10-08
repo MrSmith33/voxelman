@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module pluginlib.interfaces;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.conv : to;
 import pluginlib;
 

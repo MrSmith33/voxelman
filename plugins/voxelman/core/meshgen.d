@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.core.meshgen;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.conv : to;
 import core.exception : Throwable;
 

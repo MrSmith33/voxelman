@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.worldaccess;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.string;
 import voxelman.geometry.box;
 import voxelman.core.config;

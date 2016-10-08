@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.storageworker;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.conv : to;
 import std.datetime : MonoTime, Duration, usecs, dur, seconds;
 import core.atomic;
@@ -207,6 +207,7 @@ void storageWorker(
 				saveResQueue.pushMessagePart(ChunkLayerTimestampItem(layer.timestamp, layer.layerId));
 			}
 
+			//infof("S write %s (%(%02x%)) %s", header.cwp, header.cwp.asUlong.formChunkKey, encodedSize);
 			worldDb.put(header.cwp.asUlong.formChunkKey, buffer[0..encodedSize]);
 		}
 		catch(Exception e) errorf("storage exception %s", e.to!string);
@@ -230,10 +231,12 @@ void storageWorker(
 			ubyte[] cborData = worldDb.get(cwp.formChunkKey);
 			readTime.endTaskTiming();
 			//scope(exit) worldDb.perChunkSelectStmt.reset();
+			//infof("S read %s %s", ChunkWorldPos(cwp), cborData.length);
 
 			if (cborData !is null)
 			{
 				workTime.startTaskTiming("decode");
+				//printCborStream(cborData[]);
 				ubyte numLayers = decodeCborSingle!ubyte(cborData);
 				// TODO check numLayers <= ubyte.max
 				loadResQueue.startMessage();

@@ -581,7 +581,7 @@ version(unittest) {
 
 
 unittest {
-	import voxelman.utils.log : setupLogger;
+	import voxelman.log : setupLogger;
 	setupLogger("snapmantest.log");
 
 	Handlers h;

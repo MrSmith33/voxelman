@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.blockentity.blockentityaccess;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.string;
 import voxelman.math;
 import voxelman.geometry.box;

@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.worldinteraction.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import core.time;
 import std.datetime : StopWatch;
 

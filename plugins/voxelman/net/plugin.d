@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.net.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import derelict.enet.enet;
 import std.datetime : MonoTime, Duration, usecs, dur;
 import core.thread;

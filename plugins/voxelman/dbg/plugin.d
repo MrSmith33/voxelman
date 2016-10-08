@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.dbg.plugin;
 
-import std.experimental.logger;
+import voxelman.log;
 import std.array;
 import pluginlib;
 import derelict.imgui.imgui;
