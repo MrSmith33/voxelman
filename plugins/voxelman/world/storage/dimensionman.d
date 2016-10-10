@@ -40,6 +40,15 @@ struct DimensionManager {
 		return dim in dimensions;
 	}
 
+	DimensionInfo* getOrCreate(DimensionId dim) {
+		auto dimension = dim in dimensions;
+		if (dimension)
+			return dimension;
+
+		dimensions[dim] = DimensionInfo(dim);
+		return dim in dimensions;
+	}
+
 	void opIndexAssign(DimensionInfo value, DimensionId key) {
 		assert(key !in dimensions);
 		dimensions[key] = value;

@@ -11,6 +11,8 @@ import voxelman.core.config;
 import voxelman.world.storage.worldbox : WorldBox;
 import voxelman.world.storage.coordinates;
 
+enum SPAWN_DIMENSION = 0;
+
 struct ClientInfo
 {
 	size_t id;

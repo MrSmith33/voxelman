@@ -228,7 +228,7 @@ public:
 		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
-		commandPlugin.registerCommand("spawn", &onSpawn);
+		commandPlugin.registerCommand("spawn", &onSpawnCommand);
 		commandPlugin.registerCommand("tp", &onTeleport);
 		commandPlugin.registerCommand("dim", &changeDimensionCommand);
 		commandPlugin.registerCommand("add_active", &onAddActive);
@@ -247,17 +247,28 @@ public:
 		infof("remove active %s", cwp);
 	}
 
-	void onSpawn(CommandParams params)
+	void onSpawnCommand(CommandParams params)
 	{
 		ClientInfo* info = clients[params.source];
 		if(info is null) return;
-		info.pos = START_POS;
-		info.heading = vec2(0,0);
-		info.dimension = 0;
-		info.positionKey = 0;
-		connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
-			info.heading.arrayof, info.dimension, info.positionKey));
+
+		if (params.args.length > 1 && params.args[1] == "set")
+		{
+			setSpawn(info.dimension, info);
+			return;
+		}
+
+		spawnClient(info, 0);
 		updateObserverBox(info);
+	}
+
+	void setSpawn(DimensionId dimension, ClientInfo* info)
+	{
+		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
+		dimInfo.spawnPos = info.pos;
+		dimInfo.spawnRotation = info.heading;
+		connection.sendTo(info.id, MessagePacket(0,
+			format(`spawn of %s dimension is now %s`, dimension, info.pos)));
 	}
 
 	void onTeleport(CommandParams params)
@@ -366,15 +377,17 @@ public:
 		return clients.byValue.filter!(a=>a.isLoggedIn).map!(a=>a.id);
 	}
 
-	void spawnClient(vec3 pos, vec2 heading, ushort dimension, ClientId clientId)
+	void spawnClient(ClientInfo* info, ushort dimension)
 	{
-		ClientInfo* info = clients[clientId];
-		info.pos = pos;
-		info.heading = heading;
+		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
+
+		info.pos = dimInfo.spawnPos;
+		info.heading = dimInfo.spawnRotation;
 		info.dimension = dimension;
 		++info.positionKey;
-		connection.sendTo(clientId, ClientPositionPacket(pos.arrayof, heading.arrayof, dimension, info.positionKey));
-		connection.sendTo(clientId, SpawnPacket());
+
+		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
+			info.heading.arrayof, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -444,7 +457,8 @@ public:
 		{
 			ClientInfo* info = clients[clientId];
 			info.isSpawned = true;
-			spawnClient(info.pos, info.heading, info.dimension, clientId);
+			spawnClient(info, SPAWN_DIMENSION);
+			connection.sendTo(clientId, SpawnPacket());
 		}
 	}
 

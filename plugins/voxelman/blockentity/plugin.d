@@ -169,6 +169,20 @@ final class BlockEntityClient : IPlugin {
 final class BlockEntityServer : IPlugin {
 	mixin IdAndSemverFrom!(voxelman.blockentity.plugininfo);
 	mixin BlockEntityCommon;
+	auto dbKey = IoKey("voxelman.blockentity.plugin");
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry) {
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&read, &write);
+	}
+
+	void read(ref PluginDataLoader loader) {
+		loader.readMapping(dbKey, blockEntityMan.blockEntityMapping);
+	}
+
+	void write(ref PluginDataSaver saver) {
+		saver.writeMapping(dbKey, blockEntityMan.blockEntityMapping);
+	}
 }
 
 mixin template BlockEntityCommon()

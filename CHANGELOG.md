@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Save block entity id map.
+- Add 'spawn set' command. Sets spawn position and rotation for current dimension to player's one.
+- Use spawn position from dimention info when spawning player.
 - Add teleport command.
 - Minecraft save import tool.
 - Implement launcher server connection feature.
