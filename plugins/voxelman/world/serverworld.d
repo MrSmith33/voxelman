@@ -22,7 +22,7 @@ import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.net.plugin : NetServerPlugin;
-import voxelman.login.plugin;
+import voxelman.session.server;
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
 import voxelman.dbg.plugin;
@@ -58,7 +58,7 @@ final class ServerWorld : IPlugin
 private:
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	ClientDbServer clientDb;
+	ClientManager clientMan;
 	BlockPluginServer blockPlugin;
 	BlockEntityServer blockEntityPlugin;
 
@@ -142,7 +142,7 @@ public:
 	override void init(IPluginManager pluginman)
 	{
 		blockPlugin = pluginman.getPlugin!BlockPluginServer;
-		clientDb = pluginman.getPlugin!ClientDbServer;
+		clientMan = pluginman.getPlugin!ClientManager;
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
@@ -339,7 +339,7 @@ public:
 	private void handleFillBlockBoxPacket(ubyte[] packetData, ClientId clientId)
 	{
 		import voxelman.core.packets : FillBlockBoxPacket;
-		if (clientDb.isSpawned(clientId))
+		if (clientMan.isSpawned(clientId))
 		{
 			auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 			// TODO send to observers only.

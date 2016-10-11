@@ -25,7 +25,7 @@ import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
 import voxelman.graphics.plugin;
 import voxelman.input.keybindingmanager;
-import voxelman.login.plugin;
+import voxelman.session.client;
 import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
 
 import voxelman.net.packets;
@@ -54,7 +54,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	NetClientPlugin connection;
 	GraphicsPlugin graphics;
-	ClientDbClient clientDb;
+	ClientSession session;
 	BlockPluginClient blockPlugin;
 	BlockEntityClient blockEntityPlugin;
 
@@ -133,7 +133,7 @@ public:
 		// duplicated code
 		viewRadius = clamp(viewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 
-		clientDb = pluginman.getPlugin!ClientDbClient;
+		session = pluginman.getPlugin!ClientSession;
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
@@ -422,7 +422,7 @@ public:
 
 	void sendPosition(double dt)
 	{
-		if (clientDb.isSpawned)
+		if (session.isSpawned)
 		{
 			sendPositionTimer += dt;
 			if (sendPositionTimer > sendPositionInterval ||
@@ -463,10 +463,10 @@ public:
 	}
 
 	void updateObserverPosition() {
-		if (clientDb.isSpawned) {
-			if (observerClientId != clientDb.thisClientId) {
+		if (session.isSpawned) {
+			if (observerClientId != session.thisClientId) {
 				chunkObserverManager.removeObserver(observerClientId);
-				observerClientId = clientDb.thisClientId;
+				observerClientId = session.thisClientId;
 			}
 
 			chunkObserverManager.changeObserverBox(observerClientId, observerPosition, viewRadius);

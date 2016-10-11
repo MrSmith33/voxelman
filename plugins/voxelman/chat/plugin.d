@@ -10,7 +10,8 @@ import voxelman.net.packets;
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
-import voxelman.login.plugin;
+import voxelman.session.client;
+import voxelman.session.server;
 
 shared static this()
 {
@@ -23,7 +24,7 @@ final class ChatPluginClient : IPlugin
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
 
-	private ClientDbClient clientDb;
+	private ClientSession session;
 	private NetClientPlugin connection;
 	private EventDispatcherPlugin evDispatcher;
 	MessageWindow messageWindow;
@@ -38,7 +39,7 @@ final class ChatPluginClient : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		clientDb = pluginman.getPlugin!ClientDbClient;
+		session = pluginman.getPlugin!ClientSession;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 
@@ -54,7 +55,7 @@ final class ChatPluginClient : IPlugin
 		if (packet.clientId == 0)
 			messageWindow.putln(packet.msg);
 		else {
-			messageWindow.putf("%s> %s\n", clientDb.clientName(packet.clientId), packet.msg);
+			messageWindow.putf("%s> %s\n", session.clientName(packet.clientId), packet.msg);
 		}
 	}
 
@@ -84,14 +85,14 @@ final class ChatPluginServer : IPlugin
 	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
 
 	private NetServerPlugin connection;
-	private ClientDbServer clientDb;
+	private ClientManager clientMan;
 	CommandPluginServer commandPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
-		clientDb = pluginman.getPlugin!ClientDbServer;
+		clientMan = pluginman.getPlugin!ClientManager;
 		commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("msg", &messageCommand);
 	}
@@ -101,7 +102,7 @@ final class ChatPluginServer : IPlugin
 		auto packet = unpackPacket!MessagePacket(packetData);
 		packet.clientId = clientId;
 		connection.sendToAll(packet);
-		infof("%s> %s", clientDb.clientName(clientId), packet.msg);
+		infof("%s> %s", clientMan.clientName(clientId), packet.msg);
 	}
 
 	void messageCommand(CommandParams params)

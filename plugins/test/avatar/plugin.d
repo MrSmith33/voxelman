@@ -11,7 +11,8 @@ import voxelman.net.plugin;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.graphics.plugin;
-import voxelman.login.plugin;
+import voxelman.session.client;
+import voxelman.session.server;
 import voxelman.world.clientworld;
 
 shared static this()
@@ -29,13 +30,13 @@ final class AvatarClient : IPlugin
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
-	ClientDbClient clientDb;
+	ClientSession session;
 	ClientWorld clientWorld;
 
 	override void init(IPluginManager pluginman)
 	{
 		clientWorld = pluginman.getPlugin!ClientWorld;
-		clientDb = pluginman.getPlugin!ClientDbClient;
+		session = pluginman.getPlugin!ClientSession;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&drawEntities);
@@ -54,7 +55,7 @@ final class AvatarClient : IPlugin
 		batch.reset();
 		foreach (avatar; packet.avatars)
 		{
-			if (avatar.clientId != clientDb.thisClientId && avatar.dimension == clientWorld.currentDimension)
+			if (avatar.clientId != session.thisClientId && avatar.dimension == clientWorld.currentDimension)
 			{
 				batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
 			}
@@ -68,12 +69,12 @@ final class AvatarServer : IPlugin
 
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	ClientDbServer clientDb;
+	ClientManager clientMan;
 	size_t lastAvatarsSent;
 
 	override void init(IPluginManager pluginman)
 	{
-		clientDb = pluginman.getPlugin!ClientDbServer;
+		clientMan = pluginman.getPlugin!ClientManager;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		connection = pluginman.getPlugin!NetServerPlugin;
@@ -84,13 +85,13 @@ final class AvatarServer : IPlugin
 	{
 		import std.algorithm : filter;
 		Appender!(Avatar[]) avatars;
-		avatars.reserve(clientDb.clients.length);
-		foreach (cinfo; clientDb.clients.byValue.filter!(a=>a.isLoggedIn))
+		avatars.reserve(clientMan.clients.length);
+		foreach (cinfo; clientMan.clients.byValue.filter!(a=>a.isLoggedIn))
 			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.dimension, cinfo.heading));
 
 		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
 
-		connection.sendTo(clientDb.loggedInClients, UpdateAvatarsPacket(avatars.data));
+		connection.sendTo(clientMan.loggedInClients, UpdateAvatarsPacket(avatars.data));
 		lastAvatarsSent = avatars.data.length;
 	}
 }
