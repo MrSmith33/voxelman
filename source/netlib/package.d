@@ -8,4 +8,3 @@ module netlib;
 public import netlib.baseclient;
 public import netlib.baseserver;
 public import netlib.connection;
-public import netlib.clientstorage;

@@ -235,7 +235,7 @@ public:
 	}
 
 	void onConnect(ref ENetEvent event) {
-		auto clientId = connection.clientStorage.addClient(event.peer);
+		auto clientId = connection.peerStorage.addClient(event.peer);
 		event.peer.data = cast(void*)clientId;
 
 		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
@@ -246,7 +246,7 @@ public:
 	void onDisconnect(ref ENetEvent event) {
 		ClientId clientId = cast(ClientId)event.peer.data;
 		event.peer.data = null;
-		connection.clientStorage.removeClient(clientId);
+		connection.peerStorage.removeClient(clientId);
 		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
 	}
 
@@ -269,7 +269,7 @@ public:
 		MonoTime start = MonoTime.currTime;
 
 		size_t counter;
-		while (connection.clientStorage.length && counter < 100)
+		while (connection.peerStorage.length && counter < 100)
 		{
 			connection.update();
 			Thread.sleep(1.msecs);

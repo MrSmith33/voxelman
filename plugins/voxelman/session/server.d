@@ -24,59 +24,11 @@ import voxelman.net.plugin;
 import voxelman.world.serverworld;
 
 import voxelman.session.clientinfo;
+import voxelman.session.clientstorage;
 
 shared static this()
 {
 	pluginRegistry.regServerPlugin(new ClientManager);
-}
-
-struct ClientStorage
-{
-	ClientInfo*[ClientId] clientsById;
-	ClientInfo*[string] clientsByName;
-
-	void put(ClientInfo* info) {
-		assert(info);
-		clientsById[info.id] = info;
-	}
-
-	size_t length() {
-		return clientsById.length;
-	}
-
-	void setClientName(ClientInfo* info, string newName) {
-		assert(info);
-		assert(info.id in clientsById);
-
-		if (info.name == newName) return;
-
-		assert(info.name !in clientsByName);
-		clientsByName.remove(info.name);
-		if (newName) {
-			clientsByName[newName] = info;
-		}
-		info.name = newName;
-	}
-
-	ClientInfo* opIndex(ClientId clientId) {
-		return clientsById.get(clientId, null);
-	}
-
-	ClientInfo* opIndex(string name) {
-		return clientsByName.get(name, null);
-	}
-
-	void remove(ClientId clientId) {
-		auto info = clientsById.get(clientId, null);
-		if (info) {
-			clientsByName.remove(info.name);
-		}
-		clientsById.remove(clientId);
-	}
-
-	auto byValue() {
-		return clientsById.byValue;
-	}
 }
 
 final class ClientManager : IPlugin

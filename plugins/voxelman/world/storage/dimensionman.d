@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.dimensionman;
 
 import voxelman.log;
+import voxelman.geometry.box;
 import std.typecons : Nullable;
 import voxelman.math;
 import voxelman.core.config;
@@ -17,6 +18,8 @@ struct DimensionInfo
 	string name;
 	vec3 spawnPos;
 	vec2 spawnRotation;
+
+	Box borders = Box(ivec3(-int.max, -int.max, -int.max), ivec3(int.max, int.max, int.max));
 }
 
 struct DimensionManager {

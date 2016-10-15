@@ -1,0 +1,3 @@
+[submodule "deps/dlib"]
+	path = deps/dlib
+	url = https://github.com/gecko0307/dlib
