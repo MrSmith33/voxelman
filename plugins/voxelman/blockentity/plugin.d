@@ -78,7 +78,7 @@ final class BlockEntityClient : IPlugin {
 				if (placing) return;
 				auto blockId = worldInteraction.pickBlock();
 				if (isBlockEntity(blockId)) {
-					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector.arrayof));
+					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector));
 				}
 			}
 

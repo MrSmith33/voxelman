@@ -429,8 +429,8 @@ public:
 				observerPosition != prevChunkPos)
 			{
 				connection.send(ClientPositionPacket(
-					graphics.camera.position.arrayof,
-					graphics.camera.heading.arrayof,
+					graphics.camera.position,
+					graphics.camera.heading,
 					observerPosition.w, positionKey));
 
 				if (sendPositionTimer < sendPositionInterval)

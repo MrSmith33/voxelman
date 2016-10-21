@@ -158,8 +158,8 @@ public:
 
 		info.pos = pos;
 		++info.positionKey;
-		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
-			info.heading.arrayof, info.dimension, info.positionKey));
+		connection.sendTo(info.id, ClientPositionPacket(info.pos,
+			info.heading, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -169,8 +169,8 @@ public:
 
 		info.pos = destination.pos;
 		++info.positionKey;
-		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
-			info.heading.arrayof, info.dimension, info.positionKey));
+		connection.sendTo(info.id, ClientPositionPacket(info.pos,
+			info.heading, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -217,8 +217,8 @@ public:
 		info.dimension = dimension;
 		++info.positionKey;
 
-		connection.sendTo(info.id, ClientPositionPacket(info.pos.arrayof,
-			info.heading.arrayof, info.dimension, info.positionKey));
+		connection.sendTo(info.id, ClientPositionPacket(info.pos,
+			info.heading, info.dimension, info.positionKey));
 		updateObserverBox(info);
 	}
 
@@ -253,8 +253,8 @@ public:
 				++info.positionKey;
 				updateObserverBox(info);
 
-				connection.sendTo(params.source, ClientPositionPacket(info.pos.arrayof,
-					info.heading.arrayof, info.dimension, info.positionKey));
+				connection.sendTo(params.source, ClientPositionPacket(info.pos,
+					info.heading, info.dimension, info.positionKey));
 			}
 		}
 	}

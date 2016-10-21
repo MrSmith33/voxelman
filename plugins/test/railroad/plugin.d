@@ -137,7 +137,7 @@ final class RailroadPluginServer : IPlugin
 			WorldBox changedBox = removeEntity(delPos, blockEntityPlugin.blockEntityInfos,
 				serverWorld.worldAccess, serverWorld.entityAccess, BlockId(1));
 			connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
-				RemoveBlockEntityPacket(delPos.vector.arrayof));
+				RemoveBlockEntityPacket(delPos.vector));
 			railData = combined;
 		}
 

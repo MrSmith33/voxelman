@@ -322,7 +322,7 @@ public:
 			++numChunkLayers;
 		}
 
-		connection.sendTo(clients, ChunkDataPacket(cwp.ivector.arrayof, layerBuf[0..numChunkLayers]));
+		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, layerBuf[0..numChunkLayers]));
 	}
 
 	private void sendChanges(BlockChange[][ChunkWorldPos] changes)
@@ -332,7 +332,7 @@ public:
 		{
 			connection.sendTo(
 				chunkObserverManager.getChunkObservers(pair.key),
-				MultiblockChangePacket(pair.key.ivector.arrayof, pair.value));
+				MultiblockChangePacket(pair.key.ivector, pair.value));
 		}
 	}
 
