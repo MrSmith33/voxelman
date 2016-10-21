@@ -6,7 +6,7 @@
 	"license" : "BSL-1.0",
 
 	"dependencies" : {
-		"cbor-d" : "==0.5.3",
+		"cbor-d" : {"path" : "./deps/cbor"},
 		"dlib" : {"path" : "./deps/dlib"},
 		"derelict-enet": "==2.0.0",
 		"derelict-glfw3" : "==2.0.0",

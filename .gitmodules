@@ -1,3 +1,6 @@
 [submodule "deps/dlib"]
 	path = deps/dlib
 	url = https://github.com/gecko0307/dlib
+[submodule "deps/cbor"]
+	path = deps/cbor
+	url = https://github.com/MrSmith33/cbor-d
