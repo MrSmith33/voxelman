@@ -12,13 +12,14 @@ import std.path;
 import std.stdio;
 
 import voxelman.math;
+import voxelman.geometry.box;
+import voxelman.geometry.rect;
 import voxelman.utils.mapping;
 
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
-import voxelman.geometry.box;
 import voxelman.world.gen.utils;
 
 import mc_region;
@@ -26,75 +27,75 @@ import nbt;
 
 enum worldExtension = ".db";
 
-unittest
-{
-	enum SIZE = 32;
-	enum SIZE_SQR = SIZE * SIZE;
-	enum SIZE_CUBE = SIZE * SIZE * SIZE;
-	ubyte[SIZE_CUBE] dest;
-	ubyte[8] source;
-	source[] = 1;
-	Box box = Box(ivec3(2,2,2), ivec3(2,2,2));
-	setSubArray(dest, box, source);
-	foreach(y; 0..5) {
-		foreach(z; 0..5)
-		//foreach(x; 0..SIZE)
-		{
-			auto i = z * SIZE + y * SIZE_SQR;
-			writefln("%s", dest[i..i+5]);
-		}
-		writeln;
-	}
-}
-
-int main(string[] args)
+struct ImportParams
 {
 	string inputDirectory;
 	string outputFile;
 	ushort outDimension;
 	bool appendDimention;
+	string regionDir;
+	bool centerRegions;
+	ivec3 importedSpawn; // spawn pos after map centering. In blocks.
+	ivec2 heading; // camera rotation in degrees
+}
 
+int main(string[] args)
+{
+	ImportParams params;
+	int[] spawnPos;
+	int[] heading;
+
+	auto tempSep = std.getopt.arraySep;
+	std.getopt.arraySep = ",";
 	getopt(args, config.passThrough, config.required,
-		"i|input", &inputDirectory,
-		"o|output", &outputFile,
-		"a", &appendDimention,
-		"d|dimension", &outDimension);
+		"i|input", &params.inputDirectory,
+		"o|output", &params.outputFile,
+		//"a", &params.appendDimention,
+		"center", &params.centerRegions,
+		"d|dimension", &params.outDimension,
+		//"spawn", &spawnPos,
+		//"heading", &heading,
+		);
+	std.getopt.arraySep = tempSep;
 
-	inputDirectory = inputDirectory.absolutePath;
+	writefln("Spawn pos %s", spawnPos);
+	writefln("Camera heading %s", heading);
 
-	if (!inputDirectory.exists) {
-		writefln(`input directory "%s" does not exist`, inputDirectory);
+	params.inputDirectory = params.inputDirectory.absolutePath;
+
+	if (!params.inputDirectory.exists) {
+		writefln(`Input directory "%s" does not exist`, params.inputDirectory);
 		return 1;
 	}
 
-	if (!inputDirectory.isDir) {
-		writefln(`input "%s" is not a directory`, inputDirectory);
+	if (!params.inputDirectory.isDir) {
+		writefln(`Input "%s" is not a directory`, params.inputDirectory);
 		return 1;
 	}
 
-	if (outputFile.length == 0) {
-		outputFile = inputDirectory.setExtension(worldExtension);
+	if (params.outputFile.length == 0) {
+		params.outputFile = params.inputDirectory.setExtension(worldExtension);
 	}
 
-	writefln(`input "%s"`, inputDirectory);
-	writefln(`output "%s"`, outputFile);
+	writefln(`Input "%s"`, params.inputDirectory);
+	writefln(`Output "%s"`, params.outputFile);
 
-	string regionDir = buildPath(inputDirectory, "region");
+	params.regionDir = buildPath(params.inputDirectory, "region");
 
-	if (!regionDir.exists) {
-		writefln(`region directory "%s" does not exist`, regionDir);
+	if (!params.regionDir.exists) {
+		writefln(`Region directory "%s" does not exist`, params.regionDir);
 		return 1;
 	}
 
-	transferRegions(regionDir, outputFile, outDimension);
+	transferRegions(params);
 
 	return 0;
 }
 
-void transferRegions(string regionDir, string outputWorld, DimensionId outDimension)
+void transferRegions(ImportParams params)
 {
 	WorldDb worldDb = new WorldDb;
-	worldDb.open(outputWorld); // closed by storage thread
+	worldDb.open(params.outputFile); // closed by storage thread
 
 	Mapping!BlockInfo blockMapping;
 	BlockInfoSetter regBlock(string name) {
@@ -124,26 +125,56 @@ void transferRegions(string regionDir, string outputWorld, DimensionId outDimens
 	chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
 	chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
 
-	auto observerManager = new ChunkObserverManager;
-	observerManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
-	observerManager.chunkObserverAdded = (ChunkWorldPos, ClientId){};
+	//auto observerManager = new ChunkObserverManager;
+	//observerManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
+	//observerManager.chunkObserverAdded = (ChunkWorldPos, ClientId){};
 
 	McRegion region;
 	region.buffer = new ubyte[1024 * 1024 * 10];
 	size_t numRegions;
 	size_t numChunkColumns;
-	foreach(regionName; regionIterator(regionDir))
+
+	// Rectangle that contains all region positions. Used to center imported map.
+	Rect regionRect;
+
+	foreach(regionName; regionIterator(params.regionDir))
 	{
 		region.parseRegionFilename(regionName);
-		writefln("region %s %s", region.x, region.z);
+		++numRegions;
+
+		if (numRegions == 1)
+			regionRect = Rect(ivec2(region.x, region.z));
+		else
+			regionRect.add(ivec2(region.x, region.z));
+	}
+	writefln("found %s regions: area from %s to %s", numRegions,
+		regionRect.position, regionRect.endPosition);
+
+	// offset added to position of imported regions
+	ivec2 regionOffset;
+	if (params.centerRegions)
+	{
+		regionOffset = -(regionRect.position + regionRect.size/2);
+	}
+	writefln("Offseting imported regions by %s", regionOffset);
+
+	foreach(regionName; regionIterator(params.regionDir))
+	{
+		region.parseRegionFilename(regionName);
+
+		writef("region %s %s -> ", region.x, region.z);
+
+		region.x += regionOffset.x;
+		region.z += regionOffset.y;
+
+		writefln("%s %s", region.x, region.z);
 
 		foreach(chunkInfo; region)
 		{
 			//writefln("chunk %s %s", chunkInfo.x, chunkInfo.z);
-			importChunk(region, chunkInfo, chunkManager, outDimension);
+			importChunk(region, chunkInfo, chunkManager, params.outDimension);
 			++numChunkColumns;
 		}
-		++numRegions;
 
 		updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 		chunkManager.commitSnapshots(TimestampType(0));
