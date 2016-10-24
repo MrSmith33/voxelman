@@ -2,7 +2,3 @@
 	path = deps/dlib
 	url = https://github.com/MrSmith33/dlib
 	ignore = untracked
-[submodule "deps/cbor"]
-	path = deps/cbor
-	url = https://github.com/MrSmith33/cbor-d
-	ignore = untracked
