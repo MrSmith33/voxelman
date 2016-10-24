@@ -106,7 +106,7 @@ mixin template EntityTestPluginClient()
 		auto query = componentQuery(transformStorage);
 		foreach(row; query)
 		{
-			batch.putCube(vec3(row.transform.pos), vec3(1,1,1), Color3ub(225, 169, 95), true);
+			batch.putCube(vec3(row.transform.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
 		}
 		igBegin("Debug");
 		igTextf("Entities %s", transformStorage.length);

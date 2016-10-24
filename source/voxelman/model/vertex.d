@@ -10,23 +10,31 @@ import std.meta;
 import derelict.opengl3.gl3;
 import voxelman.math;
 
-align(4) struct VertexPosColor(PosType, ColType)
+align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 {
-	this(Pos, Col)(Pos x, Pos y, Pos z, Col color)
+	static if (pos_size == 2)
+	this(Pos, Col)(Pos x, Pos y, Col color)
 	{
-		this.position = Vector!(PosType, 3)(x, y, z);
-		this.color = Vector!(ColType, 3)(color);
+		this.position = Vector!(PosType, pos_size)(x, y);
+		this.color = Vector!(ColType, col_size)(color);
 	}
 
-	this(Vector!(PosType, 3) p, Vector!(ColType, 3) color)
+	static if (pos_size == 3)
+	this(Pos, Col)(Pos x, Pos y, Pos z, Col color)
+	{
+		this.position = Vector!(PosType, pos_size)(x, y, z);
+		this.color = Vector!(ColType, col_size)(color);
+	}
+
+	this(Vector!(PosType, pos_size) p, Vector!(ColType, col_size) color)
 	{
 		this.position = p;
 		this.color = color;
 	}
 
 	align(4):
-	Vector!(PosType, 3) position;
-	Vector!(ColType, 3) color;
+	Vector!(PosType, pos_size) position;
+	Vector!(ColType, col_size) color;
 
 	void toString()(scope void delegate(const(char)[]) sink) const
 	{
@@ -42,14 +50,14 @@ align(4) struct VertexPosColor(PosType, ColType)
 		enum uint posGlType = glTypeOf!PosType;
 		enum posOffset = position.offsetof;
 		enum bool doPosNomalization = GL_FALSE;
-		glVertexAttribPointer(0, 3, posGlType, doPosNomalization, Size, null);
+		glVertexAttribPointer(0, pos_size, posGlType, doPosNomalization, Size, null);
 
 		// color
 		glEnableVertexAttribArray(1);
 		enum uint colGlType = glTypeOf!ColType;
 		enum colOffset = color.offsetof;
 		enum bool doColNomalization = normalizeColorType!ColType;
-		glVertexAttribPointer(1, 3, colGlType, doColNomalization, Size, cast(void*)colOffset);
+		glVertexAttribPointer(1, col_size, colGlType, doColNomalization, Size, cast(void*)colOffset);
 	}
 }
 

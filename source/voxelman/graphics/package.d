@@ -6,5 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.graphics;
 
 public import voxelman.graphics.batch;
+public import voxelman.graphics.batch2d;
 public import voxelman.graphics.color;
-public import voxelman.graphics.utils;
+public import voxelman.graphics.cubeutils;

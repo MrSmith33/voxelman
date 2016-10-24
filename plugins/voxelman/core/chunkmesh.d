@@ -102,7 +102,7 @@ struct ChunkMesh
 	ulong dataBytes() { return uploadedLength * MeshVertex.sizeof; }
 }
 
-alias MeshVertex = VertexPosColor!(float, ubyte);
+alias MeshVertex = VertexPosColor!(float, 3, ubyte, 4);
 
 void freeChunkMesh(ref MeshVertex[] data)
 {

@@ -241,8 +241,8 @@ public:
 			foreach(ubyte side; 0..6)
 			{
 				Solidity solidity = chunkSideSolidity(snap.metadata, cast(CubeSide)side);
-				static Color3ub[3] colors = [Colors.white, Colors.gray, Colors.black];
-				Color3ub color = colors[solidity];
+				static Color4ub[3] colors = [Colors.white, Colors.gray, Colors.black];
+				Color4ub color = colors[solidity];
 				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(CubeSide)side, color, true);
 			}
 

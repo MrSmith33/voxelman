@@ -11,7 +11,7 @@ import voxelman.geometry.cube : CubeSide;
 import voxelman.math;
 import voxelman.graphics;
 
-alias ColoredVertex = VertexPosColor!(float, ubyte);
+alias ColoredVertex = VertexPosColor!(float, 3, ubyte, 4);
 
 struct Batch
 {
@@ -19,7 +19,7 @@ struct Batch
 	Buffer!ColoredVertex lineBuffer;
 	Buffer!ColoredVertex pointBuffer;
 
-	void putCube(vec3 pos, vec3 size, Color3ub color, bool fill)
+	void putCube(vec3 pos, vec3 size, Color4ub color, bool fill)
 	{
 		if (fill)
 			putFilledBlock(triBuffer, pos, size, color);
@@ -27,7 +27,7 @@ struct Batch
 			putLineBlock(lineBuffer, pos, size, color);
 	}
 
-	void putCubeFace(vec3 cubePos, vec3 size, CubeSide side, Color3ub color, bool fill)
+	void putCubeFace(vec3 cubePos, vec3 size, CubeSide side, Color4ub color, bool fill)
 	{
 		if (fill)
 			putFilledSide(triBuffer, cubePos, size, side, color);
@@ -35,19 +35,19 @@ struct Batch
 			putLineSide(lineBuffer, cubePos, size, side, color);
 	}
 
-	void putLine(vec3 start, vec3 end, Color3ub color)
+	void putLine(vec3 start, vec3 end, Color4ub color)
 	{
 		lineBuffer.put(
 			ColoredVertex(start, color),
 			ColoredVertex(end, color));
 	}
 
-	void putPoint(vec3 pos, Color3ub color)
+	void putPoint(vec3 pos, Color4ub color)
 	{
 		pointBuffer.put(ColoredVertex(pos, color));
 	}
 
-	void put3dGrid(vec3 pos, ivec3 count, vec3 offset, Color3ub color)
+	void put3dGrid(vec3 pos, ivec3 count, vec3 offset, Color4ub color)
 	{
 		// x
 		foreach(i; 0..count.y)

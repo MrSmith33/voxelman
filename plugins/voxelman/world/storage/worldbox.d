@@ -14,7 +14,7 @@ import voxelman.world.storage.coordinates;
 import voxelman.graphics;
 import voxelman.geometry.box;
 
-void putCube(ref Batch batch, Box box, Color3ub color, bool fill, bool offset = true)
+void putCube(ref Batch batch, Box box, Color4ub color, bool fill, bool offset = true)
 {
 	vec3 pos = box.position;
 	vec3 size = box.size;

@@ -13,7 +13,6 @@ import voxelman.math;
 import pluginlib;
 import voxelman.core.events;
 
-import voxelman.client.plugin;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
@@ -28,7 +27,6 @@ shared static this()
 
 class MovementPlugin : IPlugin
 {
-	ClientPlugin clientPlugin;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
 	GuiPlugin guiPlugin;
@@ -60,7 +58,6 @@ class MovementPlugin : IPlugin
 
 	override void init(IPluginManager pluginman)
 	{
-		clientPlugin = pluginman.getPlugin!ClientPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
@@ -78,7 +75,7 @@ class MovementPlugin : IPlugin
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
-		if(clientPlugin.mouseLocked)
+		if(guiPlugin.mouseLocked)
 		{
 			ivec2 mousePos = input.mousePosition;
 			mousePos -= cast(ivec2)(guiPlugin.window.size) / 2;

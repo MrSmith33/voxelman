@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add Batch2d.
 - Save block entity id map.
 - Add 'spawn set' command. Sets spawn position and rotation for current dimension to player's one.
 - Use spawn position from dimention info when spawning player.
@@ -15,6 +16,7 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Hide cursor on mouse lock.
 - Use string map for DB keys.
 - Allow committing compressed layers.
 - Convert chunk storage to Mallocator.

@@ -106,7 +106,7 @@ struct ImguiState
 		mouseWheel = 0.0f;
 
 		// Hide/show hardware mouse cursor
-		glfwSetInputMode(window, GLFW_CURSOR, io.MouseDrawCursor ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
+		//glfwSetInputMode(window, GLFW_CURSOR, io.MouseDrawCursor ? GLFW_CURSOR_HIDDEN : GLFW_CURSOR_NORMAL);
 
 		igNewFrame();
 	}

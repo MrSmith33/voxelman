@@ -91,7 +91,6 @@ public:
 
 	// Client data
 	bool isRunning = false;
-	bool mouseLocked;
 
 	double delta;
 	Duration frameTime;
@@ -139,7 +138,6 @@ public:
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&drawSolid);
-		evDispatcher.subscribeToEvent(&drawOverlay);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
@@ -333,6 +331,9 @@ public:
 		if (isConsoleShown)
 			console.draw();
 		dbg.logVar("delta, ms", delta*1000.0, 256);
+
+		if (guiPlugin.mouseLocked)
+			drawOverlay();
 	}
 
 	void onConsoleCommand(string command)
@@ -365,9 +366,7 @@ public:
 
 	void onLockMouse(string)
 	{
-		mouseLocked = !mouseLocked;
-		if (mouseLocked)
-			guiPlugin.window.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
+		guiPlugin.toggleMouseLock();
 	}
 
 	void onToggleCulling(string)
@@ -460,10 +459,18 @@ public:
 		graphics.renderer.disableAlphaBlending();
 	}
 
-	void drawOverlay(ref Render2Event event)
+	void drawOverlay()
 	{
-		//event.renderer.setColor(Color(0,0,0,1));
-		//event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-7, guiPlugin.window.size.y/2-1, 14, 2));
-		//event.renderer.fillRect(Rect(guiPlugin.window.size.x/2-1, guiPlugin.window.size.y/2-7, 2, 14));
+		vec2 winSize = graphics.window.size;
+		vec2 center = ivec2(winSize / 2);
+
+		//enum float thickness = 1;
+		//enum float cross_size = 20;
+		//vec2 hor_size = vec2(cross_size, thickness);
+		//vec2 vert_size = vec2(thickness, cross_size);
+
+		vec2 box_size = vec2(6, 6);
+
+		graphics.overlayBatch.putRect(center - box_size/2, box_size, Colors.white, false);
 	}
 }

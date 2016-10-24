@@ -137,7 +137,7 @@ class WorldInteractionPlugin : IPlugin
 		}
 	}
 
-	void drawCursor(BlockWorldPos block, Color3ub color)
+	void drawCursor(BlockWorldPos block, Color4ub color)
 	{
 		graphics.debugBatch.putCube(
 			vec3(block.xyz) - cursorOffset,

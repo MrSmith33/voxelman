@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.graphics.utils;
+module voxelman.graphics.cubeutils;
 
 import voxelman.log;
 
@@ -15,7 +15,7 @@ import voxelman.math;
 import voxelman.graphics;
 
 
-void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color3ub color)
+void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color4ub color)
 {
 	output.reserve(6 * 6); // 6 faces, 6 points per edge
 
@@ -30,7 +30,7 @@ void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color3ub color)
 	}
 }
 
-void putLineBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color3ub color)
+void putLineBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color4ub color)
 {
 	output.reserve(12 * 2); // 12 edges, 2 points per edge
 
@@ -45,7 +45,7 @@ void putLineBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color3ub color)
 	}
 }
 
-void putFilledSide(V)(ref Buffer!V output, vec3 pos, vec3 size, CubeSide side, Color3ub color)
+void putFilledSide(V)(ref Buffer!V output, vec3 pos, vec3 size, CubeSide side, Color4ub color)
 {
 	output.reserve(6);
 
@@ -60,7 +60,7 @@ void putFilledSide(V)(ref Buffer!V output, vec3 pos, vec3 size, CubeSide side, C
 	}
 }
 
-void putLineSide(V)(ref Buffer!V output, vec3 pos, vec3 size, CubeSide side, Color3ub color)
+void putLineSide(V)(ref Buffer!V output, vec3 pos, vec3 size, CubeSide side, Color4ub color)
 {
 	output.reserve(8); // 4 edges, 2 points per edge
 

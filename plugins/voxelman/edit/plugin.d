@@ -14,11 +14,11 @@ import derelict.imgui.imgui;
 import dlib.math.utils;
 import voxelman.utils.textformatter;
 
-import voxelman.client.plugin;
-import voxelman.worldinteraction.plugin;
-import voxelman.graphics.plugin;
-import voxelman.net.plugin;
 import voxelman.eventdispatcher.plugin;
+import voxelman.graphics.plugin;
+import voxelman.gui.plugin;
+import voxelman.net.plugin;
+import voxelman.worldinteraction.plugin;
 import voxelman.input.keybindingmanager;
 
 import voxelman.edit.tools.filltool;
@@ -53,7 +53,7 @@ class EditPlugin : IPlugin
 	mixin IdAndSemverFrom!(voxelman.edit.plugininfo);
 
 	size_t selectedTool;
-	ClientPlugin clientPlugin;
+	GuiPlugin guiPlugin;
 	Mapping!ITool tools;
 	NullTool nullTool;
 	FillTool fillTool;
@@ -81,7 +81,7 @@ class EditPlugin : IPlugin
 		fillTool.worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		fillTool.graphics = pluginman.getPlugin!GraphicsPlugin;
 
-		clientPlugin = pluginman.getPlugin!ClientPlugin;
+		guiPlugin = pluginman.getPlugin!GuiPlugin;
 		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 	}
@@ -115,31 +115,31 @@ class EditPlugin : IPlugin
 		currentTool.onUpdate();
 	}
 	void onMainActionPress(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onMainActionPress();
 	}
 	void onMainActionRelease(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onMainActionRelease();
 	}
 	void onSecondaryActionPress(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onSecondaryActionPress();
 	}
 	void onSecondaryActionRelease(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onSecondaryActionRelease();
 	}
 	void onTertiaryActionPress(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onTertiaryActionPress();
 	}
 	void onTertiaryActionRelease(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onTertiaryActionRelease();
 	}
 	void onRotateAction(string key) {
-		if (!clientPlugin.mouseLocked) return;
+		if (!guiPlugin.mouseLocked) return;
 		currentTool.onRotateAction();
 	}
 }

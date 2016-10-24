@@ -14,6 +14,7 @@ public import std.algorithm : clamp;
 
 alias bvec3 = Vector!(byte, 3);
 alias ubvec3 = Vector!(ubyte, 3);
+alias ubvec4 = Vector!(ubyte, 4);
 alias hvec3 = Vector!(half, 3);
 alias svec2 = Vector!(short, 2);
 alias svec3 = Vector!(short, 3);

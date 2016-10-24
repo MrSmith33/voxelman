@@ -145,6 +145,14 @@ public:
 		return glfwGetKey(glfwWindowPtr, key) == GLFW_PRESS;
 	}
 
+	override void setMouseLock(bool isMouseLocked)
+	{
+		if (isMouseLocked)
+			glfwSetInputMode(glfwWindowPtr, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		else
+			glfwSetInputMode(glfwWindowPtr, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	}
+
 	GLFWwindow* handle() @property
 	{
 		return glfwWindowPtr;

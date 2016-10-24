@@ -45,6 +45,7 @@ public:
 	IWindow window;
 	IRenderer renderer;
 	ImguiState igState;
+	bool mouseLocked;
 
 	mixin IdAndSemverFrom!(voxelman.gui.plugininfo);
 
@@ -132,5 +133,15 @@ public:
 	private void closePressed()
 	{
 		evDispatcher.postEvent(ClosePressedEvent());
+	}
+
+	void toggleMouseLock()
+	{
+		mouseLocked = !mouseLocked;
+		if (mouseLocked)
+		{
+			window.mousePosition = cast(ivec2)(window.size) / 2;
+		}
+		window.setMouseLock(mouseLocked);
 	}
 }
