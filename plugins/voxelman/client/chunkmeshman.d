@@ -89,7 +89,7 @@ struct ChunkMeshMan
 		if (modifiedChunks.length == 0) return;
 
 		size_t numMeshed;
-		foreach(cwp; modifiedChunks.items)
+		foreach(cwp; modifiedChunks)
 		{
 			if (meshChunk(cwp))
 				++numMeshed;

@@ -71,6 +71,10 @@ public:
 		onPostInit(saveFilename);
 	}
 
+	StringMap* getStringMap() {
+		return &stringMap;
+	}
+
 	void registerWorldLoadSaveHandlers(LoadHandler loadHandler, SaveHandler saveHandler)
 	{
 		worldLoadHandlers ~= loadHandler;
@@ -84,29 +88,28 @@ struct IoKey {
 }
 
 struct StringMap {
-	private Buffer!string array;
-	private uint[string] map;
+	Buffer!string array;
+	uint[string] map;
 
-	private void load(string[] ids) {
+	void load(string[] ids) {
 		array.clear();
 		foreach(str; ids) {
 			put(str);
 		}
 	}
 
-	private string[] strings() {
+	string[] strings() {
 		return array.data;
 	}
 
-
-	private uint put(string key) {
+	uint put(string key) {
 		uint id = cast(uint)array.data.length;
 		map[key] = id;
 		array.put(key);
 		return id;
 	}
 
-	private uint get(ref IoKey key) {
+	uint get(ref IoKey key) {
 		if (key.id == uint.max) {
 			key.id = map.get(key.str, uint.max);
 			if (key.id == uint.max) {
@@ -123,17 +126,6 @@ struct PluginDataSaver
 	private Buffer!ubyte buffer;
 	private size_t prevDataLength;
 
-	package(voxelman.world) void alloc() @nogc {
-	}
-
-	package(voxelman.world) void free() @nogc {
-	}
-
-	// HACK, duplicate
-	ubyte[16] formKey(ref IoKey ioKey) {
-		return formWorldKey(stringMap.get(ioKey));
-	}
-
 	Buffer!ubyte* beginWrite() {
 		prevDataLength = buffer.data.length;
 		return &buffer;
@@ -142,7 +134,7 @@ struct PluginDataSaver
 	void endWrite(ref IoKey key) {
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
 		buffer.put(*cast(ubyte[4]*)&entrySize);
-		buffer.put(formKey(key));
+		buffer.put(formWorldKey(stringMap.get(key)));
 	}
 
 	void writeEntryEncoded(T)(ref IoKey key, T data) {
@@ -211,13 +203,8 @@ struct PluginDataLoader
 	StringMap* stringMap;
 	WorldDb worldDb;
 
-	// HACK, duplicate
-	ubyte[16] formKey(ref IoKey ioKey) {
-		return formWorldKey(stringMap.get(ioKey));
-	}
-
 	ubyte[] readEntryRaw(ref IoKey key) {
-		auto data = worldDb.get(formKey(key));
+		auto data = worldDb.get(formWorldKey(stringMap.get(key)));
 		return data;
 	}
 

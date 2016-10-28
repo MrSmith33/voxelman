@@ -82,6 +82,8 @@ public:
 		import core.thread : Thread, thread_joinAll;
 		import core.memory;
 
+		infof("Server thread: %s", Thread.getThis.id);
+
 		if (dedicated)
 			mode = ServerMode.dedicated;
 		else

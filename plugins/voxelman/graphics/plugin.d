@@ -246,6 +246,8 @@ private:
 
 	void updateOrtoMatrix()
 	{
+		glViewport(0, 0, renderer.framebufferSize.x,
+			renderer.framebufferSize.y);
 		auto w = renderer.framebufferSize.x;
 		auto h = renderer.framebufferSize.y;
 		ortho_projection =

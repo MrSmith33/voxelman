@@ -127,7 +127,7 @@ final class ChunkManager {
 	/// Modified chunks are those that were committed.
 	/// Perform save right after commit.
 	void save() {
-		foreach(cwp; modifiedChunks.items) {
+		foreach(cwp; modifiedChunks) {
 			saveChunk(cwp);
 		}
 		clearModifiedChunks();

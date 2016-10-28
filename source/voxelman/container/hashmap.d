@@ -114,7 +114,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return 0;
 	}
 
-	int opApply(int delegate(in ref Key, ref Value) del) {
+	int opApply(int delegate(Key, ref Value) del) {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(keys[i], values[i]))

@@ -36,7 +36,10 @@ struct HashSet(Key) {
 		set = null;
 	}
 
-	auto items() @property {
-		return set.byKey;
+	int opApply(int delegate(Key) del) {
+		foreach (key; set.byKey)
+			if (auto ret = del(key))
+				return ret;
+		return 0;
 	}
 }

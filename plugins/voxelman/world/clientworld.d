@@ -89,6 +89,8 @@ public:
 	enum sendPositionInterval = 0.1;
 	ChunkWorldPos prevChunkPos;
 
+	StringMap serverStrings;
+
 	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler) {}
@@ -125,6 +127,8 @@ public:
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &handleChunkObserverAdded;
 		chunkObserverManager.loadQueueSpaceAvaliable = () => size_t.max;
+
+		idMapManager.regIdMapHandler("string_map", &onServerStringMapReceived);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -169,6 +173,11 @@ public:
 		{
 			h(packet.names);
 		}
+	}
+
+	void onServerStringMapReceived(string[] strings)
+	{
+		serverStrings.load(strings);
 	}
 
 	void onTogglePositionUpdate(string)

@@ -109,7 +109,8 @@ public:
 	override void preInit()
 	{
 		pluginDataSaver.stringMap = &ioManager.stringMap;
-		pluginDataSaver.alloc();
+		idMapManager.regIdMap("string_map", ioManager.stringMap.strings);
+
 		buf = new ubyte[](1024*64*4);
 		chunkManager = new ChunkManager();
 		worldAccess = new WorldAccess(chunkManager);
@@ -251,7 +252,6 @@ public:
 			Thread.yield();
 		}
 		chunkProvider.stop();
-		pluginDataSaver.free();
 	}
 
 	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)

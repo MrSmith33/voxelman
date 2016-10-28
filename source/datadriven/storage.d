@@ -1,15 +1,23 @@
+/**
+Copyright: Copyright (c) 2016 Andrey Penechko.
+License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
+Authors: Andrey Penechko.
+*/
 module datadriven.storage;
 
 import datadriven.api;
 import cbor;
+import voxelman.container.buffer;
+import voxelman.container.hashmap;
+import voxelman.container.inthashset;
 
-struct HashmapComponentStorage(ComponentType)
+struct HashmapComponentStorage(_ComponentType)
 {
-	private ComponentType[EntityId] components;
+	private HashMap!(EntityId, ComponentType) components;
+	alias ComponentType = _ComponentType;
 
-	void add(EntityId eid, ComponentType component)
+	void set(EntityId eid, ComponentType component)
 	{
-		//assert(eid !in components);
 		components[eid] = component;
 	}
 
@@ -20,7 +28,7 @@ struct HashmapComponentStorage(ComponentType)
 
 	void removeAll()
 	{
-		components = null;
+		components.clear();
 	}
 
 	size_t length() @property
@@ -33,25 +41,94 @@ struct HashmapComponentStorage(ComponentType)
 		return eid in components;
 	}
 
-	auto byKeyValue() @property
-	{
-		return components.byKeyValue;
+	int opApply(int delegate(EntityId, ref ComponentType) del) {
+		return components.opApply(del);
 	}
 
-	void serialize(Sink)(Sink sink)
+	void serialize(Buffer!ubyte* sink)
 	{
-		size_t size = encodeCborMapHeader(sink, components.length);
-		foreach(keyValue; components.byKeyValue) {
-			encodeCbor(sink, keyValue.key);
-			encodeCbor(sink, keyValue.value);
+		encodeCborMapHeader(sink, components.length);
+		foreach(key, value; components) {
+			encodeCbor!(Yes.Flatten)(sink, key);
+			encodeCbor!(Yes.Flatten)(sink, value);
 		}
 	}
 
 	void deserialize(ubyte[] input)
 	{
-		components = null;//.clear(); //introduced in 2.071
-		decodeCbor(input, components);
+		components.clear();
+		if (input.length == 0) return;
+		CborToken token = decodeCborToken(input);
+		if (token.type == CborTokenType.mapHeader) {
+			size_t lengthToRead = cast(size_t)token.uinteger;
+			components.reserve(lengthToRead);
+			while (lengthToRead > 0) {
+				auto eid = decodeCborSingle!EntityId(input);
+				auto component = decodeCborSingleDup!(ComponentType, Yes.Flatten)(input);
+				components[eid] = component;
+				--lengthToRead;
+			}
+		}
 	}
 }
 
 static assert(isComponentStorage!(HashmapComponentStorage!int, int));
+
+struct EntitySet
+{
+	private IntKeyHashSet!EntityId entities;
+
+	void set(EntityId eid)
+	{
+		entities.put(eid);
+	}
+
+	void remove(EntityId eid)
+	{
+		entities.remove(eid);
+	}
+
+	void removeAll()
+	{
+		entities.clear();
+	}
+
+	size_t length() @property
+	{
+		return entities.length;
+	}
+
+	bool get(EntityId eid)
+	{
+		return eid in entities;
+	}
+
+	int opApply(int delegate(EntityId) del) {
+		return entities.opApply(del);
+	}
+
+	void serialize(Buffer!ubyte* sink)
+	{
+		encodeCborArrayHeader(sink, entities.length);
+		foreach(eid; entities) {
+			encodeCbor(sink, eid);
+		}
+	}
+
+	void deserialize(ubyte[] input)
+	{
+		entities.clear();
+		if (input.length == 0) return;
+		CborToken token = decodeCborToken(input);
+		if (token.type == CborTokenType.arrayHeader) {
+			size_t lengthToRead = cast(size_t)token.uinteger;
+			entities.reserve(lengthToRead);
+			while (lengthToRead > 0) {
+				entities.put(decodeCborSingle!EntityId(input));
+				--lengthToRead;
+			}
+		}
+	}
+}
+
+static assert(isEntitySet!(EntitySet));

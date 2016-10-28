@@ -11,13 +11,15 @@ import std.array : empty;
 
 import cbor;
 import pluginlib;
-import datadriven.api;
+import datadriven;
+import voxelman.container.buffer;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.core.events;
+import voxelman.world.clientworld;
 import voxelman.world.serverworld;
-import voxelman.world.storage : IoManager, IoKey, PluginDataLoader, PluginDataSaver;
+import voxelman.world.storage : IoManager, StringMap, IoKey, PluginDataLoader, PluginDataSaver;
 
 shared static this()
 {
@@ -25,165 +27,171 @@ shared static this()
 	pluginRegistry.regServerPlugin(new EntityPluginServer);
 }
 
-struct EntityManager
-{
-	private EntityId lastEntityId;
-
-	EntityId nextEntityId()
-	{
-		return ++lastEntityId;
-	}
-}
-
-struct ComponentInfo
-{
-	string name;
-	ComponentUnpacker unpacker;
-	TypeInfo componentType;
-	size_t id;
+struct ProcessComponentsEvent {
+	float deltaTime;
 }
 
 struct ComponentSyncPacket
 {
-	size_t componentId;
-	ubyte[] componentData;
+	ubyte[] data;
 }
 
-struct ProcessComponentsEvent {
-	float deltaTime;
-}
-struct SyncComponentsEvent {}
-
-final class EntityPluginClient : IPlugin
+struct ComponentIoKeyMapPacket
 {
-	mixin EntityPluginCommon;
-	mixin EntityPluginClientImpl;
-}
-
-final class EntityPluginServer : IPlugin
-{
-	mixin EntityPluginCommon;
-	mixin EntityPluginServerImpl;
+	ubyte[] data;
 }
 
 alias ComponentUnpacker = void delegate(ubyte[] componentData);
 
+/// Use ComponentRegistry to receive EntityManager pointer.
+final class ComponentRegistry : IResourceManager
+{
+	EntityManager* eman;
+	override string id() @property { return "voxelman.entity.componentregistry"; }
+}
+
 mixin template EntityPluginCommon()
 {
+	private ComponentRegistry componentRegistry;
+	private EntityManager* eman;
+
+	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
+	{
+		componentRegistry = new ComponentRegistry();
+		eman = new EntityManager;
+		componentRegistry.eman = eman;
+		registerHandler(componentRegistry);
+	}
+}
+
+immutable string componentMapKey = "voxelman.entity.componentmap";
+
+final class EntityPluginClient : IPlugin
+{
 	mixin IdAndSemverFrom!(voxelman.entity.plugininfo);
+	mixin EntityPluginCommon;
+
+	private EventDispatcherPlugin evDispatcher;
+	private NetClientPlugin connection;
+	private ClientWorld clientWorld;
+
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		clientWorld = pluginman.getPlugin!ClientWorld;
+		connection = pluginman.getPlugin!NetClientPlugin;
+		connection.registerPacket!ComponentSyncPacket(&handleComponentSyncPacket);
+	}
+
+	private void onUpdateEvent(ref UpdateEvent event)
+	{
+		evDispatcher.postEvent(ProcessComponentsEvent(event.deltaTime));
+	}
+
+	private void handleComponentSyncPacket(ubyte[] packetData, ClientId clientId)
+	{
+		auto packet = unpackPacketNoDup!ComponentSyncPacket(packetData);
+
+		NetworkLoader netLoader;
+		netLoader.stringMap = &clientWorld.serverStrings;
+
+		ubyte[] data = packet.data;
+		while(!data.empty)
+		{
+			ubyte[4] _key = data[$-4..$];
+			uint key = *cast(uint*)&_key;
+			uint entrySize = *cast(uint*)(data[$-4-4..$-4].ptr);
+			ubyte[] entry = data[$-4-4-entrySize..$-4-4];
+			netLoader.ioKeyToData[key] = entry;
+			data = data[0..$-4-4-entrySize];
+		}
+
+		eman.load(netLoader);
+	}
+}
+
+final class EntityPluginServer : IPlugin
+{
+	mixin IdAndSemverFrom!(voxelman.entity.plugininfo);
+	mixin EntityPluginCommon;
 
 	EventDispatcherPlugin evDispatcher;
-	EntityManager entityManager;
+	NetServerPlugin connection;
+	NetworkSaver netSaver;
 
-	ComponentInfo*[] componentArray;
-	ComponentInfo*[TypeInfo] componentMap;
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&load, &save);
+		netSaver.stringMap = ioman.getStringMap();
+	}
 
 	override void init(IPluginManager pluginman)
 	{
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		connection = pluginman.getPlugin!(typeof(connection));
-		connection.registerPacket!ComponentSyncPacket(&handleComponentSyncPacket);
+		connection = pluginman.getPlugin!NetServerPlugin;
+		connection.registerPacket!ComponentSyncPacket();
 	}
 
-	void registerComponent(C)(ComponentUnpacker unpacker = null, string componentName = C.stringof)
-	{
-		size_t newId = componentArray.length;
-		ComponentInfo* cinfo = new ComponentInfo(componentName, unpacker, typeid(C), newId);
-		componentArray ~= cinfo;
-		assert(typeid(C) !in componentMap);
-		componentMap[typeid(C)] = cinfo;
-	}
-
-	void onUpdateEvent(ref UpdateEvent event)
+	private void onUpdateEvent(ref UpdateEvent event)
 	{
 		evDispatcher.postEvent(ProcessComponentsEvent(event.deltaTime));
 	}
 
-	void onPostUpdateEvent(ref PostUpdateEvent event)
+	private void onPostUpdateEvent(ref PostUpdateEvent)
 	{
-		evDispatcher.postEvent(SyncComponentsEvent());
+		eman.save(netSaver);
+		connection.sendToAll(ComponentSyncPacket(netSaver.data));
+		netSaver.reset();
+	}
+
+	private void load(ref PluginDataLoader loader)
+	{
+		eman.eidMan.load(loader);
+		eman.load(loader);
+	}
+
+	private void save(ref PluginDataSaver saver)
+	{
+		eman.eidMan.save(saver);
+		eman.save(saver);
 	}
 }
 
-mixin template EntityPluginClientImpl()
+struct NetworkSaver
 {
-	NetClientPlugin connection;
+	StringMap* stringMap;
+	private Buffer!ubyte buffer;
+	private size_t prevDataLength;
 
-	void unpackComponents(Storage)(ref Storage storage, ubyte[] data)
-	{
-		storage.removeAll();
-		while(!data.empty)
-		{
-			storage.add(
-				decodeCborSingle!size_t(data),
-				decodeCborSingle!(componentType!Storage, Yes.Flatten)(data));
-		}
+	Buffer!ubyte* beginWrite() {
+		prevDataLength = buffer.data.length;
+		return &buffer;
 	}
 
-	void handleComponentSyncPacket(ubyte[] packetData, ClientId clientId)
-	{
-		auto componentId = decodeCborSingle!size_t(packetData);
-
-		if (componentId >= componentArray.length)
-			return; // out of range
-
-		auto unpacker = componentArray[componentId].unpacker;
-		if (unpacker is null)
-			return; // unpacker is not set
-
-		unpacker(packetData);
+	void endWrite(ref IoKey key) {
+		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
+		buffer.put(*cast(ubyte[4]*)&entrySize);
+		uint int_key = stringMap.get(key);
+		buffer.put(*cast(ubyte[4]*)&int_key);
 	}
+
+	void reset() { buffer.clear(); }
+
+	ubyte[] data() { return buffer.data; }
 }
 
-mixin template EntityPluginServerImpl()
+struct NetworkLoader
 {
-	NetServerPlugin connection;
-	IoKey dbKey = IoKey("voxelman.entity.lastEntityId");
+	StringMap* stringMap;
+	ubyte[][uint] ioKeyToData;
 
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
-	{
-		auto ioman = resmanRegistry.getResourceManager!IoManager;
-		ioman.registerWorldLoadSaveHandlers(&read, &write);
-	}
-
-	void sendComponents(Storage)(Storage storage)
-	{
-		auto componentId = componentMap[typeid(componentType!Storage)].id;
-		auto packetData = createComponentPacket(componentId, storage);
-		if (packetData.length > 0)
-			connection.sendToAll(packetData);
-	}
-
-	ubyte[] createComponentPacket(Storage)(size_t componentId, Storage storage)
-	{
-		ubyte[] bufferTemp = connection.buffer;
-		size_t size;
-
-		size = encodeCbor(bufferTemp[], connection.packetId!ComponentSyncPacket);
-		size += encodeCbor(bufferTemp[size..$], componentId);
-
-		foreach(pair; storage.byKeyValue())
-		{
-			size += encodeCbor(bufferTemp[size..$], pair.key);
-			size += encodeCbor!(Yes.Flatten)(bufferTemp[size..$], pair.value);
-		}
-
-		return bufferTemp[0..size];
-	}
-
-	void handleComponentSyncPacket(ubyte[] packetData, ClientId clientId)
-	{
-	}
-
-	void read(ref PluginDataLoader loader)
-	{
-		loader.readEntryDecoded(dbKey, entityManager.lastEntityId);
-	}
-
-	void write(ref PluginDataSaver saver)
-	{
-		saver.writeEntryEncoded(dbKey, entityManager.lastEntityId);
+	ubyte[] readEntryRaw(ref IoKey key) {
+		uint intKey = stringMap.get(key);
+		auto data = ioKeyToData.get(intKey, null);
+		return data;
 	}
 }

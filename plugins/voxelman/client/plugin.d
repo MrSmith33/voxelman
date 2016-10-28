@@ -237,7 +237,13 @@ public:
 	{
 		void exec()
 		{
-			pluginRegistry.serverMain(args, false/*internal*/);
+			try {
+				pluginRegistry.serverMain(args, false/*internal*/);
+			} catch(Throwable t) {
+				criticalf("Server failed with error");
+				criticalf("%s", t.msg);
+				criticalf("%s", t);
+			}
 		}
 		serverThread = new Thread(&exec);
 		serverThread.start();
@@ -247,6 +253,8 @@ public:
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
+
+		infof("Client thread: %s", Thread.getThis.id);
 
 		version(manualGC) GC.disable;
 

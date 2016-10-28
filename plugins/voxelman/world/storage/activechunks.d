@@ -30,7 +30,7 @@ struct ActiveChunks
 	}
 
 	void loadActiveChunks() {
-		foreach(cwp; chunks.items) {
+		foreach(cwp; chunks) {
 			loadChunk(cwp);
 			infof("load active: %s", cwp);
 		}
@@ -50,7 +50,7 @@ struct ActiveChunks
 	package(voxelman.world) void write(ref PluginDataSaver saver) {
 		auto sink = saver.beginWrite();
 		encodeCborArrayHeader(sink, chunks.length);
-		foreach(cwp; chunks.items)
+		foreach(cwp; chunks)
 			encodeCbor(sink, cwp);
 		saver.endWrite(dbKey);
 	}

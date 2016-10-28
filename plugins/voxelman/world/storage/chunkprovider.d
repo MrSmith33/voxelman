@@ -137,6 +137,10 @@ struct ChunkProvider
 		}
 
 		while (!queuesEmpty()) {
+			if(!saveTaskQueue.empty || !loadTaskQueue.empty)
+			{
+				notify();
+			}
 			update();
 		}
 

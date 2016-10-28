@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add new datadriven package.
 - Add Batch2d.
 - Save block entity id map.
 - Add 'spawn set' command. Sets spawn position and rotation for current dimension to player's one.
