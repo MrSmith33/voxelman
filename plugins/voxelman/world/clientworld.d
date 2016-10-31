@@ -344,7 +344,7 @@ public:
 				copyLayer(layer, writeBuffer.layer);
 			}
 		}
-		else
+		else if (chunkManager.isChunkAdded(cwp))
 		{
 			foreach(ref layer; layers)
 			{
@@ -356,6 +356,11 @@ public:
 				}
 			}
 			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), true);
+		}
+		else
+		{
+			// we received chunk data for unloaded chunk. Ignore it.
+			return;
 		}
 
 		foreach(pos; AdjChunkPositions27(cwp).all)

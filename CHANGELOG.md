@@ -40,6 +40,8 @@
 - Do not uncompress chunks on client until requested. Less memory consumption.
 
 ### Fixed
+- Fix assert when non-added chunk is loaded. Ignore it instead.
+- Fix bug when commitLayerSnapshot uses StorageType.fullArray instead of writeBuffer.layer.type when committing new snapshot. This caused compressed layer to have type of full layer.
 - Correctly handle clients with the same name.
 - Fix gui order for task and result queues.
 - Fix client disconnection code.

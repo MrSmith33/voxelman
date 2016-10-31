@@ -291,19 +291,6 @@ public:
 			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
 			if (layer.isNull) continue;
 
-			//if (layer.dataLength == 5 && layerId == 1)
-			//	infof("CM Loaded %s %s", cwp, layer.type);
-			if (cwp == ChunkWorldPos(-17, 1, 69, 0))
-				infof("Send %s %s", cwp, layer);
-			if (layerId == 0 && cwp == ChunkWorldPos(-17, 1, 69, 0))
-			{
-				if (layer.type == StorageType.fullArray)
-				{
-					auto array = layer.getArray!ubyte;
-					infof("Send %s %s\n(%(%02x%))", cwp, array.length, array);
-				}
-			}
-
 			version(DBG_COMPR)if (layer.type != StorageType.uniform)
 			{
 				ubyte[] compactBlocks = layer.getArray!ubyte;

@@ -645,9 +645,10 @@ ubyte[] decompressLayerData(Layer)(const Layer layer, ubyte[] outBuffer) if (isS
 ubyte[] decompressLayerData(const ubyte[] _compressedData)
 {
 	ubyte[] compressedData = cast(ubyte[])_compressedData;
-	auto dataSize = decodeCborSingle!size_t(compressedData);
+	auto dataSize = uncompressedDataLength(compressedData);
 	ubyte[] buffer = allocLayerArray(dataSize);
 	ubyte[] decompressedData = decompress(compressedData, buffer);
+	//assert(buffer.length == decompressedData.length, "data size and length dont match");
 	return decompressedData;
 }
 
@@ -663,6 +664,7 @@ ubyte[] decompressLayerData(const ubyte[] _compressedData, ubyte[] outBuffer)
 	auto dataSize = decodeCborSingle!size_t(compressedData);
 	//assert(outBuffer.length == dataSize, format("%s != %s", outBuffer.length, dataSize));
 	ubyte[] decompressedData = decompress(compressedData, outBuffer);
+	//assert(outBuffer.length == decompressedData.length, "data size and length dont match");
 	return decompressedData;
 }
 

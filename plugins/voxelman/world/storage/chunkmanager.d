@@ -194,6 +194,7 @@ final class ChunkManager {
 					}
 					else
 					{
+						// BUG: memory leak
 						ChunkLayerSnap res = *snap;
 						res.dataPtr = decompressedData.ptr;
 						res.dataLength = cast(LayerDataLenType)decompressedData.length;
@@ -296,7 +297,7 @@ final class ChunkManager {
 	}
 
 	/// Internal. Called by code which loads chunks from storage.
-	/// LoadedChunk is a type that has following memeber:
+	/// LoadedChunk is a type that has following members:
 	///   ChunkHeaderItem getHeader()
 	///   ChunkLayerItem getLayer()
 	void onSnapshotLoaded(LoadedChunk)(LoadedChunk chunk, bool needsSave) {
@@ -639,8 +640,7 @@ final class ChunkManager {
 					currentTime, writeBuffer.layer.uniformData, writeBuffer.layer.metadata);
 			}
 		} else {
-			//assert(writeBuffer.layer.type == StorageType.fullArray);
-			snapshots[layer][cwp] = ChunkLayerSnap(StorageType.fullArray, currentTime,
+			snapshots[layer][cwp] = ChunkLayerSnap(writeBuffer.layer.type, currentTime,
 				writeBuffer.getArray!ubyte, writeBuffer.layer.metadata);
 			totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);
 		}
