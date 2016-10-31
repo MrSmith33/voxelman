@@ -47,7 +47,7 @@ final class DebugClient : IPlugin
 		igEnd();
 	}
 
-	private void handleTelemetryPacket(ubyte[] packetData, ClientId clientId)
+	private void handleTelemetryPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!TelemetryPacket(packetData);
 		dbg.setVar(packet.name, packet.val);

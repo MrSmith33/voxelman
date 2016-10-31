@@ -41,12 +41,25 @@ struct HashmapComponentStorage(_ComponentType)
 		return eid in components;
 	}
 
-	int opApply(int delegate(EntityId, ref ComponentType) del) {
+	ComponentType* getOrCreate(EntityId eid, ComponentType defVal = ComponentType.init)
+	{
+		auto ptr = eid in components;
+		if (ptr)
+			return ptr;
+		else {
+			components[eid] = defVal;
+			return eid in components;
+		}
+	}
+
+	int opApply(scope int delegate(EntityId, ref ComponentType) del) {
 		return components.opApply(del);
 	}
 
 	void serialize(Buffer!ubyte* sink)
 	{
+		if (components.empty) return;
+
 		encodeCborMapHeader(sink, components.length);
 		foreach(key, value; components) {
 			encodeCbor!(Yes.Flatten)(sink, key);
@@ -103,12 +116,14 @@ struct EntitySet
 		return eid in entities;
 	}
 
-	int opApply(int delegate(EntityId) del) {
+	int opApply(scope int delegate(EntityId) del) {
 		return entities.opApply(del);
 	}
 
 	void serialize(Buffer!ubyte* sink)
 	{
+		if (entities.empty) return;
+
 		encodeCborArrayHeader(sink, entities.length);
 		foreach(eid; entities) {
 			encodeCbor(sink, eid);

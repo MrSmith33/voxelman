@@ -6,22 +6,24 @@ Authors: Andrey Penechko.
 
 module voxelman.net.events;
 
-import netlib.connection : ClientId;
+import netlib : SessionId;
+import datadriven : EntityId;
 
 struct ClientConnectedEvent {
-	ClientId clientId;
+	SessionId sessionId;
 }
 struct ClientDisconnectedEvent {
-	ClientId clientId;
+	SessionId sessionId;
 }
 struct ThisClientConnectedEvent {}
 struct ThisClientDisconnectedEvent {
 	uint data;
 }
 struct ClientLoggedInEvent {
-	ClientId clientId;
+	EntityId clientId;
+	bool newClient;
 }
 struct ClientLoggedOutEvent {
-	ClientId clientId;
+	EntityId clientId;
 }
 struct SendClientSettingsEvent {}

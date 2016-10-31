@@ -15,11 +15,20 @@ import voxelman.world.storage.iomanager;
 private struct ComponentInfo
 {
 	IoKey ioKey;
+	bool serializeToDb;
+	bool serializeToNet;
 	void delegate(EntityId) remove;
 	void delegate() removeAll;
 	void delegate(Buffer!ubyte*) serialize;
 	void delegate(ubyte[]) deserialize;
 	void* storage;
+
+	bool isSerialized(IoStorageType storageType) {
+		final switch(storageType) {
+			case IoStorageType.database: return serializeToDb;
+			case IoStorageType.network: return serializeToNet;
+		}
+	}
 }
 
 enum bool isFlagComponent(C) = C.tupleof.length == 0;
@@ -38,6 +47,8 @@ template ComponentStorage(C)
 private struct TypedComponentInfo(C)
 {
 	IoKey ioKey;
+	bool serializeToDb;
+	bool serializeToNet;
 	void delegate(EntityId) remove;
 	void delegate() removeAll;
 	void delegate(Buffer!ubyte*) serialize;
@@ -53,7 +64,7 @@ private struct TypedComponentInfo(C)
 struct EntityIdManager
 {
 	private EntityId lastEntityId;
-	private IoKey ioKey = IoKey("voxelman.entity.lastEntityId");
+	IoKey ioKey = IoKey("voxelman.entity.lastEntityId");
 
 	EntityId nextEntityId()
 	{
@@ -76,7 +87,7 @@ struct EntityManager
 {
 	private ComponentInfo*[TypeInfo] componentInfoMap;
 	private ComponentInfo*[] componentInfoArray;
-	EntityIdManager eidMan;
+	EntityIdManager* eidMan;
 
 	/// Before using component type in every other method, register it here.
 	/// name is used for (de)serialization.
@@ -85,7 +96,9 @@ struct EntityManager
 		assert(typeid(C) !in componentInfoMap);
 		auto storage = new ComponentStorage!C;
 		auto info =	new ComponentInfo(
-			IoKey(componentKey!C),
+			IoKey(componentUda!C.key),
+			componentUda!C.serializeToDb,
+			componentUda!C.serializeToNet,
 			&storage.remove,
 			&storage.removeAll,
 			&storage.serialize,
@@ -120,13 +133,29 @@ struct EntityManager
 	/// Works only with non-flag components.
 	C* get(C)(EntityId eid)
 	{
+		static assert (!isFlagComponent!C, "Cannot use get for flag component, use has method");
 		return getComponentStorage!C().get(eid);
+	}
+
+	/// Returns pointer to the component of type C.
+	/// Creates component first if entity had no such component.
+	/// Works only with non-flag components.
+	C* getOrCreate(C)(EntityId eid, C defVal = C.init)
+	{
+		static assert (!isFlagComponent!C, "Cannot use getOrCreate for flag component");
+		return getComponentStorage!C().getOrCreate(eid, defVal);
 	}
 
 	/// Used to check for presence of given component or flag.
 	bool has(C)(EntityId eid)
 	{
 		return cast(bool)getComponentStorage!C().get(eid);
+	}
+
+	/// Removes one component for given eid.
+	void remove(C)(EntityId eid)
+	{
+		getComponentStorage!C().remove(eid);
 	}
 
 	/// Removes all components for given eid.
@@ -165,8 +194,8 @@ struct EntityManager
 	/// Serializes all component storages with given saver.
 	void save(Saver)(ref Saver saver)
 	{
-		foreach(info; componentInfoArray)
-		{
+		foreach(info; componentInfoArray) {
+			if(!info.isSerialized(saver.storageType)) continue;
 			info.serialize(saver.beginWrite());
 			saver.endWrite(info.ioKey);
 		}
@@ -175,8 +204,8 @@ struct EntityManager
 	/// Deserializes all component storages from given loader.
 	void load(Loader)(ref Loader loader)
 	{
-		foreach(info; componentInfoArray)
-		{
+		foreach(info; componentInfoArray) {
+			if(!info.isSerialized(loader.storageType)) continue;
 			auto data = loader.readEntryRaw(info.ioKey);
 			info.deserialize(data);
 		}

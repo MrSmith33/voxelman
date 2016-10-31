@@ -79,7 +79,7 @@ public:
 	vec3 updatedCameraPos;
 	ChunkWorldPos observerPosition;
 	ubyte positionKey;
-	ClientId observerClientId;
+	SessionId observerSessionId;
 
 	ConfigOption viewRadiusOpt;
 	int viewRadius;
@@ -166,7 +166,7 @@ public:
 		worldAccess.blockInfos = blockPlugin.getBlocks();
 	}
 
-	void handleIdMapPacket(ubyte[] packetData, ClientId clientId)
+	void handleIdMapPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!IdMapPacket(packetData);
 		if (auto h = idMapManager.onMapReceivedHandlers.get(packet.mapName, null))
@@ -190,7 +190,7 @@ public:
 	}
 
 	void onRemeshViewBox(string) {
-		WorldBox box = chunkObserverManager.getObserverBox(observerClientId);
+		WorldBox box = chunkObserverManager.getObserverBox(observerSessionId);
 		remeshBox(box, true);
 	}
 
@@ -269,7 +269,7 @@ public:
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
 
-	void handleChunkObserverAdded(ChunkWorldPos, ClientId) {}
+	void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
 
 	void handleLoadChunk(ChunkWorldPos) {}
 
@@ -300,7 +300,7 @@ public:
 		connection.send(ViewRadiusPacket(viewRadius));
 	}
 
-	void handleChunkDataPacket(ubyte[] packetData, ClientId peer)
+	void handleChunkDataPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
@@ -362,7 +362,7 @@ public:
 			chunksToRemesh.put(pos);
 	}
 
-	void handleMultiblockChangePacket(ubyte[] packetData, ClientId peer)
+	void handleMultiblockChangePacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
 		auto cwp = ChunkWorldPos(packet.chunkPos);
@@ -373,7 +373,7 @@ public:
 			chunksToRemesh.put(pos);
 	}
 
-	void handleFillBlockBoxPacket(ubyte[] packetData, ClientId peer)
+	void handleFillBlockBoxPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 
@@ -383,7 +383,7 @@ public:
 
 	void onBlockBoxChanged(WorldBox blockBox)
 	{
-		WorldBox observedBox = chunkObserverManager.getObserverBox(observerClientId);
+		WorldBox observedBox = chunkObserverManager.getObserverBox(observerSessionId);
 		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);
 		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
@@ -391,7 +391,7 @@ public:
 			chunksToRemesh.put(ChunkWorldPos(pos, box.dimension));
 	}
 
-	void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	void handlePlaceBlockEntityPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
 		placeEntity(packet.box, packet.data,
@@ -399,7 +399,7 @@ public:
 		onBlockBoxChanged(packet.box);
 	}
 
-	void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	void handleRemoveBlockEntityPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
 		WorldBox changedBox = removeEntity(BlockWorldPos(packet.blockPos),
@@ -473,12 +473,12 @@ public:
 
 	void updateObserverPosition() {
 		if (session.isSpawned) {
-			if (observerClientId != session.thisClientId) {
-				chunkObserverManager.removeObserver(observerClientId);
-				observerClientId = session.thisClientId;
+			if (observerSessionId != session.thisSessionId) {
+				chunkObserverManager.removeObserver(observerSessionId);
+				observerSessionId = session.thisSessionId;
 			}
 
-			chunkObserverManager.changeObserverBox(observerClientId, observerPosition, viewRadius);
+			chunkObserverManager.changeObserverBox(observerSessionId, observerPosition, viewRadius);
 		}
 	}
 

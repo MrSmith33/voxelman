@@ -13,13 +13,13 @@ import cbor;
 import pluginlib;
 import datadriven;
 import voxelman.container.buffer;
+import voxelman.core.events;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
-import voxelman.core.events;
 import voxelman.world.clientworld;
 import voxelman.world.serverworld;
-import voxelman.world.storage : IoManager, StringMap, IoKey, PluginDataLoader, PluginDataSaver;
+import voxelman.world.storage : IoManager, StringMap, IoKey, PluginDataLoader, PluginDataSaver, IoStorageType;
 
 shared static this()
 {
@@ -36,15 +36,8 @@ struct ComponentSyncPacket
 	ubyte[] data;
 }
 
-struct ComponentIoKeyMapPacket
-{
-	ubyte[] data;
-}
-
-alias ComponentUnpacker = void delegate(ubyte[] componentData);
-
-/// Use ComponentRegistry to receive EntityManager pointer.
-final class ComponentRegistry : IResourceManager
+/// Use EntityComponentRegistry to receive EntityManager pointer.
+final class EntityComponentRegistry : IResourceManager
 {
 	EntityManager* eman;
 	override string id() @property { return "voxelman.entity.componentregistry"; }
@@ -52,14 +45,15 @@ final class ComponentRegistry : IResourceManager
 
 mixin template EntityPluginCommon()
 {
-	private ComponentRegistry componentRegistry;
-	private EntityManager* eman;
+	private EntityComponentRegistry componentRegistry;
+	private EntityManager eman;
+	private EntityIdManager eidMan;
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
-		componentRegistry = new ComponentRegistry();
-		eman = new EntityManager;
-		componentRegistry.eman = eman;
+		componentRegistry = new EntityComponentRegistry();
+		eman.eidMan = &eidMan;
+		componentRegistry.eman = &eman;
 		registerHandler(componentRegistry);
 	}
 }
@@ -89,7 +83,7 @@ final class EntityPluginClient : IPlugin
 		evDispatcher.postEvent(ProcessComponentsEvent(event.deltaTime));
 	}
 
-	private void handleComponentSyncPacket(ubyte[] packetData, ClientId clientId)
+	private void handleComponentSyncPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!ComponentSyncPacket(packetData);
 
@@ -108,6 +102,7 @@ final class EntityPluginClient : IPlugin
 		}
 
 		eman.load(netLoader);
+		netLoader.ioKeyToData.clear();
 	}
 }
 
@@ -167,6 +162,8 @@ struct NetworkSaver
 	private Buffer!ubyte buffer;
 	private size_t prevDataLength;
 
+	IoStorageType storageType() { return IoStorageType.network; }
+
 	Buffer!ubyte* beginWrite() {
 		prevDataLength = buffer.data.length;
 		return &buffer;
@@ -174,6 +171,8 @@ struct NetworkSaver
 
 	void endWrite(ref IoKey key) {
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
+		// dont write empty entries, since loader will return empty array for non-existing entries
+		if (entrySize == 0) return;
 		buffer.put(*cast(ubyte[4]*)&entrySize);
 		uint int_key = stringMap.get(key);
 		buffer.put(*cast(ubyte[4]*)&int_key);
@@ -188,6 +187,8 @@ struct NetworkLoader
 {
 	StringMap* stringMap;
 	ubyte[][uint] ioKeyToData;
+
+	IoStorageType storageType() { return IoStorageType.network; }
 
 	ubyte[] readEntryRaw(ref IoKey key) {
 		uint intKey = stringMap.get(key);

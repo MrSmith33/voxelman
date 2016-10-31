@@ -5,9 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.net.packets;
 
-import netlib.connection;
+import datadriven : EntityId;
 
-void registerPackets(Connection c)
+void registerPackets(Connection)(Connection c)
 {
 	// Server -> Client
 	c.registerPacket!PacketMapPacket;
@@ -50,24 +50,24 @@ struct GameStartPacket
 // server response
 struct SessionInfoPacket
 {
-	ClientId yourId;
-	string[ClientId] clientNames;
+	EntityId yourId;
+	string[EntityId] clientNames;
 }
 
 struct ClientLoggedInPacket
 {
-	ClientId clientId;
+	EntityId clientId;
 	string clientName;
 }
 
 struct ClientLoggedOutPacket
 {
-	ClientId clientId;
+	EntityId clientId;
 }
 
 // sent from client with peer == 0 and from server with userId of sender.
 struct MessagePacket
 {
-	ClientId clientId; // from. Set to 0 when sending from client
 	string msg;
+	EntityId clientId; // from. Set to 0 when sending from client
 }

@@ -347,7 +347,7 @@ public:
 	void onConsoleCommand(string command)
 	{
 		infof("Executing command '%s'", command);
-		ExecResult res = commandPlugin.execute(command, ClientId(0));
+		ExecResult res = commandPlugin.execute(command, SessionId(0));
 
 		if (res.status == ExecStatus.notRegistered)
 		{

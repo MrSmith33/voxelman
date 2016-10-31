@@ -7,7 +7,7 @@ module voxelman.world.storage.chunkobservermanager;
 
 import voxelman.log;
 import voxelman.math;
-import netlib.connection : ClientId;
+import netlib : SessionId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect4d, calcBox;
 
@@ -15,7 +15,7 @@ enum chunkPackLoadSize = 200;
 
 struct ViewInfo
 {
-	ClientId clientId;
+	SessionId sessionId;
 	WorldBox viewBox;
 	//ivec3 viewRadius;
 	//ChunkWorldPos observerPosition;
@@ -28,11 +28,11 @@ struct ViewInfo
 // Manages lists of observers per chunk
 final class ChunkObserverManager {
 	void delegate(ChunkWorldPos, size_t numObservers) changeChunkNumObservers;
-	void delegate(ChunkWorldPos, ClientId) chunkObserverAdded;
+	void delegate(ChunkWorldPos, SessionId) chunkObserverAdded;
 	size_t delegate() loadQueueSpaceAvaliable;
 
 	private ChunkObservers[ChunkWorldPos] chunkObservers;
-	private ViewInfo[ClientId] viewInfos;
+	private ViewInfo[SessionId] viewInfos;
 
 	void update() {
 
@@ -62,7 +62,7 @@ final class ChunkObserverManager {
 				if (currentRing > info.viewRadius)
 					break;
 
-				//infof("For infos C:%s VR:%s OR:%s CI:%s", info.clientId, info.viewRadius,
+				//infof("For infos C:%s VR:%s OR:%s CI:%s", info.sessionId, info.viewRadius,
 				//	info.numObservedRings, info.currentChunkIndex);
 
 				size_t chunksToLoadClient = chunkPackLoadSize;
@@ -103,14 +103,14 @@ final class ChunkObserverManager {
 				while (true) {
 					bool stop = empty();
 					if (stop) {// ring end
-						//infof("Ring %s loaded for C:%s", info.numObservedRings, info.clientId);
+						//infof("Ring %s loaded for C:%s", info.numObservedRings, info.sessionId);
 						++info.numObservedRings;
 						info.currentChunkIndex = 0;
 						break;
 					}
 					popFront();
 
-					bool added = addChunkObserver(ChunkWorldPos(position), info.clientId);
+					bool added = addChunkObserver(ChunkWorldPos(position), info.sessionId);
 
 					if (added) {
 						//infof("Add %s", position);
@@ -133,11 +133,11 @@ final class ChunkObserverManager {
 		}
 
 		foreach(info; infos) {
-			viewInfos[info.clientId] = info;
+			viewInfos[info.sessionId] = info;
 		}
 	};
 
-	ClientId[] getChunkObservers(ChunkWorldPos cwp) {
+	SessionId[] getChunkObservers(ChunkWorldPos cwp) {
 		if (auto observers = cwp in chunkObservers)
 			return observers.clients;
 		else
@@ -161,68 +161,68 @@ final class ChunkObserverManager {
 			chunkObservers[cwp] = list;
 	}
 
-	void removeObserver(ClientId clientId) {
-		if (clientId in viewInfos) {
-			changeObserverBox(clientId, ChunkWorldPos.init, 0);
-			viewInfos.remove(clientId);
+	void removeObserver(SessionId sessionId) {
+		if (sessionId in viewInfos) {
+			changeObserverBox(sessionId, ChunkWorldPos.init, 0);
+			viewInfos.remove(sessionId);
 		}
 		else
-			warningf("removing observer %s, that was not added", clientId);
+			warningf("removing observer %s, that was not added", sessionId);
 	}
 
-	WorldBox getObserverBox(ClientId clientId) {
-		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
+	WorldBox getObserverBox(SessionId sessionId) {
+		ViewInfo info = viewInfos.get(sessionId, ViewInfo.init);
 		return info.viewBox;
 	}
 
-	void changeObserverBox(ClientId clientId, ChunkWorldPos observerPosition, int viewRadius) {
+	void changeObserverBox(SessionId sessionId, ChunkWorldPos observerPosition, int viewRadius) {
 		WorldBox newBox = calcBox(observerPosition, viewRadius);
-		changeObserverBox(clientId, newBox);
+		changeObserverBox(sessionId, newBox);
 	}
 
-	void changeObserverBox(ClientId clientId, WorldBox newBox) {
-		ViewInfo info = viewInfos.get(clientId, ViewInfo.init);
+	void changeObserverBox(SessionId sessionId, WorldBox newBox) {
+		ViewInfo info = viewInfos.get(sessionId, ViewInfo.init);
 		WorldBox oldBox = info.viewBox;
 
 		if (newBox == oldBox)
 			return;
 
-		info = ViewInfo(clientId, newBox);//, observerPosition, viewRadius);
+		info = ViewInfo(sessionId, newBox);//, observerPosition, viewRadius);
 
 		//infof("oldV %s newV %s", oldBox, newBox);
 		TrisectResult tsect = trisect4d(oldBox, newBox);
 
 		// remove observer
 		foreach(a; tsect.aPositions) {
-			removeChunkObserver(ChunkWorldPos(a, oldBox.dimension), clientId);
+			removeChunkObserver(ChunkWorldPos(a, oldBox.dimension), sessionId);
 			//infof("Rem %s", a);
 		}
 
 		// add observer
 		foreach(b; tsect.bPositions) {
-			addChunkObserver(ChunkWorldPos(b, newBox.dimension), clientId);
+			addChunkObserver(ChunkWorldPos(b, newBox.dimension), sessionId);
 		}
 
 		if (newBox.empty)
-			viewInfos.remove(clientId);
+			viewInfos.remove(sessionId);
 		else
-			viewInfos[clientId] = info;
+			viewInfos[sessionId] = info;
 	}
 
-	private bool addChunkObserver(ChunkWorldPos cwp, ClientId clientId) {
+	private bool addChunkObserver(ChunkWorldPos cwp, SessionId sessionId) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
-		if (list.add(clientId)) {
+		if (list.add(sessionId)) {
 			changeChunkNumObservers(cwp, list.numObservers);
-			chunkObserverAdded(cwp, clientId);
+			chunkObserverAdded(cwp, sessionId);
 			chunkObservers[cwp] = list;
 			return true;
 		}
 		return false;
 	}
 
-	private void removeChunkObserver(ChunkWorldPos cwp, ClientId clientId) {
+	private void removeChunkObserver(ChunkWorldPos cwp, SessionId sessionId) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
-		bool removed = list.remove(clientId);
+		bool removed = list.remove(sessionId);
 		if (removed)
 			changeChunkNumObservers(cwp, list.numObservers);
 		if (list.empty)
@@ -237,13 +237,13 @@ private struct ChunkObservers {
 	import std.algorithm : canFind, countUntil;
 
 	// clients observing this chunk
-	private ClientId[] _clients;
+	private SessionId[] _clients;
 	// Each client can observe a chunk multiple times via multiple boxes.
 	private size_t[] numObservations;
 	// ref counts for keeping chunk loaded
 	size_t numServerObservers;
 
-	ClientId[] clients() @property {
+	SessionId[] clients() @property {
 		return _clients;
 	}
 
@@ -255,15 +255,15 @@ private struct ChunkObservers {
 		return _clients.length + numServerObservers;
 	}
 
-	bool contains(ClientId clientId) const {
-		return canFind(_clients, clientId);
+	bool contains(SessionId sessionId) const {
+		return canFind(_clients, sessionId);
 	}
 
-	// returns true if clientId was not in clients already
-	bool add(ClientId clientId)	{
-		auto index = countUntil(_clients, clientId);
+	// returns true if sessionId was not in clients already
+	bool add(SessionId sessionId)	{
+		auto index = countUntil(_clients, sessionId);
 		if (index == -1) {
-			_clients ~= clientId;
+			_clients ~= sessionId;
 			numObservations ~= 1;
 			return true;
 		} else {
@@ -272,10 +272,10 @@ private struct ChunkObservers {
 		}
 	}
 
-	// returns true if clientId is no longer in list (has zero observations)
-	bool remove(ClientId clientId)
+	// returns true if sessionId is no longer in list (has zero observations)
+	bool remove(SessionId sessionId)
 	{
-		auto index = countUntil(_clients, clientId);
+		auto index = countUntil(_clients, sessionId);
 		if (index == -1)
 		{
 			return false;

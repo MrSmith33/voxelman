@@ -79,6 +79,7 @@ PluginInfo* readPluginInfo(string fileData)
 
 PluginPack* readPluginPack(string fileData)
 {
+	import std.algorithm : startsWith;
 	import std.array : empty;
 	import std.regex : matchFirst, ctRegex;
 	import std.string : lineSplitter;
@@ -96,7 +97,7 @@ PluginPack* readPluginPack(string fileData)
 
 	foreach(line; input)
 	{
-		if (line.empty)
+		if (line.empty || startsWith(line, "#"))
 			continue;
 
 		auto pluginInfo = matchFirst(line, ctRegex!(`(?P<id>[^\s]*)\s+(?P<semver>.*)`, "m"));

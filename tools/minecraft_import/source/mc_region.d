@@ -64,7 +64,7 @@ struct McRegion
 	int x, z;
 
 	/// iterates all chunks in region.
-	int opApply(int delegate(McChunkInfo) del)
+	int opApply(scope int delegate(McChunkInfo) del)
 	{
 		File file;
 		file.open(path);

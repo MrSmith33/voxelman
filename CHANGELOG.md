@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 ### Added
+- Add getOrCreate to entity manager and storages.
+- Add serializeToDb and serializeToNet component flags.
+- Add storage type for loaders and savers.
+- Use entity storage for ClientDb. Clients can have any set of components and flags now. They are persistently - stored. Client spawns on the same position he leaved server.
+- Add # comment to plugin pack parsing.
+- Add # comment to plugin pack.
+- Add client db on server.
 - Add new datadriven package.
 - Add Batch2d.
 - Save block entity id map.
@@ -17,6 +24,10 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Redo netlib package.
+- Remove unused source parameter of packet handlers on client.
+- Rename ClientId into SessionId.
+- Correctly handle clients with the same name.
 - Hide cursor on mouse lock.
 - Use string map for DB keys.
 - Allow committing compressed layers.
@@ -29,6 +40,7 @@
 - Do not uncompress chunks on client until requested. Less memory consumption.
 
 ### Fixed
+- Correctly handle clients with the same name.
 - Fix gui order for task and result queues.
 - Fix client disconnection code.
 - Fix client repeated connection to the same server.

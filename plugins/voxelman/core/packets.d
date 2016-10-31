@@ -5,11 +5,11 @@ Authors: Andrey Penechko.
 */
 module voxelman.core.packets;
 
-import netlib.connection;
+import netlib;
 import voxelman.math;
 import voxelman.world.storage.worldbox : WorldBox;
 
-void registerPackets(Connection c)
+void registerPackets(Connection)(Connection c)
 {
 	// Common
 	c.registerPacket!ClientPositionPacket;

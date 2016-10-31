@@ -254,22 +254,22 @@ public:
 		chunkProvider.stop();
 	}
 
-	private void onChunkObserverAdded(ChunkWorldPos cwp, ClientId clientId)
+	private void onChunkObserverAdded(ChunkWorldPos cwp, SessionId sessionId)
 	{
-		sendChunk(clientId, cwp);
+		sendChunk(sessionId, cwp);
 	}
 
 	private void handleClientConnectedEvent(ref ClientConnectedEvent event)
 	{
 		foreach(key, idmap; idMapManager.idMaps)
 		{
-			connection.sendTo(event.clientId, IdMapPacket(key, idmap));
+			connection.sendTo(event.sessionId, IdMapPacket(key, idmap));
 		}
 	}
 
 	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
-		chunkObserverManager.removeObserver(event.clientId);
+		chunkObserverManager.removeObserver(event.sessionId);
 	}
 
 	private void onChunkLoaded(ChunkWorldPos cwp)
@@ -336,10 +336,10 @@ public:
 		}
 	}
 
-	private void handleFillBlockBoxPacket(ubyte[] packetData, ClientId clientId)
+	private void handleFillBlockBoxPacket(ubyte[] packetData, SessionId sessionId)
 	{
 		import voxelman.core.packets : FillBlockBoxPacket;
-		if (clientMan.isSpawned(clientId))
+		if (clientMan.isSpawned(sessionId))
 		{
 			auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 			// TODO send to observers only.
@@ -348,7 +348,7 @@ public:
 		}
 	}
 
-	private void handlePlaceBlockEntityPacket(ubyte[] packetData, ClientId clientId)
+	private void handlePlaceBlockEntityPacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
 		placeEntity(
@@ -359,7 +359,7 @@ public:
 		connection.sendToAll(packet);
 	}
 
-	private void handleRemoveBlockEntityPacket(ubyte[] packetData, ClientId peer)
+	private void handleRemoveBlockEntityPacket(ubyte[] packetData, SessionId peer)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
 		WorldBox vol = removeEntity(BlockWorldPos(packet.blockPos),

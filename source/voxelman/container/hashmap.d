@@ -41,6 +41,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 	}
 
 	@property size_t capacity() const { return keys.length; }
+	@property bool empty() const { return length == 0; }
 
 	void remove(Key key) {
 		auto idx = findIndex(key);
@@ -98,7 +99,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return &values[idx];
 	}
 
-	int opApply(int delegate(ref Value) del) {
+	int opApply(scope int delegate(ref Value) del) {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(values[i]))
@@ -106,7 +107,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return 0;
 	}
 
-	int opApply(int delegate(in ref Value) del) const {
+	int opApply(scope int delegate(in ref Value) del) const {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(values[i]))
@@ -114,7 +115,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return 0;
 	}
 
-	int opApply(int delegate(Key, ref Value) del) {
+	int opApply(scope int delegate(Key, ref Value) del) {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(keys[i], values[i]))
@@ -122,7 +123,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return 0;
 	}
 
-	int opApply(int delegate(in ref Key, in ref Value) del) const {
+	int opApply(scope int delegate(in ref Key, in ref Value) del) const {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(keys[i], values[i]))

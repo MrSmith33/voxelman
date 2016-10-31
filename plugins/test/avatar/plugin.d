@@ -1,18 +1,20 @@
 module test.avatar.plugin;
 
-import std.array;
 import voxelman.log;
+import voxelman.container.buffer;
 import dlib.math;
-
+import datadriven;
 import netlib;
 import pluginlib;
-import voxelman.eventdispatcher.plugin;
-import voxelman.net.plugin;
+
 import voxelman.core.config;
 import voxelman.core.events;
+import voxelman.net.events;
+
+import voxelman.entity.plugin;
+import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
-import voxelman.session.client;
-import voxelman.session.server;
+import voxelman.session;
 import voxelman.world.clientworld;
 
 shared static this()
@@ -21,15 +23,35 @@ shared static this()
 	pluginRegistry.regServerPlugin(new AvatarServer);
 }
 
+@Component("avatar.AvatarPosition", false, true)
+struct AvatarPosition
+{
+	vec3 pos;
+	vec2 heading;
+	DimensionId dimension;
+}
+
+mixin template AvatarPluginCommon()
+{
+	EntityManager* eman;
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto components = resmanRegistry.getResourceManager!EntityComponentRegistry;
+		eman = components.eman;
+		eman.registerComponent!AvatarPosition();
+	}
+}
+
 final class AvatarClient : IPlugin
 {
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(test.avatar.plugininfo);
+	mixin AvatarPluginCommon;
 
 	Batch batch;
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
-	NetClientPlugin connection;
 	ClientSession session;
 	ClientWorld clientWorld;
 
@@ -40,71 +62,57 @@ final class AvatarClient : IPlugin
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&drawEntities);
-		connection = pluginman.getPlugin!NetClientPlugin;
-		connection.registerPacket!UpdateAvatarsPacket(&handleUpdateAvatarsPacket);
 	}
 
 	void drawEntities(ref RenderSolid3dEvent event)
 	{
-		graphics.draw(batch);
-	}
-
-	void handleUpdateAvatarsPacket(ubyte[] packetData, ClientId clientId)
-	{
-		auto packet = unpackPacket!UpdateAvatarsPacket(packetData);
 		batch.reset();
-		foreach (avatar; packet.avatars)
+		auto query = eman.query!AvatarPosition;
+		foreach (row; query)
 		{
-			if (avatar.clientId != session.thisClientId && avatar.dimension == clientWorld.currentDimension)
+			if (row.id != session.thisEntityId &&
+				row.avatarPosition_0.dimension == clientWorld.currentDimension)
 			{
-				batch.putCube(avatar.position, vec3(1,1,1), Colors.white, true);
+				batch.putCube(row.avatarPosition_0.pos, vec3(1,1,1), Colors.white, true);
 			}
 		}
+		graphics.draw(batch);
 	}
 }
 
 final class AvatarServer : IPlugin
 {
 	mixin IdAndSemverFrom!(test.avatar.plugininfo);
+	mixin AvatarPluginCommon;
 
 	EventDispatcherPlugin evDispatcher;
-	NetServerPlugin connection;
 	ClientManager clientMan;
-	size_t lastAvatarsSent;
 
 	override void init(IPluginManager pluginman)
 	{
 		clientMan = pluginman.getPlugin!ClientManager;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		connection = pluginman.getPlugin!NetServerPlugin;
-		connection.registerPacket!UpdateAvatarsPacket();
+		evDispatcher.subscribeToEvent(&onLogin);
+		evDispatcher.subscribeToEvent(&onLogout);
+		evDispatcher.subscribeToEvent(&onUpdateEvent);
 	}
 
-	void onPostUpdateEvent(ref PostUpdateEvent event)
+	void onLogin(ref ClientLoggedInEvent event) {
+		eman.set(event.clientId, AvatarPosition());
+	}
+
+	void onLogout(ref ClientLoggedOutEvent event) {
+		eman.remove!AvatarPosition(event.clientId);
+	}
+
+	void onUpdateEvent(ref UpdateEvent event)
 	{
-		import std.algorithm : filter;
-		Appender!(Avatar[]) avatars;
-		avatars.reserve(clientMan.clients.length);
-		foreach (cinfo; clientMan.clients.byValue.filter!(a=>a.isLoggedIn))
-			avatars.put(Avatar(cinfo.id, cinfo.pos, cinfo.dimension, cinfo.heading));
-
-		if (avatars.data.length < 2 && lastAvatarsSent < 2) return;
-
-		connection.sendTo(clientMan.loggedInClients, UpdateAvatarsPacket(avatars.data));
-		lastAvatarsSent = avatars.data.length;
+		auto query = eman.query!(ClientPosition, AvatarPosition);
+		foreach (row; query)
+		{
+			row.avatarPosition_1.pos = row.clientPosition_0.pos;
+			row.avatarPosition_1.heading = row.clientPosition_0.heading;
+			row.avatarPosition_1.dimension = row.clientPosition_0.dimension;
+		}
 	}
-}
-
-struct Avatar
-{
-	ClientId clientId;
-	vec3 position;
-	DimensionId dimension;
-	vec2 heading;
-}
-
-struct UpdateAvatarsPacket
-{
-	Avatar[] avatars;
 }

@@ -30,6 +30,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 	}
 
 	@property size_t capacity() const { return keys.length; }
+	@property bool empty() const { return length == 0; }
 
 	void remove(Key key) {
 		auto idx = findIndex(key);
@@ -77,7 +78,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 		return idx != size_t.max;
 	}
 
-	int opApply(int delegate(Key) del) {
+	int opApply(scope int delegate(Key) del) {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
 				if (auto ret = del(keys[i]))

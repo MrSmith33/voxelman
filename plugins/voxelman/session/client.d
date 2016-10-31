@@ -7,6 +7,7 @@ module voxelman.session.client;
 
 import std.string : format;
 
+import datadriven : EntityId;
 import netlib;
 import pluginlib;
 import voxelman.log;
@@ -19,18 +20,16 @@ import voxelman.core.packets;
 import voxelman.net.packets;
 
 import voxelman.config.configmanager : ConfigManager, ConfigOption;
+import voxelman.entity.plugin : EntityComponentRegistry;
 import voxelman.eventdispatcher.plugin;
 import voxelman.world.clientworld;
 import voxelman.net.plugin;
 import voxelman.graphics.plugin;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new ClientSession);
-}
+import voxelman.session.components;
 
 struct ThisClientLoggedInEvent {
-	ClientId thisClientId;
+	EntityId thisClientId;
 }
 
 final class ClientSession : IPlugin
@@ -44,8 +43,9 @@ private:
 	ConfigOption nicknameOpt;
 
 public:
-	ClientId thisClientId;
-	string[ClientId] clientNames;
+	EntityId thisSessionId;
+	EntityId thisEntityId;
+	string[EntityId] clientNames;
 	bool isSpawned = false;
 
 	// IPlugin stuff
@@ -55,6 +55,8 @@ public:
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		nicknameOpt = config.registerOption!string("name", "Player");
+		auto components = resmanRegistry.getResourceManager!EntityComponentRegistry;
+		registerSessionComponents(components.eman);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -62,7 +64,6 @@ public:
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onSendClientSettingsEvent);
 		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
 
 		clientWorld = pluginman.getPlugin!ClientWorld;
@@ -76,49 +77,46 @@ public:
 		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
 	}
 
-	void onSendClientSettingsEvent(ref SendClientSettingsEvent event)
-	{
-		connection.send(LoginPacket(nicknameOpt.get!string));
-	}
-
 	void handleThisClientDisconnected(ref ThisClientDisconnectedEvent event)
 	{
 		isSpawned = false;
 	}
 
-	void handleGameStartPacket(ubyte[] packetData, ClientId clientId)
+	void handleGameStartPacket(ubyte[] packetData)
 	{
+		connection.send(LoginPacket(nicknameOpt.get!string));
 		evDispatcher.postEvent(ThisClientConnectedEvent());
 		evDispatcher.postEvent(SendClientSettingsEvent());
 		connection.send(GameStartPacket());
 	}
 
-	void handleUserLoggedInPacket(ubyte[] packetData, ClientId clientId)
+	void handleUserLoggedInPacket(ubyte[] packetData)
 	{
 		auto newUser = unpackPacket!ClientLoggedInPacket(packetData);
 		clientNames[newUser.clientId] = newUser.clientName;
 		infof("%s has connected", newUser.clientName);
-		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
+		evDispatcher.postEvent(ClientLoggedInEvent(newUser.clientId));
 	}
 
-	void handleUserLoggedOutPacket(ubyte[] packetData, ClientId clientId)
+	void handleUserLoggedOutPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!ClientLoggedOutPacket(packetData);
 		infof("%s has disconnected", clientName(packet.clientId));
-		evDispatcher.postEvent(ClientLoggedOutEvent(clientId));
+		evDispatcher.postEvent(ClientLoggedOutEvent(packet.clientId));
 		clientNames.remove(packet.clientId);
 	}
 
-	void handleSessionInfoPacket(ubyte[] packetData, ClientId clientId)
+	void handleSessionInfoPacket(ubyte[] packetData)
 	{
 		auto loginInfo = unpackPacket!SessionInfoPacket(packetData);
 
 		clientNames = loginInfo.clientNames;
-		thisClientId = loginInfo.yourId;
-		evDispatcher.postEvent(ThisClientLoggedInEvent(thisClientId));
+		thisSessionId = loginInfo.yourId;
+		thisEntityId = loginInfo.yourId;
+		evDispatcher.postEvent(ThisClientLoggedInEvent(thisSessionId));
 	}
 
-	void handleClientPositionPacket(ubyte[] packetData, ClientId peer)
+	void handleClientPositionPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!ClientPositionPacket(packetData);
 		//tracef("Received ClientPositionPacket(%s, %s, %s, %s)",
@@ -133,14 +131,14 @@ public:
 		clientWorld.setCurrentDimension(packet.dimension, packet.positionKey);
 	}
 
-	void handleSpawnPacket(ubyte[] packetData, ClientId peer)
+	void handleSpawnPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!SpawnPacket(packetData);
 		isSpawned = true;
 		clientWorld.updateObserverPosition();
 	}
 
-	string clientName(ClientId clientId)
+	string clientName(EntityId clientId)
 	{
 		return clientId in clientNames ? clientNames[clientId] : format("? %s", clientId);
 	}

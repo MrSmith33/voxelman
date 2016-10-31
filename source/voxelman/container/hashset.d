@@ -36,7 +36,7 @@ struct HashSet(Key) {
 		set = null;
 	}
 
-	int opApply(int delegate(Key) del) {
+	int opApply(scope int delegate(Key) del) {
 		foreach (key; set.byKey)
 			if (auto ret = del(key))
 				return ret;

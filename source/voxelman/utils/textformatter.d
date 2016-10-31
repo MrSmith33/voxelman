@@ -22,7 +22,7 @@ static struct TextPtrs {
 	char* end;
 }
 
-const(char[]) makeFormattedText(Args ...)(string fmt, Args args) {
+const(char)[] makeFormattedText(Args ...)(string fmt, Args args) {
 	app.clear();
 	formattedWrite(app, fmt, args);
 	return app.data;

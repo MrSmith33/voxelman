@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 
 module netlib.baseclient;
 
+import cbor;
 import core.thread;
 import std.conv : to;
 import std.string : toStringz;
@@ -13,14 +14,36 @@ import voxelman.log;
 
 import derelict.enet.enet;
 
-import netlib.connection;
+import netlib;
 
-abstract class BaseClient : Connection
+abstract class BaseClient
 {
+	mixin PacketManagement!(true);
+	mixin BaseConnection!();
+
 	ENetAddress serverAddress;
 	ENetPeer* server;
 	bool isConnecting;
 	bool isConnected;
+
+	void start(ConnectionSettings settings)
+	{
+		if (isRunning) stop();
+
+		host = enet_host_create(settings.address,
+			settings.maxPeers,
+			settings.numChannels,
+			settings.incomingBandwidth,
+			settings.outgoingBandwidth);
+
+		if (host is null)
+		{
+			error("An error occured while trying to create an ENet host");
+			return;
+		}
+
+		isRunning = true;
+	}
 
 	void connect(string address, ushort port)
 	{
@@ -123,7 +146,7 @@ abstract class BaseClient : Connection
 		packetArray = newPacketArray;
 	}
 
-	override void update()
+	void update()
 	{
 		ENetEvent event;
 		while (enet_host_service(host, &event, 0) > 0)

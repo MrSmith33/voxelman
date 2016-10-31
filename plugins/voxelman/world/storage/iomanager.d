@@ -120,6 +120,11 @@ struct StringMap {
 	}
 }
 
+enum IoStorageType {
+	database,
+	network
+}
+
 struct PluginDataSaver
 {
 	StringMap* stringMap;
@@ -131,8 +136,12 @@ struct PluginDataSaver
 		return &buffer;
 	}
 
+	IoStorageType storageType() { return IoStorageType.database; }
+
 	void endWrite(ref IoKey key) {
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
+		// dont write empty entries, since loader will return empty array for non-existing entries
+		if (entrySize == 0) return;
 		buffer.put(*cast(ubyte[4]*)&entrySize);
 		buffer.put(formWorldKey(stringMap.get(key)));
 	}
@@ -159,7 +168,7 @@ struct PluginDataSaver
 		buffer.clear();
 	}
 
-	package(voxelman.world) int opApply(int delegate(ubyte[16] key, ubyte[] data) dg)
+	package(voxelman.world) int opApply(scope int delegate(ubyte[16] key, ubyte[] data) dg)
 	{
 		ubyte[] data = buffer.data;
 		while(!data.empty)
@@ -202,6 +211,8 @@ struct PluginDataLoader
 {
 	StringMap* stringMap;
 	WorldDb worldDb;
+
+	IoStorageType storageType() { return IoStorageType.database; }
 
 	ubyte[] readEntryRaw(ref IoKey key) {
 		auto data = worldDb.get(formWorldKey(stringMap.get(key)));

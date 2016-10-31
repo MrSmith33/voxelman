@@ -106,7 +106,7 @@ final class RailroadPluginServer : IPlugin
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
 	}
 
-	void handlePlaceRailPacket(ubyte[] packetData, ClientId clientId)
+	void handlePlaceRailPacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
 		RailPos railPos = packet.pos;

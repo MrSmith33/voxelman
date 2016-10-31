@@ -84,9 +84,9 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### OTHER
 
-- [ ] Correctly handle clients with the same name.
 - [ ] Color blind mode
-- [ ] 2d rendering
+- [x] 2d rendering
+- [x] Correctly handle clients with the same name.
 - [x] Minecraft save import
 - [x] Implement launcher server connection feature.
 - [x] for each layer universal handlers for allocation, save, load, write buffer. Some layers may not have data even when chunk is loaded.

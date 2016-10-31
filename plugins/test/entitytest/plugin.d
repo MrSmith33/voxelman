@@ -39,7 +39,7 @@ final class EntityTestPlugin(bool clientSide) : IPlugin
 	EntityManager* eman;
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
-		auto compRegistry = resmanRegistry.getResourceManager!ComponentRegistry;
+		auto compRegistry = resmanRegistry.getResourceManager!EntityComponentRegistry;
 		eman = compRegistry.eman;
 		eman.registerComponent!Transform();
 	}
@@ -183,7 +183,7 @@ mixin template EntityTestPluginServer()
 		entitiesToRemove.clear();
 	}
 
-	void handleEntityCreatePacket(ubyte[] packetData, ClientId clientId)
+	void handleEntityCreatePacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!EntityCreatePacket(packetData);
 		EntityId eid = eman.eidMan.nextEntityId;

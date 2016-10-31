@@ -10,8 +10,7 @@ import voxelman.net.packets;
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
-import voxelman.session.client;
-import voxelman.session.server;
+import voxelman.session;
 
 shared static this()
 {
@@ -34,7 +33,7 @@ final class ChatPluginClient : IPlugin
 	{
 		messageWindow.init();
 		messageWindow.messageHandler =
-			(string msg) => connection.send(MessagePacket(0, msg), 1);
+			(string msg) => connection.send(MessagePacket(msg), 1);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -47,7 +46,7 @@ final class ChatPluginClient : IPlugin
 		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 	}
 
-	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
+	void handleMessagePacket(ubyte[] packetData)
 	{
 		import std.format : formattedWrite;
 		auto packet = unpackPacket!MessagePacket(packetData);
@@ -97,18 +96,19 @@ final class ChatPluginServer : IPlugin
 		commandPlugin.registerCommand("msg", &messageCommand);
 	}
 
-	void handleMessagePacket(ubyte[] packetData, ClientId clientId)
+	void handleMessagePacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!MessagePacket(packetData);
-		packet.clientId = clientId;
+		Session* session = clientMan.sessions[sessionId];
+		packet.clientId = session.dbKey;
 		connection.sendToAll(packet);
-		infof("%s> %s", clientMan.clientName(clientId), packet.msg);
+		infof("%s> %s", clientMan.clientName(sessionId), packet.msg);
 	}
 
 	void messageCommand(CommandParams params)
 	{
 		auto stripped = params.rawStrippedArgs;
-		connection.sendToAll(MessagePacket(0, stripped));
+		connection.sendToAll(MessagePacket(stripped));
 		infof("> %s", stripped);
 	}
 }

@@ -9,13 +9,15 @@ import std.traits : TemplateArgsOf;
 
 struct Component {
 	string key;
+	bool serializeToDb = true;
+	bool serializeToNet = true;
 }
 
-template componentKey(C)
+template componentUda(C)
 {
 	import std.traits : hasUDA, getUDAs;
 	static if (hasUDA!(C, Component))
-		enum string componentKey = getUDAs!(C, Component)[0].key;
+		Component componentUda = getUDAs!(C, Component)[0];
 	else
 		static assert(false, "Component " ~ C.stringof ~ " has no Component UDA");
 }
@@ -82,7 +84,7 @@ unittest
 		void set(EntityId);
 		void remove(EntityId);
 		bool get(EntityId);
-		int opApply(int delegate(in EntityId) del) {
+		int opApply(scope int delegate(in EntityId) del) {
 			return 0;
 		}
 	}
@@ -91,7 +93,7 @@ unittest
 		void set(EntityId, int);
 		void remove(EntityId);
 		int* get(EntityId);
-		int opApply(int delegate(in EntityId, ref int) del) {
+		int opApply(scope int delegate(in EntityId, ref int) del) {
 			return 0;
 		}
 		alias ComponentType = int;

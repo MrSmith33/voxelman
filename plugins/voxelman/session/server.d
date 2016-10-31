@@ -9,6 +9,7 @@ import voxelman.log;
 import std.string : format;
 import netlib;
 import pluginlib;
+import datadriven;
 import voxelman.math;
 
 import voxelman.core.config;
@@ -16,20 +17,18 @@ import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.core.packets;
 import voxelman.net.packets;
-import voxelman.world.storage.coordinates;
+import voxelman.world.storage;
 
 import voxelman.command.plugin;
 import voxelman.eventdispatcher.plugin;
+import voxelman.entity.plugin : EntityComponentRegistry;
 import voxelman.net.plugin;
 import voxelman.world.serverworld;
 
-import voxelman.session.clientinfo;
-import voxelman.session.clientstorage;
+import voxelman.session.components;
+import voxelman.session.clientdb;
+import voxelman.session.sessionman;
 
-shared static this()
-{
-	pluginRegistry.regServerPlugin(new ClientManager);
-}
 
 final class ClientManager : IPlugin
 {
@@ -39,10 +38,20 @@ private:
 	ServerWorld serverWorld;
 
 public:
-	ClientStorage clients;
+	ClientDb db;
+	SessionManager sessions;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.session.plugininfo);
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&db.load, &db.save);
+		auto components = resmanRegistry.getResourceManager!EntityComponentRegistry;
+		db.eman = components.eman;
+		registerSessionComponents(db.eman);
+	}
 
 	override void init(IPluginManager pluginman)
 	{
@@ -67,60 +76,67 @@ public:
 	}
 
 	void onAddActive(CommandParams params) {
-		auto cwp = clients[params.source].chunk;
+		Session* session = sessions[params.source];
+		auto position = db.get!ClientPosition(session.dbKey);
+		auto cwp = position.chunk;
 		serverWorld.activeChunks.add(cwp);
 		infof("add active %s", cwp);
 	}
 
 	void onRemoveActive(CommandParams params) {
-		auto cwp = clients[params.source].chunk;
+		Session* session = sessions[params.source];
+		auto position = db.get!ClientPosition(session.dbKey);
+		auto cwp = position.chunk;
 		serverWorld.activeChunks.remove(cwp);
 		infof("remove active %s", cwp);
 	}
 
 	void onSpawnCommand(CommandParams params)
 	{
-		ClientInfo* info = clients[params.source];
-		if(info is null) return;
+		Session* session = sessions[params.source];
+		if(session is null) return;
 
+		auto position = db.get!ClientPosition(session.dbKey);
 		if (params.args.length > 1 && params.args[1] == "set")
 		{
-			setSpawn(info.dimension, info);
+			setSpawn(position.dimension, session);
 			return;
 		}
 
-		spawnClient(info, info.dimension);
-		updateObserverBox(info);
+		setClientDimension(session, position.dimension);
+		spawnClient(session);
+		updateObserverBox(session);
 	}
 
-	void setSpawn(DimensionId dimension, ClientInfo* info)
+	void setSpawn(DimensionId dimension, Session* session)
 	{
 		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
-		dimInfo.spawnPos = info.pos;
-		dimInfo.spawnRotation = info.heading;
-		connection.sendTo(info.id, MessagePacket(0,
-			format(`spawn of %s dimension is now %s`, dimension, info.pos)));
+		auto position = db.get!ClientPosition(session.dbKey);
+		dimInfo.spawnPos = position.pos;
+		dimInfo.spawnRotation = position.heading;
+		connection.sendTo(session.sessionId, MessagePacket(
+			format(`spawn of %s dimension is now %s`, dimension, position.pos)));
 	}
 
 	void onTeleport(CommandParams params)
 	{
 		import std.regex : matchFirst, regex;
 		import std.conv : to;
-		ClientInfo* info = clients[params.source];
-		if(info is null) return;
+		Session* session = sessions[params.source];
+		if(session is null) return;
+		auto position = db.get!ClientPosition(session.dbKey);
 
 		vec3 pos;
 
 		auto regex3 = regex(`(-?\d+)\W+(-?\d+)\W+(-?\d+)`, "m");
 		auto captures3 = matchFirst(params.rawArgs, regex3);
 
-
 		if (!captures3.empty)
 		{
 			pos.x = to!int(captures3[1]);
 			pos.y = to!int(captures3[2]);
 			pos.z = to!int(captures3[3]);
-			return tpToPos(info, pos);
+			return tpToPos(session, pos);
 		}
 
 		auto regex2 = regex(`(-?\d+)\W+(-?\d+)`, "m");
@@ -128,9 +144,9 @@ public:
 		if (!captures2.empty)
 		{
 			pos.x = to!int(captures2[1]);
-			pos.y = info.pos.y;
+			pos.y = position.pos.y;
 			pos.z = to!int(captures2[2]);
-			return tpToPos(info, pos);
+			return tpToPos(session, pos);
 		}
 
 		auto regex1 = regex(`[a-Z]+[_a-Z0-9]+`);
@@ -138,185 +154,261 @@ public:
 		if (!captures1.empty)
 		{
 			string destName = to!string(captures1[1]);
-			ClientInfo* destination = clients[destName];
+			Session* destination = sessions[destName];
 			if(destination is null)
 			{
-				connection.sendTo(params.source, MessagePacket(0,
+				connection.sendTo(params.source, MessagePacket(
 					format(`Player "%s" is not online`, destName)));
 				return;
 			}
-			return tpToPlayer(info, destination);
+			return tpToPlayer(session, destination);
 		}
 
-		connection.sendTo(params.source, MessagePacket(0,
+		connection.sendTo(params.source, MessagePacket(
 			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>"`));
 	}
 
-	void tpToPos(ClientInfo* info, vec3 pos) {
-		connection.sendTo(info.id, MessagePacket(0,
+	void tpToPos(Session* session, vec3 pos) {
+		connection.sendTo(session.sessionId, MessagePacket(
 			format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
+		auto position = db.get!ClientPosition(session.dbKey);
 
-		info.pos = pos;
-		++info.positionKey;
-		connection.sendTo(info.id, ClientPositionPacket(info.pos,
-			info.heading, info.dimension, info.positionKey));
-		updateObserverBox(info);
+		position.pos = pos;
+		++position.positionKey;
+		connection.sendTo(session.sessionId, ClientPositionPacket(position.pos,
+			position.heading, position.dimension, position.positionKey));
+		updateObserverBox(session);
 	}
 
-	void tpToPlayer(ClientInfo* info, ClientInfo* destination) {
-		connection.sendTo(info.id, MessagePacket(0,
+	void tpToPlayer(Session* session, Session* destination) {
+		connection.sendTo(session.sessionId, MessagePacket(
 			format("Teleporting to %s", destination.name)));
+		auto position = db.get!ClientPosition(session.dbKey);
+		auto destposition = db.get!ClientPosition(destination.dbKey);
 
-		info.pos = destination.pos;
-		++info.positionKey;
-		connection.sendTo(info.id, ClientPositionPacket(info.pos,
-			info.heading, info.dimension, info.positionKey));
-		updateObserverBox(info);
+		position.pos = destposition.pos;
+		++position.positionKey;
+		connection.sendTo(session.sessionId, ClientPositionPacket(position.pos,
+			position.heading, position.dimension, position.positionKey));
+		updateObserverBox(session);
 	}
 
-	bool isLoggedIn(ClientId clientId)
+	bool isLoggedIn(SessionId sessionId)
 	{
-		ClientInfo* clientInfo = clients[clientId];
-		return clientInfo.isLoggedIn;
+		Session* session = sessions[sessionId];
+		return session.isLoggedIn;
 	}
 
-	bool isSpawned(ClientId clientId)
+	bool isSpawned(SessionId sessionId)
 	{
-		ClientInfo* clientInfo = clients[clientId];
-		return clientInfo.isSpawned;
+		Session* session = sessions[sessionId];
+		return isSpawned(session);
 	}
 
-	string[ClientId] clientNames()
+	bool isSpawned(Session* session)
 	{
-		string[ClientId] names;
-		foreach(client; clients.byValue) {
-			names[client.id] = client.name;
+		return session.isLoggedIn && db.has!SpawnedFlag(session.dbKey);
+	}
+
+	string[EntityId] clientNames()
+	{
+		string[EntityId] names;
+		foreach(session; sessions.byValue) {
+			if (session.isLoggedIn)
+				names[session.dbKey] = session.name;
 		}
 
 		return names;
 	}
 
-	string clientName(ClientId clientId)
+	string clientName(SessionId sessionId)
 	{
-		auto cl = clients[clientId];
-		return cl ? cl.name : format("%s", clientId);
+		auto cl = sessions[sessionId];
+		return cl ? cl.name : format("%s", sessionId);
 	}
 
 	auto loggedInClients()
 	{
 		import std.algorithm : filter, map;
-		return clients.byValue.filter!(a=>a.isLoggedIn).map!(a=>a.id);
+		return sessions.byValue.filter!(a=>a.isLoggedIn).map!(a=>a.sessionId);
 	}
 
-	void spawnClient(ClientInfo* info, ushort dimension)
+	private void setClientPosition(Session* session, vec3 pos, vec2 heading, ushort dimension)
+	{
+		auto position = db.get!ClientPosition(session.dbKey);
+		position.pos = pos;
+		position.heading = heading;
+		position.dimension = dimension;
+		++position.positionKey;
+	}
+
+	private void setClientDimension(Session* session, ushort dimension)
 	{
 		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
-
-		info.pos = dimInfo.spawnPos;
-		info.heading = dimInfo.spawnRotation;
-		info.dimension = dimension;
-		++info.positionKey;
-
-		connection.sendTo(info.id, ClientPositionPacket(info.pos,
-			info.heading, info.dimension, info.positionKey));
-		updateObserverBox(info);
+		auto position = db.get!ClientPosition(session.dbKey);
+		position.pos = dimInfo.spawnPos;
+		position.heading = dimInfo.spawnRotation;
+		position.dimension = dimension;
+		++position.positionKey;
 	}
 
-	void handleClientConnected(ref ClientConnectedEvent event)
+	private void spawnClient(Session* session)
 	{
-		clients.put(new ClientInfo(event.clientId));
+		auto position = db.get!ClientPosition(session.dbKey);
+		connection.sendTo(session.sessionId,
+			ClientPositionPacket(
+				position.pos,
+				position.heading,
+				position.dimension,
+				position.positionKey));
+		updateObserverBox(session);
 	}
 
-	void handleClientDisconnected(ref ClientDisconnectedEvent event)
+	private void handleClientConnected(ref ClientConnectedEvent event)
 	{
-		infof("%s %s disconnected", event.clientId,
-			clients[event.clientId].name);
-
-		connection.sendToAll(ClientLoggedOutPacket(event.clientId));
-		clients.remove(event.clientId);
+		sessions.put(event.sessionId, SessionType.unknownClient);
 	}
 
-	void changeDimensionCommand(CommandParams params)
+	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
+	{
+		Session* session = sessions[event.sessionId];
+		infof("%s %s disconnected", event.sessionId, session.name);
+
+		db.remove!LoggedInFlag(session.dbKey);
+		db.remove!SpawnedFlag(session.dbKey);
+
+		connection.sendToAll(ClientLoggedOutPacket(session.dbKey));
+		sessions.remove(event.sessionId);
+	}
+
+	private void changeDimensionCommand(CommandParams params)
 	{
 		import std.conv : to, ConvException;
 
-		ClientInfo* info = clients[params.source];
-		if (info.isSpawned)
+		Session* session = sessions[params.source];
+		if (isSpawned(session))
 		{
 			if (params.args.length > 1)
 			{
+				auto position = db.get!ClientPosition(session.dbKey);
 				auto dim = to!DimensionId(params.args[1]);
-				if (dim == info.dimension)
+				if (dim == position.dimension)
 					return;
 
-				info.dimension = dim;
-				++info.positionKey;
-				updateObserverBox(info);
+				position.dimension = dim;
+				++position.positionKey;
+				updateObserverBox(session);
 
-				connection.sendTo(params.source, ClientPositionPacket(info.pos,
-					info.heading, info.dimension, info.positionKey));
+				connection.sendTo(params.source, ClientPositionPacket(position.pos,
+					position.heading, position.dimension, position.positionKey));
 			}
 		}
 	}
 
-	void updateObserverBox(ClientInfo* info)
+	private void updateObserverBox(Session* session)
 	{
-		if (info.isSpawned) {
-			serverWorld.chunkObserverManager.changeObserverBox(info.id, info.chunk, info.viewRadius);
+		auto position = db.get!ClientPosition(session.dbKey);
+		auto settings = db.get!ClientSettings(session.dbKey);
+		if (isSpawned(session)) {
+			serverWorld.chunkObserverManager.changeObserverBox(
+				session.sessionId, position.chunk, settings.viewRadius);
 		}
 	}
 
-	void handleLoginPacket(ubyte[] packetData, ClientId clientId)
+	private void handleLoginPacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!LoginPacket(packetData);
-		ClientInfo* info = clients[clientId];
-		// TODO: correctly handle clients with the same name.
-		clients.setClientName(info, packet.clientName);
-		info.isLoggedIn = true;
+		string name = packet.clientName;
+		Session* session = sessions[sessionId];
 
-		infof("%s %s logged in", clientId, clients[clientId].name);
+		bool createdNew;
+		EntityId clientId = db.getOrCreate(name, createdNew);
 
-		connection.sendTo(clientId, SessionInfoPacket(clientId, clientNames));
-		connection.sendToAllExcept(clientId, ClientLoggedInPacket(clientId, packet.clientName));
+		if (createdNew)
+		{
+			infof("new client registered %s %s", clientId, name);
+			db.set(clientId, ClientPosition(), ClientSettings());
+		}
+		else
+		{
+			if (db.has!ClientSessionInfo(clientId))
+			{
+				bool hasConflict(string name) {
+					EntityId clientId = db.getIdForName(name);
+					if (clientId == 0) return false;
+					return db.has!ClientSessionInfo(clientId);
+				}
 
-		evDispatcher.postEvent(ClientLoggedInEvent(clientId));
+				// already logged in
+				infof("client with name %s is already logged in %s", name, clientId);
+				string requestedName = name;
+				name = db.resolveNameConflict(requestedName, &hasConflict);
+				infof("Using '%s' instead of '%s'", name, requestedName);
+				clientId = db.getOrCreate(name, createdNew);
+
+				if (createdNew)
+				{
+					infof("new client registered %s %s", clientId, name);
+					db.set(clientId, ClientPosition(), ClientSettings());
+				}
+			}
+			infof("client logged in %s %s", clientId, name);
+		}
+
+		db.set(clientId, ClientSessionInfo(name, session.sessionId));
+		db.set(clientId, LoggedInFlag());
+
+		sessions.identifySession(session.sessionId, name, clientId);
+
+		connection.sendTo(sessionId, SessionInfoPacket(session.dbKey, clientNames));
+		connection.sendToAllExcept(sessionId, ClientLoggedInPacket(session.dbKey, name));
+
+		evDispatcher.postEvent(ClientLoggedInEvent(clientId, createdNew));
+
+		infof("%s %s logged in", sessionId, sessions[sessionId].name);
 	}
 
-	void handleGameStartPacket(ubyte[] packetData, ClientId clientId)
+	private void handleGameStartPacket(ubyte[] packetData, SessionId sessionId)
 	{
-		if (isLoggedIn(clientId))
+		Session* session = sessions[sessionId];
+		if (session.isLoggedIn)
 		{
-			ClientInfo* info = clients[clientId];
-			info.isSpawned = true;
-			spawnClient(info, SPAWN_DIMENSION);
-			connection.sendTo(clientId, SpawnPacket());
+			auto position = db.get!ClientPosition(session.dbKey);
+			db.set(session.dbKey, SpawnedFlag());
+			spawnClient(session);
+			connection.sendTo(sessionId, SpawnPacket());
 		}
 	}
 
-	void handleViewRadius(ubyte[] packetData, ClientId clientId)
+	private void handleViewRadius(ubyte[] packetData, SessionId sessionId)
 	{
 		import std.algorithm : clamp;
 		auto packet = unpackPacket!ViewRadiusPacket(packetData);
-		ClientInfo* info = clients[clientId];
-		info.viewRadius = clamp(packet.viewRadius,
-			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-		updateObserverBox(info);
+		Session* session = sessions[sessionId];
+		if (session.isLoggedIn)
+		{
+			auto settings = db.get!ClientSettings(session.dbKey);
+			settings.viewRadius = clamp(packet.viewRadius,
+				MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+			updateObserverBox(session);
+		}
 	}
 
-	void handleClientPosition(ubyte[] packetData, ClientId clientId)
+	private void handleClientPosition(ubyte[] packetData, SessionId sessionId)
 	{
-		if (isSpawned(clientId))
+		Session* session = sessions[sessionId];
+		if (isSpawned(session))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
-			ClientInfo* info = clients[clientId];
+			auto position = db.get!ClientPosition(session.dbKey);
 
-			// reject stale position. Dimension already have changed.
-			if (packet.positionKey != info.positionKey)
+			// reject stale position. Dimension already has changed.
+			if (packet.positionKey != position.positionKey)
 				return;
 
-			info.pos = vec3(packet.pos);
-			info.heading = vec2(packet.heading);
-			updateObserverBox(info);
+			position.pos = vec3(packet.pos);
+			position.heading = vec2(packet.heading);
+			updateObserverBox(session);
 		}
 	}
 }

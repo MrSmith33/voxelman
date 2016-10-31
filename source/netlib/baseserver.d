@@ -8,29 +8,29 @@ module netlib.baseserver;
 
 import std.range;
 
+import voxelman.log;
+import cbor;
 import derelict.enet.enet;
-
-import netlib.connection;
+import netlib;
 
 struct PeerStorage
 {
-	ENetPeer*[ClientId] peers;
-	// 0 is reserved for server.
-	private ClientId _nextClientId = 1;
+	ENetPeer*[SessionId] peers;
+	private SessionId _nextSessionId = 0;
 
-	ENetPeer* opIndex(ClientId id)
+	ENetPeer* opIndex(SessionId id)
 	{
 		return peers.get(id, null);
 	}
 
-	ClientId addClient(ENetPeer* peer)
+	SessionId addClient(ENetPeer* peer)
 	{
-		ClientId id = nextPeerId;
+		SessionId id = nextPeerId;
 		peers[id] = peer;
 		return id;
 	}
 
-	void removeClient(ClientId id)
+	void removeClient(SessionId id)
 	{
 		peers.remove(id);
 	}
@@ -40,24 +40,72 @@ struct PeerStorage
 		return peers.length;
 	}
 
-	private ClientId nextPeerId() @property
+	private SessionId nextPeerId() @property
 	{
-		return _nextClientId++;
+		return _nextSessionId++;
 	}
 }
 
-abstract class BaseServer : Connection
+struct ConnectionSettings
+{
+	ENetAddress* address;
+	size_t maxPeers;
+	size_t numChannels;
+	uint incomingBandwidth;
+	uint outgoingBandwidth;
+}
+
+abstract class BaseServer
 {
 	PeerStorage peerStorage;
+	mixin PacketManagement!(false);
+	mixin BaseConnection!();
 
-	void start(ConnectionSettings settings, uint host, ushort port)
+	void start(ConnectionSettings settings, uint hostAddr, ushort port)
 	{
 		ENetAddress address;
-		address.host = host;
+		address.host = hostAddr;
 		address.port = port;
 		settings.address = &address;
 
-		super.start(settings);
+		if (isRunning) stop();
+
+		host = enet_host_create(settings.address,
+			settings.maxPeers,
+			settings.numChannels,
+			settings.incomingBandwidth,
+			settings.outgoingBandwidth);
+
+		if (host is null)
+		{
+			error("An error occured while trying to create an ENet host");
+			return;
+		}
+
+		isRunning = true;
+	}
+
+	void update()
+	{
+		if (!isRunning) return;
+		ENetEvent event;
+		while (enet_host_service(host, &event, 0) > 0)
+		{
+			final switch (event.type)
+			{
+				case ENET_EVENT_TYPE_NONE:
+					break;
+				case ENET_EVENT_TYPE_CONNECT:
+					onConnect(event);
+					break;
+				case ENET_EVENT_TYPE_RECEIVE:
+					onPacketReceived(event);
+					break;
+				case ENET_EVENT_TYPE_DISCONNECT:
+					onDisconnect(event);
+					break;
+			}
+		}
 	}
 
 	/// Disconnects all clients.
@@ -72,8 +120,8 @@ abstract class BaseServer : Connection
 
 	/// Sends packet to specified clients.
 	void sendTo(R)(R clients, ubyte[] data, ubyte channel = 0)
-		if ((isInputRange!R && is(ElementType!R : ClientId)) ||
-			is(R : ClientId))
+		if ((isInputRange!R && is(ElementType!R : SessionId)) ||
+			is(R : SessionId))
 	{
 		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
@@ -83,8 +131,8 @@ abstract class BaseServer : Connection
 
 	/// ditto
 	void sendTo(R, P)(R clients, auto ref const(P) packet, ubyte channel = 0)
-		if (((isInputRange!R && is(ElementType!R : ClientId)) ||
-			is(R : ClientId)) &&
+		if (((isInputRange!R && is(ElementType!R : SessionId)) ||
+			is(R : SessionId)) &&
 			is(P == struct))
 	{
 		sendTo(clients, createPacket(packet), channel);
@@ -92,19 +140,19 @@ abstract class BaseServer : Connection
 
 	/// ditto
 	void sendTo(R)(R clients, ENetPacket* packet, ubyte channel = 0)
-		if ((isInputRange!R && is(ElementType!R : ClientId)) ||
-			is(R : ClientId))
+		if ((isInputRange!R && is(ElementType!R : SessionId)) ||
+			is(R : SessionId))
 	{
 		if (!isRunning) return;
 		static if (isInputRange!R)
 		{
-			foreach(clientId; clients)
+			foreach(sessionId; clients)
 			{
-				if (auto peer = peerStorage[clientId])
+				if (auto peer = peerStorage[sessionId])
 					enet_peer_send(peer, channel, packet);
 			}
 		}
-		else // single ClientId
+		else // single SessionId
 		{
 			if (auto peer = peerStorage[clients])
 				enet_peer_send(peer, channel, packet);
@@ -135,14 +183,14 @@ abstract class BaseServer : Connection
 	}
 
 	/// Sends packet to all clients except one.
-	void sendToAllExcept(P)(ClientId exceptClient, auto ref const(P) packet, ubyte channel = 0)
+	void sendToAllExcept(P)(SessionId exceptClient, auto ref const(P) packet, ubyte channel = 0)
 		if (is(P == struct))
 	{
 		sendToAllExcept(exceptClient, createPacket(packet), channel);
 	}
 
 	/// ditto
-	void sendToAllExcept(ClientId exceptClient, ubyte[] data, ubyte channel = 0)
+	void sendToAllExcept(SessionId exceptClient, ubyte[] data, ubyte channel = 0)
 	{
 		if (!isRunning) return;
 		ENetPacket* packet = enet_packet_create(data.ptr, data.length,
@@ -151,12 +199,12 @@ abstract class BaseServer : Connection
 	}
 
 	/// ditto
-	void sendToAllExcept(ClientId exceptClient, ENetPacket* packet, ubyte channel = 0)
+	void sendToAllExcept(SessionId exceptClient, ENetPacket* packet, ubyte channel = 0)
 	{
 		if (!isRunning) return;
-		foreach(clientId, peer; peerStorage.peers)
+		foreach(sessionId, peer; peerStorage.peers)
 		{
-			if (clientId != exceptClient && peer)
+			if (sessionId != exceptClient && peer)
 				enet_peer_send(peer, channel, packet);
 		}
 	}

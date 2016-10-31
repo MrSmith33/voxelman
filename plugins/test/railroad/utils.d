@@ -185,7 +185,7 @@ struct SegmentRange
 
 	private ubyte data;
 
-	int opApply(int delegate(ubyte) del)
+	int opApply(scope int delegate(ubyte) del)
 	{
 		if ((data & SLOPE_RAIL_BIT) != 0)
 		{

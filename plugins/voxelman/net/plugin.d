@@ -26,11 +26,6 @@ import voxelman.command.plugin;
 import voxelman.dbg.plugin;
 import voxelman.config.configmanager;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new NetClientPlugin);
-	pluginRegistry.regServerPlugin(new NetServerPlugin);
-}
 
 mixin template NetCommon()
 {
@@ -157,7 +152,7 @@ final class NetClientPlugin : IPlugin
 		tracef("disconnected with data %s", event.data);
 	}
 
-	void handlePacketMapPacket(ubyte[] packetData, ClientId clientId)
+	void handlePacketMapPacket(ubyte[] packetData)
 	{
 		auto packetMap = unpackPacket!PacketMapPacket(packetData);
 		connection.setPacketMap(packetMap.packetNames);
@@ -235,19 +230,19 @@ public:
 	}
 
 	void onConnect(ref ENetEvent event) {
-		auto clientId = connection.peerStorage.addClient(event.peer);
-		event.peer.data = cast(void*)clientId;
+		auto sessionId = connection.peerStorage.addClient(event.peer);
+		event.peer.data = cast(void*)sessionId;
 
-		connection.sendTo(clientId, PacketMapPacket(connection.packetNames));
-		evDispatcher.postEvent(ClientConnectedEvent(clientId));
-		connection.sendTo(clientId, GameStartPacket());
+		connection.sendTo(sessionId, PacketMapPacket(connection.packetNames));
+		evDispatcher.postEvent(ClientConnectedEvent(sessionId));
+		connection.sendTo(sessionId, GameStartPacket());
 	}
 
 	void onDisconnect(ref ENetEvent event) {
-		ClientId clientId = cast(ClientId)event.peer.data;
+		SessionId sessionId = SessionId(cast(size_t)event.peer.data);
 		event.peer.data = null;
-		connection.peerStorage.removeClient(clientId);
-		evDispatcher.postEvent(ClientDisconnectedEvent(clientId));
+		connection.peerStorage.removeClient(sessionId);
+		evDispatcher.postEvent(ClientDisconnectedEvent(sessionId));
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
@@ -262,7 +257,7 @@ public:
 
 	void handleGameStopEvent(ref GameStopEvent event)
 	{
-		connection.sendToAll(MessagePacket(0, "Stopping server"));
+		connection.sendToAll(MessagePacket("Stopping server"));
 		connection.disconnectAll();
 
 		bool isDisconnecting = true;

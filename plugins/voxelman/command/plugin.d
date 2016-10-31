@@ -7,7 +7,7 @@ module voxelman.command.plugin;
 
 import netlib;
 import pluginlib;
-public import netlib.connection : ClientId;
+public import netlib : SessionId;
 public import std.getopt;
 import voxelman.log;
 import std.string : format;
@@ -21,7 +21,7 @@ struct CommandParams
 		return rawArgs.strip;
 	}
 	string[] args; // first arg is command name. Use with getopt.
-	ClientId source;
+	SessionId source;
 }
 
 // On client side source == 0
@@ -62,17 +62,17 @@ mixin template CommandPluginCommon()
 
 	CommandHandler[string] handlers;
 
-	void registerCommand(string name, CommandHandler handler)
+	void registerCommand(string commandName, CommandHandler handler)
 	{
 		import std.algorithm : splitter;
-		foreach(comAlias; name.splitter('|'))
+		foreach(comAlias; commandName.splitter('|'))
 		{
 			assert(comAlias !in handlers, comAlias ~ " command is already registered");
 			handlers[comAlias] = handler;
 		}
 	}
 
-	ExecResult execute(const(char)[] input, ClientId source = ClientId(0))
+	ExecResult execute(const(char)[] input, SessionId source = SessionId(0))
 	{
 		import std.regex : ctRegex, splitter;
 		import std.string : strip;
@@ -112,23 +112,36 @@ mixin template CommandPluginServerImpl()
 	import voxelman.net.plugin : NetServerPlugin;
 	import voxelman.core.packets : CommandPacket;
 	import voxelman.net.packets : MessagePacket;
+	import voxelman.session.server;
+
 	NetServerPlugin connection;
+	ClientManager clientMan;
+
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacketHandler!CommandPacket(&handleCommandPacket);
+		clientMan = pluginman.getPlugin!ClientManager;
 	}
 
-	void handleCommandPacket(ubyte[] packetData, ClientId clientId)
+	void handleCommandPacket(ubyte[] packetData, SessionId sessionId)
 	{
+		if (sessionId != 0) // not server
+		{
+			if (!clientMan.isLoggedIn(sessionId))
+			{
+				connection.sendTo(sessionId, MessagePacket("Log in to use commands"));
+				return;
+			}
+		}
 		auto packet = unpackPacket!CommandPacket(packetData);
 
-		ExecResult res = execute(packet.command, clientId);
+		ExecResult res = execute(packet.command, sessionId);
 
 		if (res.status == ExecStatus.notRegistered)
-			connection.sendTo(clientId, MessagePacket(0, format("Unknown command '%s'", packet.command)));
+			connection.sendTo(sessionId, MessagePacket(format("Unknown command '%s'", packet.command)));
 		else if (res.status == ExecStatus.error)
-			connection.sendTo(clientId,
-				MessagePacket(0, format("Error executing command '%s': %s", packet.command, res.error)));
+			connection.sendTo(sessionId,
+				MessagePacket(format("Error executing command '%s': %s", packet.command, res.error)));
 	}
 }

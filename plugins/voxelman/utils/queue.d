@@ -30,7 +30,7 @@ struct Queue(Item)
 		private Queue!(Item)* queue;
 	}
 
-	int opApply(int delegate(NodeAccessor) dg)
+	int opApply(scope int delegate(NodeAccessor) dg)
     {
         int result = 0;
         Node* prev;
