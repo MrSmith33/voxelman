@@ -10,7 +10,7 @@ view_distance 5
 
 camera_sensivity 0.1
 camera_fov 60.0
-camera_speed 10
+camera_speed 40
 camera_boost 6
 
 key.forward "w"

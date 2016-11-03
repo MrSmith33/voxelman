@@ -46,6 +46,7 @@
 ----
 ### STORAGE
 - [ ] Improve calculation of modified chunks.
+- [ ] BUG: In chunk manager when layer has users, buffer allocated for uncompressed data is never freed.
 - [ ] BUG: In chunk manager returned pointer points inside hash table. If new write buffer is added hash table can reallocate. Do not use more than one write buffer at a time.
 Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.

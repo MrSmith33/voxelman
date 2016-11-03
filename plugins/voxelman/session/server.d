@@ -104,7 +104,7 @@ public:
 		}
 
 		setClientDimension(session, position.dimension);
-		spawnClient(session);
+		sendPositionToClient(session);
 		updateObserverBox(session);
 	}
 
@@ -252,7 +252,7 @@ public:
 		++position.positionKey;
 	}
 
-	private void spawnClient(Session* session)
+	private void sendPositionToClient(Session* session)
 	{
 		auto position = db.get!ClientPosition(session.dbKey);
 		connection.sendTo(session.sessionId,
@@ -261,7 +261,6 @@ public:
 				position.heading,
 				position.dimension,
 				position.positionKey));
-		updateObserverBox(session);
 	}
 
 	private void handleClientConnected(ref ClientConnectedEvent event)
@@ -373,9 +372,8 @@ public:
 		Session* session = sessions[sessionId];
 		if (session.isLoggedIn)
 		{
-			auto position = db.get!ClientPosition(session.dbKey);
+			sendPositionToClient(session);
 			db.set(session.dbKey, SpawnedFlag());
-			spawnClient(session);
 			connection.sendTo(sessionId, SpawnPacket());
 		}
 	}
@@ -390,7 +388,8 @@ public:
 			auto settings = db.get!ClientSettings(session.dbKey);
 			settings.viewRadius = clamp(packet.viewRadius,
 				MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-			updateObserverBox(session);
+			if (isSpawned(session))
+				updateObserverBox(session);
 		}
 	}
 

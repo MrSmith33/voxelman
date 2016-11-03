@@ -5,9 +5,7 @@ Authors: Andrey Penechko.
 */
 module netlib;
 
-import std.typecons : Typedef;
-
-alias SessionId = Typedef!size_t;
+alias SessionId = size_t;
 
 public import netlib.baseclient;
 public import netlib.baseserver;
