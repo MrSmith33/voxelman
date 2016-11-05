@@ -30,6 +30,12 @@ ivec3 chunkStartBlockPos(ivec3 worldBlockPos) {
 		floor(cast(float)worldBlockPos.z / CHUNK_SIZE) * CHUNK_SIZE);
 }
 
+struct ClientDimPos
+{
+	vec3 pos = vec3(0,0,0);
+	vec2 heading = vec2(0,0);
+}
+
 struct BlockChunkIndex
 {
 	this(BlockChunkPos blockChunkPos)

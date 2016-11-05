@@ -5,12 +5,16 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.serverworld;
 
-import voxelman.log;
 import std.array : empty;
 import core.atomic : atomicStore, atomicLoad;
+
 import cbor;
 import netlib;
 import pluginlib;
+
+import voxelman.container.buffer;
+import voxelman.geometry.box;
+import voxelman.log;
 import voxelman.math;
 
 import voxelman.core.config;
@@ -49,7 +53,8 @@ struct WorldInfo
 {
 	string name = DEFAULT_WORLD_NAME;
 	TimestampType simulationTick;
-	ivec3 spawnPosition;
+	ClientDimPos spawnPos;
+	DimensionId spawnDimension;
 }
 
 //version = DBG_COMPR;
@@ -67,7 +72,6 @@ private:
 	ConfigOption numGenWorkersOpt;
 
 	ubyte[] buf;
-	WorldInfo worldInfo;
 	auto dbKey = IoKey("voxelman.world.world_info");
 	string worldFilename;
 
@@ -84,6 +88,7 @@ public:
 	ActiveChunks activeChunks;
 	IdMapManagerServer idMapManager;
 
+	WorldInfo worldInfo;
 	WorldAccess worldAccess;
 	BlockEntityAccess entityAccess;
 

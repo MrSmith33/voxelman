@@ -32,8 +32,7 @@ struct LoggedInFlag
 @Component("session.ClientPosition", true, false)
 struct ClientPosition
 {
-	vec3 pos = START_POS;
-	vec2 heading = vec2(-90, 0);
+	ClientDimPos dimPos;
 	DimensionId dimension;
 
 	/// Used to reject wrong positions from client.
@@ -43,7 +42,7 @@ struct ClientPosition
 	@ignore ubyte positionKey;
 
 	ChunkWorldPos chunk() {
-		ChunkWorldPos cwp = BlockWorldPos(pos, dimension);
+		ChunkWorldPos cwp = BlockWorldPos(dimPos.pos, dimension);
 		return cwp;
 	}
 }

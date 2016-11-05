@@ -122,11 +122,11 @@ public:
 		//tracef("Received ClientPositionPacket(%s, %s, %s, %s)",
 		//	packet.pos, packet.heading, packet.dimension, packet.positionKey);
 
-		nansToZero(packet.pos);
-		graphics.camera.position = vec3(packet.pos);
+		nansToZero(packet.dimPos.pos);
+		graphics.camera.position = vec3(packet.dimPos.pos);
 
-		nansToZero(packet.heading);
-		graphics.camera.setHeading(vec2(packet.heading));
+		nansToZero(packet.dimPos.heading);
+		graphics.camera.setHeading(vec2(packet.dimPos.heading));
 
 		clientWorld.setCurrentDimension(packet.dimension, packet.positionKey);
 	}

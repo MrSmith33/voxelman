@@ -1,7 +1,8 @@
 - [ ] Isolate client position, view box and dimension.
 	- [x] draw avatar based on dimension.
 	- [x] send dimension with avatar.
-- [ ] Distinguish between client camera position, observer position and avatar position. Associate multiple clients with single view box.
+- [ ] Distinguish between client camera position, observer position and avatar position.
+- [ ] Associate multiple clients with single view box.
 
 - [ ] Optimize ray tracing. Do two level tracing. Get chunk, trace, then get next chunk. Will save time on getting chunk. Can skip uniform chunks.
 - [ ] Add server options for autosave and autosave period.

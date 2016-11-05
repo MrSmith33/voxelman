@@ -5,8 +5,10 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunkobservermanager;
 
+import voxelman.container.buffer;
 import voxelman.log;
 import voxelman.math;
+import voxelman.core.config : DimensionId;
 import netlib : SessionId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect4d, calcBox;
@@ -15,7 +17,6 @@ enum chunkPackLoadSize = 200;
 
 struct ViewInfo
 {
-	SessionId sessionId;
 	WorldBox viewBox;
 	//ivec3 viewRadius;
 	//ChunkWorldPos observerPosition;
@@ -144,6 +145,15 @@ final class ChunkObserverManager {
 			return null;
 	}
 
+	void getDimensionObservers(Buffer!SessionId* sink, DimensionId dim)
+	{
+		foreach(pair; viewInfos.byKeyValue)
+		{
+			if (pair.value.viewBox.dimension == dim)
+				sink.put(pair.key);
+		}
+	}
+
 	void addServerObserver(ChunkWorldPos cwp) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		++list.numServerObservers;
@@ -187,7 +197,7 @@ final class ChunkObserverManager {
 		if (newBox == oldBox)
 			return;
 
-		info = ViewInfo(sessionId, newBox);//, observerPosition, viewRadius);
+		info = ViewInfo(newBox);//, observerPosition, viewRadius);
 
 		//infof("oldV %s newV %s", oldBox, newBox);
 		TrisectResult tsect = trisect4d(oldBox, newBox);

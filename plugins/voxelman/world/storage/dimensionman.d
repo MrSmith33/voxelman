@@ -14,10 +14,8 @@ import voxelman.world.storage;
 
 struct DimensionInfo
 {
-	DimensionId id;
 	string name;
-	vec3 spawnPos;
-	vec2 spawnRotation;
+	ClientDimPos spawnPos;
 
 	Box borders = Box(ivec3(-int.max, -int.max, -int.max), ivec3(int.max, int.max, int.max));
 }
@@ -48,7 +46,7 @@ struct DimensionManager {
 		if (dimension)
 			return dimension;
 
-		dimensions[dim] = DimensionInfo(dim);
+		dimensions[dim] = DimensionInfo();
 		return dim in dimensions;
 	}
 

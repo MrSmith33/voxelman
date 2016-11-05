@@ -16,6 +16,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.session;
 import voxelman.world.clientworld;
+import voxelman.world.storage.coordinates : ClientDimPos;
 
 shared static this()
 {
@@ -26,8 +27,7 @@ shared static this()
 @Component("avatar.AvatarPosition", false, true)
 struct AvatarPosition
 {
-	vec3 pos;
-	vec2 heading;
+	ClientDimPos dimPos;
 	DimensionId dimension;
 }
 
@@ -73,7 +73,7 @@ final class AvatarClient : IPlugin
 			if (row.id != session.thisEntityId &&
 				row.avatarPosition_0.dimension == clientWorld.currentDimension)
 			{
-				batch.putCube(row.avatarPosition_0.pos, vec3(1,1,1), Colors.white, true);
+				batch.putCube(row.avatarPosition_0.dimPos.pos, vec3(1,1,1), Colors.white, true);
 			}
 		}
 		graphics.draw(batch);
@@ -110,8 +110,7 @@ final class AvatarServer : IPlugin
 		auto query = eman.query!(ClientPosition, AvatarPosition);
 		foreach (row; query)
 		{
-			row.avatarPosition_1.pos = row.clientPosition_0.pos;
-			row.avatarPosition_1.heading = row.clientPosition_0.heading;
+			row.avatarPosition_1.dimPos = row.clientPosition_0.dimPos;
 			row.avatarPosition_1.dimension = row.clientPosition_0.dimension;
 		}
 	}

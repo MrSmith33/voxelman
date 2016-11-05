@@ -7,7 +7,10 @@ module voxelman.core.packets;
 
 import netlib;
 import voxelman.math;
+import voxelman.core.config : DimensionId;
+import voxelman.geometry.box : Box;
 import voxelman.world.storage.worldbox : WorldBox;
+import voxelman.world.storage.coordinates : ClientDimPos;
 
 void registerPackets(Connection)(Connection c)
 {
@@ -19,6 +22,7 @@ void registerPackets(Connection)(Connection c)
 
 	// Server -> Client
 	c.registerPacket!ChunkDataPacket;
+	c.registerPacket!DimensionInfoPacket;
 	c.registerPacket!SpawnPacket;
 	c.registerPacket!MultiblockChangePacket;
 
@@ -30,9 +34,7 @@ void registerPackets(Connection)(Connection c)
 // sent by client when position/heading changes.
 struct ClientPositionPacket
 {
-	import voxelman.core.config : DimensionId;
-	vec3 pos = vec3(0, 0, 0);
-	vec2 heading = vec2(0, 0);
+	ClientDimPos dimPos;
 	DimensionId dimension;
 	ubyte positionKey;
 }
@@ -48,6 +50,12 @@ struct ChunkDataPacket
 	import voxelman.world.storage.chunk : BlockData;
 	ivec4 chunkPos;
 	BlockData[] layers;
+}
+
+struct DimensionInfoPacket
+{
+	DimensionId dimension;
+	Box borders;
 }
 
 struct MultiblockChangePacket

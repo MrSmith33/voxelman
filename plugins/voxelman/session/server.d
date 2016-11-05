@@ -30,6 +30,108 @@ import voxelman.session.clientdb;
 import voxelman.session.sessionman;
 
 
+struct ClientPositionManager
+{
+	ClientManager cm;
+
+	void tpToPos(Session* session, ClientDimPos dimPos, DimensionId dim)
+	{
+		auto position = cm.db.get!ClientPosition(session.dbKey);
+
+		position.dimPos = dimPos;
+		position.dimension = dim;
+		++position.positionKey;
+
+		sendPositionToClient(*position, session.sessionId);
+		updateObserverBox(session);
+	}
+
+	void tpToPlayer(Session* session, Session* destination)
+	{
+		cm.connection.sendTo(session.sessionId, MessagePacket(
+			format("Teleporting to %s", destination.name)));
+		auto position = cm.db.get!ClientPosition(session.dbKey);
+		auto destposition = cm.db.get!ClientPosition(destination.dbKey);
+
+		position.dimPos = destposition.dimPos;
+		position.dimension = destposition.dimension;
+		++position.positionKey;
+
+		sendPositionToClient(*position, session.sessionId);
+		updateObserverBox(session);
+	}
+
+	void updateClientViewRadius(
+		Session* session,
+		int viewRadius)
+	{
+		auto settings = cm.db.get!ClientSettings(session.dbKey);
+		settings.viewRadius = clamp(viewRadius,
+			MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
+		updateObserverBox(session);
+	}
+
+	// Set client postion on server side, without sending position update to client
+	void updateClientPosition(
+		Session* session,
+		ClientDimPos dimPos,
+		ushort dimension,
+		ubyte positionKey,
+		bool updatePositionKey,
+		bool sendPosUpdate = false)
+	{
+		auto position = cm.db.get!ClientPosition(session.dbKey);
+
+		// reject stale position. Dimension already has changed.
+		if (position.positionKey != positionKey)
+			return;
+
+		position.dimPos = dimPos;
+		position.dimension = dimension;
+		position.positionKey += cast(ubyte)updatePositionKey;
+
+		if(sendPosUpdate)
+			sendPositionToClient(*position, session.sessionId);
+
+		updateObserverBox(session);
+	}
+
+	void tpToDimension(Session* session, DimensionId dimension)
+	{
+		auto dimInfo = cm.serverWorld.dimMan.getOrCreate(dimension);
+		auto position = cm.db.get!ClientPosition(session.dbKey);
+		position.dimPos = dimInfo.spawnPos;
+		position.dimension = dimension;
+		++position.positionKey;
+
+		sendPositionToClient(*position, session.sessionId);
+		updateObserverBox(session);
+	}
+
+	private void sendPositionToClient(ClientPosition position, SessionId sessionId)
+	{
+		cm.connection.sendTo(sessionId,
+			ClientPositionPacket(
+				position.dimPos,
+				position.dimension,
+				position.positionKey));
+	}
+
+	// updates WorldBox of observer in ChunkObserverManager
+	// must be called after new position was sent to client.
+	// ChunkObserverManager can initiate chunk sending when observed
+	// box changes.
+	private void updateObserverBox(Session* session)
+	{
+		if (cm.isSpawned(session)) {
+			auto position = cm.db.get!ClientPosition(session.dbKey);
+			auto settings = cm.db.get!ClientSettings(session.dbKey);
+			cm.serverWorld.chunkObserverManager.changeObserverBox(
+				session.sessionId, position.chunk, settings.viewRadius);
+		}
+	}
+}
+
 final class ClientManager : IPlugin
 {
 private:
@@ -40,9 +142,14 @@ private:
 public:
 	ClientDb db;
 	SessionManager sessions;
+	ClientPositionManager clientPosMan;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!(voxelman.session.plugininfo);
+
+	this() {
+		clientPosMan.cm = this;
+	}
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
@@ -99,23 +206,31 @@ public:
 		auto position = db.get!ClientPosition(session.dbKey);
 		if (params.args.length > 1 && params.args[1] == "set")
 		{
-			setSpawn(position.dimension, session);
+			setWorldSpawn(position.dimension, session);
 			return;
 		}
 
-		setClientDimension(session, position.dimension);
-		sendPositionToClient(session);
-		updateObserverBox(session);
+		clientPosMan.tpToPos(
+			session, serverWorld.worldInfo.spawnPos,
+			serverWorld.worldInfo.spawnDimension);
 	}
 
-	void setSpawn(DimensionId dimension, Session* session)
+	void setWorldSpawn(DimensionId dimension, Session* session)
+	{
+		auto position = db.get!ClientPosition(session.dbKey);
+		serverWorld.worldInfo.spawnPos = position.dimPos;
+		serverWorld.worldInfo.spawnDimension = dimension;
+		connection.sendTo(session.sessionId, MessagePacket(
+			format(`world spawn is now dim %s pos %s`, dimension, position.dimPos.pos)));
+	}
+
+	void setDimensionSpawn(DimensionId dimension, Session* session)
 	{
 		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
 		auto position = db.get!ClientPosition(session.dbKey);
-		dimInfo.spawnPos = position.pos;
-		dimInfo.spawnRotation = position.heading;
+		dimInfo.spawnPos = position.dimPos;
 		connection.sendTo(session.sessionId, MessagePacket(
-			format(`spawn of %s dimension is now %s`, dimension, position.pos)));
+			format(`spawn of %s dimension is now %s`, dimension, position.dimPos.pos)));
 	}
 
 	void onTeleport(CommandParams params)
@@ -136,7 +251,10 @@ public:
 			pos.x = to!int(captures3[1]);
 			pos.y = to!int(captures3[2]);
 			pos.z = to!int(captures3[3]);
-			return tpToPos(session, pos);
+			connection.sendTo(session.sessionId, MessagePacket(
+				format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
+			clientPosMan.tpToPos(session, ClientDimPos(pos), position.dimension);
+			return;
 		}
 
 		auto regex2 = regex(`(-?\d+)\W+(-?\d+)`, "m");
@@ -144,9 +262,10 @@ public:
 		if (!captures2.empty)
 		{
 			pos.x = to!int(captures2[1]);
-			pos.y = position.pos.y;
+			pos.y = position.dimPos.pos.y;
 			pos.z = to!int(captures2[2]);
-			return tpToPos(session, pos);
+			clientPosMan.tpToPos(session, ClientDimPos(pos), position.dimension);
+			return;
 		}
 
 		auto regex1 = regex(`[a-Z]+[_a-Z0-9]+`);
@@ -161,36 +280,12 @@ public:
 					format(`Player "%s" is not online`, destName)));
 				return;
 			}
-			return tpToPlayer(session, destination);
+			clientPosMan.tpToPlayer(session, destination);
+			return;
 		}
 
 		connection.sendTo(params.source, MessagePacket(
 			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>"`));
-	}
-
-	void tpToPos(Session* session, vec3 pos) {
-		connection.sendTo(session.sessionId, MessagePacket(
-			format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
-		auto position = db.get!ClientPosition(session.dbKey);
-
-		position.pos = pos;
-		++position.positionKey;
-		connection.sendTo(session.sessionId, ClientPositionPacket(position.pos,
-			position.heading, position.dimension, position.positionKey));
-		updateObserverBox(session);
-	}
-
-	void tpToPlayer(Session* session, Session* destination) {
-		connection.sendTo(session.sessionId, MessagePacket(
-			format("Teleporting to %s", destination.name)));
-		auto position = db.get!ClientPosition(session.dbKey);
-		auto destposition = db.get!ClientPosition(destination.dbKey);
-
-		position.pos = destposition.pos;
-		++position.positionKey;
-		connection.sendTo(session.sessionId, ClientPositionPacket(position.pos,
-			position.heading, position.dimension, position.positionKey));
-		updateObserverBox(session);
 	}
 
 	bool isLoggedIn(SessionId sessionId)
@@ -233,36 +328,6 @@ public:
 		return sessions.byValue.filter!(a=>a.isLoggedIn).map!(a=>a.sessionId);
 	}
 
-	private void setClientPosition(Session* session, vec3 pos, vec2 heading, ushort dimension)
-	{
-		auto position = db.get!ClientPosition(session.dbKey);
-		position.pos = pos;
-		position.heading = heading;
-		position.dimension = dimension;
-		++position.positionKey;
-	}
-
-	private void setClientDimension(Session* session, ushort dimension)
-	{
-		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
-		auto position = db.get!ClientPosition(session.dbKey);
-		position.pos = dimInfo.spawnPos;
-		position.heading = dimInfo.spawnRotation;
-		position.dimension = dimension;
-		++position.positionKey;
-	}
-
-	private void sendPositionToClient(Session* session)
-	{
-		auto position = db.get!ClientPosition(session.dbKey);
-		connection.sendTo(session.sessionId,
-			ClientPositionPacket(
-				position.pos,
-				position.heading,
-				position.dimension,
-				position.positionKey));
-	}
-
 	private void handleClientConnected(ref ClientConnectedEvent event)
 	{
 		sessions.put(event.sessionId, SessionType.unknownClient);
@@ -294,23 +359,8 @@ public:
 				if (dim == position.dimension)
 					return;
 
-				position.dimension = dim;
-				++position.positionKey;
-				updateObserverBox(session);
-
-				connection.sendTo(params.source, ClientPositionPacket(position.pos,
-					position.heading, position.dimension, position.positionKey));
+				clientPosMan.tpToDimension(session, dim);
 			}
-		}
-	}
-
-	private void updateObserverBox(Session* session)
-	{
-		auto position = db.get!ClientPosition(session.dbKey);
-		auto settings = db.get!ClientSettings(session.dbKey);
-		if (isSpawned(session)) {
-			serverWorld.chunkObserverManager.changeObserverBox(
-				session.sessionId, position.chunk, settings.viewRadius);
 		}
 	}
 
@@ -372,7 +422,8 @@ public:
 		Session* session = sessions[sessionId];
 		if (session.isLoggedIn)
 		{
-			sendPositionToClient(session);
+			auto position = db.get!ClientPosition(session.dbKey);
+			clientPosMan.sendPositionToClient(*position, session.sessionId);
 			db.set(session.dbKey, SpawnedFlag());
 			connection.sendTo(sessionId, SpawnPacket());
 		}
@@ -385,11 +436,7 @@ public:
 		Session* session = sessions[sessionId];
 		if (session.isLoggedIn)
 		{
-			auto settings = db.get!ClientSettings(session.dbKey);
-			settings.viewRadius = clamp(packet.viewRadius,
-				MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
-			if (isSpawned(session))
-				updateObserverBox(session);
+			clientPosMan.updateClientViewRadius(session, packet.viewRadius);
 		}
 	}
 
@@ -399,15 +446,10 @@ public:
 		if (isSpawned(session))
 		{
 			auto packet = unpackPacket!ClientPositionPacket(packetData);
-			auto position = db.get!ClientPosition(session.dbKey);
 
-			// reject stale position. Dimension already has changed.
-			if (packet.positionKey != position.positionKey)
-				return;
-
-			position.pos = vec3(packet.pos);
-			position.heading = vec2(packet.heading);
-			updateObserverBox(session);
+			clientPosMan.updateClientPosition(
+				session, packet.dimPos, packet.dimension,
+				packet.positionKey, false);
 		}
 	}
 }
