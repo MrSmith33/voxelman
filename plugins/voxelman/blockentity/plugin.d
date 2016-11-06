@@ -19,7 +19,6 @@ import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.core.packets;
-import voxelman.core.chunkmesh;
 import voxelman.world.storage;
 
 import voxelman.block.plugin;

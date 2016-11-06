@@ -14,7 +14,7 @@ import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.world.storage;
-import voxelman.core.chunkmesh;
+import voxelman.world.mesh.chunkmesh;
 
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;

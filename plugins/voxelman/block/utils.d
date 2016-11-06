@@ -12,7 +12,7 @@ import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage;
 import voxelman.utils.mapping;
-import voxelman.core.chunkmesh;
+import voxelman.world.mesh.chunkmesh;
 import voxelman.geometry.cube;
 
 

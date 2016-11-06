@@ -19,7 +19,7 @@ string testDir;
 
 void main(string[] args)
 {
-	string semver = "0.8.0-dev.1";
+	string semver = "0.8.0-dev.2";
 	string compiler = "ldc";
 	testDir = buildNormalizedPath(ROOT_PATH, "test");
 	if (exists(testDir))
@@ -27,7 +27,7 @@ void main(string[] args)
 
 	StopWatch sw;
 	sw.start();
-	completeBuild(Arch.x32, semver, compiler);
+	//completeBuild(Arch.x32, semver, compiler);
 	writeln;
 	completeBuild(Arch.x64, semver, compiler);
 	sw.stop();

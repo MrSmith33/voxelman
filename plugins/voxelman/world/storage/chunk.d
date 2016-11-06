@@ -16,7 +16,6 @@ import voxelman.geometry.box;
 
 import voxelman.core.config;
 import voxelman.block.utils;
-import voxelman.core.chunkmesh;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.utils.compression;

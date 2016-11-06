@@ -35,7 +35,7 @@ import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 import voxelman.blockentity.blockentityaccess;
 
-import voxelman.client.chunkmeshman;
+import voxelman.world.mesh.chunkmeshman;
 
 struct IdMapManagerClient
 {

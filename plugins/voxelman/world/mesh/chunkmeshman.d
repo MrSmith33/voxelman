@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2016 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.client.chunkmeshman;
+module voxelman.world.mesh.chunkmeshman;
 
 import voxelman.log;
 import std.typecons : Nullable;
@@ -12,9 +12,9 @@ import voxelman.geometry.box;
 import voxelman.math;
 import voxelman.block.utils;
 import voxelman.blockentity.utils;
-import voxelman.core.chunkmesh;
+import voxelman.world.mesh.chunkmesh;
 import voxelman.core.config;
-import voxelman.core.meshgen;
+import voxelman.world.mesh.meshgen;
 import voxelman.world.storage;
 import voxelman.utils.worker;
 import voxelman.container.hashset;

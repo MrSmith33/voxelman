@@ -32,7 +32,6 @@ import voxelman.world.clientworld;
 import voxelman.dbg.plugin;
 
 import voxelman.core.config;
-import voxelman.core.chunkmesh;
 import voxelman.net.events;
 import voxelman.core.events;
 import voxelman.core.packets;
@@ -41,6 +40,7 @@ import voxelman.net.packets;
 import voxelman.config.configmanager;
 import voxelman.input.keybindingmanager;
 
+import voxelman.world.mesh.chunkmesh;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;

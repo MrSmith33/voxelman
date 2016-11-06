@@ -61,7 +61,7 @@ final class RailroadPluginClient : IPlugin
 		import voxelman.model.ply;
 		import voxelman.model.mesh;
 		import voxelman.model.utils;
-		import voxelman.core.chunkmesh;
+		import voxelman.world.mesh.chunkmesh;
 		try{
 			railMeshes[0] = readPlyFile!MeshVertex(BUILD_TO_ROOT_PATH~"res/model/rail1.ply");
 			railMeshes[1] = readPlyFile!MeshVertex(BUILD_TO_ROOT_PATH~"res/model/rail2.ply");

@@ -13,7 +13,7 @@ import voxelman.math;
 
 import voxelman.geometry.utils;
 
-import voxelman.core.chunkmesh;
+import voxelman.world.mesh.chunkmesh;
 import voxelman.block.utils;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;
