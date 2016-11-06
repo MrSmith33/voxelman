@@ -73,18 +73,29 @@ struct HashMap(Key, Value, Key nullKey = Key.max)
 		return values[idx];
 	}
 
+	Value* getOrCreate(Key key, Value defVal = Value.init) {
+		auto idx = findIndex(key);
+		if (idx == size_t.max) return assignValue(key, defVal);
+		return &values[idx];
+	}
+
 	void clear() {
 		keys[] = nullKey;
 		length = 0;
 	}
 
 	void opIndexAssign(Value value, Key key) {
+		assignValue(key, value);
+	}
+
+	private Value* assignValue(Key key, Value value) {
 		grow(1);
 		auto i = findInsertIndex(key);
 		if (keys[i] != key) ++length;
 
 		keys[i] = key;
 		values[i] = value;
+		return &values[i];
 	}
 
 	ref inout(Value) opIndex(Key key) inout {

@@ -32,6 +32,7 @@ import voxelman.net.packets;
 import voxelman.core.packets;
 
 import voxelman.world.storage;
+import voxelman.world.storage.dimensionobservermanager;
 import voxelman.blockentity.blockentityaccess;
 
 import voxelman.client.chunkmeshman;
@@ -69,6 +70,8 @@ public:
 	ChunkMeshMan chunkMeshMan;
 	TimestampType currentTimestamp;
 	HashSet!ChunkWorldPos chunksToRemesh;
+
+	DimensionManager dimMan;
 
 	// toggles/debug
 	bool doUpdateObserverPosition = true;
@@ -123,6 +126,8 @@ public:
 		chunkManager.isChunkSavingEnabled = false;
 		chunkManager.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
 
+		chunkMeshMan.getDimensionBorders = &dimMan.dimensionBorders;
+
 		chunkObserverManager = new ChunkObserverManager();
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &handleChunkObserverAdded;
@@ -166,7 +171,14 @@ public:
 		worldAccess.blockInfos = blockPlugin.getBlocks();
 	}
 
-	void handleIdMapPacket(ubyte[] packetData)
+	WorldBox calcClampedBox(ChunkWorldPos cwp, int boxRadius)
+	{
+		int size = boxRadius*2 + 1;
+		return WorldBox(cast(ivec3)(cwp.ivector3 - boxRadius),
+			ivec3(size, size, size), cwp.w).intersection(dimMan.dimensionBorders(cwp.w));
+	}
+
+	private void handleIdMapPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!IdMapPacket(packetData);
 		if (auto h = idMapManager.onMapReceivedHandlers.get(packet.mapName, null))
@@ -175,26 +187,26 @@ public:
 		}
 	}
 
-	void onServerStringMapReceived(string[] strings)
+	private void onServerStringMapReceived(string[] strings)
 	{
 		serverStrings.load(strings);
 	}
 
-	void onTogglePositionUpdate(string)
+	private void onTogglePositionUpdate(string)
 	{
 		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
-	void onToggleMetaData(string) {
+	private void onToggleMetaData(string) {
 		drawDebugMetadata = !drawDebugMetadata;
 	}
 
-	void onRemeshViewBox(string) {
+	private void onRemeshViewBox(string) {
 		WorldBox box = chunkObserverManager.getObserverBox(observerSessionId);
 		remeshBox(box, true);
 	}
 
-	void onPrintChunkMeta(string) {
+	private void onPrintChunkMeta(string) {
 		import voxelman.block.utils : printChunkMetadata;
 		auto cwp = observerPosition;
 		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
@@ -206,7 +218,7 @@ public:
 		printChunkMetadata(snap.metadata);
 	}
 
-	void handlePreUpdateEvent(ref PreUpdateEvent event)
+	private void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
 		++currentTimestamp;
 
@@ -226,7 +238,7 @@ public:
 		}
 	}
 
-	void drawDebugChunkInfo()
+	private void drawDebugChunkInfo()
 	{
 		enum nearRadius = 2;
 		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimension);
@@ -236,7 +248,7 @@ public:
 		drawDebugChunkGrid(nearBox);
 	}
 
-	void drawDebugChunkMetadata(WorldBox box)
+	private void drawDebugChunkMetadata(WorldBox box)
 	{
 		import voxelman.block.utils;
 		foreach(pos; box.positions)
@@ -261,7 +273,7 @@ public:
 		}
 	}
 
-	void drawDebugChunkGrid(WorldBox box)
+	private void drawDebugChunkGrid(WorldBox box)
 	{
 		vec3 gridPos = vec3(box.position*CHUNK_SIZE);
 		ivec3 gridCount = box.size+1;
@@ -269,11 +281,11 @@ public:
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
 
-	void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
+	private void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
 
-	void handleLoadChunk(ChunkWorldPos) {}
+	private void handleLoadChunk(ChunkWorldPos) {}
 
-	void handlePostUpdateEvent(ref PostUpdateEvent event)
+	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
 		//chunkMeshMan.remeshChangedChunks(chunkManager.getModifiedChunks());
@@ -285,7 +297,7 @@ public:
 			sendPosition(event.deltaTime);
 	}
 
-	void handleGameStopEvent(ref GameStopEvent gameStopEvent)
+	private void handleGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
 		import core.thread;
 		while(chunkMeshMan.numMeshChunkTasks > 0)
@@ -295,12 +307,12 @@ public:
 		chunkMeshMan.stop();
 	}
 
-	void handleSendClientSettingsEvent(ref SendClientSettingsEvent event)
+	private void handleSendClientSettingsEvent(ref SendClientSettingsEvent event)
 	{
 		connection.send(ViewRadiusPacket(viewRadius));
 	}
 
-	void handleChunkDataPacket(ubyte[] packetData)
+	private void handleChunkDataPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!ChunkDataPacket(packetData);
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
@@ -319,7 +331,7 @@ public:
 		onChunkLoaded(cwp, layers[0..numChunkLayers]);
 	}
 
-	void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
+	private void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
 	{
 		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
@@ -363,22 +375,22 @@ public:
 			return;
 		}
 
-		foreach(pos; AdjChunkPositions27(cwp).all)
+		foreach(ChunkWorldPos pos; calcClampedBox(cwp, 1))
 			chunksToRemesh.put(pos);
 	}
 
-	void handleMultiblockChangePacket(ubyte[] packetData)
+	private void handleMultiblockChangePacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!MultiblockChangePacket(packetData);
 		auto cwp = ChunkWorldPos(packet.chunkPos);
 
 		worldAccess.applyBlockChanges(cwp, packet.blockChanges);
 
-		foreach(pos; AdjChunkPositions27(cwp).all)
+		foreach(ChunkWorldPos pos; calcClampedBox(cwp, 1))
 			chunksToRemesh.put(pos);
 	}
 
-	void handleFillBlockBoxPacket(ubyte[] packetData)
+	private void handleFillBlockBoxPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 
@@ -386,17 +398,17 @@ public:
 		onBlockBoxChanged(packet.box);
 	}
 
-	void onBlockBoxChanged(WorldBox blockBox)
+	private void onBlockBoxChanged(WorldBox blockBox)
 	{
 		WorldBox observedBox = chunkObserverManager.getObserverBox(observerSessionId);
 		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);
 		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
-		foreach(pos; box.positions)
-			chunksToRemesh.put(ChunkWorldPos(pos, box.dimension));
+		foreach(ChunkWorldPos pos; box)
+			chunksToRemesh.put(pos);
 	}
 
-	void handlePlaceBlockEntityPacket(ubyte[] packetData)
+	private void handlePlaceBlockEntityPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!PlaceBlockEntityPacket(packetData);
 		placeEntity(packet.box, packet.data,
@@ -404,7 +416,7 @@ public:
 		onBlockBoxChanged(packet.box);
 	}
 
-	void handleRemoveBlockEntityPacket(ubyte[] packetData)
+	private void handleRemoveBlockEntityPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!RemoveBlockEntityPacket(packetData);
 		WorldBox changedBox = removeEntity(BlockWorldPos(packet.blockPos),
@@ -412,7 +424,7 @@ public:
 		onBlockBoxChanged(changedBox);
 	}
 
-	void remeshBox(WorldBox box, bool printTime = false)
+	private void remeshBox(WorldBox box, bool printTime = false)
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		MonoTime startTime = MonoTime.currTime;
@@ -458,6 +470,13 @@ public:
 		prevChunkPos = observerPosition;
 	}
 
+	void setDimensionBorders(DimensionId dim, Box borders)
+	{
+		DimensionInfo* dimInfo = dimMan.getOrCreate(dim);
+		dimInfo.borders = borders;
+		updateObserverPosition();
+	}
+
 	void setCurrentDimension(DimensionId dimension, ubyte positionKey) {
 		observerPosition.w = dimension;
 		this.positionKey = positionKey;
@@ -484,7 +503,9 @@ public:
 				observerSessionId = session.thisSessionId;
 			}
 
-			chunkObserverManager.changeObserverBox(observerSessionId, observerPosition, viewRadius);
+			auto borders = dimMan.dimensionBorders(observerPosition.dimension);
+			chunkObserverManager.changeObserverBox(
+				observerSessionId, observerPosition, viewRadius, borders);
 		}
 	}
 

@@ -37,6 +37,7 @@ import voxelman.core.packets;
 
 import voxelman.blockentity.blockentityaccess;
 import voxelman.world.storage;
+import voxelman.world.storage.dimensionobservermanager;
 
 public import voxelman.world.worlddb : WorldDb;
 
@@ -84,7 +85,10 @@ public:
 	ChunkManager chunkManager;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
+
 	DimensionManager dimMan;
+	DimensionObserverManager dimObserverMan;
+
 	ActiveChunks activeChunks;
 	IdMapManagerServer idMapManager;
 
@@ -139,6 +143,8 @@ public:
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
 		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
 
+		dimObserverMan.dimensionObserverAdded = &onDimensionObserverAdded;
+
 		activeChunks.loadChunk = &chunkObserverManager.addServerObserver;
 		activeChunks.unloadChunk = &chunkObserverManager.removeServerObserver;
 
@@ -174,6 +180,13 @@ public:
 	TimestampType currentTimestamp() @property
 	{
 		return worldInfo.simulationTick;
+	}
+
+	void setDimensionBorders(DimensionId dim, Box borders)
+	{
+		DimensionInfo* dimInfo = dimMan.getOrCreate(dim);
+		dimInfo.borders = borders;
+		sendDimensionBorders(dim);
 	}
 
 	private void handleSaveEvent(ref WorldSaveInternalEvent event)
@@ -259,6 +272,11 @@ public:
 		chunkProvider.stop();
 	}
 
+	private void onDimensionObserverAdded(DimensionId dimensionId, SessionId sessionId)
+	{
+		sendDimensionBorders(sessionId, dimensionId);
+	}
+
 	private void onChunkObserverAdded(ChunkWorldPos cwp, SessionId sessionId)
 	{
 		sendChunk(sessionId, cwp);
@@ -275,6 +293,7 @@ public:
 	private void handleClientDisconnected(ref ClientDisconnectedEvent event)
 	{
 		chunkObserverManager.removeObserver(event.sessionId);
+		dimObserverMan.removeObserver(event.sessionId);
 	}
 
 	private void onChunkLoaded(ChunkWorldPos cwp)
@@ -282,7 +301,26 @@ public:
 		sendChunk(chunkObserverManager.getChunkObservers(cwp), cwp);
 	}
 
-	private void sendChunk(C)(C clients, ChunkWorldPos cwp)
+	private void sendDimensionBorders(SessionId sessionId, DimensionId dim)
+	{
+		if (auto dimInfo = dimMan[dim])
+			connection.sendTo(sessionId, DimensionInfoPacket(dim, dimInfo.borders));
+	}
+
+	private void sendDimensionBorders(DimensionId dim)
+	{
+		static Buffer!SessionId sessionBuffer;
+		if (auto dimInfo = dimMan[dim])
+		{
+			foreach(sessionId; dimObserverMan.getDimensionObservers(dim))
+				sessionBuffer.put(sessionId);
+
+			connection.sendTo(sessionBuffer.data, DimensionInfoPacket(dim, dimInfo.borders));
+			sessionBuffer.clear();
+		}
+	}
+
+	private void sendChunk(S)(S sessions, ChunkWorldPos cwp)
 	{
 		import voxelman.core.packets : ChunkDataPacket;
 
@@ -314,7 +352,7 @@ public:
 			++numChunkLayers;
 		}
 
-		connection.sendTo(clients, ChunkDataPacket(cwp.ivector, layerBuf[0..numChunkLayers]));
+		connection.sendTo(sessions, ChunkDataPacket(cwp.ivector, layerBuf[0..numChunkLayers]));
 	}
 
 	private void sendChanges(BlockChange[][ChunkWorldPos] changes)

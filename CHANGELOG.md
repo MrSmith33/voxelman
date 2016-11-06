@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- Add dimension observer manager. Server world sends info about dimension border to clients. Use dimension borders - to shift and clamp observation box of clients.
+- Add dimension manager.
+- Add getOrCreate to HashMap.
+- Add MultiHashSet container.
 - Add getOrCreate to entity manager and storages.
 - Add serializeToDb and serializeToNet component flags.
 - Add storage type for loaders and savers.

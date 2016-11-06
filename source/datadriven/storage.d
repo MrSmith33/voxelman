@@ -43,13 +43,7 @@ struct HashmapComponentStorage(_ComponentType)
 
 	ComponentType* getOrCreate(EntityId eid, ComponentType defVal = ComponentType.init)
 	{
-		auto ptr = eid in components;
-		if (ptr)
-			return ptr;
-		else {
-			components[eid] = defVal;
-			return eid in components;
-		}
+		return components.getOrCreate(eid, defVal);
 	}
 
 	int opApply(scope int delegate(EntityId, ref ComponentType) del) {

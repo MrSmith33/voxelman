@@ -11,7 +11,9 @@ import voxelman.math;
 import voxelman.core.config : DimensionId;
 import netlib : SessionId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
-import voxelman.world.storage.worldbox : WorldBox, TrisectResult, trisect4d, calcBox;
+import voxelman.world.storage.worldbox : WorldBox, TrisectResult,
+	trisect4d, calcBox, shiftAndClampBoxByBorders;
+import voxelman.geometry.box;
 
 enum chunkPackLoadSize = 200;
 
@@ -145,15 +147,6 @@ final class ChunkObserverManager {
 			return null;
 	}
 
-	void getDimensionObservers(Buffer!SessionId* sink, DimensionId dim)
-	{
-		foreach(pair; viewInfos.byKeyValue)
-		{
-			if (pair.value.viewBox.dimension == dim)
-				sink.put(pair.key);
-		}
-	}
-
 	void addServerObserver(ChunkWorldPos cwp) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		++list.numServerObservers;
@@ -173,7 +166,7 @@ final class ChunkObserverManager {
 
 	void removeObserver(SessionId sessionId) {
 		if (sessionId in viewInfos) {
-			changeObserverBox(sessionId, ChunkWorldPos.init, 0);
+			changeObserverBox(sessionId, ChunkWorldPos.init, 0, Box());
 			viewInfos.remove(sessionId);
 		}
 		else
@@ -185,9 +178,10 @@ final class ChunkObserverManager {
 		return info.viewBox;
 	}
 
-	void changeObserverBox(SessionId sessionId, ChunkWorldPos observerPosition, int viewRadius) {
+	void changeObserverBox(SessionId sessionId, ChunkWorldPos observerPosition, int viewRadius, Box dimBorders) {
 		WorldBox newBox = calcBox(observerPosition, viewRadius);
-		changeObserverBox(sessionId, newBox);
+		WorldBox boundedBox = shiftAndClampBoxByBorders(newBox, dimBorders);
+		changeObserverBox(sessionId, boundedBox);
 	}
 
 	void changeObserverBox(SessionId sessionId, WorldBox newBox) {

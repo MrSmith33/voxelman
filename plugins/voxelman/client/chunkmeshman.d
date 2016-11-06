@@ -8,6 +8,7 @@ module voxelman.client.chunkmeshman;
 import voxelman.log;
 import std.typecons : Nullable;
 
+import voxelman.geometry.box;
 import voxelman.math;
 import voxelman.block.utils;
 import voxelman.blockentity.utils;
@@ -62,6 +63,7 @@ struct ChunkMeshMan
 	ChunkManager chunkManager;
 	BlockInfoTable blocks;
 	BlockEntityInfoTable beInfos;
+	Box delegate(DimensionId) getDimensionBorders;
 
 	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, BlockEntityInfoTable _beInfos, uint numMeshWorkers)
 	{
@@ -143,6 +145,7 @@ struct ChunkMeshMan
 			auto positions = AdjChunkPositions27(taskHeader.cwp);
 			foreach(i, pos; positions.all)
 			{
+				if (blockTimestamps[i] == uint.max) continue; // out-of-border chunk
 				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], FIRST_LAYER);
 				chunkManager.removeSnapshotUser(pos, entityTimestamps[i], ENTITY_LAYER);
 			}
@@ -207,7 +210,7 @@ struct ChunkMeshMan
 
 	bool producesMesh(
 		const ref Nullable!ChunkLayerSnap[6] adjacent,
-		const ref Nullable!ChunkLayerSnap central)
+		const ref ChunkLayerSnap central)
 	{
 		import voxelman.block.utils;
 
@@ -223,8 +226,12 @@ struct ChunkMeshMan
 
 			foreach(CubeSide side, adj; adjacent)
 			{
-				Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
-				if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
+				if (!adj.isNull())
+				{
+					Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+					if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
+				}
+				// otherwise it is unknown blocks, which are solid
 			}
 
 			// uniformly solid chunk is surrounded by blocks with the same of higher solidity.
@@ -241,13 +248,22 @@ struct ChunkMeshMan
 	// returns true if was sent to mesh
 	bool meshChunk(ChunkWorldPos cwp)
 	{
+		Box dimBorders = getDimensionBorders(cwp.w);
 		auto snapsPositions = AdjChunkPositions27(cwp);
 
-		if (!chunkManager.areChunksLoaded(snapsPositions.all))
+		foreach(pos; snapsPositions.all)
 		{
-			version(DBG) tracef("meshChunk %s !allLoaded", cwp);
-			return false;
+			if (!chunkManager.isChunkLoaded(pos))
+			{
+				if (dimBorders.contains(pos.ivector3))
+				{
+					// chunk in dim borders is not loaded
+					return false;
+				}
+			}
 		}
+
+		assert(dimBorders.contains(snapsPositions.central.ivector3));
 
 		AdjChunkLayers27 snapsBlocks;
 
@@ -281,18 +297,27 @@ struct ChunkMeshMan
 		snapsEntities.all = chunkManager.getChunkSnapshots(
 			snapsPositions.all, ENTITY_LAYER, Yes.Uncompress);
 
-		foreach(pos; snapsPositions.all)
-		{
-			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
-			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
-		}
-
 		ChunkLayerItem[27] blockLayers;
 		ChunkLayerItem[27] entityLayers;
 		foreach(i; 0..27)
 		{
-			blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), FIRST_LAYER);
-			entityLayers[i] = ChunkLayerItem(snapsEntities.all[i].get(), ENTITY_LAYER);
+			if (!dimBorders.contains(snapsPositions.all[i].ivector3)) // out-of-border chunk
+			{
+				blockLayers[i].timestamp = uint.max; // mark as not loaded, to not remove users later
+				blockLayers[i].metadata = solidity_metadatas[Solidity.solid];
+			}
+			else
+			{
+				blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), FIRST_LAYER);
+				entityLayers[i] = ChunkLayerItem(snapsEntities.all[i].get(), ENTITY_LAYER);
+			}
+		}
+
+		foreach(pos; snapsPositions.all)
+		{
+			if (!dimBorders.contains(pos.ivector3)) continue; // out-of-border chunk
+			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
+			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
 		}
 
 		// debug

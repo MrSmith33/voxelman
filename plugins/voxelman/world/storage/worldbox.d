@@ -25,6 +25,25 @@ void putCube(ref Batch batch, Box box, Color4ub color, bool fill, bool offset = 
 	batch.putCube(pos, size, color, fill);
 }
 
+WorldBox shiftAndClampBoxByBorders(WorldBox box, Box dimBorders)
+{
+	if (box.position.x < dimBorders.position.x)
+		box.position.x = dimBorders.position.x;
+	if (box.position.y < dimBorders.position.y)
+		box.position.y = dimBorders.position.y;
+	if (box.position.z < dimBorders.position.z)
+		box.position.z = dimBorders.position.z;
+
+	if (box.endPosition.x > dimBorders.endPosition.x)
+		box.position.x = dimBorders.endPosition.x - box.size.x;
+	if (box.endPosition.y > dimBorders.endPosition.y)
+		box.position.y = dimBorders.endPosition.y - box.size.y;
+	if (box.endPosition.z > dimBorders.endPosition.z)
+		box.position.z = dimBorders.endPosition.z - box.size.z;
+
+	return WorldBox(boxIntersection(box, dimBorders), box.dimension);
+}
+
 WorldBox calcBox(ChunkWorldPos cwp, int viewRadius)
 {
 	int size = viewRadius*2 + 1;
@@ -106,14 +125,32 @@ struct WorldBox
 	import std.range : iota, walkLength;
 	import std.array : array;
 
-	// generates all positions within box.
-	auto positions4d() const @property
-	{
-		return cartesianProduct(
-			iota(position.x, position.x + size.x),
-			iota(position.z, position.z + size.z),
-			iota(position.y, position.y + size.y),)
-			.map!((a)=>ivec4(a[0], a[2], a[1], dimension));
+	/// iterate all posisions within a box
+	int opApply(scope int delegate(ivec4) del) {
+		foreach (y; position.y .. position.y + size.y)
+		foreach (z; position.z .. position.z + size.z)
+		foreach (x; position.x .. position.x + size.x)
+			if (auto ret = del(ivec4(x, y, z, dimension)))
+				return ret;
+		return 0;
+	}
+
+	/// ditto
+	int opApply(scope int delegate(ChunkWorldPos) del) {
+		foreach (y; position.y .. position.y + size.y)
+		foreach (z; position.z .. position.z + size.z)
+		foreach (x; position.x .. position.x + size.x)
+			if (auto ret = del(ChunkWorldPos(x, y, z, dimension)))
+				return ret;
+		return 0;
+	}
+
+	WorldBox intersection(WorldBox other) {
+		return worldBoxIntersection(this, other);
+	}
+
+	WorldBox intersection(Box other) {
+		return WorldBox(boxIntersection(this, other), dimension);
 	}
 
 	bool opEquals()(auto const ref WorldBox other) const

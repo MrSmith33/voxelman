@@ -110,6 +110,7 @@ struct ClientPositionManager
 
 	private void sendPositionToClient(ClientPosition position, SessionId sessionId)
 	{
+		cm.serverWorld.dimObserverMan.updateObserver(sessionId, position.dimension);
 		cm.connection.sendTo(sessionId,
 			ClientPositionPacket(
 				position.dimPos,
@@ -126,8 +127,9 @@ struct ClientPositionManager
 		if (cm.isSpawned(session)) {
 			auto position = cm.db.get!ClientPosition(session.dbKey);
 			auto settings = cm.db.get!ClientSettings(session.dbKey);
+			auto borders = cm.serverWorld.dimMan.dimensionBorders(position.dimension);
 			cm.serverWorld.chunkObserverManager.changeObserverBox(
-				session.sessionId, position.chunk, settings.viewRadius);
+				session.sessionId, position.chunk, settings.viewRadius, borders);
 		}
 	}
 }
@@ -339,6 +341,7 @@ public:
 		infof("%s %s disconnected", event.sessionId, session.name);
 
 		db.remove!LoggedInFlag(session.dbKey);
+		db.remove!ClientSessionInfo(session.dbKey);
 		db.remove!SpawnedFlag(session.dbKey);
 
 		connection.sendToAll(ClientLoggedOutPacket(session.dbKey));

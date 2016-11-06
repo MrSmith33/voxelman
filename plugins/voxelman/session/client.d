@@ -72,6 +72,7 @@ public:
 		connection.registerPacketHandler!SessionInfoPacket(&handleSessionInfoPacket);
 		connection.registerPacketHandler!ClientLoggedInPacket(&handleUserLoggedInPacket);
 		connection.registerPacketHandler!ClientLoggedOutPacket(&handleUserLoggedOutPacket);
+		connection.registerPacketHandler!DimensionInfoPacket(&handleDimensionInfoPacket);
 		connection.registerPacketHandler!ClientPositionPacket(&handleClientPositionPacket);
 		connection.registerPacketHandler!SpawnPacket(&handleSpawnPacket);
 		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
@@ -116,6 +117,15 @@ public:
 		evDispatcher.postEvent(ThisClientLoggedInEvent(thisSessionId));
 	}
 
+	// borders have changed, affects loaded/added chunks
+	void handleDimensionInfoPacket(ubyte[] packetData)
+	{
+		auto packet = unpackPacket!DimensionInfoPacket(packetData);
+		infof("borders %s %s", packet.dimension, packet.borders);
+		clientWorld.setDimensionBorders(packet.dimension, packet.borders);
+	}
+
+	// position has changed, affects loaded/added chunks
 	void handleClientPositionPacket(ubyte[] packetData)
 	{
 		auto packet = unpackPacket!ClientPositionPacket(packetData);

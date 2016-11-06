@@ -395,12 +395,12 @@ void printChunkMetadata(ushort metadata)
 	}
 }
 
+immutable ushort[3] solidity_metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
 ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
 	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
-	static immutable ushort[3] metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
-	return metadatas[solidity];
+	return solidity_metadatas[solidity];
 }
 
 enum CHUNK_SIDE_METADATA_BITS = 13;

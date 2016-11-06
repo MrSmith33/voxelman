@@ -17,7 +17,7 @@ struct DimensionInfo
 	string name;
 	ClientDimPos spawnPos;
 
-	Box borders = Box(ivec3(-int.max, -int.max, -int.max), ivec3(int.max, int.max, int.max));
+	Box borders = Box(ivec3(-int.max/2, -int.max/2, -int.max/2), ivec3(int.max, int.max, int.max));
 }
 
 struct DimensionManager {
@@ -57,5 +57,12 @@ struct DimensionManager {
 
 	void remove(DimensionId dim) {
 		dimensions.remove(dim);
+	}
+
+	Box dimensionBorders(DimensionId dim) {
+		auto dimension = dim in dimensions;
+		if (dimension)
+			return dimension.borders;
+		return DimensionInfo.init.borders;
 	}
 }
