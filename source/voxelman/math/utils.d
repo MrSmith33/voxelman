@@ -8,6 +8,23 @@ module voxelman.math.utils;
 
 import std.traits : isFloatingPoint;
 import voxelman.math;
+import std.algorithm : std_clamp = clamp;
+
+Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector)
+{
+	Vector!(T, n) result;
+	foreach(i, elem; vector.arrayof)
+		result[i] = elem < 0 ? -elem : elem;
+	return result;
+}
+
+Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper)
+{
+	Vector!(T, n) result;
+	foreach(i, ref elem; result.arrayof)
+		elem = std_clamp(vector.arrayof[i], lower.arrayof[i], upper.arrayof[i]);
+	return result;
+}
 
 void nansToZero(T, int size)(ref Vector!(T, size) vector)
 	if (isFloatingPoint!T)

@@ -7,10 +7,10 @@ module voxelman.math;
 
 public import gfm.integers.half;
 public import dlib.math.vector;
-public import std.math : isNaN, floor;
+public import std.math : isNaN, floor, ceil, sqrt;
 public import voxelman.math.utils;
 public import voxelman.math.simplex;
-public import std.algorithm : clamp;
+public import std.algorithm : clamp, min, max;
 
 alias bvec3 = Vector!(byte, 3);
 alias ubvec3 = Vector!(ubyte, 3);

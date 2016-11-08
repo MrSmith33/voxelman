@@ -9,16 +9,22 @@ module voxelman.movement.plugin;
 import voxelman.log;
 
 import voxelman.math;
+static import voxelman.math.utils;
 
 import pluginlib;
 import voxelman.core.events;
 
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
+import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
 import voxelman.input.plugin;
 import voxelman.input.keybindingmanager;
+import voxelman.world.clientworld;
+
+import derelict.imgui.imgui;
+import voxelman.utils.textformatter;
 
 shared static this()
 {
@@ -31,10 +37,30 @@ class MovementPlugin : IPlugin
 	GraphicsPlugin graphics;
 	GuiPlugin guiPlugin;
 	InputPlugin input;
+	BlockPluginClient blockPlugin;
+	ClientWorld clientWorld;
 
-	bool autoMove;
 	ConfigOption cameraSpeedOpt;
 	ConfigOption cameraBoostOpt;
+
+	bool onGround;
+	bool isFlying;
+	bool noclip;
+	float eyesHeight = 1.7;
+	float height = 1.75;
+	float radius = 0.25;
+
+	float friction = 0.9;
+
+	float jumpHeight = 1.5;
+	float jumpTime = 0.4;
+
+	// calculated each tick from jumpHeight and jumpTime
+	float gravity = 1;
+	float jumpSpeed = 1; // ditto
+
+	vec3 speed = vec3(0,0,0);
+	float maxSpeed = 20;
 
 	mixin IdAndSemverFrom!(voxelman.movement.plugininfo);
 
@@ -50,6 +76,8 @@ class MovementPlugin : IPlugin
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_SHIFT, "key.fast"));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_KP_ADD, "key.speed_up", null, &speedUp));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_KP_SUBTRACT, "key.speed_down", null, &speedDown));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F, "key.fly", null, &toggleFlying));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_N, "key.noclip", null, &toggleNoclip));
 
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		cameraSpeedOpt = config.registerOption!int("camera_speed", 20);
@@ -62,59 +90,250 @@ class MovementPlugin : IPlugin
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 		input = pluginman.getPlugin!InputPlugin;
+		clientWorld = pluginman.getPlugin!ClientWorld;
+		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 	}
 
 	void speedUp(string) {
-		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint + 1, 1, 20));
+		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint + 1, 1, 100));
 	}
-	void speedDown(string)	 {
-		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint - 1, 1, 20));
+	void speedDown(string) {
+		cameraSpeedOpt.set(clamp(cameraSpeedOpt.get!uint - 1, 1, 100));
+	}
+	void toggleFlying(string) {
+		isFlying = !isFlying;
+	}
+	void toggleNoclip(string) {
+		noclip = !noclip;
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
+		gravity = (2*jumpHeight/(jumpTime*jumpTime));
+		jumpSpeed = sqrt(2*gravity*jumpHeight);
+
+		vec3 eyesDelta = vec3(0, eyesHeight, 0);
+		vec3 legsPos = graphics.camera.position - eyesDelta;
+		vec3 inputs = handleControls();
+		vec3 targetDelta = calcTargetDelta(inputs, event.deltaTime);
+		vec3 newLegsPos;
+
+		if (noclip)
+			newLegsPos = legsPos + targetDelta;
+		else
+			newLegsPos = movePlayer(legsPos, targetDelta, event.deltaTime);
+
+		// apply friction
+		if ((onGround || isFlying) && inputs.x == 0 && inputs.z == 0) {
+			speed.x = speed.x * friction;
+			speed.z = speed.z * friction;
+			if (isFlying) speed.y = speed.y * friction;
+		}
+
+		graphics.camera.position = newLegsPos + eyesDelta;
+		graphics.camera.isUpdated = false;
+	}
+
+	void onPostUpdateEvent(ref PostUpdateEvent event)
+	{
+		igBegin("Debug");
+			igTextf("onGround: %s", onGround);
+			//igTextf("speed: %s", speed);
+    		igCheckbox("[N]oclip", &noclip);
+    		igCheckbox("[F]ly mode", &isFlying);
+		igEnd();
+	}
+
+	// returns acceleration given by controls
+	vec3 handleControls()
+	{
+		uint cameraSpeed = cameraSpeedOpt.get!uint;
+
+		vec3 inputs = vec3(0,0,0);
 		if(guiPlugin.mouseLocked)
 		{
-			ivec2 mousePos = input.mousePosition;
-			mousePos -= cast(ivec2)(guiPlugin.window.size) / 2;
+			handleMouse();
 
-			// scale, so up and left is positive, as rotation is anti-clockwise
-			// and coordinate system is right-hand and -z if forward
-			mousePos *= -1;
-
-			if(mousePos.x !=0 || mousePos.y !=0)
-			{
-				graphics.camera.rotate(vec2(mousePos));
-			}
-			input.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
-
-			uint cameraSpeed = cameraSpeedOpt.get!uint;
-			vec3 posDelta = vec3(0,0,0);
 			if(input.isKeyPressed("key.fast")) cameraSpeed *= cameraBoostOpt.get!uint;
 
-			if(input.isKeyPressed("key.right")) posDelta.x = 1;
-			else if(input.isKeyPressed("key.left")) posDelta.x = -1;
+			if(input.isKeyPressed("key.right")) inputs.x = 1;
+			else if(input.isKeyPressed("key.left")) inputs.x = -1;
 
-			if(input.isKeyPressed("key.forward")) posDelta.z = 1;
-			else if(input.isKeyPressed("key.backward")) posDelta.z = -1;
+			if(input.isKeyPressed("key.forward")) inputs.z = 1;
+			else if(input.isKeyPressed("key.backward")) inputs.z = -1;
 
-			if(input.isKeyPressed("key.up")) posDelta.y = 1;
-			else if(input.isKeyPressed("key.down")) posDelta.y = -1;
-
-			if (posDelta != vec3(0))
+			if (isFlying)
 			{
-				posDelta.normalize();
-				posDelta *= cameraSpeed * event.deltaTime;
-				graphics.camera.moveAxis(posDelta);
+				if(input.isKeyPressed("key.up")) inputs.y = 1;
+				else if(input.isKeyPressed("key.down")) inputs.y = -1;
+			}
+			else
+			{
+				if (onGround && input.isKeyPressed("key.up"))
+				{
+					speed.y = jumpSpeed;
+					onGround = false;
+				}
 			}
 		}
-		// TODO: remove after bug is found
-		else if (autoMove)
+		inputs.normalize();
+		// scale
+		return inputs * cameraSpeed;
+	}
+
+	void handleMouse()
+	{
+		ivec2 mousePos = input.mousePosition;
+		mousePos -= cast(ivec2)(guiPlugin.window.size) / 2;
+		// scale, so up and left is positive, as rotation is anti-clockwise
+		// and coordinate system is right-hand and -z if forward
+		mousePos *= -1;
+
+		if(mousePos.x !=0 || mousePos.y !=0)
 		{
-			// Automoving
-			graphics.camera.moveAxis(vec3(0,0,20)*event.deltaTime);
+			graphics.camera.rotate(vec2(mousePos));
 		}
+		input.mousePosition = cast(ivec2)(guiPlugin.window.size) / 2;
+	}
+
+	vec3 calcTargetDelta(vec3 inputs, float dt)
+	{
+		vec3 rightVec = graphics.camera.rotationQuatHor.rotate(vec3(1,0,0));
+		vec3 targetVec = graphics.camera.rotationQuatHor.rotate(vec3(0,0,-1));
+		vec3 inputsAccel = rightVec * inputs.x + vec3(0,1,0) * inputs.y + targetVec * inputs.z;
+
+		float effectiveGravity = isFlying ? 0 : gravity;
+
+		vec3 accel = inputsAccel + vec3(0, -effectiveGravity, 0);
+		speed += accel * dt;
+
+		float absSpeed = speed.length;
+		vec3 speedNormal = speed / absSpeed;
+		vec3 clampedSpeed = speedNormal * clamp(absSpeed, -maxSpeed, maxSpeed);
+
+		vec3 targetDelta = clampedSpeed * dt;
+		return targetDelta;
+	}
+
+	vec3 movePlayer(vec3 pos, vec3 delta, float dt)
+	{
+		float distance = delta.length;
+		int num_steps = cast(int)ceil(distance); // num cells moved
+
+		vec3 move_step = delta / num_steps;
+
+		onGround = false;
+
+		foreach(i; 0..num_steps) {
+			pos += move_step;
+			vec3 speed_mult = collide(pos, radius, height);
+			speed *= speed_mult;
+		}
+
+		return pos;
+	}
+
+	vec3 collide(ref vec3 point, float rad, float height)
+	{
+		ivec3 cell = ivec3(floor(point.x), floor(point.y), floor(point.z));
+		vec3 speed_mult = vec3(1, 1, 1);
+
+		Aabb body_aabb = Aabb(point+vec3(0, height/2, 0), vec3(rad, height/2, rad));
+
+		foreach(dy; -1..ceil(height+1)) {
+		foreach(dx; [0, -1, 1]) {
+		foreach(dz; [0, -1, 1]) {
+		ivec3 local_cell = cell + ivec3(dx, dy, dz);
+		if (clientWorld.isBlockSolid(local_cell))
+		{
+			Aabb cell_aabb = Aabb(vec3(local_cell) + vec3(0.5,0.5,0.5), vec3(0.5,0.5,0.5));
+			bool collides = cell_aabb.collides(body_aabb);
+			if (collides)
+			{
+				vec3 vector = cell_aabb.intersectionSize(body_aabb);
+				int min_component;
+				if (vector.x < vector.y) {
+					if (vector.x < vector.z) min_component = 0;
+					else min_component = 2;
+				} else {
+					if (vector.y < vector.z) min_component = 1;
+					else min_component = 2;
+				}
+
+				if (min_component == 0) // x
+				{
+					int dir = cell_aabb.pos.x < body_aabb.pos.x ? 1 : -1;
+					body_aabb.pos.x = body_aabb.pos.x + vector.x * dir;
+					speed_mult.x = 0;
+				}
+				else if (min_component == 1) // y
+				{
+					int dir = cell_aabb.pos.y < body_aabb.pos.y ? 1 : -1;
+					body_aabb.pos.y = body_aabb.pos.y + vector.y * dir;
+					speed_mult.y = 0;
+					if (dir == 1)
+					{
+						onGround = true;
+					}
+				}
+				else // z
+				{
+					int dir = cell_aabb.pos.z < body_aabb.pos.z ? 1 : -1;
+					body_aabb.pos.z = body_aabb.pos.z + vector.z * dir;
+					speed_mult.z = 0;
+				}
+			}
+		}
+		}
+		}
+		}
+
+		point.x = body_aabb.pos.x;
+		point.z = body_aabb.pos.z;
+		point.y = body_aabb.pos.y - body_aabb.size.y;
+
+		return speed_mult;
+	}
+}
+
+
+struct Aabb
+{
+	vec3 pos;
+	vec3 size;
+
+	// returns collides, vector
+	bool collides(Aabb other) {
+		vec3 delta = (other.pos - pos).abs;
+		vec3 min_distance = size + other.size;
+		return delta.x < min_distance.x && delta.y < min_distance.y && delta.z < min_distance.z;
+	}
+
+	vec3 intersectionSize(Aabb other) {
+		float x = pos.x - size.x;
+		float y = pos.y - size.y;
+		float z = pos.z - size.z;
+		float x2 = x + size.x*2;
+		float y2 = y + size.y*2;
+		float z2 = z + size.z*2;
+
+		float o_x = other.pos.x - other.size.x;
+		float o_y = other.pos.y - other.size.y;
+		float o_z = other.pos.z - other.size.z;
+		float o_x2 = o_x + other.size.x*2;
+		float o_y2 = o_y + other.size.y*2;
+		float o_z2 = o_z + other.size.z*2;
+
+		float x_min = max(x, o_x);
+		float y_min = max(y, o_y);
+		float z_min = max(z, o_z);
+		float x_max = min(x2, o_x2);
+		float y_max = min(y2, o_y2);
+		float z_max = min(z2, o_z2);
+
+		return vec3(x_max - x_min, y_max - y_min, z_max - z_min);
 	}
 }

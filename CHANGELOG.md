@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add player physics.
 - Add dimension observer manager. Server world sends info about dimension border to clients. Use dimension borders - to shift and clamp observation box of clients.
 - Add dimension manager.
 - Add getOrCreate to HashMap.

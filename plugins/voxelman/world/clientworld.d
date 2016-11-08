@@ -108,7 +108,7 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_M, "key.toggleMetaData", null, &onToggleMetaData));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F2, "key.toggleMetaData", null, &onToggleMetaData));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewBox));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
 	}
@@ -481,6 +481,12 @@ public:
 		observerPosition.w = dimension;
 		this.positionKey = positionKey;
 		updateObserverPosition();
+	}
+
+	bool isBlockSolid(ivec3 blockWorldPos) {
+		auto block = worldAccess.getBlock(
+			BlockWorldPos(blockWorldPos, observerPosition.w));
+		return block != 0 && blockPlugin.getBlocks()[block].isVisible;
 	}
 
 	DimensionId currentDimension() @property {

@@ -97,16 +97,10 @@ class WorldInteractionPlugin : IPlugin
 		StopWatch sw;
 		sw.start();
 
-		auto isBlockSolid = (ivec3 blockWorldPos) {
-			auto block = clientWorld.worldAccess.getBlock(
-				BlockWorldPos(blockWorldPos, clientWorld.currentDimension));
-			return blockPlugin.getBlocks()[block].isVisible;
-		};
-
 		traceBatch.reset();
 
 		cursorHit = traceRay(
-			isBlockSolid,
+			&clientWorld.isBlockSolid,
 			graphics.camera.position,
 			graphics.camera.target,
 			600.0, // max distance

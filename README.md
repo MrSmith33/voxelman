@@ -50,3 +50,5 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - `[` and `]` to change view distance.
 - Keypad `-` and `+` to change movement speed.
 - `U` disable position update.
+- `F` flying mode.
+- `N` noclip.
