@@ -30,6 +30,8 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Move all engine initialization code into enginestarter.d.
+- Create PluginManager outside of client and server plugins.
 - Redo netlib package.
 - Remove unused source parameter of packet handlers on client.
 - Rename ClientId into SessionId.

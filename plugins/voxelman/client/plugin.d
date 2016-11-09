@@ -5,7 +5,6 @@ Authors: Andrey Penechko.
 */
 module voxelman.client.plugin;
 
-import core.thread : Thread, thread_joinAll;
 import core.time;
 import voxelman.log;
 
@@ -20,7 +19,6 @@ import anchovy.fpshelper;
 
 import netlib;
 import pluginlib;
-import pluginlib.pluginmanager;
 
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
@@ -71,8 +69,6 @@ auto formatDuration(Duration dur)
 final class ClientPlugin : IPlugin
 {
 private:
-	PluginManager pluginman;
-
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
@@ -81,9 +77,6 @@ private:
 	ClientWorld clientWorld;
 	NetClientPlugin connection;
 	Debugger dbg;
-
-	// valid when !dedicated
-	Thread serverThread;
 
 public:
 	AppStatistics stats;
@@ -215,55 +208,13 @@ public:
 		igEnd();
 	}
 
-	this()
-	{
-		pluginman = new PluginManager;
-	}
-
-	void load(string[] args)
-	{
-		// register all plugins and managers
-		import voxelman.pluginlib.plugininforeader : filterEnabledPlugins;
-		foreach(p; pluginRegistry.clientPlugins.byValue.filterEnabledPlugins(args))
-		{
-			pluginman.registerPlugin(p);
-		}
-
-		// Actual loading sequence
-		pluginman.initPlugins();
-	}
-
-	void startServer(string[] args)
-	{
-		void exec()
-		{
-			try {
-				pluginRegistry.serverMain(args, false/*internal*/);
-			} catch(Throwable t) {
-				criticalf("Server failed with error");
-				criticalf("%s", t.msg);
-				criticalf("%s", t);
-			}
-		}
-		serverThread = new Thread(&exec);
-		serverThread.start();
-	}
-
-	void run(string[] args, bool dedicated)
+	void run(string[] args)
 	{
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
-		infof("Client thread: %s", Thread.getThis.id);
-
 		version(manualGC) GC.disable;
 
-		if (!dedicated)
-		{
-			startServer(args);
-		}
-
-		load(args);
 		evDispatcher.postEvent(GameStartEvent());
 
 		MonoTime prevTime = MonoTime.currTime;
@@ -298,17 +249,8 @@ public:
 				++frame;
 		}
 
-		if (!dedicated)
-		{
-			// Stop the server
-			import voxelman.client.servercontrol : stopServer;
-			stopServer();
-		}
-
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
-		thread_joinAll();
-		infof("[Stopped]");
 	}
 
 	void updateFrameTime()

@@ -5,42 +5,10 @@ Authors: Andrey Penechko.
 */
 module main;
 
-import std.file : mkdirRecurse;
-import std.getopt;
-
-import voxelman.log;
-import pluginlib;
+import enginestarter;
 
 void main(string[] args)
 {
-	mkdirRecurse("../logs");
-
-	enum AppType { client, server, combined }
-	AppType appType;
-
-	std.getopt.getopt(args,
-		std.getopt.config.passThrough,
-		std.getopt.config.required,
-		"app", &appType);
-
-	scope(exit) closeBinLog();
-
-	final switch(appType) with(AppType)
-	{
-		case client:
-			setupLogger("../logs/client.log");
-			initBinLog("../logs/client.bin");
-			pluginRegistry.clientMain(args, true/*dedicated*/);
-			break;
-		case server:
-			setupLogger("../logs/server.log");
-			initBinLog("../logs/server.bin");
-			pluginRegistry.serverMain(args, true/*dedicated*/);
-			break;
-		case combined:
-			setupLogger("../logs/client.log");
-			initBinLog("../logs/client.bin");
-			pluginRegistry.clientMain(args, false/*combined*/);
-			break;
-	}
+	EngineStarter engineStarter;
+	engineStarter.start(args);
 }

@@ -10,7 +10,6 @@ import voxelman.log;
 import std.datetime : MonoTime, Duration, msecs, usecs, dur;
 
 import pluginlib;
-import pluginlib.pluginmanager;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -31,16 +30,10 @@ shared static this()
 
 struct WorldSaveInternalEvent {}
 
-enum ServerMode
-{
-	dedicated,
-	internal
-}
 
 class ServerPlugin : IPlugin
 {
 private:
-	PluginManager pluginman;
 	EventDispatcherPlugin evDispatcher;
 
 public:
@@ -64,32 +57,13 @@ public:
 	void onStopCommand(CommandParams) { isRunning = false; }
 	void onSaveCommand(CommandParams) { save(); }
 
-	void load(string[] args)
+	void run(string[] args, ServerMode serverMode)
 	{
-		pluginman = new PluginManager;
-		// register all plugins and managers
-		import voxelman.pluginlib.plugininforeader : filterEnabledPlugins;
-		foreach(p; pluginRegistry.serverPlugins.byValue.filterEnabledPlugins(args))
-		{
-			pluginman.registerPlugin(p);
-		}
-		// Actual loading sequence
-		pluginman.initPlugins();
-	}
-
-	void run(string[] args, bool dedicated)
-	{
-		import core.thread : Thread, thread_joinAll;
+		import core.thread : Thread;
 		import core.memory;
 
-		infof("Server thread: %s", Thread.getThis.id);
+		mode = serverMode;
 
-		if (dedicated)
-			mode = ServerMode.dedicated;
-		else
-			mode = ServerMode.internal;
-
-		load(args);
 		infof("Starting game...");
 		evDispatcher.postEvent(GameStartEvent());
 		infof("[Running]");
@@ -133,12 +107,6 @@ public:
 		save();
 		infof("Stopping...");
 		evDispatcher.postEvent(GameStopEvent());
-
-		if (mode == ServerMode.dedicated)
-		{
-			thread_joinAll();
-		}
-		infof("[Stopped]");
 	}
 
 	void autosave(MonoTime now)

@@ -13,7 +13,14 @@ import pluginlib;
 /// register plugins here inside shared static this
 __gshared PluginRegistry pluginRegistry;
 
-alias MainDel = void delegate(string[] args, bool dedicated);
+alias ClientMain = void delegate(string[] args);
+alias ServerMain = void delegate(string[] args, ServerMode);
+
+enum ServerMode
+{
+	standalone,
+	internal
+}
 
 struct PluginRegistry
 {
@@ -32,17 +39,17 @@ struct PluginRegistry
 		serverPlugins[typeid(plug)] = plug;
 	}
 
-	void regClientMain(MainDel clientMain)
+	void regClientMain(ClientMain clientMain)
 	{
 		this.clientMain = clientMain;
 	}
-	void regServerMain(MainDel serverMain)
+	void regServerMain(ServerMain serverMain)
 	{
 		this.serverMain = serverMain;
 	}
 
 	IPlugin[TypeInfo] clientPlugins;
 	IPlugin[TypeInfo] serverPlugins;
-	MainDel clientMain;
-	MainDel serverMain;
+	ClientMain clientMain;
+	ServerMain serverMain;
 }

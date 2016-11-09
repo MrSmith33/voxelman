@@ -46,6 +46,19 @@ interface IPluginManager
 	IPlugin findPlugin(TypeInfo pluginType);
 	IPlugin findPluginById(string pluginId);
 
+	/// Returns null if plugin is not loaded, P otherwise
+	final P findPlugin(P)()
+	{
+		import std.exception : enforce;
+		import std.string : format;
+		IPlugin plugin = findPlugin(typeid(P));
+		if (!plugin) return null;
+
+		P exactPlugin = cast(P)plugin;
+		enforce(exactPlugin, format("Cannot cast plugin to '%s'", typeid(P)));
+		return exactPlugin;
+	}
+
 	/// Guaranteed to return not null reference to P
 	final P getPlugin(P)()
 	{

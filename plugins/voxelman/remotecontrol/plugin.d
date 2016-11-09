@@ -40,10 +40,12 @@ final class RemoteControl(bool clientSide) : IPlugin
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		commandPlugin = pluginman.getPlugin!CommandPlugin;
 		bool enable = true;
+
 		static if (!clientSide)
 		{
-			ServerPlugin serverPlugin = pluginman.getPlugin!ServerPlugin;
-			enable = serverPlugin.mode == ServerMode.dedicated;
+			ServerPlugin serverPlugin = pluginman.findPlugin!ServerPlugin;
+			bool serverPresent = serverPlugin !is null;
+			enable = serverPresent && (serverPlugin.mode == ServerMode.standalone);
 		}
 
 		if (enable)
