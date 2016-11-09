@@ -38,7 +38,9 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 
 ## Server commands
 - `tp <x> [<y>] <z> | tp <player name>` - teleports to position or other player's location
+- `tp u|d|l|r|f|b <num_blocks>` - teleports player in choosen direction
 - `spawn` teleports to starting world position
+- `spawn set` sets world spawn
 
 ## Controls (Can be changed in `config/client.sdl`)
 - `Q` to lock mouse.

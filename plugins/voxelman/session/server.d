@@ -134,6 +134,19 @@ struct ClientPositionManager
 	}
 }
 
+immutable vec3[string] dirToVec;
+static this()
+{
+	dirToVec = [
+		"u" : vec3( 0, 1, 0),
+		"d" : vec3( 0,-1, 0),
+		"l" : vec3(-1, 0, 0),
+		"r" : vec3( 1, 0, 0),
+		"f" : vec3( 0, 0,-1),
+		"b" : vec3( 0, 0, 1),
+		];
+}
+
 final class ClientManager : IPlugin
 {
 private:
@@ -245,6 +258,7 @@ public:
 
 		vec3 pos;
 
+		// tp <x> <y> <z>
 		auto regex3 = regex(`(-?\d+)\W+(-?\d+)\W+(-?\d+)`, "m");
 		auto captures3 = matchFirst(params.rawArgs, regex3);
 
@@ -259,6 +273,25 @@ public:
 			return;
 		}
 
+		// tp u|d|l|r|f|b \d+
+		auto regexDir = regex(`([udlrfb])\W+(-?\d+)`, "m");
+		auto capturesDir = matchFirst(params.rawArgs, regexDir);
+
+		if (!capturesDir.empty)
+		{
+			string dir = capturesDir[1];
+			if (auto dirVector = dir in dirToVec)
+			{
+				int delta = to!int(capturesDir[2]);
+				pos = position.dimPos.pos + *dirVector * delta;
+				connection.sendTo(session.sessionId, MessagePacket(
+					format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
+				clientPosMan.tpToPos(session, ClientDimPos(pos), position.dimension);
+				return;
+			}
+		}
+
+		// tp <x> <z>
 		auto regex2 = regex(`(-?\d+)\W+(-?\d+)`, "m");
 		auto captures2 = matchFirst(params.rawArgs, regex2);
 		if (!captures2.empty)
@@ -270,6 +303,7 @@ public:
 			return;
 		}
 
+		// tp <player>
 		auto regex1 = regex(`[a-Z]+[_a-Z0-9]+`);
 		auto captures1 = matchFirst(params.rawArgs, regex1);
 		if (!captures1.empty)
@@ -287,7 +321,7 @@ public:
 		}
 
 		connection.sendTo(params.source, MessagePacket(
-			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>"`));
+			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>" | "tp u|d|l|r|f|b <num_blocks>"`));
 	}
 
 	bool isLoggedIn(SessionId sessionId)

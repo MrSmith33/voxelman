@@ -112,39 +112,48 @@ class MovementPlugin : IPlugin
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
-		gravity = (2*jumpHeight/(jumpTime*jumpTime));
-		jumpSpeed = sqrt(2*gravity*jumpHeight);
+		if (checkLoadedStatus())
+		{
+			gravity = (2*jumpHeight/(jumpTime*jumpTime));
+			jumpSpeed = sqrt(2*gravity*jumpHeight);
+			float delta = clamp(event.deltaTime, 0, 2);
 
-		vec3 eyesDelta = vec3(0, eyesHeight, 0);
-		vec3 legsPos = graphics.camera.position - eyesDelta;
-		vec3 inputs = handleControls();
-		vec3 targetDelta = calcTargetDelta(inputs, event.deltaTime);
-		vec3 newLegsPos;
+			vec3 eyesDelta = vec3(0, eyesHeight, 0);
+			vec3 legsPos = graphics.camera.position - eyesDelta;
+			vec3 inputs = handleControls();
+			vec3 targetDelta = calcTargetDelta(inputs, delta);
+			vec3 newLegsPos;
 
-		if (noclip)
-			newLegsPos = legsPos + targetDelta;
-		else
-			newLegsPos = movePlayer(legsPos, targetDelta, event.deltaTime);
+			if (noclip)
+				newLegsPos = legsPos + targetDelta;
+			else
+				newLegsPos = movePlayer(legsPos, targetDelta, delta);
 
-		// apply friction
-		if ((onGround || isFlying) && inputs.x == 0 && inputs.z == 0) {
-			speed.x = speed.x * friction;
-			speed.z = speed.z * friction;
-			if (isFlying) speed.y = speed.y * friction;
+			// apply friction
+			if ((onGround || isFlying) && inputs.x == 0 && inputs.z == 0) {
+				speed.x = speed.x * friction;
+				speed.z = speed.z * friction;
+				if (isFlying) speed.y = speed.y * friction;
+			}
+
+			graphics.camera.position = newLegsPos + eyesDelta;
+			graphics.camera.isUpdated = false;
 		}
-
-		graphics.camera.position = newLegsPos + eyesDelta;
-		graphics.camera.isUpdated = false;
 	}
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		igBegin("Debug");
-			igTextf("onGround: %s", onGround);
+			igTextf("on ground: %s", onGround);
 			//igTextf("speed: %s", speed);
-    		igCheckbox("[N]oclip", &noclip);
-    		igCheckbox("[F]ly mode", &isFlying);
+			igCheckbox("[N]oclip", &noclip);
+			igCheckbox("[F]ly mode", &isFlying);
 		igEnd();
+	}
+
+	bool checkLoadedStatus()
+	{
+		return clientWorld.chunkManager.isChunkLoaded(clientWorld.observerPosition);
 	}
 
 	// returns acceleration given by controls
@@ -170,7 +179,13 @@ class MovementPlugin : IPlugin
 				if(input.isKeyPressed("key.up")) inputs.y = 1;
 				else if(input.isKeyPressed("key.down")) inputs.y = -1;
 			}
-			else
+
+			if (!onGround) inputs /= 10;
+
+			//if (inputs != vec3(0,0,0))
+			//	speed = vec3(0,0,0);
+
+			if (!isFlying)
 			{
 				if (onGround && input.isKeyPressed("key.up"))
 				{
@@ -204,13 +219,14 @@ class MovementPlugin : IPlugin
 		vec3 rightVec = graphics.camera.rotationQuatHor.rotate(vec3(1,0,0));
 		vec3 targetVec = graphics.camera.rotationQuatHor.rotate(vec3(0,0,-1));
 		vec3 inputsAccel = rightVec * inputs.x + vec3(0,1,0) * inputs.y + targetVec * inputs.z;
-
 		float effectiveGravity = isFlying ? 0 : gravity;
 
 		vec3 accel = inputsAccel + vec3(0, -effectiveGravity, 0);
 		speed += accel * dt;
 
 		float absSpeed = speed.length;
+		if (absSpeed == 0) return vec3(0,0,0);
+
 		vec3 speedNormal = speed / absSpeed;
 		vec3 clampedSpeed = speedNormal * clamp(absSpeed, -maxSpeed, maxSpeed);
 
@@ -222,6 +238,7 @@ class MovementPlugin : IPlugin
 	{
 		float distance = delta.length;
 		int num_steps = cast(int)ceil(distance); // num cells moved
+		if (num_steps == 0) return pos;
 
 		vec3 move_step = delta / num_steps;
 
