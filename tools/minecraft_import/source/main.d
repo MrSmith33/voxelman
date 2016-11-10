@@ -17,6 +17,10 @@ import voxelman.geometry.box;
 import voxelman.geometry.rect;
 import voxelman.utils.mapping;
 
+import pluginlib;
+import pluginlib.pluginmanager;
+
+import voxelman.core.events;
 import voxelman.core.config;
 import voxelman.block.utils;
 import voxelman.world.storage;
@@ -101,46 +105,14 @@ int main(string[] args)
 		return 1;
 	}
 
-	serverMain(params);
+	serverMain1(params);
 
 	return 0;
 }
 
-import pluginlib;
-import voxelman.core.events;
-
-class ImportServer : IPlugin
-{
-public:
-	import voxelman.block.plugin;
-	import voxelman.eventdispatcher.plugin;
-	import voxelman.world.serverworld;
-
-	EventDispatcherPlugin evDispatcher;
-	BlockInfoTable blocks;
-	ChunkManager chunkManager;
-
-	override string id() @property { return "minecraft_import.server"; }
-	override string semver() @property { return "1.0.0"; }
-
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
-	{
-		auto bm = resmanRegistry.getResourceManager!BlockManager;
-		blocks = bm.getBlocks();
-	}
-
-	override void init(IPluginManager pluginman)
-	{
-		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		auto serverWorld = pluginman.getPlugin!ServerWorld;
-		chunkManager = serverWorld.chunkManager;
-	}
-}
-
-void serverMain(ImportParams params)
+void serverMain1(ImportParams params)
 {
 	import enginestarter;
-	import pluginlib.pluginmanager;
 
 	EngineStarter engineStarter;
 	engineStarter.setupLogs(EngineStarter.AppType.server);
@@ -148,8 +120,6 @@ void serverMain(ImportParams params)
 
 	auto pluginman = new PluginManager;
 
-	auto server = new ImportServer;
-	pluginman.registerPlugin(server);
 	pluginman.registerPlugin(new BlockPluginServer);
 	pluginman.registerPlugin(new BlockEntityServer);
 	pluginman.registerPlugin(new CommandPluginServer);
@@ -162,19 +132,31 @@ void serverMain(ImportParams params)
 	pluginman.registerPlugin(new ServerWorld);
 
 	pluginman.initPlugins();
-	server.chunkManager.isLoadCancelingEnabled = true;
-	server.chunkManager.loadChunkHandler = (ChunkWorldPos){};
 
-	server.evDispatcher.postEvent(GameStartEvent());
-
-	transferRegions(params, server.chunkManager, server.blocks);
-
-	infof("Saving...");
-	server.evDispatcher.postEvent(WorldSaveInternalEvent());
-	infof("Stopping...");
-	server.evDispatcher.postEvent(GameStopEvent());
+	serverMain2(pluginman, params);
 
 	engineStarter.waitForThreads();
+}
+
+void serverMain2(PluginManager pluginman, ImportParams params)
+{
+	EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+	auto bm = pluginman.getResourceManager!BlockManager;
+	BlockInfoTable blocks = bm.getBlocks();
+	auto serverWorld = pluginman.getPlugin!ServerWorld;
+	ChunkManager chunkManager = serverWorld.chunkManager;
+
+	chunkManager.isLoadCancelingEnabled = true;
+	chunkManager.loadChunkHandler = (ChunkWorldPos){};
+
+	evDispatcher.postEvent(GameStartEvent());
+
+	transferRegions(params, chunkManager, blocks);
+
+	infof("Saving...");
+	evDispatcher.postEvent(WorldSaveInternalEvent());
+	infof("Stopping...");
+	evDispatcher.postEvent(GameStopEvent());
 }
 
 void transferRegions(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)
