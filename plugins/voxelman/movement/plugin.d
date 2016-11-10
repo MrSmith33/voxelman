@@ -112,6 +112,9 @@ class MovementPlugin : IPlugin
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
+		if(guiPlugin.mouseLocked)
+			handleMouse();
+
 		if (checkLoadedStatus())
 		{
 			gravity = (2*jumpHeight/(jumpTime*jumpTime));
@@ -164,8 +167,6 @@ class MovementPlugin : IPlugin
 		vec3 inputs = vec3(0,0,0);
 		if(guiPlugin.mouseLocked)
 		{
-			handleMouse();
-
 			if(input.isKeyPressed("key.fast")) cameraSpeed *= cameraBoostOpt.get!uint;
 
 			if(input.isKeyPressed("key.right")) inputs.x = 1;

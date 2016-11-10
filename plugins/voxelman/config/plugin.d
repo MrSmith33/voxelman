@@ -15,25 +15,25 @@ enum string CONFIG_FILE_NAME_SERVER = "../../config/server.sdl";
 
 shared static this()
 {
-	pluginRegistry.regClientPlugin(new ConfigPlugin(true));
-	pluginRegistry.regServerPlugin(new ConfigPlugin(false));
+	import core.runtime : Runtime;
+	pluginRegistry.regClientPlugin(new ConfigPlugin(CONFIG_FILE_NAME_CLIENT, Runtime.args));
+	pluginRegistry.regServerPlugin(new ConfigPlugin(CONFIG_FILE_NAME_SERVER, Runtime.args));
 }
 
 final class ConfigPlugin : IPlugin
 {
 	mixin IdAndSemverFrom!"voxelman.config.plugininfo";
 	string configFileName;
+	string[] args;
 
-	this(bool client)
+	this(string configFileName, string[] args)
 	{
-		if (client)
-			configFileName = CONFIG_FILE_NAME_CLIENT;
-		else
-			configFileName = CONFIG_FILE_NAME_SERVER;
+		this.configFileName = configFileName;
+		this.args = args;
 	}
 
 	override void registerResourceManagers(void delegate(IResourceManager) reg)
 	{
-		reg(new ConfigManager(configFileName));
+		reg(new ConfigManager(configFileName, args));
 	}
 }

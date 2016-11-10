@@ -10,6 +10,7 @@ import std.file;
 import std.getopt;
 import std.path;
 import std.stdio;
+import std.string : format;
 
 import voxelman.log;
 import voxelman.math;
@@ -49,6 +50,8 @@ struct ImportParams
 {
 	string inputDirectory;
 	string outputFile;
+	string outputDirectory;
+	string outputWorldName;
 	ushort outDimension;
 	bool appendDimention;
 	string regionDir;
@@ -98,6 +101,10 @@ int main(string[] args)
 	writefln(`Input "%s"`, params.inputDirectory);
 	writefln(`Output "%s"`, params.outputFile);
 
+	params.outputWorldName = params.outputFile.baseName.stripExtension;
+	params.outputDirectory = params.outputFile.dirName.relativePath;
+	writefln(`--save_dir="%s" --world_name="%s"`, params.outputDirectory, params.outputWorldName);
+
 	params.regionDir = buildPath(params.inputDirectory, "region");
 
 	if (!params.regionDir.exists) {
@@ -105,12 +112,16 @@ int main(string[] args)
 		return 1;
 	}
 
-	serverMain1(params);
+	string[] newArgs = args;
+	newArgs ~= format(`--world_name=%s`, params.outputWorldName);
+	newArgs ~= format(`--save_dir=%s`, params.outputDirectory);
+
+	serverMain1(params, newArgs);
 
 	return 0;
 }
 
-void serverMain1(ImportParams params)
+void serverMain1(ImportParams params, string[] args)
 {
 	import enginestarter;
 
@@ -123,7 +134,7 @@ void serverMain1(ImportParams params)
 	pluginman.registerPlugin(new BlockPluginServer);
 	pluginman.registerPlugin(new BlockEntityServer);
 	pluginman.registerPlugin(new CommandPluginServer);
-	pluginman.registerPlugin(new ConfigPlugin(false));
+	pluginman.registerPlugin(new ConfigPlugin(CONFIG_FILE_NAME_SERVER, args));
 	pluginman.registerPlugin(new DebugServer);
 	pluginman.registerPlugin(new EntityPluginServer);
 	pluginman.registerPlugin(new EventDispatcherPlugin);
@@ -151,7 +162,7 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 
 	evDispatcher.postEvent(GameStartEvent());
 
-	transferRegions(params, chunkManager, blocks);
+	transferRegions(params, serverWorld, blocks);
 
 	infof("Saving...");
 	evDispatcher.postEvent(WorldSaveInternalEvent());
@@ -159,12 +170,20 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 	evDispatcher.postEvent(GameStopEvent());
 }
 
-void transferRegions(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)
+void transferRegions(ImportParams params, ServerWorld serverWorld, BlockInfoTable blocks)
 {
-	transferRegionsImpl(params, chunkManager, blocks);
+	setDimensionBorders(serverWorld, params.outDimension);
+	transferRegionsImpl(params, serverWorld.chunkManager, blocks);
 
-	updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
-	chunkManager.commitSnapshots(TimestampType(0));
+	updateMetadata(serverWorld.chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
+	serverWorld.chunkManager.commitSnapshots(TimestampType(0));
+}
+
+void setDimensionBorders(ServerWorld serverWorld, DimensionId outDimension)
+{
+	DimensionInfo* dimInfo = serverWorld.dimMan.getOrCreate(outDimension);
+	dimInfo.borders.position.y = 0;
+	dimInfo.borders.size.y = 8;
 }
 
 void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)

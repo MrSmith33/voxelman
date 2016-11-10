@@ -10,7 +10,6 @@ import std.file : read, exists;
 public import std.variant;
 import std.traits : isArray;
 import std.conv : to;
-import core.runtime : Runtime;
 
 import pluginlib;
 import sdlang;
@@ -48,14 +47,16 @@ final class ConfigManager : IResourceManager
 private:
 	ConfigOption[string] options;
 	string filename;
+	string[] args;
 
 public:
 
 	override string id() @property { return "voxelman.managers.configmanager"; }
 
-	this(string filename)
+	this(string filename, string[] args)
 	{
 		this.filename = filename;
+		this.args = args;
 	}
 
 	override void loadResources()
@@ -82,7 +83,6 @@ public:
 	{
 		bool readConfigFile = exists(filename);
 		Tag root;
-		string[] args = Runtime.args;
 
 		if (readConfigFile)
 		try
