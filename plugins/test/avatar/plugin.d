@@ -46,7 +46,7 @@ mixin template AvatarPluginCommon()
 final class AvatarClient : IPlugin
 {
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(test.avatar.plugininfo);
+	mixin IdAndSemverFrom!"test.avatar.plugininfo";
 	mixin AvatarPluginCommon;
 
 	Batch batch;
@@ -82,7 +82,7 @@ final class AvatarClient : IPlugin
 
 final class AvatarServer : IPlugin
 {
-	mixin IdAndSemverFrom!(test.avatar.plugininfo);
+	mixin IdAndSemverFrom!"test.avatar.plugininfo";
 	mixin AvatarPluginCommon;
 
 	EventDispatcherPlugin evDispatcher;

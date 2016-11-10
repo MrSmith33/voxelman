@@ -58,7 +58,7 @@ final class CommandPluginServer : IPlugin
 mixin template CommandPluginCommon()
 {
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.command.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.command.plugininfo";
 
 	CommandHandler[string] handlers;
 

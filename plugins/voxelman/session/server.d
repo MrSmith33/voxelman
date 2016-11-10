@@ -160,7 +160,7 @@ public:
 	ClientPositionManager clientPosMan;
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.session.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.session.plugininfo";
 
 	this() {
 		clientPosMan.cm = this;

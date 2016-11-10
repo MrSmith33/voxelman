@@ -10,10 +10,9 @@ import voxelman.log;
 import std.conv : to;
 import pluginlib;
 
-mixin template IdAndSemverFrom(alias pinfoModule)
+mixin template IdAndSemverFrom(string pinfoModuleName)
 {
-	import std.traits : moduleName;
-	mixin("import pinfo = " ~ moduleName!pinfoModule ~ ";");
+	mixin("import pinfo = " ~ pinfoModuleName ~ ";");
 	override string id() @property { return pinfo.id; }
 	override string semver() @property { return pinfo.semver; }
 }

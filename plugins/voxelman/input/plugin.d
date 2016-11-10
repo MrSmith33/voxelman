@@ -24,7 +24,7 @@ final class InputPlugin : IPlugin
 	GuiPlugin guiPlugin;
 	KeyBindingManager keyBindingsMan;
 
-	mixin IdAndSemverFrom!(voxelman.input.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.input.plugininfo";
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerRM)
 	{

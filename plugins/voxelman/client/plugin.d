@@ -97,7 +97,7 @@ public:
 	bool triangleMode = true;
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.client.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.client.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

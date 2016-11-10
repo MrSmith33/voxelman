@@ -17,7 +17,7 @@ import voxelman.utils.textformatter;
 
 final class DebugClient : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.dbg.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.dbg.plugininfo";
 
 	Debugger dbg;
 	NetClientPlugin connection;
@@ -62,7 +62,7 @@ extern(C) float get_val(void* data, int index)
 
 final class DebugServer : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.dbg.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.dbg.plugininfo";
 
 	Debugger dbg;
 	NetServerPlugin connection;

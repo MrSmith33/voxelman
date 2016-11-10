@@ -49,7 +49,7 @@ public:
 	bool isSpawned = false;
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.session.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.session.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

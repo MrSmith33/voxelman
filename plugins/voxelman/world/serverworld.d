@@ -30,7 +30,6 @@ import voxelman.session.server;
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
 import voxelman.dbg.plugin;
-import voxelman.server.plugin : WorldSaveInternalEvent;
 
 import voxelman.net.packets;
 import voxelman.core.packets;
@@ -96,7 +95,7 @@ public:
 	WorldAccess worldAccess;
 	BlockEntityAccess entityAccess;
 
-	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.world.plugininfo";
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{

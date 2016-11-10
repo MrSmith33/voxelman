@@ -13,7 +13,7 @@ shared static this()
 
 class EventDispatcherPlugin : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.eventdispatcher.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.eventdispatcher.plugininfo";
 
 	void subscribeToEvent(Event)(void delegate(ref Event event) handler)
 	{

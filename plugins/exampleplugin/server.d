@@ -10,7 +10,7 @@ shared static this()
 
 class ExamplePluginServer : IPlugin
 {
-	mixin IdAndSemverFrom!(exampleplugin.plugininfo);
+	mixin IdAndSemverFrom!"exampleplugin.plugininfo";
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{

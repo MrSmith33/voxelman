@@ -62,7 +62,7 @@ class WorldInteractionPlugin : IPlugin
 	Batch traceBatch;
 	Batch hitBatch;
 
-	mixin IdAndSemverFrom!(voxelman.worldinteraction.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.worldinteraction.plugininfo";
 
 	override void init(IPluginManager pluginman)
 	{

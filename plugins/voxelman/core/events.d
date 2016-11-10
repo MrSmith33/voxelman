@@ -61,3 +61,6 @@ struct WindowResizedEvent
 {
 	uvec2 newSize;
 }
+
+// emitted only by server plugin
+struct WorldSaveInternalEvent {}

@@ -129,6 +129,16 @@ void transferRegions(ImportParams params)
 	//observerManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 	//observerManager.chunkObserverAdded = (ChunkWorldPos, ClientId){};
 
+	transferRegionsImpl(params, chunkManager, blocks);
+
+	updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
+	chunkManager.commitSnapshots(TimestampType(0));
+
+	chunkProvider.stop(); // updates until everything is saved
+}
+
+void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)
+{
 	McRegion region;
 	region.buffer = new ubyte[1024 * 1024 * 10];
 	size_t numRegions;
@@ -179,11 +189,6 @@ void transferRegions(ImportParams params)
 		updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 		chunkManager.commitSnapshots(TimestampType(0));
 	}
-
-	updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
-	chunkManager.commitSnapshots(TimestampType(0));
-
-	chunkProvider.stop(); // updates until everything is saved
 }
 
 void updateMetadata(WriteBuffer[ChunkWorldPos] writeBuffers, BlockInfoTable blockInfos)

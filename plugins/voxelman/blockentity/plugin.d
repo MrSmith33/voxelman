@@ -36,7 +36,7 @@ public import voxelman.blockentity.blockentitymap;
 public import voxelman.blockentity.utils;
 
 final class BlockEntityClient : IPlugin {
-	mixin IdAndSemverFrom!(voxelman.blockentity.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.blockentity.plugininfo";
 	mixin BlockEntityCommon;
 
 	private ClientWorld clientWorld;
@@ -166,7 +166,7 @@ final class BlockEntityClient : IPlugin {
 }
 
 final class BlockEntityServer : IPlugin {
-	mixin IdAndSemverFrom!(voxelman.blockentity.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.blockentity.plugininfo";
 	mixin BlockEntityCommon;
 	auto dbKey = IoKey("voxelman.blockentity.plugin");
 

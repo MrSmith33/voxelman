@@ -26,7 +26,7 @@ final class RemoteControl(bool clientSide) : IPlugin
 	alias CommandPlugin = Select!(clientSide, CommandPluginClient, CommandPluginServer);
 
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.remotecontrol.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.remotecontrol.plugininfo";
 	private EventDispatcherPlugin evDispatcher;
 	private CommandPlugin commandPlugin;
 	private char[] buf;

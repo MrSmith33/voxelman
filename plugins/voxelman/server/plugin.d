@@ -28,8 +28,6 @@ shared static this()
 	pluginRegistry.regServerMain(&s.run);
 }
 
-struct WorldSaveInternalEvent {}
-
 
 class ServerPlugin : IPlugin
 {
@@ -43,7 +41,7 @@ public:
 	Duration autosavePeriod = dur!"seconds"(10);
 	MonoTime lastSaveTime;
 
-	mixin IdAndSemverFrom!(voxelman.server.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.server.plugininfo";
 
 	override void init(IPluginManager pluginman)
 	{

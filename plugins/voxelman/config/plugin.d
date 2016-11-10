@@ -21,7 +21,7 @@ shared static this()
 
 final class ConfigPlugin : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.config.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.config.plugininfo";
 	string configFileName;
 
 	this(bool client)

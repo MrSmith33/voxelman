@@ -62,7 +62,7 @@ class MovementPlugin : IPlugin
 	vec3 speed = vec3(0,0,0);
 	float maxSpeed = 20;
 
-	mixin IdAndSemverFrom!(voxelman.movement.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.movement.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

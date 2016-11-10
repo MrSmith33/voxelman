@@ -29,7 +29,7 @@ import voxelman.config.configmanager;
 
 mixin template NetCommon()
 {
-	mixin IdAndSemverFrom!(voxelman.net.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.net.plugininfo";
 	private EventDispatcherPlugin evDispatcher;
 
 	override void preInit() {

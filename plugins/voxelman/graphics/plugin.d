@@ -122,7 +122,7 @@ public:
 	GLint projLoc = 5; // 2d projection
 
 
-	mixin IdAndSemverFrom!(voxelman.graphics.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.graphics.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

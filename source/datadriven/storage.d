@@ -9,7 +9,7 @@ import datadriven.api;
 import cbor;
 import voxelman.container.buffer;
 import voxelman.container.hashmap;
-import voxelman.container.inthashset;
+import voxelman.container.intkeyhashset;
 
 struct HashmapComponentStorage(_ComponentType)
 {

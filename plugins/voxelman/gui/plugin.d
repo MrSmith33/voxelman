@@ -47,7 +47,7 @@ public:
 	ImguiState igState;
 	bool mouseLocked;
 
-	mixin IdAndSemverFrom!(voxelman.gui.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.gui.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

@@ -50,7 +50,7 @@ final class NullTool : ITool
 import voxelman.utils.mapping;
 class EditPlugin : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.edit.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.edit.plugininfo";
 
 	size_t selectedTool;
 	GuiPlugin guiPlugin;

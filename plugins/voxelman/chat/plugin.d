@@ -21,7 +21,7 @@ shared static this()
 final class ChatPluginClient : IPlugin
 {
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.chat.plugininfo";
 
 	private ClientSession session;
 	private NetClientPlugin connection;
@@ -81,7 +81,7 @@ final class ChatPluginClient : IPlugin
 final class ChatPluginServer : IPlugin
 {
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.chat.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.chat.plugininfo";
 
 	private NetServerPlugin connection;
 	private ClientManager clientMan;

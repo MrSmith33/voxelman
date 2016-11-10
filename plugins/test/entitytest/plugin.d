@@ -34,7 +34,7 @@ shared static this()
 final class EntityTestPlugin(bool clientSide) : IPlugin
 {
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(test.entitytest.plugininfo);
+	mixin IdAndSemverFrom!"test.entitytest.plugininfo";
 
 	EntityManager* eman;
 	override void registerResources(IResourceManagerRegistry resmanRegistry)

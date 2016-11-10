@@ -62,7 +62,7 @@ immutable string componentMapKey = "voxelman.entity.componentmap";
 
 final class EntityPluginClient : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.entity.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.entity.plugininfo";
 	mixin EntityPluginCommon;
 
 	private EventDispatcherPlugin evDispatcher;
@@ -108,7 +108,7 @@ final class EntityPluginClient : IPlugin
 
 final class EntityPluginServer : IPlugin
 {
-	mixin IdAndSemverFrom!(voxelman.entity.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.entity.plugininfo";
 	mixin EntityPluginCommon;
 
 	EventDispatcherPlugin evDispatcher;

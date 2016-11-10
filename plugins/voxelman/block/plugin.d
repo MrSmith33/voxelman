@@ -60,7 +60,7 @@ final class BlockPluginClient : IPlugin
 {
 	mixin BlockPluginCommonImpl;
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.block.plugininfo";
 
 	override void init(IPluginManager pluginman)
 	{
@@ -78,7 +78,7 @@ final class BlockPluginServer : IPlugin
 {
 	mixin BlockPluginCommonImpl;
 	// IPlugin stuff
-	mixin IdAndSemverFrom!(voxelman.block.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.block.plugininfo";
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{

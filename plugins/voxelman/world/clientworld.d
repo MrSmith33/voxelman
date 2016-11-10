@@ -94,7 +94,7 @@ public:
 
 	StringMap serverStrings;
 
-	mixin IdAndSemverFrom!(voxelman.world.plugininfo);
+	mixin IdAndSemverFrom!"voxelman.world.plugininfo";
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler) {}
 

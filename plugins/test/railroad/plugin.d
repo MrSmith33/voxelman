@@ -47,7 +47,7 @@ struct PlaceRailPacket
 
 final class RailroadPluginClient : IPlugin
 {
-	mixin IdAndSemverFrom!(test.railroad.plugininfo);
+	mixin IdAndSemverFrom!"test.railroad.plugininfo";
 	mixin RailroadPluginCommon;
 
 	ClientWorld clientWorld;
@@ -91,7 +91,7 @@ final class RailroadPluginClient : IPlugin
 
 final class RailroadPluginServer : IPlugin
 {
-	mixin IdAndSemverFrom!(test.railroad.plugininfo);
+	mixin IdAndSemverFrom!"test.railroad.plugininfo";
 	mixin RailroadPluginCommon;
 
 	NetServerPlugin connection;
