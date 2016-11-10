@@ -20,8 +20,6 @@ struct EngineStarter
 
 	void start(string[] args)
 	{
-		mkdirRecurse("../logs");
-
 		AppType appType;
 		std.getopt.getopt(args,
 			std.getopt.config.passThrough,
@@ -43,6 +41,7 @@ struct EngineStarter
 
 	void setupLogs(AppType appType)
 	{
+		mkdirRecurse("../logs");
 		enum logsFolder = "../logs/";
 		enum textFormat = ".log";
 		enum binFormat = ".bin";

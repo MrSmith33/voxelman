@@ -12,7 +12,6 @@ voxelman.chat 0.6.0
 voxelman.client 0.5.0
 voxelman.command 0.5.0
 voxelman.config 0.5.0
-voxelman.core 0.5.0
 voxelman.dbg 0.6.0
 voxelman.edit 0.5.0
 voxelman.entity 0.5.0
@@ -25,6 +24,5 @@ voxelman.net 0.5.0
 voxelman.remotecontrol 0.5.0
 voxelman.server 0.5.0
 voxelman.session 0.8.0
-voxelman.utils 0.5.0
 voxelman.world 0.6.0
 voxelman.worldinteraction 0.5.0

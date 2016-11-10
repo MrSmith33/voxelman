@@ -11,6 +11,7 @@ import std.getopt;
 import std.path;
 import std.stdio;
 
+import voxelman.log;
 import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.geometry.rect;
@@ -21,6 +22,19 @@ import voxelman.block.utils;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 import voxelman.world.gen.utils;
+
+import voxelman.block.plugin;
+import voxelman.blockentity.plugin;
+import voxelman.client.plugin;
+import voxelman.command.plugin;
+import voxelman.config.plugin;
+import voxelman.dbg.plugin;
+import voxelman.entity.plugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.net.plugin;
+import voxelman.server.plugin;
+import voxelman.session.server;
+import voxelman.world.serverworld;
 
 import mc_region;
 import nbt;
@@ -87,54 +101,88 @@ int main(string[] args)
 		return 1;
 	}
 
-	transferRegions(params);
+	serverMain(params);
 
 	return 0;
 }
 
-void transferRegions(ImportParams params)
+import pluginlib;
+import voxelman.core.events;
+
+class ImportServer : IPlugin
 {
-	WorldDb worldDb = new WorldDb;
-	worldDb.open(params.outputFile); // closed by storage thread
+public:
+	import voxelman.block.plugin;
+	import voxelman.eventdispatcher.plugin;
+	import voxelman.world.serverworld;
 
-	Mapping!BlockInfo blockMapping;
-	BlockInfoSetter regBlock(string name) {
-		size_t id = blockMapping.put(BlockInfo(name));
-		assert(id <= BlockId.max);
-		return BlockInfoSetter(&blockMapping, id);
+	EventDispatcherPlugin evDispatcher;
+	BlockInfoTable blocks;
+	ChunkManager chunkManager;
+
+	override string id() @property { return "minecraft_import.server"; }
+	override string semver() @property { return "1.0.0"; }
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto bm = resmanRegistry.getResourceManager!BlockManager;
+		blocks = bm.getBlocks();
 	}
-	regBaseBlocks(&regBlock);
 
-	BlockInfoTable blocks = BlockInfoTable(cast(immutable)blockMapping.infoArray);
+	override void init(IPluginManager pluginman)
+	{
+		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		auto serverWorld = pluginman.getPlugin!ServerWorld;
+		chunkManager = serverWorld.chunkManager;
+	}
+}
 
-	ChunkProvider chunkProvider;
-	chunkProvider.init(worldDb, 0, blocks);
+void serverMain(ImportParams params)
+{
+	import enginestarter;
+	import pluginlib.pluginmanager;
 
-	auto chunkManager = new ChunkManager;
+	EngineStarter engineStarter;
+	engineStarter.setupLogs(EngineStarter.AppType.server);
+	scope(exit) closeBinLog();
 
-	ubyte numLayers = 2;
-	chunkManager.setup(numLayers);
-	chunkManager.isChunkSavingEnabled = true;
-	chunkManager.startChunkSave = &chunkProvider.startChunkSave;
-	chunkManager.pushLayer = &chunkProvider.pushLayer;
-	chunkManager.endChunkSave = &chunkProvider.endChunkSave;
+	auto pluginman = new PluginManager;
 
-	chunkManager.loadChunkHandler = (ChunkWorldPos){};
-	chunkManager.isLoadCancelingEnabled = true;
+	auto server = new ImportServer;
+	pluginman.registerPlugin(server);
+	pluginman.registerPlugin(new BlockPluginServer);
+	pluginman.registerPlugin(new BlockEntityServer);
+	pluginman.registerPlugin(new CommandPluginServer);
+	pluginman.registerPlugin(new ConfigPlugin(false));
+	pluginman.registerPlugin(new DebugServer);
+	pluginman.registerPlugin(new EntityPluginServer);
+	pluginman.registerPlugin(new EventDispatcherPlugin);
+	pluginman.registerPlugin(new NetServerPlugin);
+	pluginman.registerPlugin(new ClientManager);
+	pluginman.registerPlugin(new ServerWorld);
 
-	chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
-	chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
+	pluginman.initPlugins();
+	server.chunkManager.isLoadCancelingEnabled = true;
+	server.chunkManager.loadChunkHandler = (ChunkWorldPos){};
 
-	//auto observerManager = new ChunkObserverManager;
-	//observerManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
-	//observerManager.chunkObserverAdded = (ChunkWorldPos, ClientId){};
+	server.evDispatcher.postEvent(GameStartEvent());
 
+	transferRegions(params, server.chunkManager, server.blocks);
+
+	infof("Saving...");
+	server.evDispatcher.postEvent(WorldSaveInternalEvent());
+	infof("Stopping...");
+	server.evDispatcher.postEvent(GameStopEvent());
+
+	engineStarter.waitForThreads();
+}
+
+void transferRegions(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)
+{
 	transferRegionsImpl(params, chunkManager, blocks);
 
 	updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 	chunkManager.commitSnapshots(TimestampType(0));
-
-	chunkProvider.stop(); // updates until everything is saved
 }
 
 void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)

@@ -8,6 +8,7 @@ module pluginlib.interfaces;
 
 import voxelman.log;
 import std.conv : to;
+import std.string : format;
 import pluginlib;
 
 mixin template IdAndSemverFrom(string pinfoModuleName)
@@ -49,7 +50,6 @@ interface IPluginManager
 	final P findPlugin(P)()
 	{
 		import std.exception : enforce;
-		import std.string : format;
 		IPlugin plugin = findPlugin(typeid(P));
 		if (!plugin) return null;
 
@@ -62,7 +62,6 @@ interface IPluginManager
 	final P getPlugin(P)()
 	{
 		import std.exception : enforce;
-		import std.string : format;
 		IPlugin plugin = findPlugin(typeid(P));
 		P exactPlugin = cast(P)plugin;
 		enforce(exactPlugin, format("Cannot find plugin '%s'", typeid(P)));
@@ -99,7 +98,7 @@ interface IResourceManagerRegistry
 		import std.exception : enforce;
 		IResourceManager resman = findResourceManager(typeid(RM));
 		RM exactResman = cast(RM)resman;
-		enforce(exactResman);
+		enforce(exactResman, format("Cannot find resource manager '%s'", typeid(RM)));
 		return exactResman;
 	}
 }

@@ -10,6 +10,6 @@ shared static this()
 	import pluginlib;
 	import voxelman.session.server;
 	import voxelman.session.client;
-	pluginRegistry.regServerPlugin(new ClientManager);
 	pluginRegistry.regClientPlugin(new ClientSession);
+	pluginRegistry.regServerPlugin(new ClientManager);
 }
