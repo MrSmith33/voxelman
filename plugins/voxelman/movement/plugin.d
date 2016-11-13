@@ -62,7 +62,7 @@ class MovementPlugin : IPlugin
 	float jumpSpeed = 1; // ditto
 
 	vec3 speed = vec3(0,0,0);
-	float maxFallSpeed = 30;
+	float maxFallSpeed = 100;
 	float airSpeed = 2;
 
 	mixin IdAndSemverFrom!"voxelman.movement.plugininfo";
@@ -216,7 +216,7 @@ class MovementPlugin : IPlugin
 
 		vec3 accel = vec3(0, -gravity, 0) + inputAccel;
 
-		vec3 airFrictionAccel = vec3(0, limitingFriction(speed.y, accel.y, maxFallSpeed), 0);
+		vec3 airFrictionAccel = vec3(0, limitingFriction(std_abs(speed.y), accel.y, maxFallSpeed), 0);
 
 		vec3 fullAcceleration = airFrictionAccel + accel;
 		speed += fullAcceleration * dt;
