@@ -35,11 +35,11 @@ WorldBox shiftAndClampBoxByBorders(WorldBox box, Box dimBorders)
 		box.position.z = dimBorders.position.z;
 
 	if (box.endPosition.x > dimBorders.endPosition.x)
-		box.position.x = dimBorders.endPosition.x - box.size.x;
+		box.position.x = dimBorders.endPosition.x - box.size.x + 1;
 	if (box.endPosition.y > dimBorders.endPosition.y)
-		box.position.y = dimBorders.endPosition.y - box.size.y;
+		box.position.y = dimBorders.endPosition.y - box.size.y + 1;
 	if (box.endPosition.z > dimBorders.endPosition.z)
-		box.position.z = dimBorders.endPosition.z - box.size.z;
+		box.position.z = dimBorders.endPosition.z - box.size.z + 1;
 
 	return WorldBox(boxIntersection(box, dimBorders), box.dimension);
 }

@@ -493,6 +493,10 @@ public:
 		return observerPosition.w;
 	}
 
+	Box currentDimensionBorders() @property {
+		return dimMan.dimensionBorders(observerPosition.dimension);
+	}
+
 	void incDimension() {
 		string com = cast(string)makeFormattedText("dim %s", currentDimension() + 1);
 		connection.send(CommandPacket(com));

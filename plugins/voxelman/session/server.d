@@ -286,7 +286,7 @@ public:
 				pos = position.dimPos.pos + *dirVector * delta;
 				connection.sendTo(session.sessionId, MessagePacket(
 					format("Teleporting to %s %s %s", pos.x, pos.y, pos.z)));
-				clientPosMan.tpToPos(session, ClientDimPos(pos), position.dimension);
+				clientPosMan.tpToPos(session, ClientDimPos(pos, position.dimPos.heading), position.dimension);
 				return;
 			}
 		}

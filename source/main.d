@@ -9,6 +9,11 @@ import enginestarter;
 
 void main(string[] args)
 {
-	EngineStarter engineStarter;
-	engineStarter.start(args);
+	version(unittest)
+	{}
+	else
+	{
+		EngineStarter engineStarter;
+		engineStarter.start(args);
+	}
 }

@@ -10,8 +10,10 @@ view_distance 5
 
 camera_sensivity 0.1
 camera_fov 60.0
-camera_speed 40
-camera_boost 6
+fps_camera_speed 5
+fps_camera_boost 2
+flight_camera_speed 20
+flight_camera_boost 5
 
 key.forward "w"
 key.left "a"
