@@ -632,18 +632,19 @@ final class ChunkManager {
 		if (!currentSnapshot.isNull) handleCurrentSnapCommit(cwp, layer, currentSnapshot.get());
 
 		assert(writeBuffer.isModified);
-		if (writeBuffer.isUniform) {
-			if (writeBuffer.layer == ChunkLayerItem.init) {
-				snapshots[layer].remove(cwp);
-			} else {
-				snapshots[layer][cwp] = ChunkLayerSnap(StorageType.uniform, writeBuffer.layer.dataLength,
-					currentTime, writeBuffer.layer.uniformData, writeBuffer.layer.metadata);
+
+		if (writeBuffer.removeSnapshot)
+		{
+			if (!writeBuffer.isUniform) {
+				freeLayerArray(writeBuffer.layer);
 			}
-		} else {
-			snapshots[layer][cwp] = ChunkLayerSnap(writeBuffer.layer.type, currentTime,
-				writeBuffer.getArray!ubyte, writeBuffer.layer.metadata);
-			totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);
+			snapshots[layer].remove(cwp);
+			return;
 		}
+
+		writeBuffer.layer.timestamp = currentTime;
+		snapshots[layer][cwp] = ChunkLayerSnap(writeBuffer.layer);
+		totalLayerDataBytes += getLayerDataBytes(writeBuffer.layer);
 	}
 
 	private void handleCurrentSnapCommit(ChunkWorldPos cwp, ubyte layer, ChunkLayerSnap currentSnapshot)

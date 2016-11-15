@@ -190,7 +190,12 @@ final class BlockEntityAccess
 		BlockEntityMap map = getHashMapFromLayer(writeBuffer.layer);
 
 		map.remove(blockIndex);
-		setLayerMap(writeBuffer.layer, map);
+
+		if (map.length == 0)
+			writeBuffer.removeSnapshot = true;
+		else
+			setLayerMap(writeBuffer.layer, map);
+
 		return true;
 	}
 }

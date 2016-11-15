@@ -155,7 +155,10 @@ static assert(ChunkLayerItem.sizeof == 20);
 struct WriteBuffer
 {
 	ChunkLayerItem layer;
+	// If false, no changes will be performed on commit.
 	bool isModified = true;
+	// If true, after commit current snapshot is null.
+	bool removeSnapshot = false;
 
 	this(Layer)(Layer _layer) if (isSomeLayer!Layer) {
 		if (_layer.type == StorageType.uniform) {
