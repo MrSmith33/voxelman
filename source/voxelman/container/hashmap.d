@@ -8,24 +8,18 @@ module voxelman.container.hashmap;
 import voxelman.log;
 import std.stdio;
 import std.string;
+import std.experimental.allocator.gc_allocator;
 import voxelman.math : nextPOT;
 
-struct HashMap(Key, Value, Key nullKey = Key.max)
+struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 {
-	import std.experimental.allocator.gc_allocator;
-	import std.experimental.allocator.mallocator;
-
-	//alias Key = ushort;
-	//alias Value = ulong;
 	Key[] keys;
 	Value[] values;
 	size_t length;
 
 	private bool resizing;
-	//enum nullKey = Key.max;
 
-	//alias allocator = Mallocator.instance;
-	alias allocator = GCAllocator.instance;
+	alias allocator = A.instance;
 
 	this(ubyte[] array, size_t length) {
 		if (array.length % (Key.sizeof + Value.sizeof))

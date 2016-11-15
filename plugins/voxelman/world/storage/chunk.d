@@ -67,6 +67,7 @@ import std.experimental.allocator.mallocator;
 
 ubyte[] allocLayerArray(ubyte[] dataToCopy) {
 	auto res = makeArray!ubyte(Mallocator.instance, dataToCopy);
+	//tracef("allocLayerArray1 %s", res.ptr);
 	return res;
 }
 
@@ -76,15 +77,18 @@ ubyte[] reallocLayerArray(Layer)(ref Layer layer, size_t newLength) {
 	Mallocator.instance.reallocate(data, newLength);
 	layer.dataPtr = data.ptr;
 	layer.dataLength = cast(LayerDataLenType)data.length;
+	//tracef("reallocLayerArray %s", data.ptr);
 	return cast(ubyte[])data;
 }
 
 ubyte[] allocLayerArray(size_t length) {
 	auto res = makeArray!ubyte(Mallocator.instance, length);
+	//tracef("allocLayerArray2 %s", res.ptr);
 	return res;
 }
 
 void freeLayerArray(Layer)(ref Layer layer) {
+	//tracef("freeLayerArray %s %s", layer.dataPtr, layer);
 	assert(layer.type != StorageType.uniform);
 	ubyte[] data = layer.getArray!ubyte;
 	dispose(Mallocator.instance, data);

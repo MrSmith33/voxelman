@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.blockentity.blockentitymap;
 
 import voxelman.container.hashmap;
+import std.experimental.allocator.mallocator;
 
-alias BlockEntityMap = HashMap!(ushort, ulong);
-//	alias Key = ushort;
-//	alias Value = ulong;
+alias BlockEntityMap = HashMap!(ushort, ulong, ushort.max, Mallocator);
