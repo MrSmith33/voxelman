@@ -268,8 +268,10 @@ struct ChunkMeshMan
 		AdjChunkLayers27 snapsBlocks;
 
 		// get compressed layers first to look at metadata.
-		snapsBlocks.adjacent6 = chunkManager.getChunkSnapshots(snapsPositions.adjacent6, FIRST_LAYER);
 		snapsBlocks.central = chunkManager.getChunkSnapshot(snapsPositions.central, FIRST_LAYER);
+		if (snapsBlocks.central.isNull())
+			return false;
+		snapsBlocks.adjacent6 = chunkManager.getChunkSnapshots(snapsPositions.adjacent6, FIRST_LAYER);
 
 		++numMeshChunkTasks;
 

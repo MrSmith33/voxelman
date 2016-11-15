@@ -137,6 +137,10 @@ public:
 
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
 		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
+		chunkProvider.generatorGetter = (DimensionId dimensionId){
+			import voxelman.world.gen.generators;
+			return generators[dimensionId % $];
+		};
 
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;

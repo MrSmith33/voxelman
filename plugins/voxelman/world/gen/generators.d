@@ -13,10 +13,11 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.gen.utils;
 import voxelman.world.gen.generator;
 
-IGenerator[3] generators = [
+IGenerator[4] generators = [
 	new GeneratorFlat,
 	new Generator2d,
 	new Generator2d3d,
+	null
 ];
 
 

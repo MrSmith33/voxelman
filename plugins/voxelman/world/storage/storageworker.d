@@ -14,11 +14,11 @@ import core.sync.condition;
 import cbor;
 
 import voxelman.block.utils;
-import voxelman.world.gen.generators;
-import voxelman.world.gen.utils;
 import voxelman.core.config;
 import voxelman.utils.compression;
 import voxelman.utils.worker;
+import voxelman.world.gen.generator : IGenerator;
+import voxelman.world.gen.utils;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider;
 import voxelman.world.storage.coordinates;
@@ -100,7 +100,7 @@ struct GenWorkerControl
 
 	// Sends chunks with the same x and z to the same worker.
 	// There is thread local heightmap cache.
-	void sendGenTask(ulong cwp)
+	void sendGenTask(ulong cwp, IGenerator generator)
 	{
 		auto _cwp = ChunkWorldPos(cwp);
 		size_t workerIndex;
@@ -116,7 +116,7 @@ struct GenWorkerControl
 		}
 		shared(Worker)* worker = &genWorkers[workerIndex];
 		worker.taskQueue.pushItem!ulong(cwp);
-		worker.taskQueue.pushItem(generators[_cwp.w % $]);
+		worker.taskQueue.pushItem(generator);
 		worker.notify();
 		lastWorker = workerIndex;
 		lastCwp = _cwp;
@@ -127,7 +127,9 @@ void sendEmptyChunk(shared SharedQueue* queue, ulong cwp)
 {
 	queue.startMessage();
 	queue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), 1/*numLayers*/, 0));
-	queue.pushMessagePart(ChunkLayerItem(StorageType.uniform, FIRST_LAYER, 0, 0, 0, 0));
+	queue.pushMessagePart(ChunkLayerItem(StorageType.uniform, FIRST_LAYER,
+		BLOCKID_UNIFORM_FILL_BITS/*dataLength*/, 0/*timestamp*/, 0/*uniformData*/,
+		SOLID_CHUNK_METADATA));
 	queue.endMessage();
 }
 
@@ -224,7 +226,7 @@ void storageWorker(
 		bool doGen;
 
 		ulong cwp = loadTaskQueue.popItem!ulong();
-
+		IGenerator generator = loadTaskQueue.popItem!IGenerator();
 		try
 		{
 			readTime.startTaskTiming("get");
@@ -276,7 +278,11 @@ void storageWorker(
 		}
 		if (doGen) {
 			if (genEnabled) {
-				workerControl.sendGenTask(cwp);
+				if (generator) {
+					workerControl.sendGenTask(cwp, generator);
+				} else {
+					sendEmptyChunk(loadResQueue, cwp);
+				}
 			} else {
 				sendEmptyChunk(loadResQueue, cwp);
 			}

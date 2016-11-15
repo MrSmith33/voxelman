@@ -404,6 +404,8 @@ ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
 }
 
 enum CHUNK_SIDE_METADATA_BITS = 13;
+enum SOLID_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.solid] |
+		solidity_metadatas[Solidity.solid]<<CHUNK_SIDE_METADATA_BITS);
 
 ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {

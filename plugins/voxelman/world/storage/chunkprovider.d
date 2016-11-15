@@ -15,6 +15,7 @@ import voxelman.math;
 import voxelman.block.utils : BlockInfoTable;
 import voxelman.core.config;
 import voxelman.utils.worker;
+import voxelman.world.gen.generator : IGenerator;
 import voxelman.world.gen.utils;
 import voxelman.world.gen.worker;
 import voxelman.world.storage;
@@ -87,6 +88,7 @@ struct ChunkProvider
 
 	void delegate(LoadedChunkData loadedChunk, bool needsSave) onChunkLoadedHandler;
 	void delegate(SavedChunkData savedChunk) onChunkSavedHandler;
+	IGenerator delegate(DimensionId dimensionId) generatorGetter;
 
 	size_t loadQueueSpaceAvaliable() @property const {
 		ptrdiff_t space = cast(ptrdiff_t)loadTaskQueue.capacity - loadTaskQueue.length;
@@ -199,6 +201,8 @@ struct ChunkProvider
 	void loadChunk(ChunkWorldPos cwp)
 	{
 		loadTaskQueue.pushItem!ulong(cwp.asUlong);
+		IGenerator generator = generatorGetter(cwp.dimension);
+		loadTaskQueue.pushItem!IGenerator(generator);
 		notify();
 	}
 
