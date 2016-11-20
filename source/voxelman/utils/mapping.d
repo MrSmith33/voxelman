@@ -9,7 +9,7 @@ module voxelman.utils.mapping;
 struct Mapping(InfoType, bool withTypeMap = false)
 {
 	static assert(__traits(compiles, {InfoType info; info.id=1; info.name="str";}),
-		"InfoType is requiered to have size_t id; and string name; properties");
+		"InfoType is required to have size_t id; and string name; properties");
 
 	InfoType[] infoArray;
 	size_t[string] nameToIndexMap;

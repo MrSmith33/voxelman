@@ -35,10 +35,13 @@ import voxelman.net.packets;
 import voxelman.core.packets;
 
 import voxelman.blockentity.blockentityaccess;
+import voxelman.world.gen.generators;
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 
 public import voxelman.world.worlddb : WorldDb;
+
+enum START_NEW_WORLD = false;
 
 struct IdMapManagerServer
 {
@@ -111,6 +114,10 @@ public:
 		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
 		ioManager.registerWorldLoadSaveHandlers(&dimMan.load, &dimMan.save);
 
+		dimMan.generatorMan.factory.registerGenerator!GeneratorFlat;
+		dimMan.generatorMan.factory.registerGenerator!Generator2d;
+		dimMan.generatorMan.factory.registerGenerator!Generator2d3d;
+
 		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
 
@@ -137,10 +144,7 @@ public:
 
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
 		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
-		chunkProvider.generatorGetter = (DimensionId dimensionId){
-			import voxelman.world.gen.generators;
-			return generators[dimensionId % $];
-		};
+		chunkProvider.generatorGetter = &dimMan.generatorMan.opIndex;
 
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
 		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
@@ -218,6 +222,14 @@ public:
 	{
 		worldFilename = _worldFilename;
 		worldDb = new WorldDb;
+		static if (START_NEW_WORLD)
+		{
+			static import std.file;
+			if (std.file.exists(_worldFilename))
+			{
+				std.file.remove(_worldFilename);
+			}
+		}
 		worldDb.open(_worldFilename);
 
 		worldDb.beginTxn();
@@ -238,7 +250,15 @@ public:
 			infof("Loading world %s", worldFilename.absolutePath.buildNormalizedPath);
 		} else {
 			infof("Creating world %s", worldFilename.absolutePath.buildNormalizedPath);
+			createWorld();
 		}
+	}
+
+	void createWorld()
+	{
+		dimMan.generatorMan[0] = new GeneratorFlat;
+		dimMan.generatorMan[1] = new Generator2d;
+		dimMan.generatorMan[2] = new Generator2d3d;
 	}
 
 	private void writeWorldInfo(ref PluginDataSaver saver)

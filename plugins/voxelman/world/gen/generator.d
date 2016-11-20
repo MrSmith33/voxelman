@@ -8,9 +8,12 @@ module voxelman.world.gen.generator;
 import voxelman.math : svec3;
 import voxelman.core.config;
 import voxelman.world.gen.utils;
+import voxelman.container.buffer;
 
-interface IGenerator
+abstract class IGenerator
 {
 	ChunkGeneratorResult generateChunk(svec3 chunkOffset,
 		ref BlockId[CHUNK_SIZE_CUBE] blocks) const;
+	void load(ref ubyte[] input) {}
+	void save(Buffer!ubyte* sink) {}
 }

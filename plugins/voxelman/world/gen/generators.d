@@ -13,17 +13,11 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.gen.utils;
 import voxelman.world.gen.generator;
 
-IGenerator[4] generators = [
-	new GeneratorFlat,
-	new Generator2d,
-	new Generator2d3d,
-	null
-];
-
 
 final class Generator2d3d : IGenerator
 {
-	ChunkGeneratorResult generateChunk(
+	static string name = "voxelman.Generator2d3d";
+	override ChunkGeneratorResult generateChunk(
 		svec3 cwp,
 		ref BlockId[CHUNK_SIZE_CUBE] blocks) const
 	{
@@ -101,7 +95,8 @@ import core.atomic;
 
 final class Generator2d : IGenerator
 {
-	ChunkGeneratorResult generateChunk(
+	static string name = "voxelman.Generator2d";
+	override ChunkGeneratorResult generateChunk(
 		svec3 cwp,
 		ref BlockId[CHUNK_SIZE_CUBE] blocks) const
 	{
@@ -168,7 +163,8 @@ final class Generator2d : IGenerator
 
 final class GeneratorFlat : IGenerator
 {
-	ChunkGeneratorResult generateChunk(
+	static string name = "voxelman.GeneratorFlat";
+	override ChunkGeneratorResult generateChunk(
 		svec3 chunkOffset,
 		ref BlockId[CHUNK_SIZE_CUBE] blocks) const
 	{

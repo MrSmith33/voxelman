@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add generator manager.
 - Add directional teleportation command. `tp u|d|l|r|f|b <num_blocks>`
 - Add player physics.
 - Add dimension observer manager. Server world sends info about dimension border to clients. Use dimension borders - to shift and clamp observation box of clients.

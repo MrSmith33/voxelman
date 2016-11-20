@@ -200,9 +200,13 @@ struct ChunkProvider
 
 	void loadChunk(ChunkWorldPos cwp)
 	{
-		loadTaskQueue.pushItem!ulong(cwp.asUlong);
 		IGenerator generator = generatorGetter(cwp.dimension);
-		loadTaskQueue.pushItem!IGenerator(generator);
+
+		loadTaskQueue.startMessage();
+		loadTaskQueue.pushMessagePart!ulong(cwp.asUlong);
+		loadTaskQueue.pushMessagePart!IGenerator(generator);
+		loadTaskQueue.endMessage();
+
 		notify();
 	}
 

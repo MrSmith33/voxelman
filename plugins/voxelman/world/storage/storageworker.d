@@ -277,12 +277,8 @@ void storageWorker(
 			doGen = true;
 		}
 		if (doGen) {
-			if (genEnabled) {
-				if (generator) {
-					workerControl.sendGenTask(cwp, generator);
-				} else {
-					sendEmptyChunk(loadResQueue, cwp);
-				}
+			if (genEnabled && generator) {
+				workerControl.sendGenTask(cwp, generator);
 			} else {
 				sendEmptyChunk(loadResQueue, cwp);
 			}

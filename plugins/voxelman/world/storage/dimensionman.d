@@ -11,6 +11,7 @@ import std.typecons : Nullable;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage;
+import voxelman.world.gen.generatorman;
 
 struct DimensionInfo
 {
@@ -22,13 +23,16 @@ struct DimensionInfo
 
 struct DimensionManager {
 	DimensionInfo[DimensionId] dimensions;
+	GeneratorManager generatorMan;
 	auto dbKey = IoKey("voxelman.world.storage.dimensionman");
 
 	void load(ref PluginDataLoader loader) {
+		generatorMan.load(loader);
 		loader.readEntryDecoded(dbKey, dimensions);
 	}
 
 	void save(ref PluginDataSaver saver) {
+		generatorMan.save(saver);
 		saver.writeEntryEncoded(dbKey, dimensions);
 	}
 
