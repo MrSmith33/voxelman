@@ -22,7 +22,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 	alias allocator = A.instance;
 
 	this(ubyte[] array, size_t length) {
-		assert(array.length % (Key.sizeof + Value.sizeof));
+		assert(array.length % (Key.sizeof + Value.sizeof) == 0);
 		size_t size = array.length / (Key.sizeof + Value.sizeof);
 		keys = cast(Key[])array[0..Key.sizeof * size];
 		values = cast(Value[])array[Key.sizeof * size..$];
