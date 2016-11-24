@@ -221,6 +221,13 @@ struct ChunkMeshMan
 			// completely transparent chunks do not produce meshes.
 			if (solidity == Solidity.transparent) {
 				return false;
+			} else {
+				if (central.isUniform)
+				{
+					// uniform unknown chunks do not produce mesh.
+					if (central.getUniform!BlockId == 0)
+						return false;
+				}
 			}
 
 			foreach(CubeSide side, adj; adjacent)
