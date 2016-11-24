@@ -5,11 +5,13 @@ Authors: Andrey Penechko.
 */
 module datadriven.entityman;
 
+import cbor;
 import voxelman.log;
 import datadriven.api;
 import datadriven.storage;
 import datadriven.query;
 import voxelman.container.buffer;
+import voxelman.container.intkeyhashset;
 import voxelman.world.storage.iomanager;
 
 private struct ComponentInfo
@@ -20,6 +22,7 @@ private struct ComponentInfo
 	void delegate(EntityId) remove;
 	void delegate() removeAll;
 	void delegate(Buffer!ubyte*) serialize;
+	void delegate(Buffer!ubyte*, IntKeyHashSet!EntityId) serializePartial;
 	void delegate(ubyte[]) deserialize;
 	void* storage;
 
@@ -28,6 +31,10 @@ private struct ComponentInfo
 			case IoStorageType.database: return serializeToDb;
 			case IoStorageType.network: return serializeToNet;
 		}
+	}
+
+	ComponentStorage!C* getTypedStorage(C)() {
+		return cast(ComponentStorage!C*)storage;
 	}
 }
 
@@ -42,23 +49,6 @@ template ComponentStorage(C)
 		alias ComponentStorage = EntitySet;
 	else
 		alias ComponentStorage = HashmapComponentStorage!C;
-}
-
-private struct TypedComponentInfo(C)
-{
-	IoKey ioKey;
-	bool serializeToDb;
-	bool serializeToNet;
-	void delegate(EntityId) remove;
-	void delegate() removeAll;
-	void delegate(Buffer!ubyte*) serialize;
-	void delegate(ubyte[]) deserialize;
-	ComponentStorage!C* storage;
-
-	static typeof(this)* fromUntyped(ComponentInfo* untyped)
-	{
-		return cast(typeof(this)*)untyped;
-	}
 }
 
 struct EntityIdManager
@@ -102,6 +92,7 @@ struct EntityManager
 			&storage.remove,
 			&storage.removeAll,
 			&storage.serialize,
+			&storage.serializePartial,
 			&storage.deserialize,
 			storage);
 		componentInfoMap[typeid(C)] = info;
@@ -113,7 +104,7 @@ struct EntityManager
 	auto getComponentStorage(C)()
 	{
 		ComponentInfo* untyped = componentInfoMap[typeid(C)];
-		return TypedComponentInfo!C.fromUntyped(untyped).storage;
+		return untyped.getTypedStorage!C();
 	}
 
 	/// Add or set list of components for entity eid.
@@ -201,13 +192,32 @@ struct EntityManager
 		}
 	}
 
+	void savePartial(Saver, E)(ref Saver saver, E entities)
+	{
+		foreach(info; componentInfoArray) {
+			if(!info.isSerialized(saver.storageType)) continue;
+			info.serializePartial(saver.beginWrite(), entities);
+			saver.endWrite(info.ioKey);
+		}
+	}
+
 	/// Deserializes all component storages from given loader.
-	void load(Loader)(ref Loader loader)
+	void load(Loader)(ref Loader loader, bool removeBeforeRead = true)
 	{
 		foreach(info; componentInfoArray) {
 			if(!info.isSerialized(loader.storageType)) continue;
 			auto data = loader.readEntryRaw(info.ioKey);
+			if (removeBeforeRead)
+				info.removeAll();
 			info.deserialize(data);
+		}
+	}
+
+	void removeSerializedComponents(IoStorageType storageType)
+	{
+		foreach(info; componentInfoArray) {
+			if(info.isSerialized(storageType))
+				info.removeAll();
 		}
 	}
 }

@@ -257,9 +257,15 @@ final class ChunkManager {
 
 	/// Returns timestamp of current chunk snapshot.
 	/// Store this timestamp to use in removeSnapshotUser
+	/// Adding a user to non-existent snapshot of loaded chunk is allowed,
+	/// since a ChunkLayerSnap.init is returned for such layer.
+	/// Special TimestampType.max is returned.
 	TimestampType addCurrentSnapshotUser(ChunkWorldPos cwp, ubyte layer) {
 		auto snap = cwp in snapshots[layer];
-		assert(snap, "Cannot add chunk user. No such snapshot.");
+		if (!snap)
+		{
+			return TimestampType.max;
+		}
 
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 		assert(state == ChunkState.added_loaded,
@@ -274,7 +280,9 @@ final class ChunkManager {
 
 	/// Generic removal of snapshot user. Removes chunk if numUsers == 0.
 	/// Use this to remove added snapshot user. Use timestamp returned from addCurrentSnapshotUser.
+	/// Removing TimestampType.max is no-op.
 	void removeSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, ubyte layer) {
+		if (timestamp == TimestampType.max) return;
 		auto snap = cwp in snapshots[layer];
 		if (snap && snap.timestamp == timestamp)
 		{
@@ -607,7 +615,7 @@ final class ChunkManager {
 		return (*totalUsers);
 	}
 
-	// Snapshot is removed from oldSnapshots if numUsers == 0.
+	/// Snapshot is removed from oldSnapshots if numUsers == 0.
 	private void removeOldSnapshotUser(ChunkWorldPos cwp, TimestampType timestamp, ubyte layer) {
 		ChunkLayerSnap[TimestampType]* chunkSnaps = cwp in oldSnapshots[layer];
 		version(TRACE_SNAP_USERS) tracef("#%s:%s (rem old) x/%s @%s", cwp, layer, totalSnapshotUsers.get(cwp, 0), timestamp);

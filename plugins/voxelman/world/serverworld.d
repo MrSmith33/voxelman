@@ -212,6 +212,8 @@ public:
 	private void worldSaver(WorldDb wdb)
 	{
 		foreach(ubyte[16] key, ubyte[] data; pluginDataSaver) {
+			if (data.length == 0)
+				wdb.del(key);
 			wdb.put(key, data);
 		}
 		pluginDataSaver.reset();

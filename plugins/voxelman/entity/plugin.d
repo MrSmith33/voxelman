@@ -21,6 +21,8 @@ import voxelman.world.clientworld;
 import voxelman.world.serverworld;
 import voxelman.world.storage : IoManager, StringMap, IoKey, PluginDataLoader, PluginDataSaver, IoStorageType;
 
+import voxelman.entity.entityobservermanager;
+
 shared static this()
 {
 	pluginRegistry.regClientPlugin(new EntityPluginClient);
@@ -36,6 +38,9 @@ struct ComponentSyncPacket
 	ubyte[] data;
 }
 
+struct ComponentSyncStartPacket {}
+struct ComponentSyncEndPacket {}
+
 /// Use EntityComponentRegistry to receive EntityManager pointer.
 final class EntityComponentRegistry : IResourceManager
 {
@@ -47,6 +52,7 @@ mixin template EntityPluginCommon()
 {
 	private EntityComponentRegistry componentRegistry;
 	private EntityManager eman;
+	private EntityObserverManager entityObserverManager;
 	private EntityIdManager eidMan;
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
@@ -75,12 +81,19 @@ final class EntityPluginClient : IPlugin
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		clientWorld = pluginman.getPlugin!ClientWorld;
 		connection = pluginman.getPlugin!NetClientPlugin;
+		connection.registerPacket!ComponentSyncStartPacket(&handleComponentSyncStartPacket);
 		connection.registerPacket!ComponentSyncPacket(&handleComponentSyncPacket);
+		connection.registerPacket!ComponentSyncEndPacket(&handleComponentSyncEndPacket);
 	}
 
 	private void onUpdateEvent(ref UpdateEvent event)
 	{
 		evDispatcher.postEvent(ProcessComponentsEvent(event.deltaTime));
+	}
+
+	private void handleComponentSyncStartPacket(ubyte[] packetData)
+	{
+		eman.removeSerializedComponents(IoStorageType.network);
 	}
 
 	private void handleComponentSyncPacket(ubyte[] packetData)
@@ -101,8 +114,14 @@ final class EntityPluginClient : IPlugin
 			data = data[0..$-4-4-entrySize];
 		}
 
-		eman.load(netLoader);
+		enum bool clearComponents = false;
+		eman.load(netLoader, clearComponents);
 		netLoader.ioKeyToData.clear();
+	}
+
+	private void handleComponentSyncEndPacket(ubyte[] packetData)
+	{
+
 	}
 }
 
@@ -113,13 +132,14 @@ final class EntityPluginServer : IPlugin
 
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
-	NetworkSaver netSaver;
+	EntityObserverManager entityObserverManager;
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
 		ioman.registerWorldLoadSaveHandlers(&load, &save);
-		netSaver.stringMap = ioman.getStringMap();
+		entityObserverManager.netSaver.stringMap = ioman.getStringMap();
+		entityObserverManager.eman = &eman;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -128,7 +148,13 @@ final class EntityPluginServer : IPlugin
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		connection = pluginman.getPlugin!NetServerPlugin;
+		connection.registerPacket!ComponentSyncStartPacket();
 		connection.registerPacket!ComponentSyncPacket();
+		connection.registerPacket!ComponentSyncEndPacket();
+
+		entityObserverManager.connection = connection;
+		auto world = pluginman.getPlugin!ServerWorld;
+		entityObserverManager.chunkObserverManager = world.chunkObserverManager;
 	}
 
 	private void onUpdateEvent(ref UpdateEvent event)
@@ -138,9 +164,7 @@ final class EntityPluginServer : IPlugin
 
 	private void onPostUpdateEvent(ref PostUpdateEvent)
 	{
-		eman.save(netSaver);
-		connection.sendToAll(ComponentSyncPacket(netSaver.data));
-		netSaver.reset();
+		entityObserverManager.sendEntitiesToObservers();
 	}
 
 	private void load(ref PluginDataLoader loader)
@@ -159,8 +183,8 @@ final class EntityPluginServer : IPlugin
 struct NetworkSaver
 {
 	StringMap* stringMap;
-	private Buffer!ubyte buffer;
-	private size_t prevDataLength;
+	package Buffer!ubyte buffer;
+	package size_t prevDataLength;
 
 	IoStorageType storageType() { return IoStorageType.network; }
 

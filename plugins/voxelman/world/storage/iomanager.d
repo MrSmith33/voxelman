@@ -139,9 +139,8 @@ struct PluginDataSaver
 	IoStorageType storageType() { return IoStorageType.database; }
 
 	void endWrite(ref IoKey key) {
+		// write empty entries, they will be deleted in storage worker
 		uint entrySize = cast(uint)(buffer.data.length - prevDataLength);
-		// dont write empty entries, since loader will return empty array for non-existing entries
-		if (entrySize == 0) return;
 		buffer.put(*cast(ubyte[4]*)&entrySize);
 		buffer.put(formWorldKey(stringMap.get(key)));
 	}

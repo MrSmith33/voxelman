@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add entity observer manager, which is used to send components only for entities that are observed by - client.
+- Add partial (de)serialization of component storages.
 - Add generator manager.
 - Add directional teleportation command. `tp u|d|l|r|f|b <num_blocks>`
 - Add player physics.
@@ -31,6 +33,7 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Now chunk manager returns special timestamp for non-existent snapshots on user add. It is then - ignored on user remove.
 - Start server internally in minecraft import tool.
 - Move all engine initialization code into enginestarter.d.
 - Create PluginManager outside of client and server plugins.

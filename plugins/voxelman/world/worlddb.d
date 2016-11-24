@@ -52,7 +52,7 @@ final class WorldDb
 		ubyte[] get(ubyte[16] key) {
 			return db.get(key);
 		}
-		private void del(ubyte[16] key) {
+		void del(ubyte[16] key) {
 			return db.del(key);
 		}
 	}
@@ -68,6 +68,7 @@ final class WorldDb
 		}
 		private void del(ubyte[16] key) {
 			ulong[2] keys = *cast(ulong[2]*)&key;
+			assert(false, "not implemented");
 		}
 	}
 

@@ -121,6 +121,7 @@ mixin template EntityTestPluginServer()
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
+	EntityPluginServer entityPlugin;
 	Buffer!EntityId entitiesToRemove;
 
 	override void init(IPluginManager pluginman)
@@ -130,6 +131,7 @@ mixin template EntityTestPluginServer()
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!EntityCreatePacket(&handleEntityCreatePacket);
 		serverWorld = pluginman.getPlugin!ServerWorld;
+		entityPlugin = pluginman.getPlugin!EntityPluginServer;
 	}
 
 	void process(ref ProcessComponentsEvent event)
@@ -148,7 +150,9 @@ mixin template EntityTestPluginServer()
 			ivec4 pos = row.transform_0.pos;
 			if (!isLoaded(pos) || !isLoaded(pos+ivec4(0, -1, 0, 0))) continue;
 			if (isFree(pos+ivec4(0, -1, 0, 0))) // lower
+			{
 				row.transform_0.pos += ivec4(0,-1,0, 0);
+			}
 			else if (isFree(pos+ivec4( 0, 0, -1, 0)) && // side and lower
 					isFree(pos+ivec4( 0, -1, -1, 0)))
 			{
@@ -174,11 +178,15 @@ mixin template EntityTestPluginServer()
 				wa.setBlock(BlockWorldPos(pos), BlockId(5));
 				entitiesToRemove.put(row.id);
 			}
+			entityPlugin.entityObserverManager.updateEntityPos(
+				row.id,
+				ChunkWorldPos(BlockWorldPos(row.transform_0.pos)));
 		}
 
 		auto storage = eman.getComponentStorage!Transform();
 		foreach(eid; entitiesToRemove.data) {
 			storage.remove(eid);
+			entityPlugin.entityObserverManager.removeEntity(eid);
 		}
 		entitiesToRemove.clear();
 	}
@@ -188,6 +196,7 @@ mixin template EntityTestPluginServer()
 		auto packet = unpackPacket!EntityCreatePacket(packetData);
 		EntityId eid = eman.eidMan.nextEntityId;
 		eman.set(eid, Transform(packet.pos));
+		entityPlugin.entityObserverManager.addEntity(eid, ChunkWorldPos(BlockWorldPos(packet.pos)));
 	}
 }
 

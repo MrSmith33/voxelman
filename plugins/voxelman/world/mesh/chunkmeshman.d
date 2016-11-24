@@ -145,7 +145,6 @@ struct ChunkMeshMan
 			auto positions = AdjChunkPositions27(taskHeader.cwp);
 			foreach(i, pos; positions.all)
 			{
-				if (blockTimestamps[i] == uint.max) continue; // out-of-border chunk
 				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], FIRST_LAYER);
 				chunkManager.removeSnapshotUser(pos, entityTimestamps[i], ENTITY_LAYER);
 			}
@@ -305,7 +304,6 @@ struct ChunkMeshMan
 		{
 			if (!dimBorders.contains(snapsPositions.all[i].ivector3)) // out-of-border chunk
 			{
-				blockLayers[i].timestamp = uint.max; // mark as not loaded, to not remove users later
 				blockLayers[i].metadata = solidity_metadatas[Solidity.solid];
 			}
 			else
@@ -315,11 +313,10 @@ struct ChunkMeshMan
 			}
 		}
 
-		foreach(pos; snapsPositions.all)
+		foreach(i, pos; snapsPositions.all)
 		{
-			if (!dimBorders.contains(pos.ivector3)) continue; // out-of-border chunk
-			chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
-			chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
+			blockLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
+			entityLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
 		}
 
 		// debug

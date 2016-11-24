@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module datadriven.storage;
 
+import std.range : save;
 import datadriven.api;
 import cbor;
 import voxelman.container.buffer;
@@ -61,9 +62,32 @@ struct HashmapComponentStorage(_ComponentType)
 		}
 	}
 
+	void serializePartial(Buffer!ubyte* sink, IntKeyHashSet!EntityId externalEntities)
+	{
+		if (components.empty) return;
+
+		encodeCborMapHeader(sink);
+
+		if (externalEntities.length < components.length) {
+			foreach(eid; externalEntities) {
+				if (auto value = eid in components) {
+					encodeCbor!(Yes.Flatten)(sink, eid);
+					encodeCbor!(Yes.Flatten)(sink, *value);
+				}
+			}
+		} else {
+			foreach(eid, value; components) {
+				if (externalEntities[eid]) {
+					encodeCbor!(Yes.Flatten)(sink, eid);
+					encodeCbor!(Yes.Flatten)(sink, value);
+				}
+			}
+		}
+		encodeCborBreak(sink);
+	}
+
 	void deserialize(ubyte[] input)
 	{
-		components.clear();
 		if (input.length == 0) return;
 		CborToken token = decodeCborToken(input);
 		if (token.type == CborTokenType.mapHeader) {
@@ -74,6 +98,17 @@ struct HashmapComponentStorage(_ComponentType)
 				auto component = decodeCborSingleDup!(ComponentType, Yes.Flatten)(input);
 				components[eid] = component;
 				--lengthToRead;
+			}
+		} else if (token.type == CborTokenType.mapIndefiniteHeader) {
+			while (true) {
+				token = decodeCborToken(input.save);
+				if (token.type == CborTokenType.breakCode) {
+					break;
+				} else {
+					auto eid = decodeCborSingle!EntityId(input);
+					auto component = decodeCborSingleDup!(ComponentType, Yes.Flatten)(input);
+					components[eid] = component;
+				}
 			}
 		}
 	}
@@ -124,9 +159,23 @@ struct EntitySet
 		}
 	}
 
+	void serializePartial(Buffer!ubyte* sink, IntKeyHashSet!EntityId externalEntities)
+	{
+		if (entities.empty) return;
+		encodeCborMapHeader(sink);
+
+		if (externalEntities.length < entities.length) {
+			foreach(eid; externalEntities)
+				if (entities[eid]) encodeCbor(sink, eid);
+		} else {
+			foreach(eid; entities)
+				if (externalEntities[eid]) encodeCbor(sink, eid);
+		}
+		encodeCborBreak(sink);
+	}
+
 	void deserialize(ubyte[] input)
 	{
-		entities.clear();
 		if (input.length == 0) return;
 		CborToken token = decodeCborToken(input);
 		if (token.type == CborTokenType.arrayHeader) {
@@ -135,6 +184,14 @@ struct EntitySet
 			while (lengthToRead > 0) {
 				entities.put(decodeCborSingle!EntityId(input));
 				--lengthToRead;
+			}
+		} else if (token.type == CborTokenType.arrayIndefiniteHeader) {
+			while (true) {
+				token = decodeCborToken(input.save);
+				if (token.type == CborTokenType.breakCode)
+					break;
+				else
+					entities.put(decodeCborSingle!EntityId(input));
 			}
 		}
 	}
