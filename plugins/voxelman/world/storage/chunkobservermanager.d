@@ -147,6 +147,18 @@ final class ChunkObserverManager {
 			return null;
 	}
 
+	void addServerObserverBox(WorldBox box, Box dimBorders) {
+		WorldBox boundedBox = shiftAndClampBoxByBorders(box, dimBorders);
+		foreach(ChunkWorldPos cwp; boundedBox)
+			addServerObserver(cwp);
+	}
+
+	void removeServerObserverBox(WorldBox box, Box dimBorders) {
+		WorldBox boundedBox = shiftAndClampBoxByBorders(box, dimBorders);
+		foreach(ChunkWorldPos cwp; boundedBox)
+			removeServerObserver(cwp);
+	}
+
 	void addServerObserver(ChunkWorldPos cwp) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		++list.numServerObservers;

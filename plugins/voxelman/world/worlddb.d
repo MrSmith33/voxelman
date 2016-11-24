@@ -66,7 +66,7 @@ final class WorldDb
 			ulong[2] keys = *cast(ulong[2]*)&key;
 			return db.loadPerWorldData(keys[0], keys[1]);
 		}
-		private void del(ubyte[16] key) {
+		void del(ubyte[16] key) {
 			ulong[2] keys = *cast(ulong[2]*)&key;
 			assert(false, "not implemented");
 		}

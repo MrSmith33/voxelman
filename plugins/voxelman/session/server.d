@@ -195,6 +195,7 @@ public:
 		commandPlugin.registerCommand("dim", &changeDimensionCommand);
 		commandPlugin.registerCommand("add_active", &onAddActive);
 		commandPlugin.registerCommand("remove_active", &onRemoveActive);
+		commandPlugin.registerCommand("preload_box", &onPreloadBox);
 	}
 
 	void onAddActive(CommandParams params) {
@@ -211,6 +212,27 @@ public:
 		auto cwp = position.chunk;
 		serverWorld.activeChunks.remove(cwp);
 		infof("remove active %s", cwp);
+	}
+
+	void onPreloadBox(CommandParams params) {
+		import std.regex : matchFirst, regex;
+		import std.conv : to;
+		Session* session = sessions[params.source];
+		auto position = db.get!ClientPosition(session.dbKey);
+		auto cwp = position.chunk;
+
+		// preload <radius> // preload box at
+		auto regexRadius = regex(`(\d+)`, "m");
+		auto captures = matchFirst(params.rawArgs, regexRadius);
+
+		if (!captures.empty)
+		{
+			int radius = to!int(captures[1]);
+			WorldBox box = calcBox(cwp, radius);
+			auto borders = serverWorld.dimMan.dimensionBorders(cwp.dimension);
+			serverWorld.chunkObserverManager.addServerObserverBox(box, borders);
+			infof("Preloading %s", box);
+		}
 	}
 
 	void onSpawnCommand(CommandParams params)
