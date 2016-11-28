@@ -23,10 +23,6 @@ import voxelman.input.keybindingmanager;
 
 import voxelman.edit.tools.filltool;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new EditPlugin);
-}
 
 abstract class ITool
 {

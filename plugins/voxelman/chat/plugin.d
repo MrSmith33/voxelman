@@ -12,11 +12,6 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.session;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new ChatPluginClient);
-	pluginRegistry.regServerPlugin(new ChatPluginServer);
-}
 
 final class ChatPluginClient : IPlugin
 {

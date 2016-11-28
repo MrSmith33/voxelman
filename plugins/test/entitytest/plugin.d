@@ -25,11 +25,6 @@ import voxelman.worldinteraction.plugin;
 import voxelman.world.serverworld;
 import voxelman.world.storage;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new EntityTestPlugin!true);
-	pluginRegistry.regServerPlugin(new EntityTestPlugin!false);
-}
 
 final class EntityTestPlugin(bool clientSide) : IPlugin
 {

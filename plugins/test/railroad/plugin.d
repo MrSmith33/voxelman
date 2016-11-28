@@ -31,12 +31,6 @@ import test.railroad.mesh;
 import test.railroad.utils;
 import test.railroad.railtool;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new RailroadPluginClient);
-	pluginRegistry.regServerPlugin(new RailroadPluginServer);
-}
-
 
 struct PlaceRailPacket
 {

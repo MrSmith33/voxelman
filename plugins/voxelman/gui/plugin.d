@@ -30,10 +30,6 @@ import voxelman.config.configmanager;
 
 struct ClosePressedEvent {}
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new GuiPlugin);
-}
 
 final class GuiPlugin : IPlugin
 {

@@ -14,11 +14,6 @@ import voxelman.gui.plugin;
 import voxelman.input.keybindingmanager;
 
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new InputPlugin);
-}
-
 final class InputPlugin : IPlugin
 {
 	GuiPlugin guiPlugin;

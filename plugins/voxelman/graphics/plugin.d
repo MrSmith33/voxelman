@@ -25,11 +25,6 @@ import voxelman.utils.fpscamera;
 public import voxelman.graphics;
 
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new GraphicsPlugin);
-}
-
 string solid_frag_shader = `
 #version 330
 smooth in vec4 frag_color;
@@ -133,7 +128,7 @@ public:
 
 	override void preInit()
 	{
-		camera.move(START_POS);
+		camera.move(vec3(0, 0, 0));
 		camera.sensivity = cameraSensivity.get!float;
 		camera.fov = cameraFov.get!float;
 	}

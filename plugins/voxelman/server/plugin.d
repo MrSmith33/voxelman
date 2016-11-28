@@ -21,13 +21,6 @@ import voxelman.command.plugin;
 //version = manualGC;
 version(manualGC) import core.memory;
 
-shared static this()
-{
-	auto s = new ServerPlugin;
-	pluginRegistry.regServerPlugin(s);
-	pluginRegistry.regServerMain(&s.run);
-}
-
 
 class ServerPlugin : IPlugin
 {
@@ -67,6 +60,7 @@ public:
 		infof("[Running]");
 
 		MonoTime prevTime = MonoTime.currTime;
+		enum size_t SERVER_FRAME_TIME_USECS = 1_000_000 / SERVER_UPDATES_PER_SECOND;
 		Duration frameTime = SERVER_FRAME_TIME_USECS.usecs;
 		lastSaveTime = MonoTime.currTime;
 

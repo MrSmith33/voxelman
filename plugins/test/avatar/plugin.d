@@ -18,11 +18,6 @@ import voxelman.session;
 import voxelman.world.clientworld;
 import voxelman.world.storage.coordinates : ClientDimPos;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new AvatarClient);
-	pluginRegistry.regServerPlugin(new AvatarServer);
-}
 
 @Component("avatar.AvatarPosition", false, true)
 struct AvatarPosition

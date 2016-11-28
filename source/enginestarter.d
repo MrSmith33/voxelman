@@ -7,12 +7,17 @@ Authors: Andrey Penechko.
 module enginestarter;
 
 import std.file : mkdirRecurse;
+import std.path : buildPath;
 import std.getopt;
 import core.thread : Thread, thread_joinAll;
 import voxelman.log;
 import pluginlib;
 import pluginlib.plugininforeader : filterEnabledPlugins;
 import pluginlib.pluginmanager;
+
+import voxelman.cons;
+import test.cons;
+
 
 struct EngineStarter
 {
@@ -39,10 +44,9 @@ struct EngineStarter
 		waitForThreads();
 	}
 
-	void setupLogs(AppType appType)
+	void setupLogs(AppType appType, string logsFolder = "../logs")
 	{
-		mkdirRecurse("../logs");
-		enum logsFolder = "../logs/";
+		mkdirRecurse(logsFolder);
 		enum textFormat = ".log";
 		enum binFormat = ".bin";
 
@@ -53,8 +57,8 @@ struct EngineStarter
 			case server: name = "server"; break;
 			case combined: name = "client"; break;
 		}
-		setupLogger(logsFolder ~ name ~ textFormat);
-		initBinLog(logsFolder ~ name ~ binFormat);
+		setupLogger(buildPath(logsFolder, name ~ textFormat));
+		initBinLog(buildPath(logsFolder, name ~ binFormat));
 	}
 
 	void startServer(string[] args, ServerMode serverMode)

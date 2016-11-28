@@ -5,11 +5,6 @@ import voxelman.core.config;
 
 private alias EventHandler = void delegate(ref Object event);
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new EventDispatcherPlugin);
-	pluginRegistry.regServerPlugin(new EventDispatcherPlugin);
-}
 
 class EventDispatcherPlugin : IPlugin
 {

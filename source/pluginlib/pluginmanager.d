@@ -34,6 +34,7 @@ class PluginManager : IPluginManager, IResourceManagerRegistry
 		assert(typeid(rmInstance) !in resourceManagers,
 			format("Duplicate resource manager registered: id=\"%s\" type=\"%s\"",
 				rmInstance.id, rmInstance));
+		tracef("registerResourceManager %s", rmInstance.id);
 		resourceManagers[typeid(rmInstance)] = rmInstance;
 	}
 
@@ -52,6 +53,7 @@ class PluginManager : IPluginManager, IResourceManagerRegistry
 	// IResourceManagerRegistry
 	IResourceManager findResourceManager(TypeInfo rmType)
 	{
+		tracef("findResourceManager %s", rmType);
 		return resourceManagers.get(rmType, null);
 	}
 

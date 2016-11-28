@@ -164,10 +164,7 @@ public:
 		connection.registerPacketHandler!IdMapPacket(&handleIdMapPacket);
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
-	}
 
-	override void postInit()
-	{
 		worldAccess.blockInfos = blockPlugin.getBlocks();
 	}
 
@@ -331,7 +328,7 @@ public:
 		onChunkLoaded(cwp, layers[0..numChunkLayers]);
 	}
 
-	private void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
+	void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
 	{
 		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
@@ -398,7 +395,7 @@ public:
 		onBlockBoxChanged(packet.box);
 	}
 
-	private void onBlockBoxChanged(WorldBox blockBox)
+	void onBlockBoxChanged(WorldBox blockBox)
 	{
 		WorldBox observedBox = chunkObserverManager.getObserverBox(observerSessionId);
 		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);

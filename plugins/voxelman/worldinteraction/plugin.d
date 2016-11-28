@@ -30,11 +30,6 @@ import voxelman.net.plugin;
 import voxelman.world.clientworld;
 
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new WorldInteractionPlugin);
-}
-
 enum cursorSize = vec3(1.02, 1.02, 1.02);
 enum cursorOffset = vec3(0.01, 0.01, 0.01);
 

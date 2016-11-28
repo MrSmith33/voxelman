@@ -26,10 +26,6 @@ import voxelman.world.clientworld;
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new MovementPlugin);
-}
 
 class MovementPlugin : IPlugin
 {
@@ -104,13 +100,13 @@ class MovementPlugin : IPlugin
 
 	void speedUp(string) {
 		if (isFlying)
-			flightCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint + 1, 1, 200));
+			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!uint + 1, 1, 200));
 		else
 			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint + 1, 1, 100));
 	}
 	void speedDown(string) {
 		if (isFlying)
-			flightCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint - 1, 1, 200));
+			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!uint - 1, 1, 200));
 		else
 			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint - 1, 1, 100));
 	}

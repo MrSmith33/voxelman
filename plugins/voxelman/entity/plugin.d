@@ -23,11 +23,6 @@ import voxelman.world.storage : IoManager, StringMap, IoKey, PluginDataLoader, P
 
 import voxelman.entity.entityobservermanager;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new EntityPluginClient);
-	pluginRegistry.regServerPlugin(new EntityPluginServer);
-}
 
 struct ProcessComponentsEvent {
 	float deltaTime;

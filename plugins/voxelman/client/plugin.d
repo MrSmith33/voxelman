@@ -51,12 +51,6 @@ import voxelman.client.console;
 //version = manualGC;
 version(manualGC) import core.memory;
 
-shared static this()
-{
-	auto c = new ClientPlugin;
-	pluginRegistry.regClientPlugin(c);
-	pluginRegistry.regClientMain(&c.run);
-}
 
 auto formatDuration(Duration dur)
 {

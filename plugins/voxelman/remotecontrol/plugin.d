@@ -15,11 +15,6 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.command.plugin;
 import voxelman.server.plugin;
 
-shared static this()
-{
-	pluginRegistry.regClientPlugin(new RemoteControl!true);
-	pluginRegistry.regServerPlugin(new RemoteControl!false);
-}
 
 final class RemoteControl(bool clientSide) : IPlugin
 {

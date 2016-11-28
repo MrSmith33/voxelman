@@ -13,13 +13,6 @@ public import voxelman.config.configmanager;
 enum string CONFIG_FILE_NAME_CLIENT = "../../config/client.sdl";
 enum string CONFIG_FILE_NAME_SERVER = "../../config/server.sdl";
 
-shared static this()
-{
-	import core.runtime : Runtime;
-	pluginRegistry.regClientPlugin(new ConfigPlugin(CONFIG_FILE_NAME_CLIENT, Runtime.args));
-	pluginRegistry.regServerPlugin(new ConfigPlugin(CONFIG_FILE_NAME_SERVER, Runtime.args));
-}
-
 final class ConfigPlugin : IPlugin
 {
 	mixin IdAndSemverFrom!"voxelman.config.plugininfo";
