@@ -115,16 +115,23 @@ CubeSide sideFromNormal(ivec3 normal)
 
 void makeNullMesh(BlockMeshingData) {}
 
+float random(uint num)
+{
+	uint x = num;
+	x = ((x >> 16) ^ x) * 0x45d9f3b;
+	x = ((x >> 16) ^ x) * 0x45d9f3b;
+	x = (x >> 16) ^ x;
+	return (cast(float)x / uint.max);
+}
+
 void makeColoredBlockMesh(BlockMeshingData data)
 {
-	import std.random;
 	static immutable(float)[] shadowMultipliers = [
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
 	auto index = BlockChunkIndex(data.blockPos).index;
-	auto rnd = Xorshift32(index);
-	float randomTint = uniform(0.90f, 1.0f, rnd);
+	float randomTint = random(index)*0.1+0.9;
 
 	float r = data.color.r * randomTint;
 	float g = data.color.g * randomTint;
@@ -291,11 +298,11 @@ ubyte calcSolidityBits(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
 	} else assert(false);
 }
 
+enum ubyte[3] solidity_bits = [0b001, 0b010, 0b100];
 ubyte calcSolidityBits(BlockId uniformBlock, BlockInfoTable blockInfos)
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
-	enum ubyte[3] bits = [0b001, 0b010, 0b100];
-	return bits[solidity];
+	return solidity_bits[solidity];
 }
 
 ubyte calcSolidityBits(BlockId[] blocks, BlockInfoTable blockInfos)
@@ -405,7 +412,9 @@ ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
 
 enum CHUNK_SIDE_METADATA_BITS = 13;
 enum SOLID_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.solid] |
-		solidity_metadatas[Solidity.solid]<<CHUNK_SIDE_METADATA_BITS);
+		solidity_bits[Solidity.solid]<<CHUNK_SIDE_METADATA_BITS);
+enum TRANSPARENT_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.transparent] |
+		solidity_bits[Solidity.transparent]<<CHUNK_SIDE_METADATA_BITS);
 
 ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {

@@ -441,13 +441,12 @@ T getUniform(T, Layer)(const ref Layer layer)
 BlockId getBlockId(Layer)(const ref Layer layer, BlockChunkIndex index)
 	if (isSomeLayer!Layer)
 {
-	if (layer.type == StorageType.uniform) return layer.getUniform!BlockId;
-	if (layer.type == StorageType.compressedArray) {
-		BlockId[CHUNK_SIZE_CUBE] buffer;
-		decompressLayerData(layer, cast(ubyte[])buffer[]);
-		return buffer[index];
-	}
-	return getArray!BlockId(layer)[index];
+	if (layer.type == StorageType.fullArray) return (cast(BlockId*)layer.dataPtr)[index];
+	if (layer.type == StorageType.uniform) return cast(BlockId)layer.uniformData;
+
+	BlockId[CHUNK_SIZE_CUBE] buffer;
+	decompressLayerData(layer, cast(ubyte[])buffer[]);
+	return buffer[index];
 }
 
 BlockId getBlockId(Layer)(const ref Layer layer, int x, int y, int z)

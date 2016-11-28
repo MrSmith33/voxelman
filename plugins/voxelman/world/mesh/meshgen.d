@@ -178,12 +178,9 @@ MeshVertex[][2] chunkMeshWorker(
 		return sides;
 	}
 
-	void meshBlock(BlockId blockId, ushort blockIndex, Solidity curSolidity)
+	void meshBlock(BlockId blockId, ubyte x, ubyte y, ubyte z, Solidity curSolidity)
 	{
-		ubvec3 bpos;
-		bpos.x = blockIndex & CHUNK_SIZE_BITS;
-		bpos.y = (blockIndex / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
-		bpos.z = (blockIndex / CHUNK_SIZE) & CHUNK_SIZE_BITS;
+		ubvec3 bpos = ubvec3(x, y, z);
 
 		// Bit flags of sides to render
 		ubyte sides = checkSideSolidities(curSolidity, bpos);
@@ -232,9 +229,11 @@ MeshVertex[][2] chunkMeshWorker(
 
 		if (curSolidity != Solidity.transparent)
 		{
-			foreach (ushort index; 0..CHUNK_SIZE_CUBE)
+			foreach (ubyte y; 0..CHUNK_SIZE)
+			foreach (ubyte z; 0..CHUNK_SIZE)
+			foreach (ubyte x; 0..CHUNK_SIZE)
 			{
-				meshBlock(blockId, index, curSolidity);
+				meshBlock(blockId, x, y, z, curSolidity);
 			}
 		}
 	}
@@ -242,16 +241,20 @@ MeshVertex[][2] chunkMeshWorker(
 	{
 		auto blocks = blockLayers[26].getArray!BlockId();
 		assert(blocks.length == CHUNK_SIZE_CUBE);
-		foreach (ushort index, BlockId blockId; blocks)
+
+		ushort index = 0;
+
+		foreach (ubyte y; 0..CHUNK_SIZE)
+		foreach (ubyte z; 0..CHUNK_SIZE)
+		foreach (ubyte x; 0..CHUNK_SIZE)
 		{
+			BlockId blockId = blocks.ptr[index];
 			if (blockInfos[blockId].isVisible)
 			{
-				auto curSolidity = blockInfos[blockId].solidity;
-				if (curSolidity == Solidity.transparent)
-					continue;
-
-				meshBlock(blockId, index, curSolidity);
+				Solidity curSolidity = blockInfos[blockId].solidity;
+				meshBlock(blockId, x, y, z, curSolidity);
 			}
+			++index;
 		}
 	}
 
