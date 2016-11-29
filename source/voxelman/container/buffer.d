@@ -33,11 +33,10 @@ struct Buffer(T)
 		length += items.length;
 	}
 
-	void put(T[] items)
+	void put(R)(R itemRange)
 	{
-		reserve(items.length);
-		buf[length..length+items.length] = items;
-		length += items.length;
+		foreach(item; itemRange)
+			put(item);
 	}
 
 	T[] data() {

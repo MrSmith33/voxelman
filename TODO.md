@@ -75,7 +75,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### ENTITIES
 
-- [ ] Send only observed entities.
+- [x] Send only observed entities.
 
 ----
 ### EDITING

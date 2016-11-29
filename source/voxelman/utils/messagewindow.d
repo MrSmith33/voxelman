@@ -20,20 +20,26 @@ struct MessageWindow
 		inputBuf[0] = '\0';
 	}
 
-	void draw()
+	void draw(bool drawBorder = true)
 	{
 		import derelict.imgui.imgui;
 		import std.string;
+
+		igPushStyleVarVec(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
 		igBeginChildEx(0, ImVec2(0,-igGetItemsLineHeightWithSpacing()),
-			true, ImGuiWindowFlags_HorizontalScrollbar);
-		lineBuffer.draw();
+			drawBorder, ImGuiWindowFlags_HorizontalScrollbar);
+		lineBuffer.drawSelectable();
 		igEndChild();
+		igPopStyleVar();
+
 
 		bool press = false;
 
-		igPushItemWidth(igGetContentRegionAvailWidth()-100);
+		igPushItemWidth(igGetContentRegionAvailWidth()-60);
 		if (igInputText("##input", inputBuf.ptr, inputBuf.length, ImGuiInputTextFlags_EnterReturnsTrue, null, null))
+		{
 			press = true;
+		}
 
 		igPopItemWidth();
 		igSameLine();

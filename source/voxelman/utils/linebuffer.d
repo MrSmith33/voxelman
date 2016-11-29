@@ -8,11 +8,12 @@ module voxelman.utils.linebuffer;
 struct LineBuffer
 {
 	import derelict.imgui.imgui;
-	import std.array : Appender, empty;
+	import std.array : empty;
 	import std.format : formattedWrite;
+	import voxelman.container.buffer;
 
-	Appender!(char[]) lines;
-	Appender!(size_t[]) lineSizes;
+	Buffer!char lines;
+	Buffer!size_t lineSizes;
 	bool scrollToBottom;
 
 	void clear()
@@ -25,17 +26,33 @@ struct LineBuffer
 	{
 		import std.regex : ctRegex, splitter;
 		import std.algorithm : map;
+		import std.range;
+
 		if (str.empty) return;
 		auto splittedLines = splitter(str, ctRegex!"(\r\n|\r|\n|\v|\f)");
-		auto lengths = splittedLines.map!(a => a.length);
-		if (!lineSizes.data.empty)
+
+		foreach(first; splittedLines.takeOne())
 		{
-			lineSizes.data[$-1] += lengths.front;
-			lengths.popFront();
+			lines.put(first);
+			if (!lineSizes.data.empty)
+			{
+				lineSizes.data[$-1] += first.length;
+			}
+			else
+			{
+				lineSizes.put(first.length);
+			}
 		}
-		lineSizes.put(lengths);
-		foreach(line; splittedLines)
+
+		// process other lines
+		foreach(line; splittedLines.drop(1))
+		{
+			++lineSizes.data[$-1];
+			lines.put("\n");
 			lines.put(line);
+			lineSizes.put(line.length);
+		}
+
 		scrollToBottom = true;
 	}
 
@@ -67,6 +84,32 @@ struct LineBuffer
 			igPopTextWrapPos();
 			lineStart += lineSize;
 		}
+
+		if (scrollToBottom)
+			igSetScrollHere(1.0f);
+		scrollToBottom = false;
+	}
+
+	void drawSelectable()
+	{
+		igPushStyleVarVec(ImGuiStyleVar_FramePadding, ImVec2(6,6));
+
+		ImVec2 size;
+		igGetContentRegionAvail(&size);
+		size.x -= 12;
+		size.y -= 12;
+
+		igPushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+		if (lines.data.length)
+			igInputTextMultiline("##multiline", lines.data.ptr, lines.data.length, size, ImGuiInputTextFlags_ReadOnly);
+		else
+		{
+			char[] str = cast(char[])"";
+			igInputTextMultiline("##multiline", str.ptr, str.length, size, ImGuiInputTextFlags_ReadOnly);
+		}
+		igPopStyleColor();
+
+		igPopStyleVar();
 
 		if (scrollToBottom)
 			igSetScrollHere(1.0f);

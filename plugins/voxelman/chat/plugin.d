@@ -68,7 +68,7 @@ final class ChatPluginClient : IPlugin
 			return;
 		}
 		//if (!igBegin("Chat")) return;
-		messageWindow.draw();
+		messageWindow.draw(false);
 		igEnd();
 	}
 }

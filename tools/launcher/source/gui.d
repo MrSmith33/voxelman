@@ -96,7 +96,7 @@ struct LauncherGui
 		refresh();
 
 		window = new GlfwWindow();
-		window.init(uvec2(810, 600), "Voxelman launcher");
+		window.init(uvec2(820, 600), "Voxelman launcher");
 		igState.init(window.handle);
 		window.keyPressed.connect(&igState.onKeyPressed);
 		window.keyReleased.connect(&igState.onKeyReleased);
@@ -648,7 +648,9 @@ void drawJobLog(J)(J* job, float height)
 		drawActionButtons(job);
 		if (job.command)
 		{
+			igPushItemWidth(-1);
 			igInputText("", cast(char*)job.command.ptr, job.command.length, ImGuiInputTextFlags_ReadOnly);
+			igPopItemWidth();
 		}
 		job.messageWindow.draw();
 	igEndChild();

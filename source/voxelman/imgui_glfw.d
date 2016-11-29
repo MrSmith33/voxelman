@@ -302,11 +302,15 @@ struct ImguiState
 	void onKeyPressed(uint key)
 	{
 		igGetIO().KeysDown[key] = true;
+		if (key == GLFW_KEY_KP_ENTER)
+			igGetIO().KeysDown[GLFW_KEY_ENTER] = true;
 	}
 
 	void onKeyReleased(uint key)
 	{
 		igGetIO().KeysDown[key] = false;
+		if (key == GLFW_KEY_KP_ENTER)
+			igGetIO().KeysDown[GLFW_KEY_ENTER] = false;
 	}
 
 	void charCallback(dchar c)
