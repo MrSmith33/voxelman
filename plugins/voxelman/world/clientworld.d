@@ -315,7 +315,7 @@ public:
 		//tracef("Received %s ChunkDataPacket(%s,%s)", packetData.length,
 		//	packet.chunkPos, packet.blockData.blocks.length);
 
-		ChunkLayerItem[8] layers;
+		ChunkLayerItem[MAX_CHUNK_LAYERS] layers;
 		auto cwp = ChunkWorldPos(packet.chunkPos);
 
 		ubyte numChunkLayers;
@@ -332,17 +332,6 @@ public:
 	{
 		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
 		++totalLoadedChunks;
-		static struct LoadedChunkData
-		{
-			ChunkWorldPos cwp;
-			ChunkLayerItem[] layers;
-			ChunkHeaderItem getHeader() { return ChunkHeaderItem(cwp, cast(uint)layers.length, 0); }
-			ChunkLayerItem getLayer() {
-				ChunkLayerItem layer = layers[0];
-				layers = layers[1..$];
-				return layer;
-			}
-		}
 
 		if (chunkManager.isChunkLoaded(cwp))
 		{
@@ -364,7 +353,7 @@ public:
 					layer.dataPtr = data.ptr;
 				}
 			}
-			chunkManager.onSnapshotLoaded(LoadedChunkData(cwp, layers), true);
+			chunkManager.onSnapshotLoaded(cwp, layers, true);
 		}
 		else
 		{

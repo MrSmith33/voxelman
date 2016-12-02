@@ -32,9 +32,9 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 	@property size_t capacity() const { return keys.length; }
 	@property bool empty() const { return length == 0; }
 
-	void remove(Key key) {
+	bool remove(Key key) {
 		auto idx = findIndex(key);
-		if (idx == size_t.max) return;
+		if (idx == size_t.max) return false;
 		auto i = idx;
 		while (true)
 		{
@@ -46,7 +46,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 				if (keys[i] == nullKey)
 				{
 					--length;
-					return;
+					return true;
 				}
 				r = keys[i] & (keys.length-1);
 			}

@@ -88,6 +88,8 @@ enum WriteBufferPolicy
 	copySnapshotArray,
 }
 
+enum MAX_CHUNK_LAYERS = 8;
+
 final class ChunkManager {
 	void delegate(ChunkWorldPos)[] onChunkAddedHandlers;
 	void delegate(ChunkWorldPos)[] onChunkRemovedHandlers;
@@ -308,22 +310,18 @@ final class ChunkManager {
 	/// LoadedChunk is a type that has following members:
 	///   ChunkHeaderItem getHeader()
 	///   ChunkLayerItem getLayer()
-	void onSnapshotLoaded(LoadedChunk)(LoadedChunk chunk, bool needsSave) {
-		ChunkHeaderItem header = chunk.getHeader();
+	void onSnapshotLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers, bool needsSave) {
+		version(DBG_OUT)infof("res loaded %s", cwp);
 
-		version(DBG_OUT)infof("res loaded %s", header.cwp);
-
-		foreach(_; 0..header.numLayers)
+		foreach(layer; layers)
 		{
-			ChunkLayerItem layer = chunk.getLayer();
 			totalLayerDataBytes += getLayerDataBytes(layer);
 
-			snapshots[layer.layerId][header.cwp] = ChunkLayerSnap(layer);
+			snapshots[layer.layerId][cwp] = ChunkLayerSnap(layer);
 			version(DBG_COMPR)if (layer.type == StorageType.compressedArray)
-				infof("CM Loaded %s %s %s\n(%(%02x%))", header.cwp, layer.dataPtr, layer.dataLength, layer.getArray!ubyte);
+				infof("CM Loaded %s %s %s\n(%(%02x%))", cwp, layer.dataPtr, layer.dataLength, layer.getArray!ubyte);
 		}
 
-		auto cwp = header.cwp;
 		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
 
 		with(ChunkState) final switch(state)
@@ -363,17 +361,14 @@ final class ChunkManager {
 	/// SavedChunk is a type that has following memeber:
 	///   ChunkHeaderItem getHeader()
 	///   ChunkLayerTimestampItem getLayerTimestamp()
-	void onSnapshotSaved(SavedChunk)(SavedChunk chunk) {
-		ChunkHeaderItem header = chunk.getHeader();
-		version(DBG_OUT)infof("res saved %s", header.cwp);
+	void onSnapshotSaved(ChunkWorldPos cwp, ChunkLayerTimestampItem[] timestamps) {
+		version(DBG_OUT)infof("res saved %s", cwp);
 
-		auto cwp = header.cwp;
-		auto state = chunkStates.get(header.cwp, ChunkState.non_loaded);
-		foreach(i; 0..header.numLayers)
+		auto state = chunkStates.get(cwp, ChunkState.non_loaded);
+		foreach(layer; timestamps)
 		{
-			ChunkLayerTimestampItem layer = chunk.getLayerTimestamp();
 			// will delete current chunk when totalUsersLeft becomes 0 and is removed
-			removeSnapshotUser(header.cwp, layer.timestamp, layer.layerId);
+			removeSnapshotUser(cwp, layer.timestamp, layer.layerId);
 		}
 		mixin(traceStateStr);
 	}
@@ -686,9 +681,7 @@ final class ChunkManager {
 	// Called when snapshot data can be recycled.
 	private void recycleSnapshotMemory(ref ChunkLayerSnap snap) {
 		totalLayerDataBytes -= getLayerDataBytes(snap);
-		if (snap.type != StorageType.uniform) {
-			freeLayerArray(snap);
-		}
+		freeLayerArray(snap);
 	}
 }
 

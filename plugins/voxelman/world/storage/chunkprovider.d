@@ -9,8 +9,10 @@ import voxelman.log;
 import core.sync.condition;
 import core.atomic;
 import core.thread : Thread;
+import std.string : format;
 
 import voxelman.math;
+import voxelman.container.sharedhashset;
 
 import voxelman.block.utils : BlockInfoTable;
 import voxelman.core.config;
@@ -26,47 +28,63 @@ enum saveUnmodifiedChunks = true;
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData
 {
-	private shared(SharedQueue)* queue;
-	ChunkHeaderItem getHeader()
-	{
+	private ChunkHeaderItem header;
+	private ChunkLayerItem[MAX_CHUNK_LAYERS] _layers;
+
+	ChunkWorldPos cwp() { return header.cwp; }
+	ChunkLayerItem[] layers() { return _layers[0..header.numLayers]; }
+
+	static LoadedChunkData getFromQueue(shared SharedQueue* queue) {
+		LoadedChunkData data;
 		assert(queue.length >= ChunkHeaderItem.sizeof);
-		ChunkHeaderItem header;
-		queue.popItem(header);
-		assert(queue.length >= ChunkLayerItem.sizeof * header.numLayers);
-		return header;
-	}
-	ChunkLayerItem getLayer()
-	{
-		return queue.popItem!ChunkLayerItem;
+		data.header = queue.popItem!ChunkHeaderItem;
+
+		assert(queue.length >= ChunkLayerItem.sizeof * data.header.numLayers);
+		assert(data.header.numLayers <= MAX_CHUNK_LAYERS,
+			format("%s <= %s", data.header.numLayers, MAX_CHUNK_LAYERS));
+
+		foreach(i; 0..data.header.numLayers)
+		{
+			data._layers[i] = queue.popItem!ChunkLayerItem;
+		}
+		return data;
 	}
 }
 
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct SavedChunkData
 {
-	private shared(SharedQueue)* queue;
-	ChunkHeaderItem getHeader()
-	{
-		assert(queue.length >= 2);
-		ChunkHeaderItem header;
-		queue.popItem(header);
-		assert(queue.length >= ChunkLayerItem.sizeof/8 * header.numLayers);
-		return header;
-	}
-	ChunkLayerTimestampItem getLayerTimestamp()
-	{
-		ChunkLayerTimestampItem layer;
-		queue.popItem(layer);
-		return layer;
+	private ChunkHeaderItem header;
+	private ChunkLayerTimestampItem[MAX_CHUNK_LAYERS] _layers;
+
+	ChunkWorldPos cwp() { return header.cwp; }
+	ChunkLayerTimestampItem[] layers() { return _layers[0..header.numLayers]; }
+
+	static SavedChunkData getFromQueue(shared SharedQueue* queue) {
+		SavedChunkData data;
+		assert(queue.length >= ChunkHeaderItem.sizeof);
+		data.header = queue.popItem!ChunkHeaderItem;
+
+		assert(queue.length >= ChunkLayerTimestampItem.sizeof * data.header.numLayers);
+		assert(data.header.numLayers <= MAX_CHUNK_LAYERS);
+
+		foreach(i; 0..data.header.numLayers)
+		{
+			data._layers[i] = queue.popItem!ChunkLayerTimestampItem;
+		}
+		return data;
 	}
 }
 
 alias IoHandler = void delegate(WorldDb);
+alias TaskId = uint;
 
 enum SaveItemType : ubyte {
 	chunk,
 	saveHandler
 }
+
+enum TASK_CANCELED_METADATA = 1;
 
 //version = DBG_OUT;
 struct ChunkProvider
@@ -76,6 +94,7 @@ struct ChunkProvider
 	private shared bool workerStopped = false;
 
 	size_t numReceived;
+	private TaskId nextTaskId;
 
 	Mutex workAvaliableMutex;
 	Condition workAvaliable;
@@ -84,10 +103,13 @@ struct ChunkProvider
 	shared SharedQueue loadTaskQueue;
 	shared SharedQueue saveTaskQueue;
 
+	shared SharedHashSet!TaskId canceledTasks;
+	TaskId[ChunkWorldPos] chunkTasks;
+
 	shared Worker[] genWorkers;
 
-	void delegate(LoadedChunkData loadedChunk, bool needsSave) onChunkLoadedHandler;
-	void delegate(SavedChunkData savedChunk) onChunkSavedHandler;
+	void delegate(ChunkWorldPos cwp, ChunkLayerItem[] layers, bool needsSave) onChunkLoadedHandler;
+	void delegate(ChunkWorldPos cwp, ChunkLayerTimestampItem[] timestamps) onChunkSavedHandler;
 	IGenerator delegate(DimensionId dimensionId) generatorGetter;
 
 	size_t loadQueueSpaceAvaliable() @property const {
@@ -105,13 +127,15 @@ struct ChunkProvider
 
 	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks)
 	{
+		canceledTasks = cast(shared) new SharedHashSet!TaskId;
+
 		import std.algorithm.comparison : clamp;
 		numGenWorkers = clamp(numGenWorkers, 0, 16);
 		genWorkers.length = numGenWorkers;
 		foreach(i; 0..numGenWorkers)
 		{
 			genWorkers[i].alloc("GEN_W", QUEUE_LENGTH);
-			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], blocks);
+			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], canceledTasks, blocks);
 		}
 
 		workAvaliableMutex = new Mutex;
@@ -125,6 +149,7 @@ struct ChunkProvider
 			&workerRunning,
 			cast(shared)workAvaliableMutex, cast(shared)workAvaliable,
 			&loadResQueue, &saveResQueue, &loadTaskQueue, &saveTaskQueue,
+			canceledTasks,
 			genWorkers);
 	}
 
@@ -170,26 +195,21 @@ struct ChunkProvider
 
 	size_t prevReceived = size_t.max;
 	void update() {
-		//infof("%s %s %s %s", loadResQueue.length, saveResQueue.length,
-		//		loadTaskQueue.length, saveTaskQueue.length);
 		while(loadResQueue.length > 0)
 		{
-			onChunkLoadedHandler(LoadedChunkData(&loadResQueue), false);
-			++numReceived;
+			receiveChunk(&loadResQueue, false);
 		}
 		while(!saveResQueue.empty)
 		{
-			//infof("Save res received");
-			onChunkSavedHandler(SavedChunkData(&saveResQueue));
+			auto data = SavedChunkData.getFromQueue(&saveResQueue);
+			onChunkSavedHandler(data.cwp, data.layers);
 			++numReceived;
 		}
 		foreach(ref w; genWorkers)
 		{
 			while(!w.resultQueue.empty)
 			{
-				//infof("Save res received");
-				onChunkLoadedHandler(LoadedChunkData(&w.resultQueue), saveUnmodifiedChunks);
-				++numReceived;
+				receiveChunk(&w.resultQueue, saveUnmodifiedChunks);
 			}
 		}
 
@@ -202,12 +222,51 @@ struct ChunkProvider
 	{
 		IGenerator generator = generatorGetter(cwp.dimension);
 
+		TaskId id = nextTaskId++;
+		chunkTasks[cwp] = id;
+
 		loadTaskQueue.startMessage();
+		loadTaskQueue.pushMessagePart!TaskId(id);
 		loadTaskQueue.pushMessagePart!ulong(cwp.asUlong);
 		loadTaskQueue.pushMessagePart!IGenerator(generator);
 		loadTaskQueue.endMessage();
 
 		notify();
+	}
+
+	void cancelLoad(ChunkWorldPos cwp)
+	{
+		TaskId tid = chunkTasks[cwp];
+		canceledTasks.put(tid);
+		chunkTasks.remove(cwp);
+	}
+
+	void receiveChunk(shared(SharedQueue)* queue, bool needsSave)
+	{
+		TaskId loadedTaskId = queue.popItem!TaskId();
+
+		auto data = LoadedChunkData.getFromQueue(queue);
+		if (auto latestTaskId = data.cwp in chunkTasks)
+		{
+			if (loadedTaskId == *latestTaskId)
+			{
+				onChunkLoadedHandler(data.cwp, data.layers, needsSave);
+				chunkTasks.remove(data.cwp);
+			}
+			else
+			{
+				// we have a task done for one of latest requests of current chunk
+				// it was either processed or not
+				if (data.header.metadata == TASK_CANCELED_METADATA)
+				{
+					foreach(ref layer; data.layers)
+						freeLayerArray(layer);
+				}
+			}
+		}
+		canceledTasks.remove(loadedTaskId);
+
+		++numReceived;
 	}
 
 	// sends a delegate to IO thread

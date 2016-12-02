@@ -7,17 +7,22 @@ module voxelman.world.gen.worker;
 
 import voxelman.log;
 
+import voxelman.container.sharedhashset;
 import voxelman.block.utils;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunk;
+import voxelman.world.storage.chunkprovider : TaskId, TASK_CANCELED_METADATA;
 
 import voxelman.world.gen.utils;
 import voxelman.world.gen.generator;
 
 //version = DBG_OUT;
-void chunkGenWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos)
+void chunkGenWorkerThread(
+	shared(Worker)* workerInfo,
+	shared SharedHashSet!TaskId canceledTasks,
+	BlockInfoTable blockInfos)
 {
 	import std.array : uninitializedArray;
 
@@ -30,10 +35,22 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos)
 
 			if (!workerInfo.taskQueue.empty)
 			{
+				TaskId taskId = workerInfo.taskQueue.popItem!TaskId();
 				ulong _cwp = workerInfo.taskQueue.popItem!ulong();
 				ChunkWorldPos cwp = ChunkWorldPos(_cwp);
 				IGenerator generator = workerInfo.taskQueue.popItem!IGenerator();
-				genChunk(cwp, &workerInfo.resultQueue,
+
+				if (canceledTasks[taskId])
+				{
+					workerInfo.resultQueue.startMessage();
+					workerInfo.resultQueue.pushMessagePart(taskId);
+					workerInfo.resultQueue.pushMessagePart(ChunkHeaderItem(cwp, 0, TASK_CANCELED_METADATA));
+					workerInfo.resultQueue.endMessage();
+
+					continue;
+				}
+
+				genChunk(taskId, cwp, &workerInfo.resultQueue,
 					generator, blockInfos, compressBuffer);
 			}
 		}
@@ -49,6 +66,7 @@ void chunkGenWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos)
 
 //version = DBG_COMPR;
 void genChunk(
+	TaskId taskId,
 	ChunkWorldPos cwp,
 	shared(SharedQueue)* resultQueue,
 	IGenerator generator,
@@ -64,8 +82,8 @@ void genChunk(
 	enum numLayers = 1;
 
 	resultQueue.startMessage();
-	auto header = ChunkHeaderItem(cwp, numLayers);
-	resultQueue.pushMessagePart(header);
+	resultQueue.pushMessagePart(taskId);
+	resultQueue.pushMessagePart(ChunkHeaderItem(cwp, numLayers));
 
 	if(chunk.uniform)
 	{

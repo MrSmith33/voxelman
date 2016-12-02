@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.storageworker;
 
 import voxelman.log;
+import voxelman.container.sharedhashset;
 import std.conv : to;
 import std.datetime : MonoTime, Duration, usecs, dur, seconds;
 import core.atomic;
@@ -100,7 +101,7 @@ struct GenWorkerControl
 
 	// Sends chunks with the same x and z to the same worker.
 	// There is thread local heightmap cache.
-	void sendGenTask(ulong cwp, IGenerator generator)
+	void sendGenTask(TaskId taskId, ulong cwp, IGenerator generator)
 	{
 		auto _cwp = ChunkWorldPos(cwp);
 		size_t workerIndex;
@@ -115,17 +116,21 @@ struct GenWorkerControl
 			workerIndex = getWorker();
 		}
 		shared(Worker)* worker = &genWorkers[workerIndex];
-		worker.taskQueue.pushItem!ulong(cwp);
-		worker.taskQueue.pushItem(generator);
+		worker.taskQueue.startMessage();
+		worker.taskQueue.pushMessagePart(taskId);
+		worker.taskQueue.pushMessagePart!ulong(cwp);
+		worker.taskQueue.pushMessagePart(generator);
+		worker.taskQueue.endMessage();
 		worker.notify();
 		lastWorker = workerIndex;
 		lastCwp = _cwp;
 	}
 }
 
-void sendEmptyChunk(shared SharedQueue* queue, ulong cwp)
+void sendEmptyChunk(TaskId taskId, shared SharedQueue* queue, ulong cwp)
 {
 	queue.startMessage();
+	queue.pushMessagePart(taskId);
 	queue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), 1/*numLayers*/, 0));
 	queue.pushMessagePart(ChunkLayerItem(StorageType.uniform, FIRST_LAYER,
 		BLOCKID_UNIFORM_FILL_BITS/*dataLength*/, 0/*timestamp*/, 0/*uniformData*/,
@@ -144,6 +149,7 @@ void storageWorker(
 			shared SharedQueue* saveResQueue,
 			shared SharedQueue* loadTaskQueue,
 			shared SharedQueue* saveTaskQueue,
+			shared SharedHashSet!TaskId canceledTasks,
 			shared Worker[] genWorkers,
 			)
 {
@@ -223,17 +229,33 @@ void storageWorker(
 	{
 		taskTime.reset();
 		taskTime.startTaskTiming("RD");
-		bool doGen;
+		scope(exit) {
+			taskTime.endTaskTiming();
+			taskTime.printTime();
+		}
 
+		TaskId taskId = loadTaskQueue.popItem!TaskId();
 		ulong cwp = loadTaskQueue.popItem!ulong();
 		IGenerator generator = loadTaskQueue.popItem!IGenerator();
+
+		if (canceledTasks[taskId])
+		{
+			loadResQueue.startMessage();
+			loadResQueue.pushMessagePart(taskId);
+			loadResQueue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), 0, TASK_CANCELED_METADATA));
+			loadResQueue.endMessage();
+
+			return;
+		}
+
+		bool doGen;
 		try
 		{
 			readTime.startTaskTiming("get");
 			ubyte[] cborData = worldDb.get(cwp.formChunkKey);
 			readTime.endTaskTiming();
 			//scope(exit) worldDb.perChunkSelectStmt.reset();
-			//infof("S read %s %s", ChunkWorldPos(cwp), cborData.length);
+			//infof("S read %s %s %s", taskId, ChunkWorldPos(cwp), cborData.length);
 
 			if (cborData !is null)
 			{
@@ -242,6 +264,7 @@ void storageWorker(
 				ubyte numLayers = decodeCborSingle!ubyte(cborData);
 				// TODO check numLayers <= ubyte.max
 				loadResQueue.startMessage();
+				loadResQueue.pushMessagePart(taskId);
 				loadResQueue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), cast(ubyte)numLayers, 0));
 				foreach(_; 0..numLayers)
 				{
@@ -276,15 +299,15 @@ void storageWorker(
 			infof("storage exception %s regenerating %s", e.to!string, ChunkWorldPos(cwp));
 			doGen = true;
 		}
+
 		if (doGen) {
 			if (genEnabled && generator) {
-				workerControl.sendGenTask(cwp, generator);
+				workerControl.sendGenTask(taskId, cwp, generator);
 			} else {
-				sendEmptyChunk(loadResQueue, cwp);
+				sendEmptyChunk(taskId, loadResQueue, cwp);
 			}
 		}
-		taskTime.endTaskTiming();
-		taskTime.printTime();
+
 		version(DBG_OUT)infof("task load %s", ChunkWorldPos(cwp));
 	}
 

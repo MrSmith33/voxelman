@@ -89,11 +89,13 @@ ubyte[] allocLayerArray(size_t length) {
 
 void freeLayerArray(Layer)(ref Layer layer) {
 	//tracef("freeLayerArray %s %s", layer.dataPtr, layer);
-	assert(layer.type != StorageType.uniform);
-	ubyte[] data = layer.getArray!ubyte;
-	dispose(Mallocator.instance, data);
-	layer.dataPtr = null;
-	layer.dataLength = 0;
+	if(layer.type != StorageType.uniform)
+	{
+		ubyte[] data = layer.getArray!ubyte;
+		dispose(Mallocator.instance, data);
+		layer.dataPtr = null;
+		layer.dataLength = 0;
+	}
 }
 
 struct ChunkHeaderItem {
@@ -169,18 +171,14 @@ struct WriteBuffer
 	}
 
 	void makeUniform(ulong uniformData, LayerDataLenType dataLength, ushort metadata = 0) {
-		if (!isUniform) {
-			freeLayerArray(layer);
-		}
+		freeLayerArray(layer);
 		layer.uniformData = uniformData;
 		layer.dataLength = dataLength;
 		layer.metadata = metadata;
 	}
 
 	void makeUniform(T)(ulong uniformData, ushort metadata = 0) {
-		if (!isUniform) {
-			freeLayerArray(layer);
-		}
+		freeLayerArray(layer);
 		layer.uniformData = uniformData;
 		layer.dataLength = bitsToUniformLength(T.sizeof * 8);
 		layer.metadata = metadata;

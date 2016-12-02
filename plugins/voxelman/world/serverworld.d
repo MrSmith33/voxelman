@@ -142,8 +142,8 @@ public:
 		chunkManager.endChunkSave = &chunkProvider.endChunkSave;
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
 
-		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded!LoadedChunkData;
-		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved!SavedChunkData;
+		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded;
+		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved;
 		chunkProvider.generatorGetter = &dimMan.generatorMan.opIndex;
 
 		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
