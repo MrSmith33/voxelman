@@ -141,6 +141,7 @@ public:
 		chunkManager.pushLayer = &chunkProvider.pushLayer;
 		chunkManager.endChunkSave = &chunkProvider.endChunkSave;
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
+		chunkManager.cancelLoadChunkHandler = &chunkProvider.cancelLoad;
 
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded;
 		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved;
@@ -283,8 +284,11 @@ public:
 
 		import voxelman.world.gen.generators;
 		import core.atomic;
-		dbg.setVar("cacheHits", atomicLoad(cache_hits));
-		dbg.setVar("cacheMiss", atomicLoad(cache_misses));
+		dbg.setVar("gen cache hits", atomicLoad(cache_hits));
+		dbg.setVar("gen cache misses", atomicLoad(cache_misses));
+		dbg.setVar("total loads", chunkProvider.totalReceived);
+		dbg.setVar("canceled loads", chunkProvider.numSuccessfulCancelations);
+		dbg.setVar("wasted loads", chunkProvider.numWastedLoads);
 	}
 
 	private void handleStopEvent(ref GameStopEvent event)

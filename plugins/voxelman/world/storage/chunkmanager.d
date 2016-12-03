@@ -96,6 +96,7 @@ final class ChunkManager {
 	void delegate(ChunkWorldPos) onChunkLoadedHandler;
 
 	void delegate(ChunkWorldPos) loadChunkHandler;
+	void delegate(ChunkWorldPos) cancelLoadChunkHandler;
 
 	// Used on server only
 	size_t delegate() startChunkSave;
@@ -514,15 +515,8 @@ final class ChunkManager {
 			case removed_loading:
 				assert(false, "Unload should not occur when chunk is already removed");
 			case added_loading:
-				if (isLoadCancelingEnabled)
-				{
-					chunkStates[cwp] = non_loaded;
-					clearChunkData(cwp);
-				}
-				else
-				{
-					chunkStates[cwp] = removed_loading;
-				}
+				cancelLoadChunkHandler(cwp);
+				clearChunkData(cwp);
 				break;
 			case removed_loaded_used:
 				assert(false, "Unload should not occur when chunk is already removed");
@@ -740,22 +734,7 @@ version(unittest) {
 		bool saveChunkHandlerCalled;
 	}
 
-	private struct TestLoadedChunkData
-	{
-		ChunkHeaderItem getHeader() { return ChunkHeaderItem(ZERO_CWP, 1, 0); }
-		ChunkLayerItem getLayer() { return ChunkLayerItem(); }
-	}
-
-	private struct TestSavedChunkData
-	{
-		TimestampType timestamp;
-		ChunkHeaderItem getHeader() {
-			return ChunkHeaderItem(ChunkWorldPos(0, 0, 0, 0), 1);
-		}
-		ChunkLayerTimestampItem getLayerTimestamp() {
-			return ChunkLayerTimestampItem(timestamp, 0);
-		}
-	}
+	private auto test_LoadedLayers = [ChunkLayerItem()];
 
 	private struct FSMTester {
 		auto ZERO_CWP = ChunkWorldPos(0, 0, 0, 0);
@@ -781,7 +760,7 @@ version(unittest) {
 					break;
 				case added_loaded:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
-					cm.onSnapshotLoaded(TestLoadedChunkData(), false);
+					cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, false);
 					break;
 				case removed_loading:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
@@ -801,7 +780,7 @@ version(unittest) {
 					TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
 					cm.save();
 					cm.setExternalChunkObservers(ZERO_CWP, 0);
-					cm.onSnapshotSaved(TestSavedChunkData(timestamp));
+					cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(timestamp, 0)]);
 					break;
 				//case added_loaded_saving:
 				//	gotoState(cm, ChunkState.added_loaded);
@@ -924,7 +903,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.removed_loading);
 	// removed_loading -> non_loaded
-	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
+	cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, false);
 	assertState(ChunkState.non_loaded);
 	assertHasNoSnapshot();
 	h.assertCalled(0b0000_0000);
@@ -932,7 +911,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
 	// added_loading -> added_loaded + modified
-	cm.onSnapshotLoaded(TestLoadedChunkData(), true);
+	cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, true);
 	assertState(ChunkState.added_loaded);
 	assertHasSnapshot();
 	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled
@@ -941,7 +920,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
 	// added_loading -> added_loaded
-	cm.onSnapshotLoaded(TestLoadedChunkData(), false);
+	cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, false);
 	assertState(ChunkState.added_loaded);
 	assertHasSnapshot();
 	h.assertCalled(0b0000_0100); //onChunkLoadedHandlerCalled
@@ -985,7 +964,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupStateSaving(ChunkState.added_loaded);
 	// added_loaded saving -> added_loaded after on_saved
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
 	assertState(ChunkState.added_loaded);
 	h.assertCalled(0b0000_0000);
 
@@ -1000,7 +979,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupStateSaving(ChunkState.removed_loaded_used);
 	// removed_loaded_used saving -> non_loaded
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
 	assertState(ChunkState.non_loaded);
 	h.assertCalled(0b0000_0000);
 
@@ -1010,7 +989,7 @@ unittest {
 	cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
 	assertState(ChunkState.removed_loaded_used); // & saving
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
 	assertState(ChunkState.removed_loaded_used);
 	h.assertCalled(0b0000_0010); //onChunkRemovedHandlerCalled
 
@@ -1074,6 +1053,6 @@ unittest {
 	cm.save();
 	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(2); // now, snap that is saved is old.
-	cm.onSnapshotSaved(TestSavedChunkData(TimestampType(1)));
+	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
 	assertNoOldSnapshots();
 }

@@ -84,6 +84,7 @@ enum SaveItemType : ubyte {
 	saveHandler
 }
 
+enum TASK_OK_METADATA = 0;
 enum TASK_CANCELED_METADATA = 1;
 
 //version = DBG_OUT;
@@ -93,7 +94,11 @@ struct ChunkProvider
 	private shared bool workerRunning = true;
 	private shared bool workerStopped = false;
 
-	size_t numReceived;
+	// metrics
+	size_t totalReceived;
+	size_t numWastedLoads;
+	size_t numSuccessfulCancelations;
+
 	private TaskId nextTaskId;
 
 	Mutex workAvaliableMutex;
@@ -203,7 +208,6 @@ struct ChunkProvider
 		{
 			auto data = SavedChunkData.getFromQueue(&saveResQueue);
 			onChunkSavedHandler(data.cwp, data.layers);
-			++numReceived;
 		}
 		foreach(ref w; genWorkers)
 		{
@@ -213,9 +217,9 @@ struct ChunkProvider
 			}
 		}
 
-		if (prevReceived != numReceived)
-			version(DBG_OUT)infof("ChunkProvider running %s", numReceived);
-		prevReceived = numReceived;
+		if (prevReceived != totalReceived)
+			version(DBG_OUT)infof("ChunkProvider running %s", totalReceived);
+		prevReceived = totalReceived;
 	}
 
 	void loadChunk(ChunkWorldPos cwp)
@@ -246,27 +250,43 @@ struct ChunkProvider
 		TaskId loadedTaskId = queue.popItem!TaskId();
 
 		auto data = LoadedChunkData.getFromQueue(queue);
-		if (auto latestTaskId = data.cwp in chunkTasks)
+
+		bool isFinalResult = false;
+		// data is not marked as canceled
+		if (data.header.metadata == TASK_OK_METADATA)
 		{
-			if (loadedTaskId == *latestTaskId)
+			// data is for latest task -> send to chunk manager
+			if (auto latestTaskId = data.cwp in chunkTasks)
 			{
-				onChunkLoadedHandler(data.cwp, data.layers, needsSave);
-				chunkTasks.remove(data.cwp);
-			}
-			else
-			{
-				// we have a task done for one of latest requests of current chunk
-				// it was either processed or not
-				if (data.header.metadata == TASK_CANCELED_METADATA)
+				if (loadedTaskId == *latestTaskId)
 				{
-					foreach(ref layer; data.layers)
-						freeLayerArray(layer);
+					isFinalResult = true;
 				}
 			}
 		}
-		canceledTasks.remove(loadedTaskId);
 
-		++numReceived;
+		if (isFinalResult)
+		{
+			//assert(!canceledTasks[loadedTaskId]);
+			onChunkLoadedHandler(data.cwp, data.layers, needsSave);
+			chunkTasks.remove(data.cwp);
+		}
+		else
+		{
+			//assert(canceledTasks[loadedTaskId]);
+			// update metrics
+			if (data.header.metadata == TASK_OK_METADATA)
+				++numWastedLoads;
+			else
+				++numSuccessfulCancelations;
+
+			// data is for canceled request -> free arrays
+			foreach(ref layer; data.layers)
+				freeLayerArray(layer);
+			canceledTasks.remove(loadedTaskId);
+		}
+
+		++totalReceived;
 	}
 
 	// sends a delegate to IO thread

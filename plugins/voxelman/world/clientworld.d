@@ -27,6 +27,7 @@ import voxelman.graphics.plugin;
 import voxelman.input.keybindingmanager;
 import voxelman.session.client;
 import voxelman.net.plugin : NetServerPlugin, NetClientPlugin;
+import voxelman.dbg.plugin;
 
 import voxelman.net.packets;
 import voxelman.core.packets;
@@ -60,6 +61,9 @@ private:
 	BlockEntityClient blockEntityPlugin;
 
 	ConfigOption numWorkersOpt;
+	Debugger dbg;
+
+	size_t wastedClientLoads;
 
 public:
 	ChunkManager chunkManager;
@@ -111,7 +115,13 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F2, "key.toggleMetaData", null, &onToggleMetaData));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewBox));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
+
+		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
+
+	// stubs
+	private void handleLoadChunk(ChunkWorldPos) {}
+	private void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
 
 	override void preInit()
 	{
@@ -122,6 +132,7 @@ public:
 		ubyte numLayers = 2;
 		chunkManager.setup(numLayers);
 		chunkManager.loadChunkHandler = &handleLoadChunk;
+		chunkManager.cancelLoadChunkHandler = &handleLoadChunk;
 		chunkManager.isLoadCancelingEnabled = true;
 		chunkManager.isChunkSavingEnabled = false;
 		chunkManager.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
@@ -278,10 +289,6 @@ public:
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
 
-	private void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
-
-	private void handleLoadChunk(ChunkWorldPos) {}
-
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
@@ -292,6 +299,8 @@ public:
 
 		if (doUpdateObserverPosition)
 			sendPosition(event.deltaTime);
+
+		dbg.setVar("wasted client loads", wastedClientLoads);
 	}
 
 	private void handleGameStopEvent(ref GameStopEvent gameStopEvent)
@@ -358,6 +367,7 @@ public:
 		else
 		{
 			// we received chunk data for unloaded chunk. Ignore it.
+			++wastedClientLoads;
 			return;
 		}
 
