@@ -22,7 +22,6 @@ import voxelman.world.storage.chunkprovider;
 private enum ChunkState {
 	non_loaded,
 	added_loaded,
-	removed_loading,
 	added_loading,
 	removed_loaded_used
 }
@@ -336,17 +335,6 @@ final class ChunkManager {
 				break;
 			case added_loaded:
 				assert(false, "On loaded should not occur for already loaded chunk");
-			case removed_loading:
-				if (!needsSave || !isChunkSavingEnabled) {
-					chunkStates[cwp] = non_loaded;
-					clearChunkData(cwp);
-				} else {
-					assert(!isLoadCancelingEnabled, "Should happen only when isLoadCancelingEnabled is false");
-					chunkStates[cwp] = added_loaded;
-					saveChunk(cwp);
-					chunkStates[cwp] = removed_loaded_used;
-				}
-				break;
 			case added_loading:
 				chunkStates[cwp] = added_loaded;
 				if (needsSave) modifiedChunks.put(cwp);
@@ -464,10 +452,6 @@ final class ChunkManager {
 				break;
 			case added_loaded:
 				break; // ignore
-			case removed_loading:
-				chunkStates[cwp] = added_loading;
-				notifyAdded(cwp);
-				break;
 			case added_loading:
 				break; // ignore
 			case removed_loaded_used:
@@ -512,8 +496,6 @@ final class ChunkManager {
 					}
 				}
 				break;
-			case removed_loading:
-				assert(false, "Unload should not occur when chunk is already removed");
 			case added_loading:
 				cancelLoadChunkHandler(cwp);
 				clearChunkData(cwp);
@@ -696,6 +678,7 @@ version(unittest) {
 			cm.onChunkRemovedHandlers ~= &onChunkRemovedHandler;
 			cm.onChunkLoadedHandler = &onChunkLoadedHandler;
 			cm.loadChunkHandler = &loadChunkHandler;
+			cm.cancelLoadChunkHandler = &cancelLoadChunkHandler;
 
 			cm.startChunkSave = &startChunkSave;
 			cm.pushLayer = &pushLayer;
@@ -712,6 +695,9 @@ version(unittest) {
 		}
 		void loadChunkHandler(ChunkWorldPos cwp) {
 			loadChunkHandlerCalled = true;
+		}
+		void cancelLoadChunkHandler(ChunkWorldPos cwp) {
+			cancelLoadChunkHandlerCalled = true;
 		}
 		size_t startChunkSave() {
 			saveChunkHandlerCalled = true;
@@ -731,6 +717,7 @@ version(unittest) {
 		bool onChunkRemovedHandlerCalled;
 		bool onChunkLoadedHandlerCalled;
 		bool loadChunkHandlerCalled;
+		bool cancelLoadChunkHandlerCalled;
 		bool saveChunkHandlerCalled;
 	}
 
@@ -762,17 +749,9 @@ version(unittest) {
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
 					cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, false);
 					break;
-				case removed_loading:
-					cm.setExternalChunkObservers(ZERO_CWP, 1);
-					cm.setExternalChunkObservers(ZERO_CWP, 0);
-					break;
 				case added_loading:
 					cm.setExternalChunkObservers(ZERO_CWP, 1);
 					break;
-				//case removed_loaded_saving:
-				//	gotoState(cm, ChunkState.added_loaded_saving);
-				//	cm.setExternalChunkObservers(ZERO_CWP, 0);
-				//	break;
 				case removed_loaded_used:
 					gotoState(cm, ChunkState.added_loaded);
 					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
@@ -782,12 +761,6 @@ version(unittest) {
 					cm.setExternalChunkObservers(ZERO_CWP, 0);
 					cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(timestamp, 0)]);
 					break;
-				//case added_loaded_saving:
-				//	gotoState(cm, ChunkState.added_loaded);
-				//	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER);
-				//	cm.commitSnapshots(1);
-				//	cm.save();
-				//	break;
 			}
 			import std.string : format;
 			assert(currentState(cm) == state,
@@ -884,29 +857,12 @@ unittest {
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
-	// added_loading -> removed_loading
+	// added_loading -> non_loaded
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
-	assertState(ChunkState.removed_loading);
+	assertState(ChunkState.non_loaded);
 	assertHasNoSnapshot();
 	h.assertCalled(0b0000_0010); //onChunkRemovedHandlerCalled
 
-
-	//--------------------------------------------------------------------------
-	setupState(ChunkState.removed_loading);
-	// removed_loading -> added_loading
-	cm.setExternalChunkObservers(ZERO_CWP, 1);
-	assertState(ChunkState.added_loading);
-	assertHasNoSnapshot();
-	h.assertCalled(0b0000_0001); //onChunkAddedHandlerCalled
-
-
-	//--------------------------------------------------------------------------
-	setupState(ChunkState.removed_loading);
-	// removed_loading -> non_loaded
-	cm.onSnapshotLoaded(ZERO_CWP, test_LoadedLayers, false);
-	assertState(ChunkState.non_loaded);
-	assertHasNoSnapshot();
-	h.assertCalled(0b0000_0000);
 
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loading);
