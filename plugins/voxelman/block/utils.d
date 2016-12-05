@@ -130,8 +130,7 @@ void makeColoredBlockMesh(BlockMeshingData data)
 		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
 	];
 
-	auto index = BlockChunkIndex(data.blockPos).index;
-	float randomTint = random(index)*0.1+0.9;
+	float randomTint = random(data.index)*0.1+0.9;
 
 	float r = data.color.r * randomTint;
 	float g = data.color.g * randomTint;
@@ -147,14 +146,39 @@ void makeColoredBlockMesh(BlockMeshingData data)
 				shadowMultipliers[i] * r,
 				shadowMultipliers[i] * g,
 				shadowMultipliers[i] * b);
-			for (size_t v = 0; v!=18; v+=3)
-			{
-				data.buffer.put(MeshVertex(
-					cubeFaces[18*i+v  ] + data.blockPos.x,
-					cubeFaces[18*i+v+1] + data.blockPos.y,
-					cubeFaces[18*i+v+2] + data.blockPos.z,
-					finalColor));
-			} // for v
+
+			data.buffer.put(
+				MeshVertex(
+					cubeFaces[18*i  ] + data.blockPos.x,
+					cubeFaces[18*i+1] + data.blockPos.y,
+					cubeFaces[18*i+2] + data.blockPos.z,
+					finalColor),
+				MeshVertex(
+					cubeFaces[18*i+3] + data.blockPos.x,
+					cubeFaces[18*i+4] + data.blockPos.y,
+					cubeFaces[18*i+5] + data.blockPos.z,
+					finalColor),
+				MeshVertex(
+					cubeFaces[18*i+6] + data.blockPos.x,
+					cubeFaces[18*i+7] + data.blockPos.y,
+					cubeFaces[18*i+8] + data.blockPos.z,
+					finalColor),
+				MeshVertex(
+					cubeFaces[18*i+9] + data.blockPos.x,
+					cubeFaces[18*i+10] + data.blockPos.y,
+					cubeFaces[18*i+11] + data.blockPos.z,
+					finalColor),
+				MeshVertex(
+					cubeFaces[18*i+12] + data.blockPos.x,
+					cubeFaces[18*i+13] + data.blockPos.y,
+					cubeFaces[18*i+14] + data.blockPos.z,
+					finalColor),
+				MeshVertex(
+					cubeFaces[18*i+15] + data.blockPos.x,
+					cubeFaces[18*i+16] + data.blockPos.y,
+					cubeFaces[18*i+17] + data.blockPos.z,
+					finalColor)
+			);
 		} // if
 		flag <<= 1;
 	} // for i
@@ -173,6 +197,7 @@ struct BlockMeshingData
 	Buffer!MeshVertex* buffer;
 	ubvec3 color;
 	ubvec3 blockPos;
+	ushort index;
 	ubyte sides;
 	Solidity[27]* solidities;
 }

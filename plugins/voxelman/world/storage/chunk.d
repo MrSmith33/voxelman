@@ -124,10 +124,10 @@ struct ChunkLayerItem
 		ulong uniformData;
 		void* dataPtr; /// Stores ptr to the first byte of data. The length of data is in dataLength.
 	}
-
 	LayerDataLenType dataLength;
-	this(StorageType _type, ubyte _layerId, LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
-		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
+
+	this(ubyte _layerId, LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+		type = StorageType.uniform; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
 	this(StorageType _type, ubyte _layerId, LayerDataLenType _dataLength, uint _timestamp, ubyte* _dataPtr, ushort _metadata = 0) {
 		type = _type; layerId = _layerId; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
@@ -401,8 +401,8 @@ struct ChunkLayerSnap
 	ushort numUsers;
 	ushort metadata;
 	StorageType type;
-	this(StorageType _type, LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
-		type = _type; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
+	this(LayerDataLenType _dataLength, uint _timestamp, ulong _uniformData, ushort _metadata = 0) {
+		type = StorageType.uniform; dataLength = _dataLength; timestamp = _timestamp; uniformData = _uniformData; metadata = _metadata;
 	}
 	this(StorageType _type, LayerDataLenType _dataLength, uint _timestamp, void* _dataPtr, ushort _metadata = 0) {
 		type = _type; dataLength = _dataLength; timestamp = _timestamp; dataPtr = _dataPtr; metadata = _metadata;
@@ -478,7 +478,7 @@ BlockData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
 ChunkLayerItem fromBlockData(const ref BlockData bd)
 {
 	if (bd.uniform)
-		return ChunkLayerItem(StorageType.uniform, bd.layerId, bd.dataLength, 0, bd.uniformType, bd.metadata);
+		return ChunkLayerItem(bd.layerId, bd.dataLength, 0, bd.uniformType, bd.metadata);
 	else
 		return ChunkLayerItem(StorageType.compressedArray, bd.layerId, 0, bd.blocks, bd.metadata);
 }

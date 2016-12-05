@@ -132,7 +132,7 @@ void sendEmptyChunk(TaskId taskId, shared SharedQueue* queue, ulong cwp)
 	queue.startMessage();
 	queue.pushMessagePart(taskId);
 	queue.pushMessagePart(ChunkHeaderItem(ChunkWorldPos(cwp), 1/*numLayers*/, 0));
-	queue.pushMessagePart(ChunkLayerItem(StorageType.uniform, FIRST_LAYER,
+	queue.pushMessagePart(ChunkLayerItem(FIRST_LAYER,
 		BLOCKID_UNIFORM_FILL_BITS/*dataLength*/, 0/*timestamp*/, 0/*uniformData*/,
 		SOLID_CHUNK_METADATA));
 	queue.endMessage();
@@ -277,7 +277,7 @@ void storageWorker(
 					{
 						ulong uniformData = decodeCborSingle!ulong(cborData);
 						auto dataLength = decodeCborSingle!LayerDataLenType(cborData);
-						loadResQueue.pushMessagePart(ChunkLayerItem(StorageType.uniform, layerId, dataLength, timestamp, uniformData, metadata));
+						loadResQueue.pushMessagePart(ChunkLayerItem(layerId, dataLength, timestamp, uniformData, metadata));
 					}
 					else
 					{

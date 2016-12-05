@@ -88,7 +88,7 @@ void genChunk(
 	if(chunk.uniform)
 	{
 		ushort metadata = calcChunkFullMetadata(chunk.uniformBlockId, blockInfos);
-		auto layer = ChunkLayerItem(StorageType.uniform, layerId,
+		auto layer = ChunkLayerItem(layerId,
 			BLOCKID_UNIFORM_FILL_BITS, timestamp,
 			chunk.uniformBlockId, metadata);
 		resultQueue.pushMessagePart(layer);

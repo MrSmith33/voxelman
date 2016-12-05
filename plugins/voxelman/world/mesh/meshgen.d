@@ -178,7 +178,7 @@ MeshVertex[][2] chunkMeshWorker(
 		return sides;
 	}
 
-	void meshBlock(BlockId blockId, ubyte x, ubyte y, ubyte z, Solidity curSolidity)
+	void meshBlock(BlockId blockId, ushort index, ubyte x, ubyte y, ubyte z, Solidity curSolidity)
 	{
 		ubvec3 bpos = ubvec3(x, y, z);
 
@@ -215,6 +215,7 @@ MeshVertex[][2] chunkMeshWorker(
 				&geometry[curSolidity],
 				blockInfos[blockId].color,
 				bpos,
+				index,
 				sides);
 			blockInfos[blockId].meshHandler(data);
 		}
@@ -229,11 +230,13 @@ MeshVertex[][2] chunkMeshWorker(
 
 		if (curSolidity != Solidity.transparent)
 		{
+			ushort index = 0;
 			foreach (ubyte y; 0..CHUNK_SIZE)
 			foreach (ubyte z; 0..CHUNK_SIZE)
 			foreach (ubyte x; 0..CHUNK_SIZE)
 			{
-				meshBlock(blockId, x, y, z, curSolidity);
+				meshBlock(blockId, index, x, y, z, curSolidity);
+				++index;
 			}
 		}
 	}
@@ -252,7 +255,7 @@ MeshVertex[][2] chunkMeshWorker(
 			if (blockInfos[blockId].isVisible)
 			{
 				Solidity curSolidity = blockInfos[blockId].solidity;
-				meshBlock(blockId, x, y, z, curSolidity);
+				meshBlock(blockId, index, x, y, z, curSolidity);
 			}
 			++index;
 		}
