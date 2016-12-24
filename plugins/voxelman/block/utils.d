@@ -124,6 +124,13 @@ float random(uint num)
 	return (cast(float)x / uint.max);
 }
 
+struct MeshVertex2
+{
+	align(4):
+	float x, y, z;
+	ubyte[3] color;
+}
+
 void makeColoredBlockMesh(BlockMeshingData data)
 {
 	static immutable(float)[] shadowMultipliers = [
@@ -135,53 +142,52 @@ void makeColoredBlockMesh(BlockMeshingData data)
 	float r = data.color.r * randomTint;
 	float g = data.color.g * randomTint;
 	float b = data.color.b * randomTint;
-	ubvec3 finalColor;
 
 	ubyte flag = 1;
-	foreach(ubyte i; 0..6)
+	foreach(ubyte side; 0..6)
 	{
 		if (data.sides & flag)
 		{
-			finalColor = ubvec3(
-				shadowMultipliers[i] * r,
-				shadowMultipliers[i] * g,
-				shadowMultipliers[i] * b);
+			ubyte[3] finalColor = [
+				cast(ubyte)(shadowMultipliers[side] * r),
+				cast(ubyte)(shadowMultipliers[side] * g),
+				cast(ubyte)(shadowMultipliers[side] * b)];
 
 			data.buffer.put(
-				MeshVertex(
-					cubeFaces[18*i  ] + data.blockPos.x,
-					cubeFaces[18*i+1] + data.blockPos.y,
-					cubeFaces[18*i+2] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side  ] + data.blockPos.x,
+					cubeFaces[18*side+1] + data.blockPos.y,
+					cubeFaces[18*side+2] + data.blockPos.z,
 					finalColor),
-				MeshVertex(
-					cubeFaces[18*i+3] + data.blockPos.x,
-					cubeFaces[18*i+4] + data.blockPos.y,
-					cubeFaces[18*i+5] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side+3] + data.blockPos.x,
+					cubeFaces[18*side+4] + data.blockPos.y,
+					cubeFaces[18*side+5] + data.blockPos.z,
 					finalColor),
-				MeshVertex(
-					cubeFaces[18*i+6] + data.blockPos.x,
-					cubeFaces[18*i+7] + data.blockPos.y,
-					cubeFaces[18*i+8] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side+6] + data.blockPos.x,
+					cubeFaces[18*side+7] + data.blockPos.y,
+					cubeFaces[18*side+8] + data.blockPos.z,
 					finalColor),
-				MeshVertex(
-					cubeFaces[18*i+9] + data.blockPos.x,
-					cubeFaces[18*i+10] + data.blockPos.y,
-					cubeFaces[18*i+11] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side+9] + data.blockPos.x,
+					cubeFaces[18*side+10] + data.blockPos.y,
+					cubeFaces[18*side+11] + data.blockPos.z,
 					finalColor),
-				MeshVertex(
-					cubeFaces[18*i+12] + data.blockPos.x,
-					cubeFaces[18*i+13] + data.blockPos.y,
-					cubeFaces[18*i+14] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side+12] + data.blockPos.x,
+					cubeFaces[18*side+13] + data.blockPos.y,
+					cubeFaces[18*side+14] + data.blockPos.z,
 					finalColor),
-				MeshVertex(
-					cubeFaces[18*i+15] + data.blockPos.x,
-					cubeFaces[18*i+16] + data.blockPos.y,
-					cubeFaces[18*i+17] + data.blockPos.z,
+				cast(MeshVertex)MeshVertex2(
+					cubeFaces[18*side+15] + data.blockPos.x,
+					cubeFaces[18*side+16] + data.blockPos.y,
+					cubeFaces[18*side+17] + data.blockPos.z,
 					finalColor)
 			);
 		} // if
 		flag <<= 1;
-	} // for i
+	} // for side
 }
 
 ushort packColor(ubvec3 c) {

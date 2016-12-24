@@ -16,6 +16,7 @@ import voxelman.geometry.box;
 
 import voxelman.core.config;
 import voxelman.block.utils;
+import voxelman.world.storage.arraycopy;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.utils.compression;
@@ -522,113 +523,7 @@ void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
 	BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 	foreach(change; changes)
 	{
-		setSubArray(blocks, Box(ivec3(change.a), ivec3(change.b)), change.blockId);
-	}
-}
-
-void setSubArray(BlockId[] buffer, Box box, BlockId blockId) @nogc
-{
-	assert(buffer.length == CHUNK_SIZE_CUBE);
-
-	if (box.position.x == 0 && box.size.x == CHUNK_SIZE)
-	{
-		if (box.position.z == 0 && box.size.z == CHUNK_SIZE)
-		{
-			if (box.position.y == 0 && box.size.y == CHUNK_SIZE)
-			{
-				buffer[] = blockId;
-			}
-			else
-			{
-				auto from = box.position.y * CHUNK_SIZE_SQR;
-				auto to = (box.position.y + box.size.y) * CHUNK_SIZE_SQR;
-				buffer[from..to] = blockId;
-			}
-		}
-		else
-		{
-			foreach(y; box.position.y..(box.position.y + box.size.y))
-			{
-				auto from = y * CHUNK_SIZE_SQR + box.position.z * CHUNK_SIZE;
-				auto to = y * CHUNK_SIZE_SQR + (box.position.z + box.size.z) * CHUNK_SIZE;
-				buffer[from..to] = blockId;
-			}
-		}
-	}
-	else
-	{
-		int posx = box.position.x;
-		int endx = box.position.x + box.size.x;
-		int endy = box.position.y + box.size.y;
-		int endz = box.position.z + box.size.z;
-		foreach(y; box.position.y..endy)
-		foreach(z; box.position.z..endz)
-		{
-			auto offset = y * CHUNK_SIZE_SQR + z * CHUNK_SIZE;
-			auto from = posx + offset;
-			auto to = endx + offset;
-			buffer[from..to] = blockId;
-		}
-	}
-}
-
-/// writes source to a box within dest
-void setSubArray(T)(T[] dest, Box box, T[] source) @nogc
-{
-	assert(dest.length == CHUNK_SIZE_CUBE);
-	assert(source.length == box.volume);
-
-	if (box.position.x == 0 && box.size.x == CHUNK_SIZE)
-	{
-		if (box.position.z == 0 && box.size.z == CHUNK_SIZE)
-		{
-			if (box.position.y == 0 && box.size.y == CHUNK_SIZE)
-			{
-				dest[] = source;
-			}
-			else
-			{
-				auto from = box.position.y * CHUNK_SIZE_SQR;
-				auto to = (box.position.y + box.size.y) * CHUNK_SIZE_SQR;
-				dest[from..to] = source;
-			}
-		}
-		else
-		{
-			auto box_size_sqr = box.size.x * box.size.z;
-			foreach(y; box.position.y..(box.position.y + box.size.y))
-			{
-				auto fromDest = y * CHUNK_SIZE_SQR + box.position.z * CHUNK_SIZE;
-				auto toDest = y * CHUNK_SIZE_SQR + (box.position.z + box.size.z) * CHUNK_SIZE;
-				auto sourceY = y - box.position.y;
-				auto fromSource = sourceY * box_size_sqr + box.size.z;
-				auto toSource = sourceY * box_size_sqr + box.position.z * box.size.z;
-				dest[fromDest..toDest] = source[fromSource..toSource];
-			}
-		}
-	}
-	else
-	{
-		int posx = box.position.x;
-		int endx = box.position.x + box.size.x;
-		int endy = box.position.y + box.size.y;
-		int endz = box.position.z + box.size.z;
-		auto box_size_sqr = box.size.x * box.size.z;
-
-		//import std.stdio;
-		//writefln("box %s %s %s", box, dest.length, source.length);
-		foreach(y; box.position.y..endy)
-		foreach(z; box.position.z..endz)
-		{
-			auto fromDest = y * CHUNK_SIZE_SQR + z * CHUNK_SIZE + box.position.x;
-			auto toDest = fromDest + box.size.x;
-			auto sourceY = y - box.position.y;
-			auto sourceZ = z - box.position.z;
-			auto fromSource = sourceY * box_size_sqr + sourceZ * box.size.x;
-			auto toSource = fromSource + box.size.x;
-			//writefln("dest[%s..%s] = source[%s..%s]", fromDest, toDest, fromSource, toSource);
-			dest[fromDest..toDest] = source[fromSource..toSource];
-		}
+		setSubArray(blocks, CHUNK_SIZE_VECTOR, Box(ivec3(change.a), ivec3(change.b)), change.blockId);
 	}
 }
 

@@ -17,6 +17,86 @@ enum CubeSide : ubyte
 	yneg = 5,
 }
 
+// In the same order as CubeSide, sideOffsets26
+enum Dir27 : ubyte
+{
+	// 6 adjacent
+	zneg, // [ 0, 0,-1]
+	zpos, // [ 0, 0, 1]
+	xpos, // [ 1, 0, 0]
+	xneg, // [-1, 0, 0]
+	ypos, // [ 0, 1, 0]
+	yneg, // [ 0,-1, 0]
+
+	// bottom 8
+	xneg_yneg_zneg,	// [-1,-1,-1]
+	     yneg_zneg, // [ 0,-1,-1]
+	xpos_yneg_zneg, // [ 1,-1,-1]
+	xneg_yneg     , // [-1,-1, 0]
+	xpos_yneg     , // [ 1,-1, 0]
+	xneg_yneg_zpos, // [-1,-1, 1]
+	     yneg_zpos, // [ 0,-1, 1]
+	xpos_yneg_zpos, // [ 1,-1, 1]
+
+	// middle 4
+	xneg_zneg, // [-1, 0,-1]
+	xpos_zneg, // [ 1, 0,-1]
+	xneg_zpos, // [-1, 0, 1]
+	xpos_zpos, // [ 1, 0, 1]
+
+	// top 8
+	xneg_ypos_zneg,	// [-1, 1,-1]
+	     ypos_zneg,	// [ 0, 1,-1]
+	xpos_ypos_zneg,	// [ 1, 1,-1]
+	xneg_ypos     ,	// [-1, 1, 0]
+	xpos_ypos     ,	// [ 1, 1, 0]
+	xneg_ypos_zpos,	// [-1, 1, 1]
+	     ypos_zpos,	// [ 0, 1, 1]
+	xpos_ypos_zpos,	// [ 1, 1, 1]
+
+	central
+}
+
+immutable Dir27[27] dirs3by3 = [
+	// bottom 9
+	Dir27.xneg_yneg_zneg, // [-1,-1,-1]
+	Dir27.yneg_zneg     , // [ 0,-1,-1]
+	Dir27.xpos_yneg_zneg, // [ 1,-1,-1]
+
+	Dir27.xneg_yneg     , // [-1,-1, 0]
+	Dir27.     yneg     , // [ 0,-1, 0]
+	Dir27.xpos_yneg     , // [ 1,-1, 0]
+
+	Dir27.xneg_yneg_zpos, // [-1,-1, 1]
+	Dir27.     yneg_zpos, // [ 0,-1, 1]
+	Dir27.xpos_yneg_zpos, // [ 1,-1, 1]
+
+	// middle 9
+	Dir27.xneg_zneg     , // [-1, 0,-1]
+	Dir27.          zneg, // [ 0, 0,-1]
+	Dir27.xpos_zneg     , // [ 1, 0,-1]
+
+	Dir27.xneg          , // [-1, 0, 0]
+	Dir27.   central    , // [ 0, 0, 0]
+	Dir27.xpos          , // [ 1, 0, 0]
+
+	Dir27.xneg_zpos     , // [-1, 0, 1]
+	Dir27.          zpos, // [ 0, 0, 1]
+	Dir27.xpos_zpos     , // [ 1, 0, 1]
+
+	// top 9
+	Dir27.xneg_ypos_zneg, // [-1, 1,-1]
+	Dir27.     ypos_zneg, // [ 0, 1,-1]
+	Dir27.xpos_ypos_zneg, // [ 1, 1,-1]
+
+	Dir27.xneg_ypos     , // [-1, 1, 0]
+	Dir27.     ypos     , // [ 0, 1, 0]
+	Dir27.xpos_ypos     , // [ 1, 1, 0]
+
+	Dir27.xneg_ypos_zpos, // [-1, 1, 1]
+	Dir27.     ypos_zpos, // [ 0, 1, 1]
+	Dir27.xpos_ypos_zpos, // [ 1, 1, 1]
+];
 
 immutable CubeSide[6] oppSide = [
 	CubeSide.zpos,
@@ -118,45 +198,94 @@ immutable byte[3][20] sideOffsets20 = sideOffsets26[6..26];
 // mesh for single block
 immutable ubyte[18 * 6] cubeFaces =
 [
-	0, 0, 0, // triangle 1 : begin // zneg
-	1, 1, 0,
-	1, 0, 0, // triangle 1 : end
-	0, 0, 0, // triangle 2 : begin
+	1, 0, 0, // triangle 1 : begin // zneg
 	0, 1, 0,
-	1, 1, 0, // triangle 2 : end
+	1, 1, 0, // triangle 1 : end
+	1, 0, 0, // triangle 2 : begin
+	0, 0, 0,
+	0, 1, 0, // triangle 2 : end
 
-	1, 0, 1, // zpos
+	0, 0, 1, // zpos
+	1, 1, 1,
 	0, 1, 1,
 	0, 0, 1,
 	1, 0, 1,
 	1, 1, 1,
-	0, 1, 1,
 
-	1, 0, 0, // xpos
+	1, 0, 1, // xpos
+	1, 1, 0,
 	1, 1, 1,
 	1, 0, 1,
 	1, 0, 0,
 	1, 1, 0,
-	1, 1, 1,
 
-	0, 0, 1, // xneg
+	0, 0, 0, // xneg
+	0, 1, 1,
 	0, 1, 0,
 	0, 0, 0,
 	0, 0, 1,
 	0, 1, 1,
-	0, 1, 0,
 
-	1, 1, 1, // ypos
+	0, 1, 1, // ypos
+	1, 1, 0,
 	0, 1, 0,
 	0, 1, 1,
 	1, 1, 1,
 	1, 1, 0,
-	0, 1, 0,
 
-	0, 0, 1, // yneg
+	1, 0, 1, // yneg
+	0, 0, 0,
 	1, 0, 0,
 	1, 0, 1,
 	0, 0, 1,
 	0, 0, 0,
+];
+
+immutable ubyte[6] faceCornerIndexes = [1, 3, 0, 1, 2, 3];
+immutable ubyte[6] flippedFaceCornerIndexes = [1, 2, 0, 0, 2, 3];
+
+// the "Y" of 1 and 3 vertex are inversed
+immutable ubyte[18 * 6] flippedCubeFaces =
+[
+	1, 0, 0, // triangle 1 : begin // zneg
+	0, 0, 0,
+	1, 1, 0, // triangle 1 : end
+	1, 1, 0, // triangle 2 : begin
+	0, 0, 0,
+	0, 1, 0, // triangle 2 : end
+
+	0, 0, 1, // zpos
+	1, 0, 1,
+	0, 1, 1,
+	0, 1, 1,
+	1, 0, 1,
+	1, 1, 1,
+
+	1, 0, 1, // xpos
 	1, 0, 0,
+	1, 1, 1,
+	1, 1, 1,
+	1, 0, 0,
+	1, 1, 0,
+
+	0, 0, 0, // xneg
+	0, 0, 1,
+	0, 1, 0,
+	0, 1, 0,
+	0, 0, 1,
+	0, 1, 1,
+
+	0, 1, 1, // ypos
+	1, 1, 1,
+	0, 1, 0,
+	0, 1, 0,
+	1, 1, 1,
+	1, 1, 0,
+
+	1, 0, 1, // yneg
+	0, 0, 1,
+	1, 0, 0,
+	1, 0, 0,
+	0, 0, 1,
+	0, 0, 0,
 ];

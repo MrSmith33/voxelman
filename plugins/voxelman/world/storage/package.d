@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage;
 
+public import voxelman.world.storage.arraycopy;
 public import voxelman.world.storage.activechunks;
 public import voxelman.world.storage.chunk;
 public import voxelman.world.storage.chunkmanager;

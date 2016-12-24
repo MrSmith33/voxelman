@@ -29,7 +29,7 @@ void main(string[] args)
 		params.arch64 = releaseBuild == 64 ? Yes.arch64 : No.arch64;
 		params.nodeps = Yes.nodeps;
 		params.force = No.force;
-		params.release = Yes.release;
+		params.buildType = BuildType.bt_release;
 		params.compiler = compiler;
 
 		string comBuild = makeCompileCommand(params);

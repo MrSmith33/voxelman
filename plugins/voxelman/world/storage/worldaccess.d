@@ -97,7 +97,7 @@ final class WorldAccess
 				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
 			BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 			assert(blocks.length == CHUNK_SIZE_CUBE, format("blocks %s", blocks.length));
-			setSubArray(blocks, blockBox, blockId);
+			setSubArray(blocks, CHUNK_SIZE_VECTOR, blockBox, blockId);
 		}
 		updateWriteBufferMetadata(writeBuffer);
 

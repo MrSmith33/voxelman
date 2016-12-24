@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Implement build type selection in launcher.
+- Implement ambient occlusion.
+- Implement optimized mesh generation.
 - Add shared hashset.
 - Add entity observer manager, which is used to send components only for entities that are observed by - client.
 - Add partial (de)serialization of component storages.

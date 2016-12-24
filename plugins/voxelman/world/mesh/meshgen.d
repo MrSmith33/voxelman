@@ -101,7 +101,51 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 	version(DBG_OUT)infof("Mesh worker stopped");
 }
 
+import voxelman.world.mesh.meshgenerator;
+
 MeshVertex[][2] chunkMeshWorker(
+	ChunkLayerItem[27] blockLayers,
+	ChunkLayerItem[27] entityLayers,
+	BlockInfoTable blockInfos,
+	BlockEntityInfoTable beInfos,
+	ref Buffer!MeshVertex[3] geometry)
+{
+	foreach (layer; blockLayers) {
+		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 1");
+		if (!layer.isUniform)
+			assert(layer.getArray!ubyte.length == BLOCKS_DATA_LENGTH);
+	}
+	foreach (layer; entityLayers)
+		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 2");
+
+	BlockEntityMap[27] maps;
+	foreach (i, layer; entityLayers) maps[i] = getHashMapFromLayer(layer);
+
+	BlockEntityData getBlockEntity(ushort blockIndex, BlockEntityMap map) {
+		ulong* entity = blockIndex in map;
+		if (entity is null) return BlockEntityData.init;
+		return BlockEntityData(*entity);
+	}
+
+	MeshingTable table;
+	table.create(blockLayers);
+	table.genGeometry(geometry, blockInfos.blockInfos);
+
+	MeshVertex[][2] meshes;
+
+	import std.experimental.allocator;
+	import std.experimental.allocator.mallocator;
+	meshes[0] = makeArray!MeshVertex(Mallocator.instance, geometry[2].data); // solid geometry
+	meshes[1] = makeArray!MeshVertex(Mallocator.instance, geometry[1].data); // semi-transparent geometry
+
+
+	geometry[1].clear();
+	geometry[2].clear();
+
+	return meshes;
+}
+
+MeshVertex[][2] chunkMeshWorkerOld(
 	ChunkLayerItem[27] blockLayers,
 	ChunkLayerItem[27] entityLayers,
 	BlockInfoTable blockInfos,
@@ -147,23 +191,6 @@ MeshVertex[][2] chunkMeshWorker(
 		}
 	}
 
-	BlockId[27] collectBlocks3by3(ubvec3 bpos) const {
-		BlockId[27] result;
-		foreach(i, offset; offsets3by3) {
-			auto cb = chunkAndBlockAt27(bpos.x+offset[0], bpos.y+offset[1], bpos.z+offset[2]);
-			result[i] = blockLayers[cb.chunk].getBlockId(cb.blockX, cb.blockY, cb.blockZ);
-		}
-		return result;
-	}
-
-	Solidity[27] collectSolidities3by3(ubvec3 bpos) const {
-		Solidity[27] result;
-		foreach(i, blockId; collectBlocks3by3(bpos)) {
-			result[i] = blockInfos[blockId].solidity;
-		}
-		return result;
-	}
-
 	ubyte checkSideSolidities(Solidity curSolidity, ubvec3 bpos)
 	{
 		ubyte sides = 0;
@@ -184,7 +211,6 @@ MeshVertex[][2] chunkMeshWorker(
 
 		// Bit flags of sides to render
 		ubyte sides = checkSideSolidities(curSolidity, bpos);
-		Solidity[27] solidities;// = collectSolidities3by3(bpos);
 
 		if (isBlockEntity(blockId))
 		{

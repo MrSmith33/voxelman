@@ -333,7 +333,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 	}
 
 	// set blocks
-	setSubArray(wb.layer.getArray!BlockId, mcChunkBox, convertedBlocks);
+	setSubArray(wb.layer.getArray!BlockId, CHUNK_SIZE_CUBE, mcChunkBox, convertedBlocks);
 }
 
 enum WOOD = DIRT;

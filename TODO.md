@@ -26,6 +26,8 @@
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 - [ ] Implement chunk mesh preloading for all meshes.
+- [x] Implement optimized mesh generation.
+- [x] Implement ambient occlusion
 - [x] Implement chunk mesh preloading. (Only meshes of current meshing pass is preloaded).
 - [x] Replace arrays and Appenders with Buffers in Batch and meshing.
 - [x] Use half-floats for chunk meshes.

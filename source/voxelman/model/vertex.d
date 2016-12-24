@@ -26,15 +26,31 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 		this.color = Vector!(ColType, col_size)(color);
 	}
 
+	static if (pos_size == 3)
+	this(Pos, Col)(Pos x, Pos y, Pos z, ColType[col_size] color)
+	{
+		this.positionArray = [x, y, z];
+		this.colorArray = color;
+	}
+
 	this(Vector!(PosType, pos_size) p, Vector!(ColType, col_size) color)
 	{
 		this.position = p;
 		this.color = color;
 	}
 
-	align(4):
-	Vector!(PosType, pos_size) position;
-	Vector!(ColType, col_size) color;
+	union {
+		struct {
+			align(4):
+			Vector!(PosType, pos_size) position;
+			Vector!(ColType, col_size) color;
+		}
+		struct {
+			align(4):
+			PosType[pos_size] positionArray;
+			ColType[col_size] colorArray;
+		}
+	}
 
 	void toString()(scope void delegate(const(char)[]) sink) const
 	{

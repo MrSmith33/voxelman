@@ -628,9 +628,10 @@ void jobParams(JobParams* params)
 	igCheckbox("nodeps", cast(bool*)&params.nodeps); igSameLine();
 	igCheckbox("force", cast(bool*)&params.force); igSameLine();
 	igCheckbox("x64", cast(bool*)&params.arch64); igSameLine();
-	igCheckbox("release", cast(bool*)&params.release); igSameLine();
+	//igCheckbox("release", cast(bool*)&params.release); igSameLine();
 
-	withWidth!(40, igCombo2)("##compiler", cast(int*)&params.compiler, "dmd\0ldc\0\0", 2);
+	withWidth!(60, igCombo2)("##buildType", cast(int*)&params.buildType, buildTypeUiSelectionString.ptr, 4); igSameLine();
+	withWidth!(40, igCombo2)("##compiler", cast(int*)&params.compiler, compilerUiSelectionString.ptr, 2);
 }
 
 void drawJobLog(J)(J* job, float height)
@@ -666,12 +667,11 @@ void drawActionButtons(J)(J* job)
 		if (igButton("Close")) job.needsClose = true;
 		igSameLine();
 
-		int jobType = 4;
+		int jobType = int.max;
 		if (igButton(" Run ")) jobType = JobType.run; igSameLine();
-		if (igButton("Test")) jobType = JobType.test; igSameLine();
 		if (igButton("Build")) jobType = JobType.compile; igSameLine();
 		if (igButton(" B&R ")) jobType = JobType.compileAndRun;
-		if (jobType != 4)
+		if (jobType != int.max)
 		{
 			job.needsRestart = true;
 			job.params.jobType = cast(JobType)jobType;
