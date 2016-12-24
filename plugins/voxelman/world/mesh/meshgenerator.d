@@ -17,7 +17,7 @@ import voxelman.geometry.cube;
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
 
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.world.storage.arraycopy;
 import voxelman.core.config;

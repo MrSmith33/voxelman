@@ -215,7 +215,7 @@ public:
 	}
 
 	private void onPrintChunkMeta(string) {
-		import voxelman.block.utils : printChunkMetadata;
+		import voxelman.world.block : printChunkMetadata;
 		auto cwp = observerPosition;
 		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
 
@@ -258,7 +258,7 @@ public:
 
 	private void drawDebugChunkMetadata(WorldBox box)
 	{
-		import voxelman.block.utils;
+		import voxelman.world.block;
 		foreach(pos; box.positions)
 		{
 			vec3 blockPos = pos * CHUNK_SIZE;

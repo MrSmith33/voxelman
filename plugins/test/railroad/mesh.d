@@ -14,7 +14,7 @@ import voxelman.math;
 import voxelman.geometry.utils;
 
 import voxelman.world.mesh.chunkmesh;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.blockentitydata;
 import voxelman.blockentity.utils;

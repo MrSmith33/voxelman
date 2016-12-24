@@ -14,7 +14,7 @@ import std.stdio;
 
 import voxelman.math;
 import voxelman.core.config;
-import voxelman.block.utils : BlockInfoTable;
+import voxelman.world.block : BlockInfoTable;
 import voxelman.world.storage.chunkmanager : ChunkManager;
 import voxelman.world.storage.chunkprovider : ChunkProvider;
 import voxelman.world.storage.chunkobservermanager : ChunkObserverManager;

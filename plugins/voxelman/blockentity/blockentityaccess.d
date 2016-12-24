@@ -10,7 +10,7 @@ import std.string;
 import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.core.config;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.storage;
 import voxelman.blockentity.plugin;
 

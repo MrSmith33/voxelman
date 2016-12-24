@@ -11,7 +11,7 @@ import cbor;
 import pluginlib;
 import voxelman.core.config : BlockId;
 import voxelman.world.storage;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.utils.mapping;
 
 import voxelman.world.serverworld;

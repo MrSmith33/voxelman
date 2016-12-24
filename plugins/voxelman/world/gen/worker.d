@@ -8,7 +8,7 @@ module voxelman.world.gen.worker;
 import voxelman.log;
 
 import voxelman.container.sharedhashset;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage.coordinates;

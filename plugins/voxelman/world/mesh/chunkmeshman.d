@@ -10,7 +10,7 @@ import std.typecons : Nullable;
 
 import voxelman.geometry.box;
 import voxelman.math;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.blockentity.utils;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.core.config;
@@ -211,7 +211,7 @@ struct ChunkMeshMan
 		const ref Nullable!ChunkLayerSnap[6] adjacent,
 		const ref ChunkLayerSnap central)
 	{
-		import voxelman.block.utils;
+		import voxelman.world.block;
 
 		Solidity solidity;
 		bool singleSolidity = hasSingleSolidity(central.metadata, solidity);

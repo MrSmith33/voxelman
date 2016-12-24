@@ -14,7 +14,7 @@ import std.string : format;
 import voxelman.math;
 import voxelman.container.sharedhashset;
 
-import voxelman.block.utils : BlockInfoTable;
+import voxelman.world.block : BlockInfoTable;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.gen.generator : IGenerator;

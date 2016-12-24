@@ -15,7 +15,7 @@ import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 import voxelman.utils.mapping;
 
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.core.packets;

@@ -23,7 +23,7 @@ import pluginlib.pluginmanager;
 
 import voxelman.core.events;
 import voxelman.core.config;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 import voxelman.world.gen.utils;

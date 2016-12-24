@@ -8,7 +8,7 @@ module voxelman.world.gen.utils;
 import voxelman.log;
 import voxelman.math : ivec3, SimplexNoise;
 
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage.chunk;

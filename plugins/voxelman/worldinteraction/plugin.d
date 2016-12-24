@@ -14,7 +14,7 @@ import pluginlib;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.utils.trace : traceRay;
-import voxelman.block.utils;
+import voxelman.world.block;
 
 import voxelman.core.events;
 import voxelman.core.packets;

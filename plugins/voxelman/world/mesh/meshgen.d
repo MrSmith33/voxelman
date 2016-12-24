@@ -16,7 +16,7 @@ import voxelman.geometry.cube;
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
 
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.core.config;
 import voxelman.utils.worker;
@@ -250,7 +250,7 @@ MeshVertex[][2] chunkMeshWorkerOld(
 	if (blockLayers[26].isUniform)
 	{
 		BlockId blockId = blockLayers[26].getUniform!BlockId;
-		Meshhandler meshHandler = blockInfos[blockId].meshHandler;
+		MeshHandler meshHandler = blockInfos[blockId].meshHandler;
 		ubvec3 color = blockInfos[blockId].color;
 		Solidity curSolidity = blockInfos[blockId].solidity;
 

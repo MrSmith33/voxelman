@@ -8,7 +8,7 @@ module test.railroad.utils;
 import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.geometry.utils;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.blockentity.blockentitydata;
 import voxelman.blockentity.blockentityaccess;
 import voxelman.blockentity.utils;

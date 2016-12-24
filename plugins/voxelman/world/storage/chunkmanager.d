@@ -10,7 +10,7 @@ import std.typecons : Nullable;
 import std.string : format;
 public import std.typecons : Flag, Yes, No;
 
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates : ChunkWorldPos, adjacentPositions;

@@ -17,6 +17,19 @@ enum CubeSide : ubyte
 	yneg = 5,
 }
 
+enum CubeCorner : ubyte
+{
+	xneg_yneg_zneg,
+	xpos_yneg_zneg,
+	xneg_yneg_zpos,
+	xpos_yneg_zpos,
+
+	xneg_ypos_zneg,
+	xpos_ypos_zneg,
+	xneg_ypos_zpos,
+	xpos_ypos_zpos,
+}
+
 // In the same order as CubeSide, sideOffsets26
 enum Dir27 : ubyte
 {

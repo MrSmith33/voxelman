@@ -8,7 +8,7 @@ module voxelman.world.mesh.utils;
 import voxelman.math;
 import voxelman.geometry.cube;
 import voxelman.core.config;
-import voxelman.block.utils;
+import voxelman.world.block;
 
 enum EXTENDED_CHUNK_SIZE = CHUNK_SIZE + 2;
 enum EXTENDED_CHUNK_SIZE_BITS = EXTENDED_CHUNK_SIZE - 1;
@@ -115,16 +115,16 @@ static immutable short[8][6] faceSideIndexOffset = [
 	/*0-3*/ [sio27[Dir27.zneg], sio27[Dir27.xpos], sio27[Dir27.zpos], sio27[Dir27.xneg], /*4-7*/ sio27[Dir27.xpos_zneg], sio27[Dir27.xpos_zpos], sio27[Dir27.xneg_zpos], sio27[Dir27.xneg_zneg]], // yneg
 ];
 
-// maps block side to map of 12 corner ids
+// maps block side to map of 12 corner ids. 3 corners of adjacent cubes for each face corner.
 // each corner is a corner of cube adjacent to given face (one of 6 sides). Those cube corners will affect AO of face corners.
 // 1 | 0  11 | 10
 // --+-------+----
-// 2 |       |  9
+// 2 |*     *|  9
 //   |       |
-// 3 |       |  8
+// 3 |*     *|  8
 // --+-------+----
 // 4 | 5   6 |  7
-// those correspond to 4 face corners
+// those correspond to 4 face corners (marked as * above)
 // 0--3 // corner numbering of face verticies
 // |  |
 // 1--2
@@ -135,19 +135,6 @@ static immutable ubyte[12][6] faceSideCorners = [
 	[0, 1, 5,  1, 5, 4,  5, 4, 0,  4, 0, 1], // zpos
 	[2, 0, 4,  0, 4, 6,  4, 6, 2,  6, 2, 0], // xpos
 	[1, 3, 7,  3, 7, 5,  7, 5, 1,  5, 1, 3], // xneg
-
 	[2, 3, 1,  3, 1, 0,  1, 0, 2,  0, 2, 3], // ypos
 	[7, 6, 4,  6, 4, 5,  4, 5, 7,  5, 7, 6], // yneg
 ];
-
-enum CubeCorner : ubyte {
-	xneg_yneg_zneg,
-	xpos_yneg_zneg,
-	xneg_yneg_zpos,
-	xpos_yneg_zpos,
-
-	xneg_ypos_zneg,
-	xpos_ypos_zneg,
-	xneg_ypos_zpos,
-	xpos_ypos_zpos,
-}

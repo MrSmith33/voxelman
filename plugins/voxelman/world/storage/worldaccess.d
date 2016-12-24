@@ -9,7 +9,7 @@ import voxelman.log;
 import std.string;
 import voxelman.geometry.box;
 import voxelman.core.config;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.storage;
 
 final class WorldAccess

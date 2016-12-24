@@ -15,7 +15,7 @@ import voxelman.math;
 import voxelman.geometry.box;
 
 import voxelman.core.config;
-import voxelman.block.utils;
+import voxelman.world.block;
 import voxelman.world.storage.arraycopy;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
