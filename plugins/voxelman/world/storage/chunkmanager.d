@@ -385,9 +385,7 @@ final class ChunkManager {
 				}
 				else
 				{
-					if (!writeBuffer.isUniform) {
-						freeLayerArray(writeBuffer.layer);
-					}
+					freeLayerArray(writeBuffer.layer);
 				}
 				removeInternalObserver(cwp); // remove user added in createWriteBuffer
 			}
@@ -614,9 +612,7 @@ final class ChunkManager {
 
 		if (writeBuffer.removeSnapshot)
 		{
-			if (!writeBuffer.isUniform) {
-				freeLayerArray(writeBuffer.layer);
-			}
+			freeLayerArray(writeBuffer.layer);
 			snapshots[layer].remove(cwp);
 			return;
 		}

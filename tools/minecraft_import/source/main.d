@@ -173,7 +173,7 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 void transferRegions(ImportParams params, ServerWorld serverWorld, BlockInfoTable blocks)
 {
 	setDimensionBorders(serverWorld, params.outDimension);
-	transferRegionsImpl(params, serverWorld.chunkManager, blocks);
+	transferRegionsImpl(params, serverWorld.chunkManager, serverWorld.chunkProvider, blocks);
 
 	updateMetadata(serverWorld.chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 	serverWorld.chunkManager.commitSnapshots(TimestampType(0));
@@ -186,7 +186,8 @@ void setDimensionBorders(ServerWorld serverWorld, DimensionId outDimension)
 	dimInfo.borders.size.y = 8;
 }
 
-void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockInfoTable blocks)
+void transferRegionsImpl(ImportParams params, ChunkManager chunkManager,
+	ref ChunkProvider chunkProvider, BlockInfoTable blocks)
 {
 	McRegion region;
 	region.buffer = new ubyte[1024 * 1024 * 10];
@@ -217,11 +218,12 @@ void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockIn
 	}
 	writefln("Offseting imported regions by %s", regionOffset);
 
+	size_t currentRegionIndex;
 	foreach(regionName; regionIterator(params.regionDir))
 	{
 		region.parseRegionFilename(regionName);
 
-		writef("region %s %s -> ", region.x, region.z);
+		writef("%s/%s\tregion %s %s -> ", currentRegionIndex, numRegions, region.x, region.z);
 
 		region.x += regionOffset.x;
 		region.z += regionOffset.y;
@@ -237,6 +239,8 @@ void transferRegionsImpl(ImportParams params, ChunkManager chunkManager, BlockIn
 
 		updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
 		chunkManager.commitSnapshots(TimestampType(0));
+		++currentRegionIndex;
+		chunkProvider.update();
 	}
 }
 
@@ -304,16 +308,16 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 		floor(cast(float)mc_cwp.y / 2),
 		floor(cast(float)mc_cwp.z / 2));
 
-	ivec3 offset = mc_cwp % 2;
-	offset = ivec3(
-		offset.x < 0 ? offset.x + 2 : offset.x,
-		offset.y < 0 ? offset.y + 2 : offset.y,
-		offset.z < 0 ? offset.z + 2 : offset.z) * MC_CHUNK_WIDTH;
+	ivec3 destPos = mc_cwp % 2;
+	destPos = ivec3(
+		destPos.x < 0 ? destPos.x + 2 : destPos.x,
+		destPos.y < 0 ? destPos.y + 2 : destPos.y,
+		destPos.z < 0 ? destPos.z + 2 : destPos.z) * MC_CHUNK_WIDTH;
 
-	ivec3 size = ivec3(MC_CHUNK_WIDTH, MC_CHUNK_WIDTH, MC_CHUNK_WIDTH);
+	const ivec3 mcChunkSize = ivec3(MC_CHUNK_WIDTH, MC_CHUNK_WIDTH, MC_CHUNK_WIDTH);
 
 	// box within voxelman chunk.
-	Box mcChunkBox = Box(offset, size);
+	Box sourceBox =  Box(ivec3(0,0,0), mcChunkSize);
 
 	auto cwp = ChunkWorldPos(pos, outDimension);
 
@@ -333,7 +337,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 	}
 
 	// set blocks
-	setSubArray(wb.layer.getArray!BlockId, CHUNK_SIZE_CUBE, mcChunkBox, convertedBlocks);
+	setSubArray(wb.layer.getArray!BlockId, CHUNK_SIZE_VECTOR, destPos, convertedBlocks, mcChunkSize, sourceBox);
 }
 
 enum WOOD = DIRT;
