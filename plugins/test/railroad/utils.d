@@ -317,23 +317,23 @@ bool isSegmentSolid(ubyte segment, ivec3 blockTilePos)
 ushort railSegmentBottomSolidityIndex = 0b0000_1111_00;
 
 ulong[2] railBottomSolidityBitmaps = [
-mixin("0b" // !bit order is right to left!
-"00111100"
-"00111100"
-"00111100"
-"00111100"
-"00111100"
-"00111100"
-"00111100"
+mixin("0b"~ // !bit order is right to left!
+"00111100"~
+"00111100"~
+"00111100"~
+"00111100"~
+"00111100"~
+"00111100"~
+"00111100"~
 "00111100"),
-mixin("0b"
-"00111000"
-"01110000"
-"11100000"
-"11000000"
-"10000000"
-"00000000"
-"00000000"
+mixin("0b"~
+"00111000"~
+"01110000"~
+"11100000"~
+"11000000"~
+"10000000"~
+"00000000"~
+"00000000"~
 "00000000")];
 
 import voxelman.graphics;
