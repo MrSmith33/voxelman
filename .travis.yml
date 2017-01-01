@@ -9,6 +9,8 @@ matrix:
     - d: ldc-1.0.0 # remove when ldc crash is fixed
 
 before_install:
+# Add repo for 16.04. Fresh libraries needed
+  - sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu xenial main'
   - sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu xenial universe'
   - sudo apt-get -qq update
   - sudo apt-get install -y liblmdb-dev liblz4-dev libenet-dev
