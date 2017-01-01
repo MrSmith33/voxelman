@@ -34,7 +34,7 @@ mixin template NetCommon()
 
 	override void preInit() {
 		import voxelman.utils.libloader;
-		loadEnet([getLibName(BUILD_TO_ROOT_PATH, "enet")]);
+		loadEnet(BUILD_TO_ROOT_PATH);
 
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;

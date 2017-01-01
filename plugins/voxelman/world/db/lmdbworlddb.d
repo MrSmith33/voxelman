@@ -7,8 +7,6 @@ module voxelman.world.db.lmdbworlddb;
 
 import voxelman.log;
 
-version(Windows):
-
 import std.string : fromStringz, toStringz;
 struct LmdbWorldDb
 {

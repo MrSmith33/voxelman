@@ -10,10 +10,10 @@ import cbor;
 import voxelman.log;
 import derelict.enet.enet;
 
-
-void loadEnet(string[] libNames)
+void loadEnet(string rootPath)
 {
-	DerelictENet.load(libNames);
+	import voxelman.utils.libloader;
+	loadLib(DerelictENet, rootPath, "enet");
 
 	int err = enet_initialize();
 

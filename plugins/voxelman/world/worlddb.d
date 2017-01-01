@@ -7,13 +7,6 @@ module voxelman.world.worlddb;
 
 import std.experimental.allocator.mallocator;
 import voxelman.world.db.lmdbworlddb;
-import voxelman.world.db.sqliteworlddb;
-
-version(Windows) {
-	version = Lmdb;
-} else {
-	version = Sqlite;
-}
 
 private enum Table : ulong
 {
@@ -24,13 +17,12 @@ private enum Table : ulong
 
 final class WorldDb
 {
-	version(Lmdb) LmdbWorldDb db;
-	version(Sqlite) SqliteWorldDb db;
+	LmdbWorldDb db;
 	private ubyte[] buffer;
 
 	//-----------------------------------------------
 	void open(string filename) {
-		version(Lmdb) mdb_load_libs();
+		version(Windows) mdb_load_libs();
 		db.open(filename);
 	}
 	void close() {
@@ -45,31 +37,14 @@ final class WorldDb
 	}
 
 	//-----------------------------------------------
-	version(Lmdb) {
-		void put(ubyte[16] key, ubyte[] value) {
-			db.put(key, value);
-		}
-		ubyte[] get(ubyte[16] key) {
-			return db.get(key);
-		}
-		void del(ubyte[16] key) {
-			return db.del(key);
-		}
+	void put(ubyte[16] key, ubyte[] value) {
+		db.put(key, value);
 	}
-
-	version(Sqlite) {
-		void put(ubyte[16] key, ubyte[] value) {
-			ulong[2] keys = *cast(ulong[2]*)&key;
-			db.savePerWorldData(keys[0], keys[1], value);
-		}
-		ubyte[] get(ubyte[16] key) {
-			ulong[2] keys = *cast(ulong[2]*)&key;
-			return db.loadPerWorldData(keys[0], keys[1]);
-		}
-		void del(ubyte[16] key) {
-			ulong[2] keys = *cast(ulong[2]*)&key;
-			assert(false, "not implemented");
-		}
+	ubyte[] get(ubyte[16] key) {
+		return db.get(key);
+	}
+	void del(ubyte[16] key) {
+		return db.del(key);
 	}
 
 	//-----------------------------------------------

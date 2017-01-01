@@ -7,32 +7,24 @@ Authors: Andrey Penechko.
 module voxelman.utils.compression;
 
 import voxelman.log;
-version(Windows)
-{
-	extern(C) nothrow {
-		int LZ4_compress_default(const ubyte* source, ubyte* dest, int sourceSize, int maxDestSize);
-		int LZ4_decompress_safe(const ubyte* source, ubyte* dest, int compressedSize, int maxDecompressedSize);
-	}
 
-	ubyte[] compress(in ubyte[] data, ubyte[] outBuffer)
-	{
-		int res = LZ4_compress_default(data.ptr, outBuffer.ptr, cast(int)data.length, cast(int)outBuffer.length);
-		return outBuffer[0..res];
-	}
-	ubyte[] decompress(in ubyte[] data, ubyte[] outBuffer)
-	{
-		int res = LZ4_decompress_safe(data.ptr, outBuffer.ptr, cast(int)data.length, cast(int)outBuffer.length);
-		if (res < 0)
-		{
-			errorf("decompress failed with result %s in %s buf %s", res, data.length, outBuffer.length);
-			return null;
-		}
-		return outBuffer[0..res];
-	}
+extern(C) nothrow {
+	int LZ4_compress_default(const ubyte* source, ubyte* dest, int sourceSize, int maxDestSize);
+	int LZ4_decompress_safe(const ubyte* source, ubyte* dest, int compressedSize, int maxDecompressedSize);
 }
-else
+
+ubyte[] compress(in ubyte[] data, ubyte[] outBuffer)
 {
-	import voxelman.utils.rlecompression;
-	alias compress = rleEncode;
-	alias decompress = rleDecode;
+	int res = LZ4_compress_default(data.ptr, outBuffer.ptr, cast(int)data.length, cast(int)outBuffer.length);
+	return outBuffer[0..res];
+}
+ubyte[] decompress(in ubyte[] data, ubyte[] outBuffer)
+{
+	int res = LZ4_decompress_safe(data.ptr, outBuffer.ptr, cast(int)data.length, cast(int)outBuffer.length);
+	if (res < 0)
+	{
+		errorf("decompress failed with result %s in %s buf %s", res, data.length, outBuffer.length);
+		return null;
+	}
+	return outBuffer[0..res];
 }

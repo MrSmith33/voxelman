@@ -80,8 +80,9 @@ public:
 		import voxelman.utils.libloader;
 
 		DerelictGL3.load();
-		DerelictGLFW3.load([getLibName(BUILD_TO_ROOT_PATH, "glfw3")]);
-		DerelictImgui.load(getLibName(BUILD_TO_ROOT_PATH, "cimgui"));
+		loadLib(DerelictGLFW3, BUILD_TO_ROOT_PATH, "glfw3");
+		loadLib(DerelictImgui, BUILD_TO_ROOT_PATH, "cimgui");
+
 	}
 
 	override void init(IPluginManager pluginman)

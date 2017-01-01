@@ -11,6 +11,7 @@
 		"derelict-enet": "==2.0.0",
 		"derelict-glfw3" : "==2.0.0",
 		"derelict-gl3" : "==1.0.18",
+		"derelict-util": ">=1.0.3",
 		"sdlang-d" : "==0.10.1"
 	},
 
@@ -27,9 +28,9 @@
 		}
 	},
 
-	"libs-posix": ["sqlite3"],
-	"sourceFiles-windows-x86": ["lib/32/sqlite3.lib", "lib/32/lz4.lib", "lib/32/lmdb.lib"],
-	"sourceFiles-windows-x86_64": ["lib/64/sqlite3.lib", "lib/64/lz4.lib", "lib/64/lmdb.lib"],
+	"libs-posix": ["lmdb", "lz4"],
+	"sourceFiles-windows-x86": ["lib/32/lz4.lib", "lib/32/lmdb.lib"],
+	"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib"],
 
 	"lflags-windows": [
 		"libcmt.lib",

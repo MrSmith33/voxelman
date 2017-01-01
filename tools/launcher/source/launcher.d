@@ -557,7 +557,11 @@ string makeCompileCommand(JobParams params)
 
 string makeRunCommand(JobParams params)
 {
-	string command = format("voxelman.exe --app=%s", appTypeString[params.appType]);
+	version(Windows)
+		enum exeSuffix = ".exe";
+	else version(Posix)
+		enum exeSuffix = "";
+	string command = format("voxelman%s --app=%s", exeSuffix, appTypeString[params.appType]);
 
 	foreach(paramName, paramValue; params.runParameters)
 	{

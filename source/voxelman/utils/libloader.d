@@ -7,6 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.utils.libloader;
 
 public import voxelman.globalconfig;
+import derelict.util.loader;
 
 version(Posix)
 	enum DLL_SUFFIX = ".so";
@@ -19,6 +20,18 @@ version(X86)
 else version(X86_64)
 	enum LIB_FOLDER = "lib/64";
 else static assert(false, "lib loading is not implemented for this platform");
+
+void loadLib(SharedLibLoader loader, string pathToRoot, string libName)
+{
+	string fileName = getLibName(pathToRoot, libName);
+	import std.file;
+	if (exists(fileName))
+	{
+		loader.load(fileName);
+	}
+	else
+		loader.load();
+}
 
 string getLibName(string pathToRoot, string libName)
 {
