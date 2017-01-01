@@ -9,4 +9,5 @@ matrix:
     - d: ldc-1.0.0 # remove when ldc crash is fixed
 
 before_install:
+  - sudo apt-get -qq update
   - sudo apt-get install liblmdb-dev liblz4-dev libglfw3 libenet-dev
