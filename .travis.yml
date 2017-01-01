@@ -12,4 +12,4 @@ matrix:
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y liblmdb-dev liblz4-dev libglfw3-dev libenet-dev
+  - sudo apt-get install -y liblmdb-dev liblz4-dev libenet-dev
