@@ -54,3 +54,34 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - `U` disable position update.
 - `F` flying mode.
 - `N` noclip.
+
+## Building from sources
+### Linux 
+
+Install compilers:
+```
+sudo wget http://master.dl.sourceforge.net/project/d-apt/files/d-apt.list -O /etc/apt/sources.list.d/d-apt.list
+sudo apt-get update && sudo apt-get -y --allow-unauthenticated install --reinstall d-apt-keyring && sudo apt-get update
+sudo apt-get install build-essential dmd-bin dub
+```
+
+Install dependencies:
+```
+sudo apt-get install liblmdb-dev liblz4-dev libglfw3 libenet-dev
+```
+
+Compile:
+```
+git clone --depth=50 https://github.com/MrSmith33/voxelman voxelman
+cd voxelman
+git submodule update --init --recursive
+dub build
+```
+
+Download [cimgui.so](https://github.com/MrSmith33/voxelman/releases/download/v0.8.0-dev.1/cimgui.so) x86_64 and place it in `lib/64`.
+
+Run:
+```
+cd builds/default
+voxelman --app=combined
+```
