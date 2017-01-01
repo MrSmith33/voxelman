@@ -12,7 +12,7 @@
 		"derelict-glfw3" : "==2.0.0",
 		"derelict-gl3" : "==1.0.18",
 		"derelict-util": ">=1.0.3",
-		"sdlang-d" : "==0.10.1"
+		"sdlang-d" : "==0.9.6"
 	},
 
 	"subConfigurations": {

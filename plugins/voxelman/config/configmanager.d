@@ -90,7 +90,7 @@ public:
 			string fileData = cast(string)read(filename);
 			root = parseSource(fileData, filename);
 		}
-		catch(ParseException e)
+		catch(SDLangParseException e)
 		{
 			warning(e.msg);
 			return;
