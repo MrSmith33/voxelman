@@ -30,7 +30,8 @@ struct LmdbWorldDb
 			MDB_WRITEMAP|
 			MDB_NOLOCK|
 			MDB_NOMEMINIT,
-			0);
+			//rwx_rwx_rwx
+			0b110_110_110);
 	}
 
 	static string libVersion() @nogc {
