@@ -263,7 +263,7 @@ struct BlockInfoSetter
 
 void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 {
-	regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh);
+	regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh).blockShape(unknownShape);
 	regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh).blockShape(emptyShape);
 	regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
 	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);

@@ -139,7 +139,7 @@ struct ChunkProvider
 		genWorkers.length = numGenWorkers;
 		foreach(i; 0..numGenWorkers)
 		{
-			genWorkers[i].alloc("GEN_W", QUEUE_LENGTH);
+			genWorkers[i].alloc(0, "GEN_W", QUEUE_LENGTH);
 			genWorkers[i].thread = cast(shared)spawnWorker(&chunkGenWorkerThread, &genWorkers[i], canceledTasks, blocks);
 		}
 

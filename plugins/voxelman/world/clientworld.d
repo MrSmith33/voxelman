@@ -23,6 +23,7 @@ import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.eventdispatcher.plugin : EventDispatcherPlugin;
+import voxelman.gui.plugin : GuiPlugin;
 import voxelman.graphics.plugin;
 import voxelman.input.keybindingmanager;
 import voxelman.session.client;
@@ -149,11 +150,18 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		import std.algorithm.comparison : clamp;
+		numWorkersOpt.set(clamp(numWorkersOpt.get!uint, 1, 16));
+
 		viewRadius = viewRadiusOpt.get!uint;
 		// duplicated code
 		viewRadius = clamp(viewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 
 		session = pluginman.getPlugin!ClientSession;
+
+		auto gui = pluginman.getPlugin!GuiPlugin;
+		// set before init
+		chunkMeshMan.createSharedContext = &gui.window.createSharedContext;
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;

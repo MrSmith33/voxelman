@@ -13,6 +13,22 @@ import derelict.glfw3.glfw3;
 import derelict.opengl3.gl3;
 import voxelman.math;
 import anchovy.iwindow : IWindow;
+import anchovy.isharedcontext;
+
+class GlfwSharedContext : ISharedContext
+{
+	GLFWwindow* sharedContext;
+
+	this(GLFWwindow* _sharedContext)
+	{
+		this.sharedContext = _sharedContext;
+	}
+
+	void makeCurrent()
+	{
+		glfwMakeContextCurrent(sharedContext);
+	}
+}
 
 class GlfwWindow : IWindow
 {
@@ -63,6 +79,15 @@ public:
 		glfwSetCharCallback(glfwWindowPtr, &charfun);
 		//glfwSetCursorEnterCallback(window, GLFWcursorenterfun cbfun);
 		glfwSetWindowRefreshCallback(glfwWindowPtr, &refreshfun);
+	}
+
+	override ISharedContext createSharedContext()
+	{
+		assert(glfwInited);
+		assert(glfwWindowPtr);
+		glfwWindowHint(GLFW_VISIBLE, false);
+		GLFWwindow* sharedContext = glfwCreateWindow(100, 100, "", null, glfwWindowPtr);
+		return new GlfwSharedContext(sharedContext);
 	}
 
 	override void processEvents()

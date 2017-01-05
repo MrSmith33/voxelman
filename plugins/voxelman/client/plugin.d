@@ -181,6 +181,13 @@ public:
 
 		with(clientWorld.chunkMeshMan) {
 			igTextf("Buffers: %s Mem: %s", ChunkMesh.numBuffersAllocated, DigitSeparator!(long, 3, ' ')(totalMeshDataBytes));
+
+			import std.datetime;
+			int msecs, usecs, msecs2, usecs2;
+			ChunkMesh.totalGenBuffersTime.split!("msecs", "usecs")(msecs, usecs);
+			ChunkMesh.totalBufferDataTime.split!("msecs", "usecs")(msecs2, usecs2);
+			igTextf("Alloc: %s.%03s ms, upload: %s.%03s ms", msecs, usecs, msecs2, usecs2);
+
 			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
 			igTextf("New meshes: %s", newChunkMeshes.length);
 			size_t sum;

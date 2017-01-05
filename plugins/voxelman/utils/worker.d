@@ -23,14 +23,16 @@ shared struct Worker
 	bool running = true;
 	SharedQueue taskQueue;
 	SharedQueue resultQueue;
+	size_t groupIndex;
 	// also notified on stop
 	Semaphore workAvaliable;
 
 	// for owner
-	void alloc(string debugName = "W", size_t capacity = QUEUE_LENGTH) shared {
+	void alloc(size_t groupIndex = 0, string debugName = "W", size_t capacity = QUEUE_LENGTH) shared {
 		taskQueue.alloc(format("%s_task", debugName), capacity);
 		resultQueue.alloc(format("%s_res", debugName), capacity);
 		workAvaliable = cast(shared) new Semaphore();
+		this.groupIndex = groupIndex;
 	}
 
 	void stop() shared {
@@ -99,17 +101,15 @@ shared struct WorkerGroup
 
 	void startWorkers(F, T...)(size_t _numWorkers, F fn, T args) shared
 	{
-		import std.algorithm.comparison : clamp;
-
 		if (_areWorkersStarted) return;
 
-		numWorkers = clamp(_numWorkers, 1, 16);
+		numWorkers = _numWorkers;
 		queueLengths.length = numWorkers;
 		workers.length = numWorkers;
 
-		foreach(ref worker; workers)
+		foreach(i, ref worker; workers)
 		{
-			worker.alloc();
+			worker.alloc(i);
 			worker.thread = cast(shared)spawnWorker(fn, &worker, args);
 		}
 

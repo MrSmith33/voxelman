@@ -8,6 +8,7 @@ module voxelman.world.mesh.meshgen;
 import voxelman.log;
 import std.conv : to;
 import core.exception : Throwable;
+import anchovy.isharedcontext;
 
 import voxelman.container.buffer;
 import voxelman.math;
@@ -37,8 +38,11 @@ struct MeshGenTaskHeader
 }
 
 //version = DBG_OUT;
-void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
+void meshWorkerThread(shared(Worker)* workerInfo, ISharedContext[] contexts, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
+	ISharedContext glContext = contexts[workerInfo.groupIndex];
+	glContext.makeCurrent();
+
 	// reusable buffers
 	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
 	try
@@ -71,7 +75,16 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 					auto blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 
-					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
+					chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
+
+					import std.experimental.allocator;
+					import std.experimental.allocator.mallocator;
+
+					MeshVertex[][2] meshes;
+					meshes[0] = makeArray!MeshVertex(Mallocator.instance, geometry[2].data); // solid geometry
+					meshes[1] = makeArray!MeshVertex(Mallocator.instance, geometry[1].data); // semi-transparent geometry
+					geometry[1].clear();
+					geometry[2].clear();
 
 					uint[27] blockTimestamps;
 					uint[27] entityTimestamps;
@@ -103,7 +116,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 
 import voxelman.world.mesh.meshgenerator;
 
-MeshVertex[][2] chunkMeshWorker(
+void chunkMeshWorker(
 	ChunkLayerItem[27] blockLayers,
 	ChunkLayerItem[27] entityLayers,
 	BlockInfoTable blockInfos,
@@ -124,173 +137,4 @@ MeshVertex[][2] chunkMeshWorker(
 	ExtendedChunk chunk;
 	chunk.create(blockLayers);
 	genGeometry(chunk, entityLayers, beInfos, blockInfos, geometry);
-
-	MeshVertex[][2] meshes;
-
-	import std.experimental.allocator;
-	import std.experimental.allocator.mallocator;
-	meshes[0] = makeArray!MeshVertex(Mallocator.instance, geometry[2].data); // solid geometry
-	meshes[1] = makeArray!MeshVertex(Mallocator.instance, geometry[1].data); // semi-transparent geometry
-
-
-	geometry[1].clear();
-	geometry[2].clear();
-
-	return meshes;
-}
-
-MeshVertex[][2] chunkMeshWorkerOld(
-	ChunkLayerItem[27] blockLayers,
-	ChunkLayerItem[27] entityLayers,
-	BlockInfoTable blockInfos,
-	BlockEntityInfoTable beInfos,
-	ref Buffer!MeshVertex[3] geometry)
-{
-	foreach (layer; blockLayers) {
-		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 1");
-		if (!layer.isUniform)
-			assert(layer.getArray!ubyte.length == BLOCKS_DATA_LENGTH);
-	}
-	foreach (layer; entityLayers)
-		assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 2");
-
-	BlockEntityMap[27] maps;
-	foreach (i, layer; entityLayers) maps[i] = getHashMapFromLayer(layer);
-
-	BlockEntityData getBlockEntity(ushort blockIndex, BlockEntityMap map) {
-		ulong* entity = blockIndex in map;
-		if (entity is null) return BlockEntityData.init;
-		return BlockEntityData(*entity);
-	}
-
-	Solidity solidity(int tx, int ty, int tz, CubeSide side)
-	{
-		ChunkAndBlockAt chAndBlock = chunkAndBlockAt6(tx, ty, tz);
-		BlockId blockId = blockLayers[chAndBlock.chunk].getBlockId(
-			chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
-
-		if (isBlockEntity(blockId)) {
-			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[chAndBlock.chunk]);
-			auto entityInfo = beInfos[data.id];
-
-			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
-
-			ivec3 blockChunkPos = ivec3(chAndBlock.blockX, chAndBlock.blockY, chAndBlock.blockZ);
-			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
-
-			return entityInfo.sideSolidity(side, blockChunkPos, blockEntityPos, data);
-		} else {
-			return blockInfos[blockId].solidity;
-		}
-	}
-
-	ubyte checkSideSolidities(Solidity curSolidity, ubvec3 bpos)
-	{
-		ubyte sides = 0;
-		ubyte flag = 1;
-		foreach(ubyte side; 0..6) {
-			byte[3] offset = sideOffsets6[side]; // Offset to adjacent block
-			if(curSolidity > solidity(bpos.x+offset[0], bpos.y+offset[1], bpos.z+offset[2], oppSide[side])) {
-				sides |= flag;
-			}
-			flag <<= 1;
-		}
-		return sides;
-	}
-
-	void meshBlock(BlockId blockId, ushort index, ubyte x, ubyte y, ubyte z, Solidity curSolidity)
-	{
-		ubvec3 bpos = ubvec3(x, y, z);
-
-		// Bit flags of sides to render
-		ubyte sides = checkSideSolidities(curSolidity, bpos);
-
-		if (isBlockEntity(blockId))
-		{
-			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
-
-			// entity chunk pos
-			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
-
-			ivec3 blockChunkPos = ivec3(bpos);
-			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
-
-			auto entityInfo = beInfos[data.id];
-
-			auto meshingData = BlockEntityMeshingData(
-				geometry,
-				entityInfo.color,
-				blockChunkPos,
-				blockEntityPos,
-				sides,
-				data);
-
-			entityInfo.meshHandler(meshingData);
-		}
-		else
-		{
-			auto data = BlockMeshingData(
-				&geometry[curSolidity],
-				blockInfos[blockId].color,
-				bpos,
-				index,
-				sides);
-			blockInfos[blockId].meshHandler(data);
-		}
-	}
-
-	if (blockLayers[26].isUniform)
-	{
-		BlockId blockId = blockLayers[26].getUniform!BlockId;
-		MeshHandler meshHandler = blockInfos[blockId].meshHandler;
-		ubvec3 color = blockInfos[blockId].color;
-		Solidity curSolidity = blockInfos[blockId].solidity;
-
-		if (curSolidity != Solidity.transparent)
-		{
-			ushort index = 0;
-			foreach (ubyte y; 0..CHUNK_SIZE)
-			foreach (ubyte z; 0..CHUNK_SIZE)
-			foreach (ubyte x; 0..CHUNK_SIZE)
-			{
-				meshBlock(blockId, index, x, y, z, curSolidity);
-				++index;
-			}
-		}
-	}
-	else
-	{
-		auto blocks = blockLayers[26].getArray!BlockId();
-		assert(blocks.length == CHUNK_SIZE_CUBE);
-
-		ushort index = 0;
-
-		foreach (ubyte y; 0..CHUNK_SIZE)
-		foreach (ubyte z; 0..CHUNK_SIZE)
-		foreach (ubyte x; 0..CHUNK_SIZE)
-		{
-			BlockId blockId = blocks.ptr[index];
-			if (blockInfos[blockId].isVisible)
-			{
-				Solidity curSolidity = blockInfos[blockId].solidity;
-				meshBlock(blockId, index, x, y, z, curSolidity);
-			}
-			++index;
-		}
-	}
-
-	MeshVertex[][2] meshes;
-
-	import std.experimental.allocator;
-	import std.experimental.allocator.mallocator;
-	meshes[0] = makeArray!MeshVertex(Mallocator.instance, geometry[2].data); // solid geometry
-	meshes[1] = makeArray!MeshVertex(Mallocator.instance, geometry[1].data); // semi-transparent geometry
-
-
-	geometry[1].clear();
-	geometry[2].clear();
-
-	return meshes;
 }

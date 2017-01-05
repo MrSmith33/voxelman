@@ -7,6 +7,7 @@ module voxelman.world.mesh.chunkmeshman;
 
 import voxelman.log;
 import std.typecons : Nullable;
+import anchovy.isharedcontext;
 
 import voxelman.geometry.box;
 import voxelman.math;
@@ -64,13 +65,21 @@ struct ChunkMeshMan
 	BlockInfoTable blocks;
 	BlockEntityInfoTable beInfos;
 	Box delegate(DimensionId) getDimensionBorders;
+	ISharedContext delegate() createSharedContext;
 
 	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, BlockEntityInfoTable _beInfos, uint numMeshWorkers)
 	{
 		chunkManager = _chunkManager;
 		blocks = _blocks;
 		beInfos = _beInfos;
-		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks, beInfos);
+
+		auto contexts = new ISharedContext[numMeshWorkers];
+		foreach(ref context; contexts)
+		{
+			context = createSharedContext();
+		}
+
+		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, contexts, blocks, beInfos);
 	}
 
 	void stop()

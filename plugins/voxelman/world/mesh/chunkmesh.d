@@ -32,8 +32,11 @@ struct ChunkMesh
 	static if(Store_mesh) MeshVertex[] data;
 	size_t uploadedLength;
 
-	bool isDataDirty = true;
+	// debug info
+	import std.datetime;
 	static int numBuffersAllocated;
+	static Duration totalGenBuffersTime;
+	static Duration totalBufferDataTime;
 
 	private GLuint vao;
 	private GLuint vbo;
@@ -41,8 +44,11 @@ struct ChunkMesh
 
 	private void genBuffers()
 	{
+		MonoTime startTime = MonoTime.currTime;
 		glGenBuffers(1, &vbo);
 		glGenVertexArrays(1, &vao);
+		Duration duration = MonoTime.currTime - startTime;
+		totalGenBuffersTime += duration;
 		++numBuffersAllocated;
 		hasBuffers = true;
 	}
@@ -66,10 +72,15 @@ struct ChunkMesh
 		static if(Store_mesh) this.data = data;
 		uploadedLength = data.length;
 
+		MonoTime startTime = MonoTime.currTime;
+
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
 		MeshVertex.setAttributes();
 		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		Duration duration = MonoTime.currTime - startTime;
+		totalBufferDataTime += duration;
 
 		unbind();
 		static if(!Store_mesh) freeChunkMesh(data);

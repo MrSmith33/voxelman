@@ -8,10 +8,12 @@ module anchovy.iwindow;
 
 import voxelman.math;
 import anchovy.signal;
+import anchovy.isharedcontext;
 
 abstract class IWindow
 {
 	void init(uvec2 size, in string caption);
+	ISharedContext createSharedContext();
 	void reshape(uvec2 viewportSize);
 	void processEvents(); // will emit signals
 	double elapsedTime() @property; // in seconds
