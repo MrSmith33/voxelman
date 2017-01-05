@@ -27,6 +27,8 @@ public:
 	override void preInit()
 	{
 		regBaseBlocks(&regBlock);
+		sideTable = sideIntersectionTable(NUM_SIDE_MASKS);
+		sideTable.set(ShapeSideMask.full, ShapeSideMask.empty);
 	}
 
 	BlockInfoSetter regBlock(string name) {
@@ -36,8 +38,10 @@ public:
 	}
 
 	BlockInfoTable getBlocks() {
-		return BlockInfoTable(cast(immutable)blockMapping.infoArray);
+		return BlockInfoTable(cast(immutable)blockMapping.infoArray, sideTable);
 	}
+
+	SideIntersectionTable sideTable;
 }
 
 mixin template BlockPluginCommonImpl()

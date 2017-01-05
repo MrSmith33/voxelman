@@ -53,65 +53,6 @@ ushort calcChunkFullMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
 	return cast(ushort) (sideMeta | solidityBits<<CHUNK_SIDE_METADATA_BITS);
 }
 
-// ditto
-ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
-{
-	if (blockLayer.isUniform) return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
-	else return calcChunkSideMetadata(blockLayer.getArray!BlockId, blockInfos);
-}
-
-// ditto
-ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
-	if (isSomeLayer!Layer)
-{
-	if (blockLayer.type == StorageType.uniform) {
-		return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
-	} else if (blockLayer.type == StorageType.fullArray) {
-		BlockId[] blocks = blockLayer.getArray!BlockId;
-		return calcChunkSideMetadata(blocks, blockInfos);
-	} else assert(false);
-}
-
-// ditto
-ubyte calcSolidityBits(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
-	if (isSomeLayer!Layer)
-{
-	if (blockLayer.type == StorageType.uniform) {
-		return calcSolidityBits(blockLayer.getUniform!BlockId, blockInfos);
-	} else if (blockLayer.type == StorageType.fullArray) {
-		BlockId[] blocks = blockLayer.getArray!BlockId;
-		return calcSolidityBits(blocks, blockInfos);
-	} else assert(false);
-}
-
-enum ubyte[3] solidity_bits = [0b001, 0b010, 0b100];
-ubyte calcSolidityBits(BlockId uniformBlock, BlockInfoTable blockInfos)
-{
-	Solidity solidity = blockInfos[uniformBlock].solidity;
-	return solidity_bits[solidity];
-}
-
-ubyte calcSolidityBits(BlockId[] blocks, BlockInfoTable blockInfos)
-{
-	bool[3] presentSolidities;
-	foreach(i; 0..CHUNK_SIZE_CUBE) {
-		Solidity solidity = blockInfos[blocks[i]].solidity;
-		presentSolidities[solidity] = true;
-	}
-	ubyte solidityBits;
-	ubyte solidityFlag = 1;
-	foreach(sol; presentSolidities) {
-		if (sol) solidityBits |= solidityFlag;
-		solidityFlag <<= 1;
-	}
-	return solidityBits;
-}
-
-bool isChunkSideSolid(const ushort metadata, const CubeSide side)
-{
-	return chunkSideSolidity(metadata, side) == Solidity.solid;
-}
-
 Solidity chunkSideSolidity(const ushort metadata, const CubeSide side)
 {
 	if (metadata & 0b1_00_00_00_00_00_00) // if metadata is presented
@@ -119,35 +60,6 @@ Solidity chunkSideSolidity(const ushort metadata, const CubeSide side)
 	else
 		return Solidity.transparent; // otherwise non-solid
 }
-
-/// Returns true if chunk has blocks of specified solidity.
-/// If metadata is invalid then chunk is assumed to have blocks of every solidity.
-bool hasSolidity(const ushort metadata, Solidity solidity)
-{
-	ubyte solidityBits;
-	if (metadata & 0b1_00_00_00_00_00_00) {// if metadata is valid
-		solidityBits = (metadata>>CHUNK_SIDE_METADATA_BITS) & 0b111;
-	} else {
-		solidityBits = 0b111; // assume every solidity.
-	}
-	return (solidityBits & (1 << solidity)) > 0;
-}
-
-/// Returns true if chunk has blocks only of specified solidity.
-/// If metadata is invalid then chunk is assumed to have blocks of every solidity, and returns false.
-bool hasOnlySolidity(const ushort metadata, Solidity solidity)
-{
-	if (metadata & 0b1_00_00_00_00_00_00) {// if metadata is valid
-		ubyte solidityBits = (metadata>>CHUNK_SIDE_METADATA_BITS) & 0b111;
-		return solidityBits == (1 << solidity);
-	} else {
-		return false; // assume has every solidity.
-	}
-}
-
-bool[8] singleSolidityTable = [false, true, true, false, true, false, false, false];
-Solidity[8] bitsToSolidityTable = [Solidity.transparent, Solidity.transparent, Solidity.semiTransparent,
-	Solidity.transparent, Solidity.solid, Solidity.transparent, Solidity.transparent, Solidity.transparent];
 
 /// Returns true if chunk has blocks of only single solidity.
 /// If returns true then solidity has solidity of all blocks.
@@ -183,13 +95,71 @@ void printChunkMetadata(ushort metadata)
 	}
 }
 
-immutable ushort[3] solidity_metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
-ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
+// ditto
+private ubyte calcSolidityBits(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
+	if (isSomeLayer!Layer)
+{
+	if (blockLayer.type == StorageType.uniform) {
+		return calcSolidityBits(blockLayer.getUniform!BlockId, blockInfos);
+	} else if (blockLayer.type == StorageType.fullArray) {
+		BlockId[] blocks = blockLayer.getArray!BlockId;
+		return calcSolidityBits(blocks, blockInfos);
+	} else assert(false);
+}
+
+enum ubyte[3] solidity_bits = [0b001, 0b010, 0b100];
+private ubyte calcSolidityBits(BlockId uniformBlock, BlockInfoTable blockInfos)
 {
 	Solidity solidity = blockInfos[uniformBlock].solidity;
-	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
-	return solidity_metadatas[solidity];
+	return solidity_bits[solidity];
 }
+
+private ubyte calcSolidityBits(BlockId[] blocks, BlockInfoTable blockInfos)
+{
+	bool[3] presentSolidities;
+	foreach(i; 0..CHUNK_SIZE_CUBE) {
+		Solidity solidity = blockInfos[blocks[i]].solidity;
+		presentSolidities[solidity] = true;
+	}
+	ubyte solidityBits;
+	ubyte solidityFlag = 1;
+	foreach(sol; presentSolidities) {
+		if (sol) solidityBits |= solidityFlag;
+		solidityFlag <<= 1;
+	}
+	return solidityBits;
+}
+
+/// Returns true if chunk has blocks of specified solidity.
+/// If metadata is invalid then chunk is assumed to have blocks of every solidity.
+private bool hasSolidity(const ushort metadata, Solidity solidity)
+{
+	ubyte solidityBits;
+	if (metadata & 0b1_00_00_00_00_00_00) {// if metadata is valid
+		solidityBits = (metadata>>CHUNK_SIDE_METADATA_BITS) & 0b111;
+	} else {
+		solidityBits = 0b111; // assume every solidity.
+	}
+	return (solidityBits & (1 << solidity)) > 0;
+}
+
+/// Returns true if chunk has blocks only of specified solidity.
+/// If metadata is invalid then chunk is assumed to have blocks of every solidity, and returns false.
+private bool hasOnlySolidity(const ushort metadata, Solidity solidity)
+{
+	if (metadata & 0b1_00_00_00_00_00_00) {// if metadata is valid
+		ubyte solidityBits = (metadata>>CHUNK_SIDE_METADATA_BITS) & 0b111;
+		return solidityBits == (1 << solidity);
+	} else {
+		return false; // assume has every solidity.
+	}
+}
+
+private bool[8] singleSolidityTable = [false, true, true, false, true, false, false, false];
+private Solidity[8] bitsToSolidityTable = [Solidity.transparent, Solidity.transparent, Solidity.semiTransparent,
+	Solidity.transparent, Solidity.solid, Solidity.transparent, Solidity.transparent, Solidity.transparent];
+
+immutable ushort[3] solidity_metadatas = [0b1_00_00_00_00_00_00, 0b1_01_01_01_01_01_01, 0b1_10_10_10_10_10_10];
 
 enum CHUNK_SIDE_METADATA_BITS = 13;
 enum SOLID_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.solid] |
@@ -197,7 +167,28 @@ enum SOLID_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.solid] |
 enum TRANSPARENT_CHUNK_METADATA = cast(ushort) (solidity_metadatas[Solidity.transparent] |
 		solidity_bits[Solidity.transparent]<<CHUNK_SIDE_METADATA_BITS);
 
-ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
+// calculate info about sides of chunk. 2 bits per side. Value is solidity.
+private ushort calcChunkSideMetadata(Layer)(Layer blockLayer, BlockInfoTable blockInfos)
+	if (isSomeLayer!Layer)
+{
+	if (blockLayer.type == StorageType.uniform) {
+		return calcChunkSideMetadata(blockLayer.getUniform!BlockId, blockInfos);
+	} else if (blockLayer.type == StorageType.fullArray) {
+		BlockId[] blocks = blockLayer.getArray!BlockId;
+		return calcChunkSideMetadata(blocks, blockInfos);
+	} else assert(false);
+}
+
+// ditto
+private ushort calcChunkSideMetadata(BlockId uniformBlock, BlockInfoTable blockInfos)
+{
+	Solidity solidity = blockInfos[uniformBlock].solidity;
+	// 13th bit == 1 when metadata is present, 12 bits = solidity of 6 chunk sides. 2 bits per side
+	return solidity_metadatas[solidity];
+}
+
+// ditto
+private ushort calcChunkSideMetadata(BlockId[] blocks, BlockInfoTable blockInfos)
 {
 	ushort flags = 0b1_00_00_00_00_00_00; // all sides are solid
 	Solidity sideSolidity = Solidity.solid;

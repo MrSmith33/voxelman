@@ -26,10 +26,10 @@
 - [ ] Remove meshes outside of mesh range.
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 - [ ] Implement chunk mesh preloading for all meshes.
-- [ ] Implement per corner solidity.
-- [ ] Implement block side masks.
-- [ ] Implement block shapes.
 - [ ] Redo chunk block metadata. Metadata should simply state if chunk has internal geometry and side solidities.
+- [x] Implement per corner solidity.
+- [x] Implement block side masks.
+- [x] Implement block shapes.
 - [x] Implement optimized mesh generation.
 - [x] Implement ambient occlusion
 - [x] Implement chunk mesh preloading. (Only meshes of current meshing pass is preloaded).

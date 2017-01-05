@@ -14,6 +14,7 @@ import voxelman.core.config;
 import voxelman.world.storage;
 import voxelman.utils.mapping;
 import voxelman.world.mesh.chunkmesh;
+import voxelman.world.block;
 
 
 enum SideMask : ubyte
@@ -191,7 +192,6 @@ struct BlockMeshingData
 	ubvec3 blockPos;
 	ushort index;
 	ubyte sides;
-	Solidity[27]* solidities;
 }
 alias MeshHandler = void function(BlockMeshingData);
 void makeNullMesh(BlockMeshingData) {}
@@ -226,18 +226,18 @@ struct BlockInfo
 	ubvec3 color;
 	bool isVisible = true;
 	Solidity solidity = Solidity.solid;
+	BlockShape shape = fullShape;
 	size_t id;
-
-	SideSolidityHandler sideSolidity = &solidSideSolidity;
-	CornerSolidityHandler cornerSolidity = &solidCornerSolidity;
-	Solidity maxSolidity = Solidity.solid;
 }
 
 BlockInfo entityBlock = BlockInfo("Entity", &makeColoredBlockMesh);
 struct BlockInfoTable
 {
 	immutable(BlockInfo)[] blockInfos;
+	SideIntersectionTable sideTable;
+
 	size_t length() {return blockInfos.length; }
+
 	BlockInfo opIndex(BlockId blockId) {
 		if (blockId >= blockInfos.length)
 			return entityBlock;
@@ -254,35 +254,17 @@ struct BlockInfoSetter
 	private ref BlockInfo info() {return (*mapping)[blockId]; }
 
 	ref BlockInfoSetter meshHandler(MeshHandler val) { info.meshHandler = val; return this; }
-	ref BlockInfoSetter sideSolidity(SideSolidityHandler val) { info.sideSolidity = val; return this; }
-	ref BlockInfoSetter cornerSolidity(CornerSolidityHandler val) { info.cornerSolidity = val; return this; }
 	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = ubvec3(color); return this; }
 	ref BlockInfoSetter colorHex(uint hex) { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
-	ref BlockInfoSetter solidity(Solidity val) {
-		final switch (val) {
-			case Solidity.transparent:
-				info.sideSolidity = &transparentSideSolidity;
-				info.cornerSolidity = &transparentCornerSolidity;
-				break;
-			case Solidity.semiTransparent:
-				info.sideSolidity = &semitransparentSideSolidity;
-				info.cornerSolidity = &semitransparentCornerSolidity;
-				break;
-			case Solidity.solid:
-				info.sideSolidity = &solidSideSolidity;
-				info.cornerSolidity = &solidCornerSolidity;
-				break;
-		}
-
-		return this;
-	}
+	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
+	ref BlockInfoSetter blockShape(BlockShape val) { info.shape = val; return this; }
 }
 
 void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 {
 	regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh);
-	regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh);
+	regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh).blockShape(emptyShape);
 	regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
 	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
 	regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add block shape occlusion calculation.
+- Add block corner ambient occlusion calculation.
 - Implement build type selection in launcher.
 - Implement ambient occlusion.
 - Implement optimized mesh generation.

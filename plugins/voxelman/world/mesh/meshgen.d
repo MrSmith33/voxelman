@@ -71,7 +71,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 					auto blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 
-					MeshVertex[][2] meshes = chunkMeshWorkerOld(blockLayers, entityLayers, blockInfos, beInfos, geometry);
+					MeshVertex[][2] meshes = chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
 
 					uint[27] blockTimestamps;
 					uint[27] entityTimestamps;
@@ -121,15 +121,9 @@ MeshVertex[][2] chunkMeshWorker(
 	BlockEntityMap[27] maps;
 	foreach (i, layer; entityLayers) maps[i] = getHashMapFromLayer(layer);
 
-	BlockEntityData getBlockEntity(ushort blockIndex, BlockEntityMap map) {
-		ulong* entity = blockIndex in map;
-		if (entity is null) return BlockEntityData.init;
-		return BlockEntityData(*entity);
-	}
-
-	MeshingTable table;
-	table.create(blockLayers);
-	table.genGeometry(geometry, blockInfos.blockInfos);
+	ExtendedChunk chunk;
+	chunk.create(blockLayers);
+	genGeometry(chunk, entityLayers, beInfos, blockInfos, geometry);
 
 	MeshVertex[][2] meshes;
 

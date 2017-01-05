@@ -218,6 +218,7 @@ void multichunkMeshHandler(BlockEntityMeshingData meshingData)
 				&meshingData.output[Solidity.solid],
 				col,
 				ubvec3(meshingData.chunkPos),
+				0,
 				meshingData.sides);
 	makeColoredBlockMesh(blockMeshingData);
 }

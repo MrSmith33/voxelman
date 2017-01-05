@@ -44,7 +44,6 @@ struct BlockEntityMeshingData
 	ivec3 entityPos;
 	ubyte sides;
 	BlockEntityData data;
-	Solidity[27]* solidities;
 }
 
 alias BlockEntityMeshhandler = void function(BlockEntityMeshingData);
