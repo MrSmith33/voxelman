@@ -180,13 +180,8 @@ public:
 		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
 
 		with(clientWorld.chunkMeshMan) {
-			igTextf("Buffers: %s Mem: %s", ChunkMesh.numBuffersAllocated, DigitSeparator!(long, 3, ' ')(totalMeshDataBytes));
-
-			import std.datetime;
-			int msecs, usecs, msecs2, usecs2;
-			ChunkMesh.totalGenBuffersTime.split!("msecs", "usecs")(msecs, usecs);
-			ChunkMesh.totalBufferDataTime.split!("msecs", "usecs")(msecs2, usecs2);
-			igTextf("Alloc: %s.%03s ms, upload: %s.%03s ms", msecs, usecs, msecs2, usecs2);
+			import anchovy.vbo;
+			igTextf("Buffers: %s Mem: %s", Vbo.numAllocated, DigitSeparator!(long, 3, ' ')(totalMeshDataBytes));
 
 			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
 			igTextf("New meshes: %s", newChunkMeshes.length);
@@ -329,63 +324,47 @@ public:
 		triangleMode = !triangleMode;
 	}
 
+	import dlib.geometry.frustum;
 	void drawSolid(ref RenderSolid3dEvent event)
 	{
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
-
-		graphics.chunkShader.bind;
-		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
-			graphics.camera.cameraMatrix);
-		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
-			cast(const float*)graphics.camera.perspective.arrayof);
-
-		import dlib.geometry.aabb;
-		import dlib.geometry.frustum;
 		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
 		Frustum frustum;
 		frustum.fromMVP(vp);
 
-		Matrix4f modelMatrix;
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
 
-		foreach(ref mesh; clientWorld.chunkMeshMan.chunkMeshes[0].byValue)
-		{
-			++stats.chunksVisible;
-			if (isCullingEnabled) // Frustum culling
-			{
-				vec3 vecMin = mesh.position;
-				vec3 vecMax = vecMin + CHUNK_SIZE;
-				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
-				auto intersects = frustum.intersectsAABB(aabb);
-				if (!intersects) continue;
-			}
-
-			modelMatrix = translationMatrix!float(mesh.position);
-			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
-
-			mesh.bind;
-			mesh.render(triangleMode);
-
-			++stats.chunksRendered;
-			stats.vertsRendered += mesh.numVertexes;
-			stats.trisRendered += mesh.numTris;
-		}
-
+		graphics.chunkShader.bind;
+		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[0].byValue, frustum);
+		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
 		graphics.chunkShader.unbind;
 
 		graphics.renderer.enableAlphaBlending();
 		glDepthMask(GL_FALSE);
 
 		graphics.transChunkShader.bind;
+		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[1].byValue, frustum);
+		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
+		graphics.transChunkShader.unbind;
+
+		glDisable(GL_CULL_FACE);
+		glDepthMask(GL_TRUE);
+		graphics.renderer.disableAlphaBlending();
+	}
+
+	private void drawMeshes(R)(R meshes, Frustum frustum)
+	{
 		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
 			graphics.camera.cameraMatrix);
 		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
 			cast(const float*)graphics.camera.perspective.arrayof);
-		foreach(ref mesh; clientWorld.chunkMeshMan.chunkMeshes[1].byValue)
+
+		foreach(const ref mesh; meshes)
 		{
 			++stats.chunksVisible;
 			if (isCullingEnabled) // Frustum culling
 			{
+				import dlib.geometry.aabb;
 				vec3 vecMin = mesh.position;
 				vec3 vecMax = vecMin + CHUNK_SIZE;
 				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
@@ -393,21 +372,15 @@ public:
 				if (!intersects) continue;
 			}
 
-			modelMatrix = translationMatrix!float(mesh.position);
+			Matrix4f modelMatrix = translationMatrix!float(mesh.position);
 			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
 
-			mesh.bind;
 			mesh.render(triangleMode);
 
 			++stats.chunksRenderedSemitransparent;
 			stats.vertsRendered += mesh.numVertexes;
 			stats.trisRendered += mesh.numTris;
 		}
-		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-		graphics.transChunkShader.unbind;
-		glDisable(GL_CULL_FACE);
-		glDepthMask(GL_TRUE);
-		graphics.renderer.disableAlphaBlending();
 	}
 
 	void drawOverlay()

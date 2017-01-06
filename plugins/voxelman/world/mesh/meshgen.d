@@ -38,13 +38,11 @@ struct MeshGenTaskHeader
 }
 
 //version = DBG_OUT;
-void meshWorkerThread(shared(Worker)* workerInfo, ISharedContext[] contexts, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
+void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
-	ISharedContext glContext = contexts[workerInfo.groupIndex];
-	glContext.makeCurrent();
-
 	// reusable buffers
 	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
+
 	try
 	{
 		while (workerInfo.needsToRun)

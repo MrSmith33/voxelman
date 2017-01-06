@@ -39,8 +39,7 @@ struct MeshGenResult
 {
 	MeshGenTaskType type;
 	ChunkWorldPos cwp;
-	MeshVertex[][2] meshes;
-	ChunkMesh[2] preloadedMeshes;
+	ChunkMesh[2] meshes;
 }
 
 ///
@@ -65,7 +64,6 @@ struct ChunkMeshMan
 	BlockInfoTable blocks;
 	BlockEntityInfoTable beInfos;
 	Box delegate(DimensionId) getDimensionBorders;
-	ISharedContext delegate() createSharedContext;
 
 	void init(ChunkManager _chunkManager, BlockInfoTable _blocks, BlockEntityInfoTable _beInfos, uint numMeshWorkers)
 	{
@@ -73,13 +71,7 @@ struct ChunkMeshMan
 		blocks = _blocks;
 		beInfos = _beInfos;
 
-		auto contexts = new ISharedContext[numMeshWorkers];
-		foreach(ref context; contexts)
-		{
-			context = createSharedContext();
-		}
-
-		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, contexts, blocks, beInfos);
+		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks, beInfos);
 	}
 
 	void stop()
@@ -159,8 +151,8 @@ struct ChunkMeshMan
 			}
 
 			// save result for later. All new meshes are loaded at once to prevent holes in geometry.
-			auto result = MeshGenResult(taskHeader.type, taskHeader.cwp, meshes);
-			preloadMesh(result);
+			auto result = MeshGenResult(taskHeader.type, taskHeader.cwp);
+			preloadMesh(result, meshes);
 			newChunkMeshes ~= result;
 		}
 		else // taskHeader.type == MeshGenTaskType.unloadMesh
@@ -362,20 +354,19 @@ struct ChunkMeshMan
 		return true;
 	}
 
-	void preloadMesh(ref MeshGenResult result)
+	void preloadMesh(ref MeshGenResult result, MeshVertex[][2] meshes)
 	{
 		ChunkWorldPos cwp = result.cwp;
 		if (!chunkManager.isChunkLoaded(cwp))
 			return;
 
-		foreach(i, meshData; result.meshes)
+		foreach(i, meshData; meshes)
 		{
 			if (meshData.length == 0) continue;
-			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE), cwp.w);
-
-			mesh.uploadBuffer(meshData);
-
-			result.preloadedMeshes[i] = mesh;
+			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE));
+			mesh.uploadMeshData(meshData);
+			freeChunkMeshData(meshData);
+			result.meshes[i] = mesh;
 		}
 	}
 
@@ -386,23 +377,24 @@ struct ChunkMeshMan
 		{
 			version(DBG) tracef("loadMeshData %s chunk unloaded", cwp);
 
-			result.preloadedMeshes[0].deleteBuffers();
-			result.preloadedMeshes[1].deleteBuffers();
+			result.meshes[0].del();
+			result.meshes[1].del();
 
 			return;
 		}
 
 		// Attach mesh
 		bool hasMesh = false;
-		foreach(i, chunkMesh; result.preloadedMeshes)
+		foreach(i, mesh; result.meshes)
 		{
 			unloadChunkSubmesh(cwp, i);
-			if (chunkMesh.empty) {
+			if (mesh.empty) {
+				mesh.del;
 				continue;
 			}
 
-			totalMeshDataBytes += chunkMesh.dataBytes;
-			chunkMeshes[i][cwp] = result.preloadedMeshes[i];
+			totalMeshDataBytes += mesh.uploadedBytes;
+			chunkMeshes[i][cwp] = mesh;
 			hasMesh = true;
 		}
 
@@ -435,8 +427,8 @@ struct ChunkMeshMan
 	{
 		if (auto mesh = cwp in chunkMeshes[index])
 		{
-			totalMeshDataBytes -= mesh.dataBytes;
-			mesh.deleteBuffers();
+			totalMeshDataBytes -= mesh.uploadedBytes;
+			mesh.del();
 			chunkMeshes[index].remove(cwp);
 		}
 	}

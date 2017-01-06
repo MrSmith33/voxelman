@@ -6,116 +6,65 @@ Authors: Andrey Penechko.
 
 module voxelman.world.mesh.chunkmesh;
 
+import anchovy.vao;
+import anchovy.vbo;
 import voxelman.math;
 import voxelman.model.vertex;
-import derelict.opengl3.gl3;
-import voxelman.core.config : DimensionId;
 import voxelman.graphics;
-
-struct Attribute
-{
-	uint location;
-	uint elementNum;///number of
-	uint elementType;///GL_FLOAT etc
-	uint elementSize;///in bytes
-	uint offset;///offset from the begining of buffer
-	bool normalized;
-}
-
-//enum Store_mesh = true;
-enum Store_mesh = false;
 
 struct ChunkMesh
 {
 	vec3 position;
-	DimensionId dimension;
-	static if(Store_mesh) MeshVertex[] data;
-	size_t uploadedLength;
 
-	// debug info
-	import std.datetime;
-	static int numBuffersAllocated;
-	static Duration totalGenBuffersTime;
-	static Duration totalBufferDataTime;
+	private Vao vao;
+	private Vbo vbo;
 
-	private GLuint vao;
-	private GLuint vbo;
-	private bool hasBuffers = false;
-
-	private void genBuffers()
+	void del()
 	{
-		MonoTime startTime = MonoTime.currTime;
-		glGenBuffers(1, &vbo);
-		glGenVertexArrays(1, &vao);
-		Duration duration = MonoTime.currTime - startTime;
-		totalGenBuffersTime += duration;
-		++numBuffersAllocated;
-		hasBuffers = true;
+		vbo.del;
+		vao.del;
 	}
 
-	void deleteBuffers()
+	void uploadMeshData(MeshVertex[] data)
 	{
-		if (!hasBuffers) return;
-		glDeleteBuffers(1, &vbo);
-		glDeleteVertexArrays(1, &vao);
-		--numBuffersAllocated;
-		hasBuffers = false;
-		static if(Store_mesh) freeChunkMesh(data);
+		vao.gen;
+		vao.bind;
+			vbo.gen;
+			vbo.bind;
+
+			vbo.uploadData(data);
+			MeshVertex.setAttributes();
+
+			vbo.unbind;
+		vao.unbind;
 	}
 
-	void uploadBuffer(MeshVertex[] data)
+	void render(bool trianlges) const
 	{
-		assert(!hasBuffers);
-		genBuffers();
-		bind();
-
-		static if(Store_mesh) this.data = data;
-		uploadedLength = data.length;
-
-		MonoTime startTime = MonoTime.currTime;
-
-		glBindBuffer(GL_ARRAY_BUFFER, vbo);
-		MeshVertex.setAttributes();
-		glBufferData(GL_ARRAY_BUFFER, data.length*MeshVertex.sizeof, data.ptr, GL_STATIC_DRAW);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-		Duration duration = MonoTime.currTime - startTime;
-		totalBufferDataTime += duration;
-
-		unbind();
-		static if(!Store_mesh) freeChunkMesh(data);
+		vao.bind;
+		if (trianlges) vao.drawArrays(PrimitiveType.TRIANGLES, 0, cast(uint)numVertexes());
+		else vao.drawArrays(PrimitiveType.LINES, 0, cast(uint)numVertexes());
+		vao.unbind;
 	}
 
-	void bind()
-	{
-		glBindVertexArray(vao);
+	bool empty() const { return vbo.uploadedBytes == 0; }
+
+	ulong numVertexes() const {
+		return vbo.uploadedBytes/MeshVertex.sizeof;
 	}
 
-	static void unbind()
-	{
-		glBindVertexArray(0);
+	ulong numTris() const {
+		return numVertexes/3;
 	}
 
-	void render(bool trianlges)
-	{
-		assert(hasBuffers);
-
-		if (trianlges)
-			glDrawArrays(GL_TRIANGLES, 0, cast(uint)numVertexes());
-		else
-			glDrawArrays(GL_LINES, 0, cast(uint)numVertexes());
+	size_t uploadedBytes() const {
+		return vbo.uploadedBytes;
 	}
-
-	bool empty() { return uploadedLength == 0; }
-
-	ulong numVertexes() {return uploadedLength;}
-	ulong numTris() {return uploadedLength/3;}
-	ulong dataBytes() { return uploadedLength * MeshVertex.sizeof; }
 }
 
 alias MeshVertex = VertexPosColor!(float, 3, ubyte, 4);
 
-void freeChunkMesh(ref MeshVertex[] data)
+void freeChunkMeshData(ref MeshVertex[] data)
 {
 	import std.experimental.allocator;
 	import std.experimental.allocator.mallocator;

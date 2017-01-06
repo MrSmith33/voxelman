@@ -15,51 +15,6 @@ import anchovy.iwindow;
 import anchovy.shaderprogram;
 import anchovy.texture;
 
-
-class Vbo
-{
-	this(uint bufferUsage, uint target = GL_ARRAY_BUFFER)
-	{
-		this.bufferUsage = bufferUsage;
-		this.target = target;
-		glGenBuffers(1, &handle);
-	}
-
-	void close()
-	{
-		glDeleteBuffers(1, &handle);
-	}
-
-	ref const(void[]) data(void[] newData) @property
-	{
-		_data = newData;
-		glBindBuffer(target, handle);
-		glBufferData(target, _data.length, _data.ptr, bufferUsage);
-		glBindBuffer(target, 0);
-		return _data;
-	}
-
-	ref const(void[]) data() @property
-	{
-		return _data;
-	}
-
-	void bind()
-	{
-		glBindBuffer(target, handle);
-	}
-
-	void unbind()
-	{
-		glBindBuffer(target, 0);
-	}
-
-	uint handle;
-	uint bufferUsage;
-	uint target;
-	void[] _data;
-}
-
 class Vao
 {
 	this()

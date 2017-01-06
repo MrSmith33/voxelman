@@ -160,8 +160,6 @@ public:
 		session = pluginman.getPlugin!ClientSession;
 
 		auto gui = pluginman.getPlugin!GuiPlugin;
-		// set before init
-		chunkMeshMan.createSharedContext = &gui.window.createSharedContext;
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
