@@ -269,7 +269,7 @@ void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
 	regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
 	regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
-	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh).solidity(Solidity.semiTransparent);
+	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh).solidity(Solidity.semiTransparent).blockShape(waterShape);
 	regBlock("lava").colorHex(0xFF6920).meshHandler(&makeColoredBlockMesh);
 	regBlock("snow").colorHex(0xDBECF6).meshHandler(&makeColoredBlockMesh);
 }

@@ -27,6 +27,10 @@
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 - [ ] Implement chunk mesh preloading for all meshes.
 - [ ] Redo chunk block metadata. Metadata should simply state if chunk has internal geometry and side solidities.
+- [x] Implement blockShapeHandler for block entities.
+- [x] Fix side intersection table size.
+- [x] Fix rendering of blocks adjacent to water.
+- [x] Finish new rendering code.
 - [U] Upload meshes in worker threads. Avoid copy of mesh. / Undone. Rendering issues.
 - [x] Implement per corner solidity.
 - [x] Implement block side masks.

@@ -221,13 +221,20 @@ void genGeometry(const ref ExtendedChunk chunk,
 		return BlockEntityData(*entity);
 	}
 
-	bool isSideRendered(BlockId blockId, ubyte side, const ShapeSideMask currentMask)
+	BlockShape getShape(BlockId blockId)
 	{
 		if (isBlockEntity(blockId)) {
-			return blockInfoTable.sideTable.get(currentMask, ShapeSideMask.empty);
+			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
+			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
+			return beInfos[data.id].blockShape(entityBlockIndex, data);
 		} else {
-			return blockInfoTable.sideTable.get(currentMask, blockInfos[blockId].shape.sideMasks[side]);
+			return blockInfos[blockId].shape;
 		}
+	}
+
+	bool isSideRendered(BlockId blockId, ubyte side, const ShapeSideMask currentMask)
+	{
+		return blockInfoTable.sideTable.get(currentMask, getShape(blockId).sideMasks[side]);
 	}
 
 	ubyte checkSideSolidities(const ref ShapeSideMask[6] sideMasks, size_t index)
@@ -251,14 +258,7 @@ void genGeometry(const ref ExtendedChunk chunk,
 	ubyte getCorners(size_t blockIndex)
 	{
 		BlockId blockId = chunk.allBlocks.ptr[blockIndex];
-		if (isBlockEntity(blockId))
-		{
-			return 0; // TODO
-		}
-		else
-		{
-			return blockInfos[blockId].shape.corners;
-		}
+		return getShape(blockId).corners;
 	}
 
 	ubyte[4] calcFaceCornerOcclusions(ushort blockIndex, ubyte side)

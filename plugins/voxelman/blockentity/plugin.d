@@ -192,7 +192,8 @@ mixin template BlockEntityCommon()
 			.boxHandler(&nullBoxHandler);
 		blockEntityMan.regBlockEntity("multi")
 			.boxHandler(&multichunkBoxHandler)
-			.meshHandler(&multichunkMeshHandler);
+			.meshHandler(&multichunkMeshHandler)
+			.blockShapeHandler(&multichunkBlockShapeHandler);
 			//.debugHandler(&multichunkDebugHandler);
 		reg(blockEntityMan);
 	}
@@ -237,6 +238,10 @@ void multichunkDebugHandler(BlockWorldPos bwp, BlockEntityData data)
 	//auto vol = WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
+BlockShape multichunkBlockShapeHandler(ushort, BlockEntityData) {
+	return fullShape;
+}
+
 struct BlockEntityInfoSetter
 {
 	private Mapping!(BlockEntityInfo)* mapping;
@@ -248,6 +253,7 @@ struct BlockEntityInfoSetter
 	//ref BlockEntityInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockEntityInfoSetter meshHandler(BlockEntityMeshhandler val) { info.meshHandler = val; return this; }
 	ref BlockEntityInfoSetter sideSolidity(SolidityHandler val) { info.sideSolidity = val; return this; }
+	ref BlockEntityInfoSetter blockShapeHandler(BlockShapeHandler val) { info.blockShape = val; return this; }
 	ref BlockEntityInfoSetter boxHandler(EntityBoxHandler val) { info.boxHandler = val; return this; }
 	ref BlockEntityInfoSetter debugHandler(EntityDebugHandler val) { info.debugHandler = val; return this; }
 }

@@ -49,6 +49,7 @@ struct BlockEntityMeshingData
 alias BlockEntityMeshhandler = void function(BlockEntityMeshingData);
 
 alias SolidityHandler = Solidity function(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
+alias BlockShapeHandler = BlockShape function(ushort blockIndex, BlockEntityData data);
 alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
 alias EntityDebugHandler = void function(BlockWorldPos bwp, BlockEntityData data);
 WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
@@ -62,6 +63,10 @@ Solidity nullSolidityHandler(CubeSide side, ivec3 chunkPos, ivec3 entityPos, Blo
 	return Solidity.solid;
 }
 
+BlockShape nullBlockShapeHandler(ushort blockIndex, BlockEntityData data) {
+	return fullShape;
+}
+
 void nullDebugHandler(BlockWorldPos, BlockEntityData) {}
 
 struct BlockEntityInfo
@@ -69,6 +74,7 @@ struct BlockEntityInfo
 	string name;
 	BlockEntityMeshhandler meshHandler = &nullBlockEntityMeshhandler;
 	SolidityHandler sideSolidity = &nullSolidityHandler;
+	BlockShapeHandler blockShape = &nullBlockShapeHandler;
 	EntityBoxHandler boxHandler = &nullBoxHandler;
 	EntityDebugHandler debugHandler = &nullDebugHandler;
 	ubvec3 color;

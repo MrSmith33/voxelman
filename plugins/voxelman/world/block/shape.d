@@ -64,7 +64,7 @@ enum NUM_SIDE_MASKS = ShapeSideMask.max + 1;
 enum ShapeSideMask
 {
 	empty,
-//	semiTransparent,
+	water,
 	full,
 	half,
 	slope,
@@ -85,15 +85,15 @@ struct BlockShape
 	bool hasInternalGeometry;
 }
 
-const ShapeSideMask[6] fullShapeSides = [
-	ShapeSideMask.full, ShapeSideMask.full, ShapeSideMask.full,
-	ShapeSideMask.full, ShapeSideMask.full, ShapeSideMask.full];
-const ShapeSideMask[6] emptyShapeSides = [
-	ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.empty,
-	ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.empty];
+import std.range : repeat, take;
+import std.array : array;
+const ShapeSideMask[6] fullShapeSides = ShapeSideMask.full.repeat.take(6).array;
+const ShapeSideMask[6] waterShapeSides = ShapeSideMask.water.repeat.take(6).array;
+const ShapeSideMask[6] emptyShapeSides = ShapeSideMask.empty.repeat.take(6).array;
 
 const BlockShape unknownShape = BlockShape(fullShapeSides, 0b_0000_0000, false, false);
 const BlockShape fullShape = BlockShape(fullShapeSides, 0b_1111_1111, true, false);
+const BlockShape waterShape = BlockShape(waterShapeSides, 0b_1111_1111, false, false);
 const BlockShape emptyShape = BlockShape(emptyShapeSides, 0b_0000_0000, false, false);
 
 struct SideIntersectionTable
@@ -123,7 +123,8 @@ struct SideIntersectionTable
 
 SideIntersectionTable sideIntersectionTable(size_t numTypes)
 {
-	size_t tableSize = numTypes/8 + 1;
-	return SideIntersectionTable(new ubyte[tableSize], numTypes);
+	size_t tableBits = numTypes * numTypes;
+	size_t tableBytes = tableBits/8 + 1;
+	return SideIntersectionTable(new ubyte[tableBytes], numTypes);
 }
 
