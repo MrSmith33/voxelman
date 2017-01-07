@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.blockentity.utils;
+module voxelman.world.blockentity.utils;
 
 import voxelman.log;
 import voxelman.container.buffer;
@@ -16,8 +16,7 @@ import voxelman.core.events;
 import voxelman.world.storage;
 import voxelman.world.mesh.chunkmesh;
 
-import voxelman.blockentity.blockentityaccess;
-import voxelman.blockentity.blockentitydata;
+import voxelman.world.blockentity;
 
 enum BLOCK_ENTITY_FLAG = 1 << 15;
 enum BLOCK_INDEX_MASK = (1 << 15) - 1;

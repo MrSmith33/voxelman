@@ -14,8 +14,8 @@ import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.geometry.cube;
 
-import voxelman.block.plugin;
-import voxelman.blockentity.plugin;
+import voxelman.world.block;
+import voxelman.world.blockentity;
 
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.blockentity.blockentityaccess;
+module voxelman.world.blockentity.blockentityaccess;
 
 import voxelman.log;
 import std.string;
@@ -14,8 +14,7 @@ import voxelman.world.block;
 import voxelman.world.storage;
 import voxelman.blockentity.plugin;
 
-import voxelman.blockentity.blockentitymap;
-import voxelman.blockentity.blockentitydata;
+import voxelman.world.blockentity;
 
 
 ushort boxEntityIndex(Box blockBox) {

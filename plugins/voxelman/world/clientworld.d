@@ -35,7 +35,7 @@ import voxelman.core.packets;
 
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
-import voxelman.blockentity.blockentityaccess;
+import voxelman.world.blockentity.blockentityaccess;
 
 import voxelman.world.mesh.chunkmeshman;
 

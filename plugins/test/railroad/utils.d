@@ -9,9 +9,9 @@ import voxelman.math;
 import voxelman.geometry.box;
 import voxelman.geometry.utils;
 import voxelman.world.block;
-import voxelman.blockentity.blockentitydata;
-import voxelman.blockentity.blockentityaccess;
-import voxelman.blockentity.utils;
+import voxelman.world.blockentity.blockentitydata;
+import voxelman.world.blockentity.blockentityaccess;
+import voxelman.world.blockentity.utils;
 import voxelman.world.storage;
 
 enum RAIL_TILE_SIZE = 8;

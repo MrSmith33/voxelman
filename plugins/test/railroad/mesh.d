@@ -15,9 +15,9 @@ import voxelman.geometry.utils;
 
 import voxelman.world.mesh.chunkmesh;
 import voxelman.world.block;
-import voxelman.blockentity.blockentityaccess;
-import voxelman.blockentity.blockentitydata;
-import voxelman.blockentity.utils;
+import voxelman.world.blockentity.blockentityaccess;
+import voxelman.world.blockentity.blockentitydata;
+import voxelman.world.blockentity.utils;
 
 import test.railroad.utils;
 

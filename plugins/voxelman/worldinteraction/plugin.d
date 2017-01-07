@@ -20,7 +20,7 @@ import voxelman.core.events;
 import voxelman.core.packets;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.worldbox;
-import voxelman.blockentity.blockentityaccess;
+import voxelman.world.blockentity.blockentityaccess;
 
 import voxelman.block.plugin;
 import voxelman.eventdispatcher.plugin;

@@ -13,6 +13,7 @@ import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
+import voxelman.world.blockentity;
 import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 

@@ -30,10 +30,7 @@ import voxelman.world.clientworld;
 import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 
-public import voxelman.blockentity.blockentityaccess;
-public import voxelman.blockentity.blockentitydata;
-public import voxelman.blockentity.blockentitymap;
-public import voxelman.blockentity.utils;
+import voxelman.world.blockentity;
 
 final class BlockEntityClient : IPlugin {
 	mixin IdAndSemverFrom!"voxelman.blockentity.plugininfo";

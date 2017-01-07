@@ -12,7 +12,7 @@ import anchovy.isharedcontext;
 import voxelman.geometry.box;
 import voxelman.math;
 import voxelman.world.block;
-import voxelman.blockentity.utils;
+import voxelman.world.blockentity;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.core.config;
 import voxelman.world.mesh.meshgen;

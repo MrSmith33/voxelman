@@ -19,13 +19,11 @@ import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 import voxelman.world.storage;
 
-import voxelman.blockentity.blockentityaccess;
-
 import voxelman.world.block;
 import voxelman.math;
 import voxelman.geometry.cube;
 
-import voxelman.blockentity.blockentityaccess;
+import voxelman.world.blockentity;
 
 import test.railroad.mesh;
 import test.railroad.utils;

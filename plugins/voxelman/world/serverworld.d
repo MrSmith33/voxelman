@@ -34,7 +34,7 @@ import voxelman.dbg.plugin;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
-import voxelman.blockentity.blockentityaccess;
+import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.gen.generators;
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
