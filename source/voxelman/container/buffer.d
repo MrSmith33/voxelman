@@ -39,6 +39,12 @@ struct Buffer(T)
 			put(item);
 	}
 
+	void stealthPut(T item)
+	{
+		reserve(1);
+		buf[length] = item;
+	}
+
 	T[] data() {
 		return buf[0..length];
 	}

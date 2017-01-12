@@ -53,6 +53,8 @@ struct LineBuffer
 			lineSizes.put(line.length);
 		}
 
+		lines.stealthPut('\0');
+
 		scrollToBottom = true;
 	}
 
@@ -104,8 +106,8 @@ struct LineBuffer
 			igInputTextMultiline("##multiline", lines.data.ptr, lines.data.length, size, ImGuiInputTextFlags_ReadOnly);
 		else
 		{
-			char[] str = cast(char[])"";
-			igInputTextMultiline("##multiline", str.ptr, str.length, size, ImGuiInputTextFlags_ReadOnly);
+			char[1] str;
+			igInputTextMultiline("##multiline", str.ptr, 0, size, ImGuiInputTextFlags_ReadOnly);
 		}
 		igPopStyleColor();
 

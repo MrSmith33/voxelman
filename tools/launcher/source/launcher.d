@@ -33,6 +33,8 @@ struct PluginInfo
 	bool isEnabled = true;
 	PluginInfo*[] dependencies;
 	PluginInfo*[] dependants;
+
+	string guiName() { return id; }
 }
 
 struct PluginPack
@@ -41,6 +43,7 @@ struct PluginPack
 	string semver;
 	string filename;
 	PluginInfo*[] plugins;
+	string guiName() { return id; }
 }
 
 enum AppType
@@ -150,6 +153,8 @@ struct SaveInfo
 	string displaySize;
 	string path;
 	ulong size;
+
+	string guiName() { return name; }
 }
 
 immutable buildFolder = "builds/default";

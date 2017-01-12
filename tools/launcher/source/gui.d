@@ -51,6 +51,10 @@ struct ItemList(T)
 		if ((*items).length == 0)
 			currentItem = 0;
 	}
+
+	ref T opIndex(size_t i) {
+		return (*items)[i];
+	}
 }
 
 struct LauncherGui
@@ -350,17 +354,6 @@ struct PlayMenu
 				}
 			igEndChild();
 		}
-
-		// ------------------------ BUTTONS ------------------------------------
-		//igBeginGroup();
-		//	startButtons(launcher, pluginpack);
-		//	igSameLine();
-		//	if (igButton("Stop"))
-		//	{
-		//		size_t numKilled = launcher.stopProcesses();
-		//		launcher.appLog.put(format("killed %s processes\n", numKilled));
-		//	}
-		//igEndGroup();
 	}
 
 	void drawConnect()
@@ -557,10 +550,19 @@ auto withWidth(float width, alias func)(auto ref Parameters!func args)
 	return func(args);
 }
 
+extern (C)
+bool itemGetter(T)(void* itemList, int idx, const(char)** out_text)
+{
+	auto il = cast(T*)itemList;
+	*out_text = (*il.items)[idx].guiName.ptr;
+	return true;
+}
+
 struct CodeMenu
 {
 	Launcher* launcher;
 	ItemList!(PluginPack*) pluginPacks;
+	ItemList!(SaveInfo*) saves;
 
 	void init(Launcher* launcher)
 	{
@@ -570,12 +572,7 @@ struct CodeMenu
 	void refresh()
 	{
 		pluginPacks.items = &launcher.pluginPacks;
-	}
-
-	bool getItem(int idx, const(char)** out_text)
-	{
-		*out_text = (*pluginPacks.items)[idx].id.ptr;
-		return true;
+		saves.items = &launcher.saves;
 	}
 
 	void draw()
@@ -584,10 +581,16 @@ struct CodeMenu
 		withWidth!(150, igCombo3)(
 			"Pack",
 			cast(int*)&pluginPacks.currentItem,
-			&getter, &this,
+			&itemGetter!(ItemList!(PluginPack*)), &pluginPacks,
 			cast(int)pluginPacks.items.length, -1);
 		igSameLine();
-		startButtons(launcher, pluginPacks.selected.id);
+		withWidth!(150, igCombo3)(
+			"Save",
+			cast(int*)&saves.currentItem,
+			&itemGetter!(ItemList!(SaveInfo*)), &saves,
+			cast(int)saves.items.length, -1);
+		igSameLine();
+		startButtons(launcher, pluginPacks.selected, saves.selected);
 
 		float areaHeight = igGetWindowHeight() - igGetCursorPosY() - 10;
 
@@ -599,19 +602,13 @@ struct CodeMenu
 
 		igEndGroup();
 	}
-
-	static extern (C)
-	bool getter(void* codeMenu, int idx, const(char)** out_text)
-	{
-		auto cm = cast(CodeMenu*)codeMenu;
-		return cm.getItem(idx, out_text);
-	}
 }
 
-void startButtons(Launcher* launcher, string pack)
+void startButtons(Launcher* launcher, PluginPack* pack, SaveInfo* save)
 {
 	static JobParams params;
-	params.runParameters["pack"] = pack;
+	if (pack) params.runParameters["pack"] = pack.id;
+	if (save) params.runParameters["world_name"] = save.name;
 
 	params.appType = AppType.client;
 	if (igButton("Client")) launcher.createJob(params); igSameLine();
