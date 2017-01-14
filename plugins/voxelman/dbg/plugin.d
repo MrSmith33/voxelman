@@ -38,11 +38,14 @@ final class DebugClient : IPlugin
 	void handleDoGuiEvent(ref DoGuiEvent event)
 	{
 		igBegin("Debug");
-		foreach(key, var; dbg.vars) {
-			igTextf("%s: %s", key, var);
-		}
-		foreach(key, ref buf; dbg.buffers) {
-			igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
+		if (igCollapsingHeader("Debug"))
+		{
+			foreach(key, var; dbg.vars) {
+				igTextf("%s: %s", key, var);
+			}
+			foreach(key, ref buf; dbg.buffers) {
+				igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
+			}
 		}
 		igEnd();
 	}
@@ -91,22 +94,22 @@ final class DebugServer : IPlugin
 
 struct VarBuffer
 {
-	this(float initVal, size_t _maxLen) {
+	this(double initVal, size_t _maxLen) {
 		maxLen = _maxLen;
-		vals = uninitializedArray!(float[])(maxLen);
+		vals = uninitializedArray!(double[])(maxLen);
 		vals[0] = initVal;
 		vals[1..$] = 0;
 		length = 1;
 		next = 1;
 	}
-	void insert(float val)
+	void insert(double val)
 	{
 		vals[next] = val;
 		next = (next + 1) % maxLen;
 		length = (length + 1) % maxLen;
 	}
 	@disable this();
-	float[] vals;
+	double[] vals;
 	size_t next;
 	size_t length;
 	size_t maxLen;
@@ -117,9 +120,9 @@ final class Debugger : IResourceManager
 {
 	override string id() @property { return "voxelman.dbg.debugger"; }
 	VarBuffer[string] buffers;
-	float[string] vars;
+	double[string] vars;
 
-	void logVar(string name, float val, size_t maxLen)
+	void logVar(string name, double val, size_t maxLen)
 	{
 		if (auto buf = name in buffers)
 			buf.insert(val);
@@ -127,7 +130,7 @@ final class Debugger : IResourceManager
 			buffers[name] = VarBuffer(val, maxLen);
 	}
 
-	void setVar(string name, float val)
+	void setVar(string name, double val)
 	{
 		vars[name] = val;
 	}
@@ -141,5 +144,5 @@ final class Debugger : IResourceManager
 struct TelemetryPacket
 {
 	string name;
-	float val;
+	double val;
 }

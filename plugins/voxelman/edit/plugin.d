@@ -14,8 +14,11 @@ import derelict.imgui.imgui;
 import dlib.math.utils;
 import voxelman.utils.textformatter;
 
+import voxelman.core.config;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
+import voxelman.block.plugin;
+import voxelman.command.plugin;
 import voxelman.gui.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
@@ -50,12 +53,14 @@ class EditPlugin : IPlugin
 
 	size_t selectedTool;
 	GuiPlugin guiPlugin;
+	BlockManager blockManager;
 	Mapping!ITool tools;
 	NullTool nullTool;
 	FillTool fillTool;
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		blockManager = resmanRegistry.getResourceManager!BlockManager;
 		auto keyBindingsMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingsMan.registerKeyBinding(new KeyBinding(PointerButton.PB_1, "key.mainAction", &onMainActionPress, &onMainActionRelease));
 		keyBindingsMan.registerKeyBinding(new KeyBinding(PointerButton.PB_2, "key.secondaryAction", &onSecondaryActionPress, &onSecondaryActionRelease));
@@ -80,6 +85,24 @@ class EditPlugin : IPlugin
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
+
+		auto commandPlugin = pluginman.getPlugin!CommandPluginClient;
+		commandPlugin.registerCommand("pick", &onPickBlockName);
+	}
+
+	void onPickBlockName(CommandParams params) {
+		if (params.args.length > 1)
+		{
+			size_t blockId = blockManager.getId(params.args[1]);
+			if (blockId == size_t.max)
+			{
+				// no block
+			}
+			else
+			{
+				fillTool.currentBlock = cast(BlockId)blockId;
+			}
+		}
 	}
 
 	void registerTool(ITool tool)

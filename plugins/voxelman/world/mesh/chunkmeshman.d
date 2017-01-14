@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.chunkmeshman;
 
 import voxelman.log;
+import std.datetime : Duration;
 import std.typecons : Nullable;
 import anchovy.isharedcontext;
 
@@ -23,16 +24,19 @@ import voxelman.graphics;
 import voxelman.geometry.cube;
 
 
+alias MeshingPassDoneHandler = void delegate(size_t chunksRemeshed, Duration totalDuration);
 struct MeshingPass
 {
 	size_t chunksToMesh;
 	size_t meshGroupId;
-	void delegate(size_t chunksRemeshed) onDone;
+	MeshingPassDoneHandler onDone;
 	size_t chunksMeshed;
+	Duration totalDuration;
 }
 
 enum debug_wasted_meshes = true;
 enum WAIT_FOR_EMPTY_QUEUES = false;
+
 //version = DBG;
 
 struct MeshGenResult
@@ -40,6 +44,34 @@ struct MeshGenResult
 	MeshGenTaskType type;
 	ChunkWorldPos cwp;
 	ChunkMesh[2] meshes;
+}
+
+struct UploadLimiter
+{
+	bool limitPreloadSpeed = false;
+	size_t maxPreloadedMeshesPerFrame = 30;
+	size_t maxPreloadedVertexesPerFrame = 100_000;
+
+	size_t thisFramePreloadedMeshes;
+	size_t thisFramePreloadedVertexes;
+
+	bool frameUploadLimitExceeded()
+	{
+		//return thisFramePreloadedMeshes >= maxPreloadedMeshesPerFrame;
+		return limitPreloadSpeed && thisFramePreloadedVertexes >= maxPreloadedVertexesPerFrame;
+	}
+
+	void onMeshPreloaded(size_t numVertexes)
+	{
+		++thisFramePreloadedMeshes;
+		thisFramePreloadedVertexes += numVertexes;
+	}
+
+	void resetUploadLimits()
+	{
+		thisFramePreloadedMeshes = 0;
+		thisFramePreloadedVertexes = 0;
+	}
 }
 
 ///
@@ -60,6 +92,8 @@ struct ChunkMeshMan
 	size_t totalMeshes;
 	long totalMeshDataBytes;
 
+	UploadLimiter uploadLimiter;
+
 	ChunkManager chunkManager;
 	BlockInfoTable blocks;
 	BlockEntityInfoTable beInfos;
@@ -71,7 +105,7 @@ struct ChunkMeshMan
 		blocks = _blocks;
 		beInfos = _beInfos;
 
-		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, blocks, beInfos);
+		meshWorkers.startWorkers(numMeshWorkers, &meshWorkerThread, SeparatedBlockInfoTable(blocks), beInfos);
 	}
 
 	void stop()
@@ -87,7 +121,7 @@ struct ChunkMeshMan
 	}
 
 	void remeshChangedChunks(HashSet!ChunkWorldPos modifiedChunks,
-		void delegate(size_t chunksRemeshed) onDone = null)
+		MeshingPassDoneHandler onDone = null)
 	{
 		if (modifiedChunks.length == 0) return;
 
@@ -107,6 +141,8 @@ struct ChunkMeshMan
 	void update()
 	{
 		if (meshingPasses.length == 0) return;
+
+		uploadLimiter.resetUploadLimits();
 
 		foreach(ref w; meshWorkers.workers)
 		{
@@ -141,6 +177,7 @@ struct ChunkMeshMan
 			MeshVertex[][2] meshes = w.resultQueue.popItem!(MeshVertex[][2])();
 			uint[27] blockTimestamps = w.resultQueue.popItem!(uint[27])();
 			uint[27] entityTimestamps = w.resultQueue.popItem!(uint[27])();
+			meshingPasses[0].totalDuration += w.resultQueue.popItem!Duration();
 
 			// Remove users
 			auto positions = AdjChunkPositions27(taskHeader.cwp);
@@ -160,6 +197,9 @@ struct ChunkMeshMan
 			// even mesh deletions are saved in a queue.
 			newChunkMeshes ~= MeshGenResult(taskHeader.type, taskHeader.cwp);
 		}
+
+		if (uploadLimiter.frameUploadLimitExceeded)
+			return true;
 
 		return false;
 	}
@@ -184,7 +224,7 @@ struct ChunkMeshMan
 		newChunkMeshes.length = 0;
 		newChunkMeshes.assumeSafeAppend();
 		if (meshingPasses[0].onDone)
-			meshingPasses[0].onDone(meshingPasses[0].chunksToMesh);
+			meshingPasses[0].onDone(meshingPasses[0].chunksToMesh, meshingPasses[0].totalDuration);
 		meshingPasses = remove!(SwapStrategy.stable)(meshingPasses, 0);
 		meshingPasses.assumeSafeAppend();
 	}
@@ -365,6 +405,7 @@ struct ChunkMeshMan
 			if (meshData.length == 0) continue;
 			auto mesh = ChunkMesh(vec3(cwp.vector * CHUNK_SIZE));
 			mesh.uploadMeshData(meshData);
+			uploadLimiter.onMeshPreloaded(meshData.length);
 			freeChunkMeshData(meshData);
 			result.meshes[i] = mesh;
 		}

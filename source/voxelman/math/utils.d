@@ -10,7 +10,7 @@ import std.traits : isFloatingPoint;
 import voxelman.math;
 import std.algorithm : std_clamp = clamp;
 
-Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector)
+Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 {
 	Vector!(T, n) result;
 	foreach(i, elem; vector.arrayof)
@@ -18,7 +18,7 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector)
 	return result;
 }
 
-Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper)
+Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper) pure nothrow
 {
 	Vector!(T, n) result;
 	foreach(i, ref elem; result.arrayof)
@@ -26,7 +26,7 @@ Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vect
 	return result;
 }
 
-void nansToZero(T, int size)(ref Vector!(T, size) vector)
+void nansToZero(T, int size)(ref Vector!(T, size) vector) pure nothrow
 	if (isFloatingPoint!T)
 {
 	foreach(ref item; vector.arrayof)
@@ -35,7 +35,7 @@ void nansToZero(T, int size)(ref Vector!(T, size) vector)
 	}
 }
 
-void nansToZero(T, int size)(ref T[size] vector)
+void nansToZero(T, int size)(ref T[size] vector) pure nothrow
 	if (isFloatingPoint!T)
 {
 	foreach(ref item; vector)
@@ -44,7 +44,7 @@ void nansToZero(T, int size)(ref T[size] vector)
 	}
 }
 
-T nextPOT(T)(T x) {
+T nextPOT(T)(T x) pure nothrow {
 	--x;
 	x |= x >> 1;
 	x |= x >> 2;

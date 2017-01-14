@@ -27,6 +27,7 @@
 - [ ] Implement command buffer for rendering. All rendering commands are recorded into buffer, then pipeline object renders everything. Possibly in another thread. RenderIR.
 - [ ] Implement chunk mesh preloading for all meshes.
 - [ ] Redo chunk block metadata. Metadata should simply state if chunk has internal geometry and side solidities.
+- [ ] Populate lookup chunk with block shape data before meshing.
 - [x] Implement blockShapeHandler for block entities.
 - [x] Fix side intersection table size.
 - [x] Fix rendering of blocks adjacent to water.
@@ -45,7 +46,7 @@
 ----
 ### RAILROAD
 - [ ] Separate stub meshes and read adjacent rails for advanced meshing.
-- [ ] Use stone/gravel material for rail's bottom side and for slope's side.
+- [x] Use stone/gravel material for rail's bottom side and for slope's side.
 - [ ] Click-and-drag rail placement.
 - [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment.
 - [x] Multiple rails per tile.

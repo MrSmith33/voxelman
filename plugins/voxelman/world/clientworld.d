@@ -431,11 +431,14 @@ public:
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		MonoTime startTime = MonoTime.currTime;
 
-		void onRemeshDone(size_t chunksRemeshed) {
+		void onRemeshDone(size_t chunksRemeshed, Duration totalDuration) {
 			auto duration = MonoTime.currTime - startTime;
 			int seconds; short msecs; short usecs;
 			duration.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-			infof("Remeshed %s chunks in % 3s.%03s,%03ss", chunksRemeshed, seconds, msecs, usecs);
+
+			int seconds2; short msecs2; short usecs2;
+			totalDuration.split!("seconds", "msecs", "usecs")(seconds2, msecs2, usecs2);
+			infof("Remeshed %s chunks in % 3s.%03s,%03ss % 3s.%03s,%03ss", chunksRemeshed, seconds, msecs, usecs, seconds2, msecs2, usecs2);
 		}
 
 		HashSet!ChunkWorldPos remeshedChunks;

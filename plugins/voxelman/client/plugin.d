@@ -49,7 +49,6 @@ import voxelman.client.appstatistics;
 import voxelman.client.console;
 
 //version = manualGC;
-version(manualGC) import core.memory;
 
 
 auto formatDuration(Duration dur)
@@ -142,63 +141,75 @@ public:
 	void printDebug()
 	{
 		igBegin("Debug");
-		with(stats) {
-			igTextf("FPS: %s", fps); igSameLine();
+		igTextf("FPS: %s", stats.fps); igSameLine();
+		int fpsLimitVal = maxFpsOpt.get!int;
+		igPushItemWidth(60);
+		igSliderInt(limitFps ? "limited##limit" : "unlimited##limit",
+			&fpsLimitVal, 0, 240, null);
+		igPopItemWidth();
+		maxFpsOpt.set!int(fpsLimitVal);
+		updateFrameTime();
 
-			int fpsLimitVal = maxFpsOpt.get!int;
-			igPushItemWidth(60);
-			//igInputInt("limit", &fpsLimitVal, 5, 20, 0);
-			igSliderInt(limitFps ? "limited##limit" : "unlimited##limit", &fpsLimitVal, 0, 240, null);
-			igPopItemWidth();
-			maxFpsOpt.set!int(fpsLimitVal);
-			updateFrameTime();
-
-			ulong totalRendered = chunksRenderedSemitransparent + chunksRendered;
-			igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
-				chunksRendered, chunksRenderedSemitransparent, totalRendered, chunksVisible,
-				chunksVisible ? cast(float)totalRendered/chunksVisible*100.0 : 0);
-			igTextf("Chunks per frame loaded: %s",
-				totalLoadedChunks - lastFrameLoadedChunks);
-			igTextf("Chunks total loaded: %s",
-				totalLoadedChunks);
-			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(clientWorld.chunkManager.totalLayerDataBytes));
-			igTextf("Vertices %s", vertsRendered);
-			igTextf("Triangles %s", trisRendered);
-			vec3 pos = graphics.camera.position;
-			igTextf("Pos: X %.2f, Y %.2f, Z %.2f", pos.x, pos.y, pos.z);
+		if (igCollapsingHeader("Graphics"))
+		{
+			with(stats) {
+				ulong totalRendered = chunksRenderedSemitransparent + chunksRendered;
+				igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
+					chunksRendered, chunksRenderedSemitransparent, totalRendered, chunksVisible,
+					chunksVisible ? cast(float)totalRendered/chunksVisible*100.0 : 0);
+				igTextf("Vertices %s", vertsRendered);
+				igTextf("Triangles %s", trisRendered);
+				import anchovy.vbo;
+				igTextf("Buffers: %s Mem: %s",
+					Vbo.numAllocated,
+					DigitSeparator!(long, 3, ' ')(clientWorld.chunkMeshMan.totalMeshDataBytes));
+			}
 		}
 
+		// heading
+		vec3 target = graphics.camera.target;
+		vec2 heading = graphics.camera.heading;
+		igTextf("Heading: %.1f %.1f", heading.x, heading.y);
+		igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
+
+		// position
+		vec3 pos = graphics.camera.position;
+		igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
 		ChunkWorldPos chunkPos = clientWorld.observerPosition;
 		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+
+		// dimension
 		igTextf("Dimension: %s", chunkPos.w); igSameLine();
 			if (igButton("-##decDimension")) clientWorld.decDimension(); igSameLine();
 			if (igButton("+##incDimension")) clientWorld.incDimension();
 
-		vec3 target = graphics.camera.target;
-		vec2 heading = graphics.camera.heading;
-		igTextf("Heading: %.2f %.2f", heading.x, heading.y);
-		igTextf("Target: X %.2f, Y %.2f, Z %.2f", target.x, target.y, target.z);
+		// view radius
+		igTextf("View radius: %s", clientWorld.viewRadius); igSameLine();
+			if (igButton("-##decVRadius")) clientWorld.decViewRadius(); igSameLine();
+			if (igButton("+##incVRadius")) clientWorld.incViewRadius();
 
-		with(clientWorld.chunkMeshMan) {
-			import anchovy.vbo;
-			igTextf("Buffers: %s Mem: %s", Vbo.numAllocated, DigitSeparator!(long, 3, ' ')(totalMeshDataBytes));
+		if (igCollapsingHeader("Chunks"))
+		{
+			with(stats) {
+				igTextf("Chunks per frame loaded: %s",
+					totalLoadedChunks - lastFrameLoadedChunks);
+				igTextf("Chunks total loaded: %s",
+					totalLoadedChunks);
+				igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(clientWorld.chunkManager.totalLayerDataBytes));
+			}
 
-			igTextf("Chunks to mesh: %s", numMeshChunkTasks);
-			igTextf("New meshes: %s", newChunkMeshes.length);
-			size_t sum;
-			foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
-			igTextf("Task Queues: %s", sum);
-			sum = 0;
-			foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
-			igTextf("Res Queues: %s", sum);
-			float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
-			igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
-		}
-
-		with(clientWorld) {
-			igTextf("View radius: %s", viewRadius); igSameLine();
-			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
-			if (igButton("+##incVRadius")) incViewRadius();
+			with(clientWorld.chunkMeshMan) {
+				igTextf("Chunks to mesh: %s", numMeshChunkTasks);
+				igTextf("New meshes: %s", newChunkMeshes.length);
+				size_t sum;
+				foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
+				igTextf("Task Queues: %s", sum);
+				sum = 0;
+				foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
+				igTextf("Res Queues: %s", sum);
+				float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
+				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
+			}
 		}
 
 		igEnd();
@@ -231,8 +242,12 @@ public:
 				evDispatcher.postEvent(RenderEvent());
 
 				version(manualGC) {
+					auto collectStartTime = MonoTime.currTime;
 					GC.collect();
 					GC.minimize();
+					auto collectDur = MonoTime.currTime - collectStartTime;
+					double collectDurFloat = collectDur.total!"usecs" / 1_000.0;
+					dbg.logVar("GC, ms", collectDurFloat, 512);
 				}
 
 				if (limitFps) {
@@ -271,6 +286,14 @@ public:
 	{
 		stats.fps = fpsHelper.fps;
 		stats.totalLoadedChunks = clientWorld.totalLoadedChunks;
+
+		import std.compiler;
+		static if (version_minor == 72)
+		{
+			import core.memory;
+			dbg.logVar("GC used", core.memory.GC.stats().usedSize, 128);
+			dbg.logVar("GC free", core.memory.GC.stats().freeSize, 128);
+		}
 
 		printDebug();
 		stats.resetCounters();

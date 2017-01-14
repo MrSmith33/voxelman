@@ -31,6 +31,10 @@ public:
 		sideTable.set(ShapeSideMask.full, ShapeSideMask.empty);
 		sideTable.set(ShapeSideMask.water, ShapeSideMask.empty);
 		sideTable.set(ShapeSideMask.full, ShapeSideMask.water);
+		sideTable.set(ShapeSideMask.water, ShapeSideMask.slope);
+		sideTable.set(ShapeSideMask.full, ShapeSideMask.slope);
+		sideTable.set(ShapeSideMask.slope, ShapeSideMask.empty);
+		sideTable.set(ShapeSideMask.slope, ShapeSideMask.water);
 	}
 
 	BlockInfoSetter regBlock(string name) {
@@ -41,6 +45,11 @@ public:
 
 	BlockInfoTable getBlocks() {
 		return BlockInfoTable(cast(immutable)blockMapping.infoArray, sideTable);
+	}
+
+	// returns size_t.max if not found
+	size_t getId(string name) {
+		return blockMapping.id(name);
 	}
 
 	SideIntersectionTable sideTable;

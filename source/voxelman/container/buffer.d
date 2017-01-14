@@ -49,7 +49,7 @@ struct Buffer(T)
 		return buf[0..length];
 	}
 
-	void clear() {
+	void clear() nothrow {
 		length = 0;
 	}
 

@@ -13,8 +13,9 @@ import voxelman.geometry.cube;
 import voxelman.core.config;
 import voxelman.world.storage;
 import voxelman.utils.mapping;
-import voxelman.world.mesh.chunkmesh;
 import voxelman.world.block;
+import voxelman.world.mesh.chunkmesh;
+import voxelman.world.mesh.blockmesher;
 
 
 enum SideMask : ubyte
@@ -102,79 +103,11 @@ CubeSide sideFromNormal(ivec3 normal)
 	return CubeSide.zneg;
 }
 
-float random(uint num)
-{
-	uint x = num;
-	x = ((x >> 16) ^ x) * 0x45d9f3b;
-	x = ((x >> 16) ^ x) * 0x45d9f3b;
-	x = (x >> 16) ^ x;
-	return (cast(float)x / uint.max);
-}
-
 struct MeshVertex2
 {
 	align(4):
 	float x, y, z;
 	ubyte[3] color;
-}
-
-void makeColoredBlockMesh(BlockMeshingData data)
-{
-	static immutable(float)[] shadowMultipliers = [
-		0.7, 0.75, 0.6, 0.5, 0.85, 0.4,
-	];
-
-	float randomTint = random(data.index)*0.1+0.9;
-
-	float r = data.color.r * randomTint;
-	float g = data.color.g * randomTint;
-	float b = data.color.b * randomTint;
-
-	ubyte flag = 1;
-	foreach(ubyte side; 0..6)
-	{
-		if (data.sides & flag)
-		{
-			ubyte[3] finalColor = [
-				cast(ubyte)(shadowMultipliers[side] * r),
-				cast(ubyte)(shadowMultipliers[side] * g),
-				cast(ubyte)(shadowMultipliers[side] * b)];
-
-			data.buffer.put(
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side  ] + data.blockPos.x,
-					cubeFaces[18*side+1] + data.blockPos.y,
-					cubeFaces[18*side+2] + data.blockPos.z,
-					finalColor),
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side+3] + data.blockPos.x,
-					cubeFaces[18*side+4] + data.blockPos.y,
-					cubeFaces[18*side+5] + data.blockPos.z,
-					finalColor),
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side+6] + data.blockPos.x,
-					cubeFaces[18*side+7] + data.blockPos.y,
-					cubeFaces[18*side+8] + data.blockPos.z,
-					finalColor),
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side+9] + data.blockPos.x,
-					cubeFaces[18*side+10] + data.blockPos.y,
-					cubeFaces[18*side+11] + data.blockPos.z,
-					finalColor),
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side+12] + data.blockPos.x,
-					cubeFaces[18*side+13] + data.blockPos.y,
-					cubeFaces[18*side+14] + data.blockPos.z,
-					finalColor),
-				cast(MeshVertex)MeshVertex2(
-					cubeFaces[18*side+15] + data.blockPos.x,
-					cubeFaces[18*side+16] + data.blockPos.y,
-					cubeFaces[18*side+17] + data.blockPos.z,
-					finalColor)
-			);
-		} // if
-		flag <<= 1;
-	} // for side
 }
 
 ushort packColor(ubvec3 c) {
@@ -188,10 +121,11 @@ alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
 struct BlockMeshingData
 {
 	Buffer!MeshVertex* buffer;
+	ubyte[4] delegate(ushort blockIndex, CubeSide side) occlusionHandler;
 	ubvec3 color;
-	ubvec3 blockPos;
-	ushort index;
+	ubvec3 chunkPos;
 	ubyte sides;
+	ushort blockIndex;
 }
 alias MeshHandler = void function(BlockMeshingData);
 void makeNullMesh(BlockMeshingData) {}
@@ -200,11 +134,6 @@ alias SideSolidityHandler = Solidity function(CubeSide);
 Solidity transparentSideSolidity(CubeSide) { return Solidity.transparent; }
 Solidity semitransparentSideSolidity(CubeSide) { return Solidity.semiTransparent; }
 Solidity solidSideSolidity(CubeSide) { return Solidity.solid; }
-
-alias CornerSolidityHandler = Solidity function(CubeCorner);
-Solidity transparentCornerSolidity(CubeCorner) { return Solidity.transparent; }
-Solidity semitransparentCornerSolidity(CubeCorner) { return Solidity.semiTransparent; }
-Solidity solidCornerSolidity(CubeCorner) { return Solidity.solid; }
 
 // solidity number increases with solidity
 enum Solidity : ubyte
@@ -230,7 +159,7 @@ struct BlockInfo
 	size_t id;
 }
 
-BlockInfo entityBlock = BlockInfo("Entity", &makeColoredBlockMesh);
+BlockInfo entityBlock = BlockInfo("Entity", &makeColoredFullBlockMesh);
 struct BlockInfoTable
 {
 	immutable(BlockInfo)[] blockInfos;
@@ -243,6 +172,41 @@ struct BlockInfoTable
 			return entityBlock;
 		return blockInfos[blockId];
 	}
+}
+
+struct SeparatedBlockInfoTable
+{
+	this(BlockInfoTable infoTable)
+	{
+		sideTable = infoTable.sideTable;
+		corners.length = infoTable.length;
+		hasGeometry.length = infoTable.length;
+		hasInternalGeometry.length = infoTable.length;
+		sideMasks.length = infoTable.length;
+		color.length = infoTable.length;
+		meshHandler.length = infoTable.length;
+
+		foreach(i, binfo; infoTable.blockInfos)
+		{
+			corners[i] = binfo.shape.corners;
+			hasGeometry[i] = binfo.shape.hasGeometry;
+			hasInternalGeometry[i] = binfo.shape.hasInternalGeometry;
+			sideMasks[i] = binfo.shape.sideMasks;
+			color[i] = binfo.color;
+			meshHandler[i] = binfo.meshHandler;
+		}
+
+		blockInfos = infoTable.blockInfos;
+	}
+
+	immutable(BlockInfo)[] blockInfos;
+	SideIntersectionTable sideTable;
+	ubyte[] corners;
+	bool[] hasGeometry;
+	bool[] hasInternalGeometry;
+	ShapeSideMask[6][] sideMasks;
+	ubvec3[] color;
+	MeshHandler[] meshHandler;
 }
 
 /// Returned when registering block.
@@ -265,11 +229,12 @@ void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 {
 	regBlock("unknown").color(0,0,0).isVisible(false).solidity(Solidity.solid).meshHandler(&makeNullMesh).blockShape(unknownShape);
 	regBlock("air").color(0,0,0).isVisible(false).solidity(Solidity.transparent).meshHandler(&makeNullMesh).blockShape(emptyShape);
-	regBlock("grass").colorHex(0x7EEE11).meshHandler(&makeColoredBlockMesh);
-	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredBlockMesh);
-	regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredBlockMesh);
-	regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredBlockMesh);
-	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredBlockMesh).solidity(Solidity.semiTransparent).blockShape(waterShape);
-	regBlock("lava").colorHex(0xFF6920).meshHandler(&makeColoredBlockMesh);
-	regBlock("snow").colorHex(0xDBECF6).meshHandler(&makeColoredBlockMesh);
+	regBlock("grass").colorHex(0x01A611).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("dirt").colorHex(0x835929).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("stone").colorHex(0x8B8D7A).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("sand").colorHex(0xA68117).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredFullBlockMesh).solidity(Solidity.semiTransparent).blockShape(waterShape);
+	regBlock("lava").colorHex(0xFF6920).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("snow").colorHex(0xDBECF6).meshHandler(&makeColoredFullBlockMesh);
+	regBlock("slope").colorHex(0x857FFF).meshHandler(&makeColoredSlopeBlockMesh).blockShape(slopeShape);
 }

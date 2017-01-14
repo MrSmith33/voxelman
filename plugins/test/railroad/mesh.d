@@ -11,9 +11,12 @@ import std.conv : to;
 import voxelman.container.buffer;
 import voxelman.math;
 
+import voxelman.geometry.cube;
 import voxelman.geometry.utils;
 
 import voxelman.world.mesh.chunkmesh;
+import voxelman.world.mesh.sidemeshers.full;
+import voxelman.world.mesh.sidemeshers.utils;
 import voxelman.world.block;
 import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.blockentity.blockentitydata;
@@ -23,13 +26,41 @@ import test.railroad.utils;
 
 void makeRailMesh(BlockEntityMeshingData meshingData)
 {
+	auto railData = RailData(meshingData.data);
 	if (meshingData.data.type == BlockEntityType.localBlockEntity &&
 		meshingData.entityPos == ivec3(0,0,0))
 	{
 		putRailMesh!MeshVertex(
 			meshingData.output[Solidity.solid],
 			meshingData.chunkPos,
-			RailData(meshingData.data));
+			railData);
+	}
+
+	if (railData.isSlope)
+	{
+		CubeSide sideToMesh;
+		if (isSlopeUpSideBlock(railData, meshingData.entityPos, sideToMesh))
+		{
+			if (meshingData.sides & (1 << sideToMesh))
+			{
+				ubyte[4] occlusions = meshingData.occlusionHandler(meshingData.blockIndex, sideToMesh);
+				SideParams sideParams = SideParams(
+					ubvec3(meshingData.chunkPos),
+					calcColor(meshingData.blockIndex, meshingData.color),
+					&meshingData.output[Solidity.solid]);
+				meshFullSideOccluded(sideToMesh, occlusions, sideParams);
+			}
+		}
+	}
+
+	if (meshingData.sides & SideMask.yneg)
+	{
+		ubyte[4] occlusions = meshingData.occlusionHandler(meshingData.blockIndex, CubeSide.yneg);
+		SideParams sideParams = SideParams(
+			ubvec3(meshingData.chunkPos),
+			calcColor(meshingData.blockIndex, meshingData.color),
+			&meshingData.output[Solidity.solid]);
+		meshFullSideOccluded(CubeSide.yneg, occlusions, sideParams);
 	}
 }
 

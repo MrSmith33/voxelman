@@ -302,3 +302,24 @@ immutable ubyte[18 * 6] flippedCubeFaces =
 	0, 0, 1,
 	0, 0, 0,
 ];
+
+immutable ubyte[3][8] cubeVerticies = [
+	[0,0,0], // 0
+	[1,0,0], // 1
+	[0,0,1], // 2
+	[1,0,1], // 3
+	[0,1,0], // 4
+	[1,1,0], // 5
+	[0,1,1], // 6
+	[1,1,1], // 7
+];
+
+// 6 sides by 4 indices per side
+immutable ubyte[4][6] cubeSideVertIndices = [
+	[5,1,0,4], // zneg
+	[6,2,3,7], // zpos
+	[7,3,1,5], // xpos
+	[4,0,2,6], // xneg
+	[4,6,7,5], // ypos
+	[1,3,2,0], // yneg
+];

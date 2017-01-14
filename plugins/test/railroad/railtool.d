@@ -9,6 +9,7 @@ import voxelman.container.buffer : Buffer;
 import voxelman.core.config;
 import voxelman.core.packets;
 
+import voxelman.blockentity.blockentityman;
 import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
 import voxelman.graphics.plugin;

@@ -61,7 +61,7 @@ ubyte[] blockSideCorners = [
 
 enum NUM_SIDE_MASKS = ShapeSideMask.max + 1;
 
-enum ShapeSideMask
+enum ShapeSideMask : ubyte
 {
 	empty,
 	water,
@@ -90,11 +90,19 @@ import std.array : array;
 const ShapeSideMask[6] fullShapeSides = ShapeSideMask.full.repeat.take(6).array;
 const ShapeSideMask[6] waterShapeSides = ShapeSideMask.water.repeat.take(6).array;
 const ShapeSideMask[6] emptyShapeSides = ShapeSideMask.empty.repeat.take(6).array;
+const ShapeSideMask[6] slopeShapeSides = [
+	ShapeSideMask.full,
+	ShapeSideMask.empty,
+	ShapeSideMask.slope,
+	ShapeSideMask.slope,
+	ShapeSideMask.empty,
+	ShapeSideMask.full];
 
 const BlockShape unknownShape = BlockShape(fullShapeSides, 0b_0000_0000, false, false);
 const BlockShape fullShape = BlockShape(fullShapeSides, 0b_1111_1111, true, false);
 const BlockShape waterShape = BlockShape(waterShapeSides, 0b_1111_1111, false, false);
 const BlockShape emptyShape = BlockShape(emptyShapeSides, 0b_0000_0000, false, false);
+const BlockShape slopeShape = BlockShape(slopeShapeSides, 0b_0011_1111, true, true);
 
 struct SideIntersectionTable
 {
@@ -102,6 +110,7 @@ struct SideIntersectionTable
 	size_t numTypes;
 
 	/// Returns true if current shape side is visible
+	pragma(inline, true)
 	bool get(const ShapeSideMask current, const ShapeSideMask other)
 	{
 		size_t index = current * numTypes + other;

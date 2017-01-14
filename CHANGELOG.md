@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Do bottom meshing of rails/side meshing of slope rail.
 - Add block shape occlusion calculation.
 - Add block corner ambient occlusion calculation.
 - Implement build type selection in launcher.

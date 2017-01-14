@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module test.railroad.utils;
 
 import voxelman.math;
+import voxelman.geometry.cube : CubeSide;
 import voxelman.geometry.box;
 import voxelman.geometry.utils;
 import voxelman.world.block;
@@ -249,6 +250,26 @@ ubyte[] railSegmentData =
 	SLOPE_RAIL_BIT + 1,
 	SLOPE_RAIL_BIT + 2,
 	SLOPE_RAIL_BIT + 3];
+
+// slopeUpToSide[data & 0b11]
+CubeSide[4] slopeUpToSide = [
+	CubeSide.zneg,
+	CubeSide.xneg,
+	CubeSide.zpos,
+	CubeSide.xpos];
+
+bool isSlopeUpSideBlock(RailData railData, ivec3 entityPos, out CubeSide sideToMesh)
+{
+	sideToMesh = slopeUpToSide[railData.data & 0b11];
+	switch(sideToMesh)
+	{
+		case CubeSide.zneg: return entityPos.z == 0;
+		case CubeSide.xneg: return entityPos.x == 0;
+		case CubeSide.zpos: return entityPos.z == Z_RAIL_SIZE.z;
+		case CubeSide.xpos: return entityPos.x == X_RAIL_SIZE.x;
+		default: assert(false);
+	}
+}
 
 enum Z_RAIL_SIZE = ivec3(4, 1, 8);
 enum X_RAIL_SIZE = ivec3(8, 1, 4);

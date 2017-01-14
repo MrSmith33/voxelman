@@ -38,17 +38,19 @@ BlockId blockIdFromBlockIndex(ushort blockIndex) {
 struct BlockEntityMeshingData
 {
 	Buffer!MeshVertex[] output;
+	ubyte[4] delegate(ushort blockIndex, CubeSide side) occlusionHandler;
 	ubvec3 color;
+	ubyte sides;
 	ivec3 chunkPos;
 	ivec3 entityPos;
-	ubyte sides;
 	BlockEntityData data;
+	ushort blockIndex;
 }
 
 alias BlockEntityMeshhandler = void function(BlockEntityMeshingData);
 
 alias SolidityHandler = Solidity function(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
-alias BlockShapeHandler = BlockShape function(ushort blockIndex, BlockEntityData data);
+alias BlockShapeHandler = BlockShape function(ivec3 entityPos, BlockEntityData data);
 alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
 alias EntityDebugHandler = void function(BlockWorldPos bwp, BlockEntityData data);
 WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
@@ -62,7 +64,7 @@ Solidity nullSolidityHandler(CubeSide side, ivec3 chunkPos, ivec3 entityPos, Blo
 	return Solidity.solid;
 }
 
-BlockShape nullBlockShapeHandler(ushort blockIndex, BlockEntityData data) {
+BlockShape nullBlockShapeHandler(ivec3 entityPos, BlockEntityData data) {
 	return fullShape;
 }
 

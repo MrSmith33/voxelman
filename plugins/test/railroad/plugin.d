@@ -10,6 +10,7 @@ import pluginlib;
 import voxelman.core.config;
 import voxelman.core.packets;
 
+import voxelman.blockentity.blockentityman;
 import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
 import voxelman.graphics.plugin;
@@ -172,9 +173,12 @@ Solidity railSideSolidity(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockE
 	return Solidity.transparent;
 }
 
-BlockShape railBlockShapeHandler(ushort, BlockEntityData data)
+BlockShape railBlockShapeHandler(ivec3 entityPos, BlockEntityData data)
 {
-	return railBlockShape;
+	if (RailData(data).bottomSolidity(calcBlockTilePos(entityPos)))
+		return railBlockShape;
+	else
+		return emptyShape;
 }
 
 const ShapeSideMask[6] railShapeSides = [
@@ -184,4 +188,5 @@ const ShapeSideMask[6] railShapeSides = [
 	ShapeSideMask.empty,
 	ShapeSideMask.empty,
 	ShapeSideMask.full]; // bottom is full
-const BlockShape railBlockShape = BlockShape(railShapeSides, 0b_1111_1111, true, true);
+
+const BlockShape railBlockShape = BlockShape(railShapeSides, 0b_0000_1111, true, true);

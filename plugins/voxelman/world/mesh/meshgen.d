@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.meshgen;
 
 import voxelman.log;
+import std.datetime;
 import std.conv : to;
 import core.exception : Throwable;
 import anchovy.isharedcontext;
@@ -19,6 +20,7 @@ import voxelman.world.blockentity;
 
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
+import voxelman.world.mesh.extendedchunk;
 import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage;
@@ -38,7 +40,7 @@ struct MeshGenTaskHeader
 }
 
 //version = DBG_OUT;
-void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
+void meshWorkerThread(shared(Worker)* workerInfo, SeparatedBlockInfoTable blockInfos, BlockEntityInfoTable beInfos)
 {
 	// reusable buffers
 	Buffer!MeshVertex[3] geometry; // 2 - solid, 1 - semiTransparent
@@ -69,6 +71,8 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 
 				if (taskHeader.type == MeshGenTaskType.genMesh)
 				{
+					auto taskStartTime = MonoTime.currTime;
+
 					// get mesh task.
 					auto blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
@@ -89,11 +93,14 @@ void meshWorkerThread(shared(Worker)* workerInfo, BlockInfoTable blockInfos, Blo
 					foreach(i; 0..27) blockTimestamps[i] = blockLayers[i].timestamp;
 					foreach(i; 0..27) entityTimestamps[i] = entityLayers[i].timestamp;
 
+					auto duration = MonoTime.currTime - taskStartTime;
+
 					workerInfo.resultQueue.startMessage();
 					workerInfo.resultQueue.pushMessagePart(taskHeader);
 					workerInfo.resultQueue.pushMessagePart(meshes);
 					workerInfo.resultQueue.pushMessagePart(blockTimestamps);
 					workerInfo.resultQueue.pushMessagePart(entityTimestamps);
+					workerInfo.resultQueue.pushMessagePart(duration);
 					workerInfo.resultQueue.endMessage();
 				}
 				else
@@ -117,7 +124,7 @@ import voxelman.world.mesh.meshgenerator;
 void chunkMeshWorker(
 	ChunkLayerItem[27] blockLayers,
 	ChunkLayerItem[27] entityLayers,
-	BlockInfoTable blockInfos,
+	SeparatedBlockInfoTable blockInfos,
 	BlockEntityInfoTable beInfos,
 	ref Buffer!MeshVertex[3] geometry)
 {

@@ -13,7 +13,6 @@ import voxelman.math;
 
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
-import voxelman.utils.mapping;
 
 import voxelman.world.block;
 import voxelman.core.config;
@@ -30,6 +29,7 @@ import voxelman.world.clientworld;
 import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 
+import voxelman.blockentity.blockentityman;
 import voxelman.world.blockentity;
 
 final class BlockEntityClient : IPlugin {
@@ -214,11 +214,13 @@ void multichunkMeshHandler(BlockEntityMeshingData meshingData)
 
 	auto blockMeshingData = BlockMeshingData(
 				&meshingData.output[Solidity.solid],
+				meshingData.occlusionHandler,
 				col,
 				ubvec3(meshingData.chunkPos),
-				0,
-				meshingData.sides);
-	makeColoredBlockMesh(blockMeshingData);
+				meshingData.sides,
+				meshingData.blockIndex);
+	import voxelman.world.mesh.blockmesher : makeColoredFullBlockMesh;
+	makeColoredFullBlockMesh(blockMeshingData);
 }
 
 WorldBox multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
@@ -235,40 +237,6 @@ void multichunkDebugHandler(BlockWorldPos bwp, BlockEntityData data)
 	//auto vol = WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
-BlockShape multichunkBlockShapeHandler(ushort, BlockEntityData) {
+BlockShape multichunkBlockShapeHandler(ivec3, BlockEntityData) {
 	return fullShape;
-}
-
-struct BlockEntityInfoSetter
-{
-	private Mapping!(BlockEntityInfo)* mapping;
-	private size_t blockId;
-	private ref BlockEntityInfo info() {return (*mapping)[blockId]; }
-
-	ref BlockEntityInfoSetter color(ubyte[3] color ...) { info.color = ubvec3(color); return this; }
-	ref BlockEntityInfoSetter colorHex(uint hex) { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
-	ref BlockEntityInfoSetter meshHandler(BlockEntityMeshhandler val) { info.meshHandler = val; return this; }
-	ref BlockEntityInfoSetter sideSolidity(SolidityHandler val) { info.sideSolidity = val; return this; }
-	ref BlockEntityInfoSetter blockShapeHandler(BlockShapeHandler val) { info.blockShape = val; return this; }
-	ref BlockEntityInfoSetter boxHandler(EntityBoxHandler val) { info.boxHandler = val; return this; }
-	ref BlockEntityInfoSetter debugHandler(EntityDebugHandler val) { info.debugHandler = val; return this; }
-}
-
-final class BlockEntityManager : IResourceManager
-{
-private:
-	Mapping!BlockEntityInfo blockEntityMapping;
-
-public:
-	override string id() @property { return "voxelman.blockentity.blockentitymanager"; }
-
-	BlockEntityInfoSetter regBlockEntity(string name) {
-		size_t id = blockEntityMapping.put(BlockEntityInfo(name));
-		assert(id <= ushort.max);
-		return BlockEntityInfoSetter(&blockEntityMapping, id);
-	}
-
-	ushort getId(string name) {
-		return cast(ushort)blockEntityMapping.id(name);
-	}
 }

@@ -16,6 +16,7 @@ import voxelman.core.events;
 
 import voxelman.config.configmanager : ConfigOption, ConfigManager;
 import voxelman.block.plugin;
+import voxelman.dbg.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.graphics.plugin;
 import voxelman.gui.plugin;
@@ -35,6 +36,7 @@ class MovementPlugin : IPlugin
 	InputPlugin input;
 	BlockPluginClient blockPlugin;
 	ClientWorld clientWorld;
+	Debugger dbg;
 
 	ConfigOption fpsCameraSpeedOpt;
 	ConfigOption fpsCameraBoostOpt;
@@ -83,6 +85,8 @@ class MovementPlugin : IPlugin
 		fpsCameraBoostOpt = config.registerOption!int("fps_camera_boost", 2);
 		flightCameraSpeedOpt = config.registerOption!int("flight_camera_speed", 20);
 		flightCameraBoostOpt = config.registerOption!int("flight_camera_boost", 5);
+
+		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
 
 	override void init(IPluginManager pluginman)
@@ -151,9 +155,11 @@ class MovementPlugin : IPlugin
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
+		dbg.setVar("On ground", onGround);
+		dbg.setVar("Speed", speed.length);
+		dbg.setVar("Loaded", isCurrentChunkLoaded());
+
 		igBegin("Debug");
-			igTextf("on ground: %s", onGround);
-			igTextf("speed: %s loaded: %s", speed.length, isCurrentChunkLoaded());
 			igCheckbox("[N]oclip", &noclip);
 			igCheckbox("[F]ly mode", &isFlying);
 		igEnd();
