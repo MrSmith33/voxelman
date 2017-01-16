@@ -457,6 +457,7 @@ struct Launcher
 			mkdirRecurse(saveFolder);
 		}
 		auto saveFilename = buildPath(saveFolder, name~saveExtention).absolutePath;
+		infof("delete %s", saveFilename);
 		worldDb.open(saveFilename);
 		worldDb.close();
 		ulong fileSize = std.file.getSize(saveFilename);

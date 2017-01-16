@@ -40,6 +40,8 @@ struct LmdbWorldDb
 
 	void close() @nogc {
 		mdb_env_close(env);
+		env = null;
+		txn = null;
 	}
 
 	void beginTxn(uint flags = 0) @nogc {
