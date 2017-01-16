@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.clientworld;
 
+import std.datetime : MonoTime, Duration, usecs, dur;
 import voxelman.log;
 import netlib;
 import pluginlib;
@@ -49,6 +50,13 @@ struct IdMapManagerClient
 	}
 }
 
+string fmtDur(Duration dur)
+{
+	import std.string : format;
+	int seconds, msecs, usecs;
+	dur.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
+	return format("%s.%03s,%1s s", seconds, msecs, usecs);
+}
 
 //version = DBG_COMPR;
 final class ClientWorld : IPlugin
@@ -428,17 +436,12 @@ public:
 
 	private void remeshBox(WorldBox box, bool printTime = false)
 	{
-		import std.datetime : MonoTime, Duration, usecs, dur;
 		MonoTime startTime = MonoTime.currTime;
 
 		void onRemeshDone(size_t chunksRemeshed, Duration totalDuration) {
 			auto duration = MonoTime.currTime - startTime;
-			int seconds; short msecs; short usecs;
-			duration.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-
-			int seconds2; short msecs2; short usecs2;
-			totalDuration.split!("seconds", "msecs", "usecs")(seconds2, msecs2, usecs2);
-			infof("Remeshed %s chunks in % 3s.%03s,%03ss % 3s.%03s,%03ss", chunksRemeshed, seconds, msecs, usecs, seconds2, msecs2, usecs2);
+			auto avg = totalDuration / chunksRemeshed;
+			infof("Remeshed %s chunks in\ttotal %s\tavg %s\tsingle thread %s", chunksRemeshed, fmtDur(totalDuration), fmtDur(avg), fmtDur(duration));
 		}
 
 		HashSet!ChunkWorldPos remeshedChunks;

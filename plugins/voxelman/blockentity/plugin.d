@@ -42,6 +42,8 @@ final class BlockEntityClient : IPlugin {
 	private GraphicsPlugin graphics;
 	private NetClientPlugin connection;
 
+	bool blockEntityDebug = false;
+
 	override void init(IPluginManager pluginman)
 	{
 		clientWorld = pluginman.getPlugin!ClientWorld;
@@ -117,7 +119,7 @@ final class BlockEntityClient : IPlugin {
 		igBegin("Debug");
 		if (isBlockEntity(blockId))
 		{
-			ushort blockIndex = blockIndexFromBlockId(blockId);
+			ushort blockIndex = blockEntityIndexFromBlockId(blockId);
 			BlockEntityData entity = clientWorld.entityAccess.getBlockEntity(cwp, blockIndex);
 			with(BlockEntityType) final switch(entity.type)
 			{
@@ -128,8 +130,13 @@ final class BlockEntityClient : IPlugin {
 
 					igTextf("Entity(main): id %s %s ind %s %s",
 						entity.id, eInfo.name, blockIndex, eVol);
-					if (eInfo.debugHandler)
-						eInfo.debugHandler(entityBwp, entity);
+
+					igCheckbox("Debug entity", &blockEntityDebug);
+					if (blockEntityDebug && eInfo.debugHandler)
+					{
+						auto context = BlockEntityDebugContext(entityBwp, entity, graphics);
+						eInfo.debugHandler(context);
+					}
 
 					putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
@@ -230,13 +237,13 @@ WorldBox multichunkBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 	return WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
-void multichunkDebugHandler(BlockWorldPos bwp, BlockEntityData data)
+void multichunkDebugHandler(ref BlockEntityDebugContext context)
 {
-	ulong sizeData = data.entityData;
+	ulong sizeData = context.data.entityData;
 	ivec3 size = entityDataToSize(sizeData);
 	//auto vol = WorldBox(bwp.xyz, size, cast(ushort)bwp.w);
 }
 
-BlockShape multichunkBlockShapeHandler(ivec3, BlockEntityData) {
+BlockShape multichunkBlockShapeHandler(ivec3, ivec3, BlockEntityData) {
 	return fullShape;
 }

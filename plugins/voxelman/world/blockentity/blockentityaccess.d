@@ -52,7 +52,7 @@ void placeEntity(WorldBox blockBox, ulong payload,
 		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
 		ushort blockIndex = boxEntityIndex(chunkLocalBox);
-		BlockId blockId = blockIdFromBlockIndex(blockIndex);
+		BlockId blockId = blockIdFromBlockEntityIndex(blockIndex);
 
 		if (cwp == mainCwp)
 		{
@@ -81,7 +81,7 @@ void placeChunkEntity(WorldBox blockBox, ulong payload,
 	Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);
 
 	ushort blockIndex = boxEntityIndex(chunkLocalBox);
-	BlockId blockId = blockIdFromBlockIndex(blockIndex);
+	BlockId blockId = blockIdFromBlockEntityIndex(blockIndex);
 	worldAccess.fillChunkBox(cwp, chunkLocalBox, blockId);
 	auto beData = BlockEntityData(BlockEntityType.localBlockEntity, payload);
 	bool placed = entityAccess.setBlockEntity(cwp, blockIndex, beData);
@@ -121,7 +121,7 @@ WorldBox removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
 		return WorldBox();
 
 	auto mainCwp = ChunkWorldPos(bwp);
-	ushort mainBlockIndex = blockIndexFromBlockId(blockId);
+	ushort mainBlockIndex = blockEntityIndexFromBlockId(blockId);
 	WorldBox blockBox = getBlockEntityBox(mainCwp, mainBlockIndex, beInfos, entityAccess);
 
 	Box affectedChunks = blockBoxToChunkBox(blockBox);

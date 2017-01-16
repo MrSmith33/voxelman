@@ -45,28 +45,23 @@ void genGeometry(const ref ExtendedChunk chunk,
 		return BlockEntityData(*entity);
 	}
 
-	//BlockShape getShape(BlockId blockId)
-	//{
-	//	if (isBlockEntity(blockId)) {
-	//		ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-	//		BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
-	//		return beInfos[data.id].blockShape(entityBlockIndex, data);
-	//	} else {
-	//		return blockInfoTable.shapes[blockId];
-	//	}
-	//}
+	BlockShape getEntityShape(BlockId blockId, ushort blockIndex)
+	{
+		ushort entityBlockIndex = blockEntityIndexFromBlockId(blockId);
+		auto cb = chunkAndBlockAt27FromExt(blockIndex);
+		BlockEntityData data = getBlockEntity(entityBlockIndex, maps[cb.chunk]);
+		auto entityChunkPos = BlockChunkPos(entityBlockIndex);
+		ivec3 blockChunkPos = ivec3(cb.bx, cb.by, cb.bz);
+		ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
+		return beInfos[data.id].blockShape(blockChunkPos, blockEntityPos, data);
+	}
 
 	pragma(inline, true)
 	ShapeSideMask getSideMask(size_t blockIndex, ubyte side)
 	{
 		BlockId blockId = chunk.allBlocks.ptr[blockIndex];
 		if (isBlockEntity(blockId)) {
-			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
-			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
-			ivec3 blockChunkPos = BlockChunkPos(cast(ushort)blockIndex).vector - ivec3(1,1,1);
-			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
-			return beInfos[data.id].blockShape(blockEntityPos, data).sideMasks[side];
+			return getEntityShape(blockId, cast(ushort)blockIndex).sideMasks[side];
 		} else {
 			return blockInfoTable.sideMasks[blockId][side];
 		}
@@ -101,14 +96,7 @@ void genGeometry(const ref ExtendedChunk chunk,
 		BlockId blockId = chunk.allBlocks.ptr[blockIndex];
 
 		if (isBlockEntity(blockId)) {
-			ushort entityBlockIndex = blockIndexFromBlockId(blockId);
-			BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
-
-			auto entityChunkPos = BlockChunkPos(entityBlockIndex);
-			ivec3 blockChunkPos = BlockChunkPos(cast(ushort)blockIndex).vector - ivec3(1,1,1);
-			ivec3 blockEntityPos = blockChunkPos - entityChunkPos.vector;
-
-			return beInfos[data.id].blockShape(blockEntityPos, data).corners;
+			return getEntityShape(blockId, cast(ushort)blockIndex).corners;
 		} else {
 			return blockInfoTable.corners[blockId];
 		}
@@ -168,7 +156,7 @@ void genGeometry(const ref ExtendedChunk chunk,
 	void meshBlockEntity(BlockId blockId, ushort index, ubvec3 bpos)
 	{
 		ubyte sides = checkSideSolidities(fullShapeSides, index);
-		ushort entityBlockIndex = blockIndexFromBlockId(blockId);
+		ushort entityBlockIndex = blockEntityIndexFromBlockId(blockId);
 		BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
 
 		// entity chunk pos

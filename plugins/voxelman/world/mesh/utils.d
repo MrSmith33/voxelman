@@ -11,7 +11,6 @@ import voxelman.core.config;
 import voxelman.world.block;
 
 enum EXTENDED_CHUNK_SIZE = CHUNK_SIZE + 2;
-enum EXTENDED_CHUNK_SIZE_BITS = EXTENDED_CHUNK_SIZE - 1;
 enum EXTENDED_CHUNK_SIZE_SQR = EXTENDED_CHUNK_SIZE * EXTENDED_CHUNK_SIZE;
 enum EXTENDED_CHUNK_SIZE_CUBE = EXTENDED_CHUNK_SIZE * EXTENDED_CHUNK_SIZE * EXTENDED_CHUNK_SIZE;
 enum EXTENDED_SIZE_VECTOR = ivec3(EXTENDED_CHUNK_SIZE, EXTENDED_CHUNK_SIZE, EXTENDED_CHUNK_SIZE);
@@ -20,11 +19,24 @@ size_t extendedChunkIndex(int x, int y, int z) {
 	return x + y * EXTENDED_CHUNK_SIZE_SQR + z * EXTENDED_CHUNK_SIZE;
 }
 
-ChunkAndBlockAt chunkAndBlockAt27(ushort index)
+size_t chunkFromExtIndex(size_t index)
 {
-	int x = index & EXTENDED_CHUNK_SIZE_BITS;
-	int y = (index / EXTENDED_CHUNK_SIZE_SQR) & EXTENDED_CHUNK_SIZE_BITS;
-	int z = (index / EXTENDED_CHUNK_SIZE) & EXTENDED_CHUNK_SIZE_BITS;
+	int x = index % EXTENDED_CHUNK_SIZE;
+	int y = (index / EXTENDED_CHUNK_SIZE_SQR) % EXTENDED_CHUNK_SIZE;
+	int z = (index / EXTENDED_CHUNK_SIZE) % EXTENDED_CHUNK_SIZE;
+
+	ubyte cx = target_chunk[x];
+	ubyte cy = target_chunk[y];
+	ubyte cz = target_chunk[z];
+
+	return dirs3by3[cx + cz * 3 + cy * 9];
+}
+
+ChunkAndBlockAt chunkAndBlockAt27FromExt(ushort index)
+{
+	int x = index % EXTENDED_CHUNK_SIZE;
+	int y = (index / EXTENDED_CHUNK_SIZE_SQR) % EXTENDED_CHUNK_SIZE;
+	int z = (index / EXTENDED_CHUNK_SIZE) % EXTENDED_CHUNK_SIZE;
 
 	ubyte bx = position_in_target_chunk[x];
 	ubyte by = position_in_target_chunk[y];
@@ -34,7 +46,7 @@ ChunkAndBlockAt chunkAndBlockAt27(ushort index)
 	ubyte cy = target_chunk[y];
 	ubyte cz = target_chunk[z];
 
-	ubyte chunk_index = cast(ubyte)(cx + cz * 3 + cy * 9);
+	ubyte chunk_index = dirs3by3[cx + cz * 3 + cy * 9];
 
 	return ChunkAndBlockAt(chunk_index, bx, by, bz);
 }

@@ -21,17 +21,18 @@ import voxelman.world.blockentity;
 enum BLOCK_ENTITY_FLAG = 1 << 15;
 enum BLOCK_INDEX_MASK = (1 << 15) - 1;
 
+pragma(inline, true)
 bool isBlockEntity(BlockId blockId)
 {
 	enum n = BlockId.sizeof*8 - 1;
 	return blockId >> n; // highest bit
 }
 
-ushort blockIndexFromBlockId(BlockId blockId) {
+ushort blockEntityIndexFromBlockId(BlockId blockId) {
 	return blockId & BLOCK_INDEX_MASK;
 }
 
-BlockId blockIdFromBlockIndex(ushort blockIndex) {
+BlockId blockIdFromBlockEntityIndex(ushort blockIndex) {
 	return blockIndex | BLOCK_ENTITY_FLAG;
 }
 
@@ -47,12 +48,20 @@ struct BlockEntityMeshingData
 	ushort blockIndex;
 }
 
+struct BlockEntityDebugContext
+{
+	import voxelman.graphics.plugin;
+	BlockWorldPos bwp;
+	BlockEntityData data;
+	GraphicsPlugin graphics;
+}
+
 alias BlockEntityMeshhandler = void function(BlockEntityMeshingData);
 
 alias SolidityHandler = Solidity function(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
-alias BlockShapeHandler = BlockShape function(ivec3 entityPos, BlockEntityData data);
+alias BlockShapeHandler = BlockShape function(ivec3 chunkPos, ivec3 entityPos, BlockEntityData data);
 alias EntityBoxHandler = WorldBox function(BlockWorldPos bwp, BlockEntityData data);
-alias EntityDebugHandler = void function(BlockWorldPos bwp, BlockEntityData data);
+alias EntityDebugHandler = void function(ref BlockEntityDebugContext);
 WorldBox nullBoxHandler(BlockWorldPos bwp, BlockEntityData data)
 {
 	return WorldBox(bwp.xyz, ivec3(1,1,1), cast(ushort)bwp.w);
@@ -64,11 +73,9 @@ Solidity nullSolidityHandler(CubeSide side, ivec3 chunkPos, ivec3 entityPos, Blo
 	return Solidity.solid;
 }
 
-BlockShape nullBlockShapeHandler(ivec3 entityPos, BlockEntityData data) {
+BlockShape nullBlockShapeHandler(ivec3 chunkPos, ivec3 entityPos, BlockEntityData data) {
 	return fullShape;
 }
-
-void nullDebugHandler(BlockWorldPos, BlockEntityData) {}
 
 struct BlockEntityInfo
 {
@@ -77,7 +84,7 @@ struct BlockEntityInfo
 	SolidityHandler sideSolidity = &nullSolidityHandler;
 	BlockShapeHandler blockShape = &nullBlockShapeHandler;
 	EntityBoxHandler boxHandler = &nullBoxHandler;
-	EntityDebugHandler debugHandler = &nullDebugHandler;
+	EntityDebugHandler debugHandler;
 	ubvec3 color;
 	//bool isVisible = true;
 	size_t id;

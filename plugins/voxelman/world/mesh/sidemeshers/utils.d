@@ -34,7 +34,7 @@ ubvec3 calcColor(ushort index, ubvec3 color) pure nothrow
 }
 
 immutable(float[]) shadowMultipliers = [
-	0.8, 0.85, 0.7, 0.6, 0.95, 0.5,
+	0.8, 0.85, 0.7, 0.75, 0.95, 0.65,
 ];
 
 struct SideParams

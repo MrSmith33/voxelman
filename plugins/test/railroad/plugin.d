@@ -155,7 +155,8 @@ mixin template RailroadPluginCommon()
 			.meshHandler(&makeRailMesh)
 			.color([128, 128, 128])
 			.blockShapeHandler(&railBlockShapeHandler)
-			.sideSolidity(&railSideSolidity);
+			.sideSolidity(&railSideSolidity)
+			.debugHandler(&railDebugHandler);
 	}
 }
 
@@ -173,9 +174,9 @@ Solidity railSideSolidity(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockE
 	return Solidity.transparent;
 }
 
-BlockShape railBlockShapeHandler(ivec3 entityPos, BlockEntityData data)
+BlockShape railBlockShapeHandler(ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
 {
-	if (RailData(data).bottomSolidity(calcBlockTilePos(entityPos)))
+	if (RailData(data).bottomSolidity(calcBlockTilePos(chunkPos)))
 		return railBlockShape;
 	else
 		return emptyShape;

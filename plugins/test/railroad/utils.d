@@ -40,7 +40,7 @@ RailData getRailAt(RailPos railPos, ushort railEntityId,
 
 	if (isBlockEntity(blockId))
 	{
-		ushort blockIndex = blockIndexFromBlockId(blockId);
+		ushort blockIndex = blockEntityIndexFromBlockId(blockId);
 		BlockEntityData entity = entityAccess.getBlockEntity(railPos.chunkPos, blockIndex);
 
 		if (entity.id == railEntityId)
@@ -265,8 +265,8 @@ bool isSlopeUpSideBlock(RailData railData, ivec3 entityPos, out CubeSide sideToM
 	{
 		case CubeSide.zneg: return entityPos.z == 0;
 		case CubeSide.xneg: return entityPos.x == 0;
-		case CubeSide.zpos: return entityPos.z == Z_RAIL_SIZE.z;
-		case CubeSide.xpos: return entityPos.x == X_RAIL_SIZE.x;
+		case CubeSide.zpos: return entityPos.z == Z_RAIL_SIZE.z - 1;
+		case CubeSide.xpos: return entityPos.x == X_RAIL_SIZE.x - 1;
 		default: assert(false);
 	}
 }
@@ -325,14 +325,12 @@ bool isSegmentSolid(ubyte segment, ivec3 blockTilePos)
 {
 	import core.bitop : bt;
 	auto bitmapId = bt(cast(size_t*)&railSegmentBottomSolidityIndex, segment);
-	alias Bitmap = size_t[ulong.sizeof / size_t.sizeof];
-	Bitmap bitmap = *cast(Bitmap*)&railBottomSolidityBitmaps[bitmapId];
 	ubyte rotation = railSegmentMeshRotation[segment];
-	// Size needs to me less by 1 for correct shift
+	// Size needs to be less by 1 for correct shift
 	ivec3 rotatedPos = rotatePointShiftOriginCW!ivec3(blockTilePos, ivec3(7,0,7), rotation);
-	// Invert bit order (63 - bit num)
-	auto tileIndex = 63 - (rotatedPos.x + rotatedPos.z * RAIL_TILE_SIZE);
-	return !!bt(bitmap.ptr, tileIndex);
+	// Invert bit order (63 - bit num) add bitnum id offset of 64
+	auto tileIndex = 63 - (rotatedPos.x + rotatedPos.z * RAIL_TILE_SIZE) + 64 * bitmapId;
+	return !!bt(cast(size_t*)&railBottomSolidityBitmaps, tileIndex);
 }
 
 ushort railSegmentBottomSolidityIndex = 0b0000_1111_00;
@@ -358,6 +356,12 @@ mixin("0b"~
 "00000000")];
 
 import voxelman.graphics;
+
+void railDebugHandler(ref BlockEntityDebugContext context)
+{
+	drawSolidityDebug(context.graphics.debugBatch, RailData(context.data), context.bwp);
+}
+
 void drawSolidityDebug(ref Batch b, RailData data, BlockWorldPos bwp)
 {
 	ivec3 tilePos = railTilePos(bwp.xyz);

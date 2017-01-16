@@ -39,7 +39,8 @@ struct ChunkAndBlockAdjacent
 struct ChunkAndBlockAt
 {
 	ubyte chunk;
-	ubyte blockX, blockY, blockZ;
+	// position of block in chunk
+	ubyte bx, by, bz;
 }
 
 // 0-5 sides, or 6 if center
