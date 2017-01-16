@@ -32,7 +32,7 @@ final class WorldAccess
 	void applyBlockChanges(ChunkWorldPos cwp, BlockChange[] changes)
 	{
 		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
-				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return;
 		applyChanges(writeBuffer, changes);
 		writeBuffer.layer.metadata = calcChunkFullMetadata(writeBuffer.layer, blockInfos);
@@ -42,7 +42,7 @@ final class WorldAccess
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto cwp = ChunkWorldPos(bwp);
 		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
-				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return false;
 
 		BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
@@ -72,7 +72,7 @@ final class WorldAccess
 
 	// blockBox is in chunk-local coordinates
 	bool fillChunkBox(ChunkWorldPos cwp, Box blockBox, BlockId blockId) {
-		auto old = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
+		auto old = chunkManager.getChunkSnapshot(cwp, BLOCK_LAYER);
 		if (old.isNull) return false;
 
 		if (old.type == StorageType.uniform)
@@ -87,14 +87,14 @@ final class WorldAccess
 		// uniform fill
 		if (blockBox.size == CHUNK_SIZE_VECTOR)
 		{
-			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER);
+			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, BLOCK_LAYER);
 			if (writeBuffer is null) return false;
 			writeBuffer.makeUniform!BlockId(blockId);
 		}
 		else
 		{
 			writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
-				FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 			BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 			assert(blocks.length == CHUNK_SIZE_CUBE, format("blocks %s", blocks.length));
 			setSubArray(blocks, CHUNK_SIZE_VECTOR, blockBox, blockId);
@@ -111,7 +111,7 @@ final class WorldAccess
 	BlockId getBlock(BlockWorldPos bwp) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto chunkPos = ChunkWorldPos(bwp);
-		auto snap = chunkManager.getChunkSnapshot(chunkPos, FIRST_LAYER, Yes.Uncompress);
+		auto snap = chunkManager.getChunkSnapshot(chunkPos, BLOCK_LAYER, Yes.Uncompress);
 		if (!snap.isNull) {
 			return snap.getBlockId(blockIndex);
 		}

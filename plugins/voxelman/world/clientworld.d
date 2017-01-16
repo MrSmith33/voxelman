@@ -55,7 +55,7 @@ string fmtDur(Duration dur)
 	import std.string : format;
 	int seconds, msecs, usecs;
 	dur.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-	return format("%s.%03s,%1s s", seconds, msecs, usecs);
+	return format("%s.%03s,%1ss", seconds, msecs, usecs);
 }
 
 //version = DBG_COMPR;
@@ -138,8 +138,7 @@ public:
 		worldAccess = new WorldAccess(chunkManager);
 		entityAccess = new BlockEntityAccess(chunkManager);
 
-		ubyte numLayers = 2;
-		chunkManager.setup(numLayers);
+		chunkManager.setup(NUM_CHUNK_LAYERS);
 		chunkManager.loadChunkHandler = &handleLoadChunk;
 		chunkManager.cancelLoadChunkHandler = &handleLoadChunk;
 		chunkManager.isLoadCancelingEnabled = true;
@@ -231,7 +230,7 @@ public:
 	private void onPrintChunkMeta(string) {
 		import voxelman.world.block : printChunkMetadata;
 		auto cwp = observerPosition;
-		auto snap = chunkManager.getChunkSnapshot(cwp, FIRST_LAYER);
+		auto snap = chunkManager.getChunkSnapshot(cwp, BLOCK_LAYER);
 
 		if (snap.isNull) {
 			infof("No snapshot for %s", cwp);
@@ -278,7 +277,7 @@ public:
 			vec3 blockPos = pos * CHUNK_SIZE;
 
 			auto snap = chunkManager.getChunkSnapshot(
-				ChunkWorldPos(pos, box.dimension), FIRST_LAYER);
+				ChunkWorldPos(pos, box.dimension), BLOCK_LAYER);
 
 			if (snap.isNull) continue;
 			foreach(ubyte side; 0..6)
@@ -448,8 +447,14 @@ public:
 		foreach(pos; box.positions) {
 			remeshedChunks.put(ChunkWorldPos(pos, box.dimension));
 		}
+
 		if (printTime)
-			chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
+		{
+			size_t numMeshed = chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
+			auto submitDuration = MonoTime.currTime - startTime;
+			auto avg = submitDuration / numMeshed;
+			infof("%s tasks submitted in %s, avg per task %s", numMeshed, fmtDur(submitDuration), avg);
+		}
 		else
 			chunkMeshMan.remeshChangedChunks(remeshedChunks);
 	}

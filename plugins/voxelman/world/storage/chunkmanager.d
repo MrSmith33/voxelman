@@ -750,9 +750,9 @@ version(unittest) {
 					break;
 				case removed_loaded_used:
 					gotoState(cm, ChunkState.added_loaded);
-					cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+					cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 					cm.commitSnapshots(1);
-					TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
+					TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
 					cm.save();
 					cm.setExternalChunkObservers(ZERO_CWP, 0);
 					cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(timestamp, 0)]);
@@ -768,7 +768,7 @@ version(unittest) {
 			if (state == ChunkState.added_loaded)
 			{
 				gotoState(cm, ChunkState.added_loaded);
-				cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+				cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 				cm.commitSnapshots(1);
 				cm.save();
 			}
@@ -800,19 +800,19 @@ unittest {
 	}
 
 	void assertHasOldSnapshot(TimestampType timestamp) {
-		assert(timestamp in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
+		assert(timestamp in cm.oldSnapshots[BLOCK_LAYER][ZERO_CWP]);
 	}
 
 	void assertNoOldSnapshots() {
-		assert(ZERO_CWP !in cm.oldSnapshots[FIRST_LAYER]);
+		assert(ZERO_CWP !in cm.oldSnapshots[BLOCK_LAYER]);
 	}
 
 	void assertHasSnapshot() {
-		assert(!cm.getChunkSnapshot(ZERO_CWP, FIRST_LAYER).isNull);
+		assert(!cm.getChunkSnapshot(ZERO_CWP, BLOCK_LAYER).isNull);
 	}
 
 	void assertHasNoSnapshot() {
-		assert( cm.getChunkSnapshot(ZERO_CWP, FIRST_LAYER).isNull);
+		assert( cm.getChunkSnapshot(ZERO_CWP, BLOCK_LAYER).isNull);
 	}
 
 	void resetHandlersState() {
@@ -888,7 +888,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
 	// added_loaded -> removed_loaded_used
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(TimestampType(1));
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
 	assertState(ChunkState.removed_loaded_used);
@@ -897,7 +897,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
 	// added_loaded -> added_loaded
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(TimestampType(1));
 	cm.save();
 	assertState(ChunkState.added_loaded);
@@ -906,8 +906,8 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.added_loaded);
 	// added_loaded with user -> added_loaded no user after commit
-	cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(TimestampType(1));
 	assertState(ChunkState.added_loaded);
 	h.assertCalled(0b0000_0000);
@@ -938,7 +938,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupStateSaving(ChunkState.added_loaded);
 	// removed_loaded_used saving -> removed_loaded_used
-	cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
+	cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
 	cm.setExternalChunkObservers(ZERO_CWP, 0);
 	assertState(ChunkState.removed_loaded_used); // & saving
 	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
@@ -955,7 +955,7 @@ unittest {
 	//--------------------------------------------------------------------------
 	setupState(ChunkState.removed_loaded_used);
 	// removed_loaded_used -> non_loaded
-	cm.removeSnapshotUser(ZERO_CWP, TimestampType(1), FIRST_LAYER);
+	cm.removeSnapshotUser(ZERO_CWP, TimestampType(1), BLOCK_LAYER);
 	assertState(ChunkState.non_loaded);
 	h.assertCalled(0b0000_0000);
 
@@ -971,39 +971,39 @@ unittest {
 	//--------------------------------------------------------------------------
 	// test unload of old chunk when it has users. No prev snapshots for given pos.
 	setupState(ChunkState.added_loaded);
-	TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
+	TimestampType timestamp = cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
 	assert(timestamp == TimestampType(0));
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(1);
-	assert(timestamp in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
-	cm.removeSnapshotUser(ZERO_CWP, timestamp, FIRST_LAYER);
+	assert(timestamp in cm.oldSnapshots[BLOCK_LAYER][ZERO_CWP]);
+	cm.removeSnapshotUser(ZERO_CWP, timestamp, BLOCK_LAYER);
 	assertNoOldSnapshots();
 
 	//--------------------------------------------------------------------------
 	// test unload of old chunk when it has users. Already has snapshot for earlier timestamp.
 	setupState(ChunkState.added_loaded);
 
-	TimestampType timestamp0 = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	TimestampType timestamp0 = cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(1); // commit adds timestamp 0 to oldSnapshots
-	assert(timestamp0 in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
+	assert(timestamp0 in cm.oldSnapshots[BLOCK_LAYER][ZERO_CWP]);
 
-	TimestampType timestamp1 = cm.addCurrentSnapshotUser(ZERO_CWP, FIRST_LAYER);
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	TimestampType timestamp1 = cm.addCurrentSnapshotUser(ZERO_CWP, BLOCK_LAYER);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(2); // commit adds timestamp 1 to oldSnapshots
-	assert(timestamp1 in cm.oldSnapshots[FIRST_LAYER][ZERO_CWP]);
+	assert(timestamp1 in cm.oldSnapshots[BLOCK_LAYER][ZERO_CWP]);
 
-	cm.removeSnapshotUser(ZERO_CWP, timestamp0, FIRST_LAYER);
-	cm.removeSnapshotUser(ZERO_CWP, timestamp1, FIRST_LAYER);
+	cm.removeSnapshotUser(ZERO_CWP, timestamp0, BLOCK_LAYER);
+	cm.removeSnapshotUser(ZERO_CWP, timestamp1, BLOCK_LAYER);
 	assertNoOldSnapshots();
 
 	//--------------------------------------------------------------------------
 	// test case where old snapshot was saved and current snapshot is added_loaded
 	setupState(ChunkState.added_loaded);
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(1);
 	cm.save();
-	cm.getOrCreateWriteBuffer(ZERO_CWP, FIRST_LAYER, WriteBufferPolicy.copySnapshotArray);
+	cm.getOrCreateWriteBuffer(ZERO_CWP, BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 	cm.commitSnapshots(2); // now, snap that is saved is old.
 	cm.onSnapshotSaved(ZERO_CWP, [ChunkLayerTimestampItem(1)]);
 	assertNoOldSnapshots();

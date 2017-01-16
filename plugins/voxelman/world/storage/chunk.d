@@ -21,11 +21,13 @@ import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.utils.compression;
 
-enum FIRST_LAYER = 0;
+enum BLOCK_LAYER = 0;
 enum ENTITY_LAYER = 1;
+enum METADATA_LAYER = 2;
+enum NUM_CHUNK_LAYERS = 3;
 enum BLOCKS_DATA_LENGTH = CHUNK_SIZE_CUBE * BlockId.sizeof;
 enum BLOCKID_UNIFORM_FILL_BITS = bitsToUniformLength(BlockId.sizeof * 8);
-
+enum BLOCK_METADATA_UNIFORM_FILL_BITS = bitsToUniformLength(BlockMetadata.sizeof * 8);
 
 ubyte bitsToUniformLength(ubyte bits) {
 	if (bits == 1)

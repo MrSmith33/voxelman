@@ -132,8 +132,7 @@ public:
 		entityAccess = new BlockEntityAccess(chunkManager);
 		chunkObserverManager = new ChunkObserverManager();
 
-		ubyte numLayers = 2;
-		chunkManager.setup(numLayers);
+		chunkManager.setup(NUM_CHUNK_LAYERS);
 		chunkManager.isChunkSavingEnabled = true;
 
 		// Component connections

@@ -77,7 +77,7 @@ void genChunk(
 	ChunkGeneratorResult chunk = generator.generateChunk(
 		cwp.xyz, blocks);
 
-	enum layerId = FIRST_LAYER;
+	enum layerId = BLOCK_LAYER;
 	enum timestamp = 0;
 	enum numLayers = 1;
 

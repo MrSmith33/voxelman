@@ -76,6 +76,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, SeparatedBlockInfoTable blockI
 					// get mesh task.
 					auto blockLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
+					auto metadataLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 
 					chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
 
@@ -90,8 +91,10 @@ void meshWorkerThread(shared(Worker)* workerInfo, SeparatedBlockInfoTable blockI
 
 					uint[27] blockTimestamps;
 					uint[27] entityTimestamps;
+					uint[27] metadataTimestamps;
 					foreach(i; 0..27) blockTimestamps[i] = blockLayers[i].timestamp;
 					foreach(i; 0..27) entityTimestamps[i] = entityLayers[i].timestamp;
+					foreach(i; 0..27) metadataTimestamps[i] = metadataLayers[i].timestamp;
 
 					auto duration = MonoTime.currTime - taskStartTime;
 
@@ -100,6 +103,7 @@ void meshWorkerThread(shared(Worker)* workerInfo, SeparatedBlockInfoTable blockI
 					workerInfo.resultQueue.pushMessagePart(meshes);
 					workerInfo.resultQueue.pushMessagePart(blockTimestamps);
 					workerInfo.resultQueue.pushMessagePart(entityTimestamps);
+					workerInfo.resultQueue.pushMessagePart(metadataTimestamps);
 					workerInfo.resultQueue.pushMessagePart(duration);
 					workerInfo.resultQueue.endMessage();
 				}

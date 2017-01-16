@@ -9,6 +9,7 @@ import voxelman.math;
 public import voxelman.globalconfig;
 
 alias BlockId = ushort;
+alias BlockMetadata = ubyte;
 alias TimestampType = uint;
 alias DimensionId = short;
 

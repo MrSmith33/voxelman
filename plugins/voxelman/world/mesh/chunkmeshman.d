@@ -120,10 +120,11 @@ struct ChunkMeshMan
 		meshWorkers.stop();
 	}
 
-	void remeshChangedChunks(HashSet!ChunkWorldPos modifiedChunks,
+	// Returns number of chunks sent to be meshed
+	size_t remeshChangedChunks(HashSet!ChunkWorldPos modifiedChunks,
 		MeshingPassDoneHandler onDone = null)
 	{
-		if (modifiedChunks.length == 0) return;
+		if (modifiedChunks.length == 0) return 0;
 
 		size_t numMeshed;
 		foreach(cwp; modifiedChunks)
@@ -132,10 +133,12 @@ struct ChunkMeshMan
 				++numMeshed;
 		}
 
-		if (numMeshed == 0) return;
+		if (numMeshed == 0) return 0;
 
 		meshingPasses ~= MeshingPass(numMeshed, currentMeshGroupId, onDone);
 		++currentMeshGroupId;
+
+		return numMeshed;
 	}
 
 	void update()
@@ -177,14 +180,16 @@ struct ChunkMeshMan
 			MeshVertex[][2] meshes = w.resultQueue.popItem!(MeshVertex[][2])();
 			uint[27] blockTimestamps = w.resultQueue.popItem!(uint[27])();
 			uint[27] entityTimestamps = w.resultQueue.popItem!(uint[27])();
+			uint[27] metadataTimestamps = w.resultQueue.popItem!(uint[27])();
 			meshingPasses[0].totalDuration += w.resultQueue.popItem!Duration();
 
 			// Remove users
 			auto positions = AdjChunkPositions27(taskHeader.cwp);
 			foreach(i, pos; positions.all)
 			{
-				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], FIRST_LAYER);
+				chunkManager.removeSnapshotUser(pos, blockTimestamps[i], BLOCK_LAYER);
 				chunkManager.removeSnapshotUser(pos, entityTimestamps[i], ENTITY_LAYER);
+				chunkManager.removeSnapshotUser(pos, metadataTimestamps[i], METADATA_LAYER);
 			}
 
 			// save result for later. All new meshes are loaded at once to prevent holes in geometry.
@@ -315,10 +320,10 @@ struct ChunkMeshMan
 		AdjChunkLayers27 snapsBlocks;
 
 		// get compressed layers first to look at metadata.
-		snapsBlocks.central = chunkManager.getChunkSnapshot(snapsPositions.central, FIRST_LAYER);
+		snapsBlocks.central = chunkManager.getChunkSnapshot(snapsPositions.central, BLOCK_LAYER);
 		if (snapsBlocks.central.isNull())
 			return false;
-		snapsBlocks.adjacent6 = chunkManager.getChunkSnapshots(snapsPositions.adjacent6, FIRST_LAYER);
+		snapsBlocks.adjacent6 = chunkManager.getChunkSnapshots(snapsPositions.adjacent6, BLOCK_LAYER);
 
 		++numMeshChunkTasks;
 
@@ -340,14 +345,19 @@ struct ChunkMeshMan
 
 		// get uncompressed blocks to use for meshing
 		snapsBlocks.all = chunkManager.getChunkSnapshots(
-			snapsPositions.all, FIRST_LAYER, Yes.Uncompress);
+			snapsPositions.all, BLOCK_LAYER, Yes.Uncompress);
 
 		AdjChunkLayers27 snapsEntities;
 		snapsEntities.all = chunkManager.getChunkSnapshots(
 			snapsPositions.all, ENTITY_LAYER, Yes.Uncompress);
 
+		AdjChunkLayers27 snapsMetadatas;
+		snapsMetadatas.all = chunkManager.getChunkSnapshots(
+			snapsPositions.all, METADATA_LAYER, Yes.Uncompress);
+
 		ChunkLayerItem[27] blockLayers;
 		ChunkLayerItem[27] entityLayers;
+		ChunkLayerItem[27] metadataLayers;
 		foreach(i; 0..27)
 		{
 			if (!dimBorders.contains(snapsPositions.all[i].ivector3)) // out-of-border chunk
@@ -356,15 +366,17 @@ struct ChunkMeshMan
 			}
 			else
 			{
-				blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), FIRST_LAYER);
+				blockLayers[i] = ChunkLayerItem(snapsBlocks.all[i].get(), BLOCK_LAYER);
 				entityLayers[i] = ChunkLayerItem(snapsEntities.all[i].get(), ENTITY_LAYER);
+				metadataLayers[i] = ChunkLayerItem(snapsMetadatas.all[i].get(), METADATA_LAYER);
 			}
 		}
 
 		foreach(i, pos; snapsPositions.all)
 		{
-			blockLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, FIRST_LAYER);
+			blockLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, BLOCK_LAYER);
 			entityLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, ENTITY_LAYER);
+			metadataLayers[i].timestamp = chunkManager.addCurrentSnapshotUser(pos, METADATA_LAYER);
 		}
 
 		// debug
@@ -377,8 +389,10 @@ struct ChunkMeshMan
 				assert(length == BLOCKS_DATA_LENGTH, format("Wrong length of %s: %s", snapsPositions.all[i], length));
 			}
 		}
-		foreach (i, layer; entityLayers)
+		foreach (layer; entityLayers)
 			assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 2");
+		foreach (layer; metadataLayers)
+			assert(layer.type != StorageType.compressedArray, "[MESHING] Data needs to be uncompressed 3");
 
 		// send mesh task
 		auto header = MeshGenTaskHeader(MeshGenTaskType.genMesh, currentMeshGroupId, cwp);
@@ -387,6 +401,7 @@ struct ChunkMeshMan
 			taskQueue.pushMessagePart(header);
 			taskQueue.pushMessagePart(blockLayers);
 			taskQueue.pushMessagePart(entityLayers);
+			taskQueue.pushMessagePart(metadataLayers);
 			taskQueue.endMessage();
 			notify();
 		}

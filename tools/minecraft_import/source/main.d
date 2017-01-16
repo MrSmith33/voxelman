@@ -175,7 +175,7 @@ void transferRegions(ImportParams params, ServerWorld serverWorld, BlockInfoTabl
 	setDimensionBorders(serverWorld, params.outDimension);
 	transferRegionsImpl(params, serverWorld.chunkManager, serverWorld.chunkProvider, blocks);
 
-	updateMetadata(serverWorld.chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
+	updateMetadata(serverWorld.chunkManager.getWriteBuffers(BLOCK_LAYER), blocks);
 	serverWorld.chunkManager.commitSnapshots(TimestampType(0));
 }
 
@@ -237,7 +237,7 @@ void transferRegionsImpl(ImportParams params, ChunkManager chunkManager,
 			++numChunkColumns;
 		}
 
-		updateMetadata(chunkManager.getWriteBuffers(FIRST_LAYER), blocks);
+		updateMetadata(chunkManager.getWriteBuffers(BLOCK_LAYER), blocks);
 		chunkManager.commitSnapshots(TimestampType(0));
 		++currentRegionIndex;
 		chunkProvider.update();
@@ -321,7 +321,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 
 	auto cwp = ChunkWorldPos(pos, outDimension);
 
-	WriteBuffer* wb = chunkManager.getOrCreateWriteBuffer(cwp, FIRST_LAYER, WriteBufferPolicy.createUniform, true);
+	WriteBuffer* wb = chunkManager.getOrCreateWriteBuffer(cwp, BLOCK_LAYER, WriteBufferPolicy.createUniform, true);
 	if (wb.isUniform)
 	{
 		wb.layer.dataLength = BLOCKID_UNIFORM_FILL_BITS;
