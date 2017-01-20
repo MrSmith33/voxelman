@@ -37,6 +37,7 @@ import voxelman.core.packets;
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 import voxelman.world.blockentity.blockentityaccess;
+import voxelman.world.blockentity.blockentitydata;
 
 import voxelman.world.mesh.chunkmeshman;
 
@@ -267,6 +268,7 @@ public:
 
 		drawDebugChunkMetadata(nearBox);
 		drawDebugChunkGrid(nearBox);
+		drawDebugBlockentity(nearBox);
 	}
 
 	private void drawDebugChunkMetadata(WorldBox box)
@@ -290,6 +292,30 @@ public:
 
 			if (snap.isUniform) {
 				graphics.debugBatch.putCube(blockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
+			}
+		}
+	}
+
+	private void drawDebugBlockentity(WorldBox box)
+	{
+		import voxelman.world.block;
+		foreach(pos; box.positions)
+		{
+			ivec3 chunkPos = pos * CHUNK_SIZE;
+
+			auto snap = chunkManager.getChunkSnapshot(
+				ChunkWorldPos(pos, box.dimension), ENTITY_LAYER);
+
+			if (snap.isNull) continue;
+			auto map = getHashMapFromLayer(snap);
+			foreach(id, entity; map)
+			{
+				if (BlockEntityData(entity).type == BlockEntityType.localBlockEntity)
+				{
+					auto pos = BlockChunkPos(id);
+					auto entityPos = chunkPos + pos.vector;
+					graphics.debugBatch.putCube(vec3(entityPos)+0.25, vec3(0.5,0.5,0.5), Colors.orange, true);
+				}
 			}
 		}
 	}

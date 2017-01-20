@@ -20,6 +20,7 @@ enum Colors : Color4ub
 	magenta = Color4ub(255, 0, 255, 255),
 	yellow = Color4ub(255, 255, 0, 255),
 	gray = Color4ub(128, 128, 128, 255),
+	orange = Color4ub(255, 100, 0, 255),
 }
 
 
