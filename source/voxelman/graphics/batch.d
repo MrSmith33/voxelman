@@ -19,7 +19,7 @@ struct Batch
 	Buffer!ColoredVertex lineBuffer;
 	Buffer!ColoredVertex pointBuffer;
 
-	void putCube(vec3 pos, vec3 size, Color4ub color, bool fill)
+	void putCube(T1, T2)(Vector!(T1, 3) pos, Vector!(T2, 3) size, Color4ub color, bool fill)
 	{
 		if (fill)
 			putFilledBlock(triBuffer, pos, size, color);
@@ -27,7 +27,7 @@ struct Batch
 			putLineBlock(lineBuffer, pos, size, color);
 	}
 
-	void putCubeFace(vec3 cubePos, vec3 size, CubeSide side, Color4ub color, bool fill)
+	void putCubeFace(T1, T2)(Vector!(T1, 3) cubePos, Vector!(T2, 3) size, CubeSide side, Color4ub color, bool fill)
 	{
 		if (fill)
 			putFilledSide(triBuffer, cubePos, size, side, color);
@@ -35,19 +35,19 @@ struct Batch
 			putLineSide(lineBuffer, cubePos, size, side, color);
 	}
 
-	void putLine(vec3 start, vec3 end, Color4ub color)
+	void putLine(T1, T2)(Vector!(T1, 3) start, Vector!(T2, 3) end, Color4ub color)
 	{
 		lineBuffer.put(
 			ColoredVertex(start, color),
 			ColoredVertex(end, color));
 	}
 
-	void putPoint(vec3 pos, Color4ub color)
+	void putPoint(T)(Vector!(T, 3) pos, Color4ub color)
 	{
 		pointBuffer.put(ColoredVertex(pos, color));
 	}
 
-	void put3dGrid(vec3 pos, ivec3 count, vec3 offset, Color4ub color)
+	void put3dGrid(T1, T2)(Vector!(T1, 3) pos, ivec3 count, Vector!(T2, 3) offset, Color4ub color)
 	{
 		// x
 		foreach(i; 0..count.y)

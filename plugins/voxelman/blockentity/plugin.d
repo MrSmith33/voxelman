@@ -74,8 +74,8 @@ final class BlockEntityClient : IPlugin {
 			// remove
 			override void onMainActionRelease() {
 				if (placing) return;
-				auto blockId = worldInteraction.pickBlock();
-				if (isBlockEntity(blockId)) {
+				auto block = worldInteraction.pickBlock();
+				if (isBlockEntity(block.id)) {
 					connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector));
 				}
 			}
@@ -114,12 +114,13 @@ final class BlockEntityClient : IPlugin {
 
 	void onUpdateEvent(ref UpdateEvent event)
 	{
-		auto blockId = worldInteraction.pickBlock();
-		auto cwp = ChunkWorldPos(worldInteraction.blockPos);
+		auto block = worldInteraction.pickBlock();
+		auto bwp = worldInteraction.blockPos;
+		auto cwp = ChunkWorldPos(bwp);
 		igBegin("Debug");
-		if (isBlockEntity(blockId))
+		if (isBlockEntity(block.id))
 		{
-			ushort blockIndex = blockEntityIndexFromBlockId(blockId);
+			ushort blockIndex = blockEntityIndexFromBlockId(block.id);
 			BlockEntityData entity = clientWorld.entityAccess.getBlockEntity(cwp, blockIndex);
 			with(BlockEntityType) final switch(entity.type)
 			{
@@ -163,7 +164,8 @@ final class BlockEntityClient : IPlugin {
 		}
 		else
 		{
-			igTextf("Block: %s %s", blockId, blockPlugin.getBlocks()[blockId].name);
+			auto binfo = blockPlugin.getBlocks()[block.id];
+			igTextf("Block: %s:%s %s", block.id, block.metadata, binfo.name);
 		}
 		igEnd();
 	}
@@ -226,7 +228,7 @@ void multichunkMeshHandler(BlockEntityMeshingData meshingData)
 				ubvec3(meshingData.chunkPos),
 				meshingData.sides,
 				meshingData.blockIndex);
-	import voxelman.world.mesh.blockmesher : makeColoredFullBlockMesh;
+	import voxelman.world.mesh.blockmeshers.full : makeColoredFullBlockMesh;
 	makeColoredFullBlockMesh(blockMeshingData);
 }
 

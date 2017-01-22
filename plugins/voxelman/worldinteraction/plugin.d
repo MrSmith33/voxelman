@@ -77,14 +77,14 @@ class WorldInteractionPlugin : IPlugin
 		drawDebugCursor();
 	}
 
-	BlockId pickBlock()
+	BlockIdAndMeta pickBlock()
 	{
-		return clientWorld.worldAccess.getBlock(blockPos);
+		return clientWorld.worldAccess.getBlockIdAndMeta(blockPos);
 	}
 
-	void fillBox(WorldBox box, BlockId blockId)
+	void fillBox(WorldBox box, BlockId blockId, BlockMetadata blockMeta = 0)
 	{
-		connection.send(FillBlockBoxPacket(box, blockId));
+		connection.send(FillBlockBoxPacket(box, blockId, blockMeta));
 	}
 
 	void traceCursor()

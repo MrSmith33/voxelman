@@ -47,6 +47,7 @@ void makeRailMesh(BlockEntityMeshingData meshingData)
 				SideParams sideParams = SideParams(
 					ubvec3(meshingData.chunkPos),
 					calcColor(meshingData.blockIndex, meshingData.color),
+					0,
 					&meshingData.output[Solidity.solid]);
 				meshFullSideOccluded(sideToMesh, occlusions, sideParams);
 			}
@@ -59,6 +60,7 @@ void makeRailMesh(BlockEntityMeshingData meshingData)
 		SideParams sideParams = SideParams(
 			ubvec3(meshingData.chunkPos),
 			calcColor(meshingData.blockIndex, meshingData.color),
+			0,
 			&meshingData.output[Solidity.solid]);
 		meshFullSideOccluded(CubeSide.yneg, occlusions, sideParams);
 	}

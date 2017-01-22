@@ -78,7 +78,9 @@ void meshWorkerThread(shared(Worker)* workerInfo, SeparatedBlockInfoTable blockI
 					auto entityLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 					auto metadataLayers = workerInfo.taskQueue.popItem!(ChunkLayerItem[27]);
 
-					chunkMeshWorker(blockLayers, entityLayers, blockInfos, beInfos, geometry);
+					chunkMeshWorker(
+						blockLayers, entityLayers, metadataLayers,
+						blockInfos, beInfos, geometry);
 
 					import std.experimental.allocator;
 					import std.experimental.allocator.mallocator;
@@ -128,6 +130,7 @@ import voxelman.world.mesh.meshgenerator;
 void chunkMeshWorker(
 	ChunkLayerItem[27] blockLayers,
 	ChunkLayerItem[27] entityLayers,
+	ChunkLayerItem[27] metadataLayers,
 	SeparatedBlockInfoTable blockInfos,
 	BlockEntityInfoTable beInfos,
 	ref Buffer!MeshVertex[3] geometry)
@@ -145,5 +148,5 @@ void chunkMeshWorker(
 
 	ExtendedChunk chunk;
 	chunk.create(blockLayers);
-	genGeometry(chunk, entityLayers, beInfos, blockInfos, geometry);
+	genGeometry(chunk, entityLayers, metadataLayers, beInfos, blockInfos, geometry);
 }

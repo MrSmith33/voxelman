@@ -17,6 +17,18 @@ enum CubeSide : ubyte
 	yneg = 5,
 }
 
+enum SideMask : ubyte
+{
+	zneg = 0b_00_0001,
+	zpos = 0b_00_0010,
+
+	xpos = 0b_00_0100,
+	xneg = 0b_00_1000,
+
+	ypos = 0b_01_0000,
+	yneg = 0b_10_0000,
+}
+
 enum CubeCorner : ubyte
 {
 	xneg_yneg_zneg,

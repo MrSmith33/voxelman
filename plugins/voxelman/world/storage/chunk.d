@@ -25,9 +25,15 @@ enum BLOCK_LAYER = 0;
 enum ENTITY_LAYER = 1;
 enum METADATA_LAYER = 2;
 enum NUM_CHUNK_LAYERS = 3;
+
 enum BLOCKS_DATA_LENGTH = CHUNK_SIZE_CUBE * BlockId.sizeof;
-enum BLOCKID_UNIFORM_FILL_BITS = bitsToUniformLength(BlockId.sizeof * 8);
-enum BLOCK_METADATA_UNIFORM_FILL_BITS = bitsToUniformLength(BlockMetadata.sizeof * 8);
+enum BLOCKID_UNIFORM_FILL_BITS = bitsToUniformLength!BlockId;
+enum BLOCK_METADATA_UNIFORM_FILL_BITS = bitsToUniformLength!BlockMetadata;
+
+ubyte bitsToUniformLength(T)()
+{
+	return bitsToUniformLength(T.sizeof * 8);
+}
 
 ubyte bitsToUniformLength(ubyte bits) {
 	if (bits == 1)
@@ -165,14 +171,6 @@ struct WriteBuffer
 	// If true, after commit current snapshot is null.
 	bool removeSnapshot = false;
 
-	this(Layer)(Layer _layer) if (isSomeLayer!Layer) {
-		if (_layer.type == StorageType.uniform) {
-			makeUniform(_layer.uniformData, _layer.dataLength, _layer.metadata);
-		} else {
-			applyLayer(_layer, layer);
-		}
-	}
-
 	void makeUniform(ulong uniformData, LayerDataLenType dataLength, ushort metadata = 0) {
 		freeLayerArray(layer);
 		layer.uniformData = uniformData;
@@ -183,7 +181,7 @@ struct WriteBuffer
 	void makeUniform(T)(ulong uniformData, ushort metadata = 0) {
 		freeLayerArray(layer);
 		layer.uniformData = uniformData;
-		layer.dataLength = bitsToUniformLength(T.sizeof * 8);
+		layer.dataLength = bitsToUniformLength!T;
 		layer.metadata = metadata;
 	}
 
@@ -358,6 +356,7 @@ struct ChunkChange
 {
 	uvec3 a, b; // box
 	BlockId blockId;
+	BlockMetadata blockMeta;
 }
 
 // container of single block change.
@@ -366,6 +365,7 @@ struct BlockChange
 {
 	ushort index;
 	BlockId blockId;
+	BlockMetadata blockMeta;
 }
 
 ushort[2] areaOfImpact(BlockChange[] changes)
@@ -387,7 +387,7 @@ ushort[2] areaOfImpact(BlockChange[] changes)
 // stores all used snapshots of the chunk.
 struct BlockDataSnapshot
 {
-	BlockData blockData;
+	ChunkLayerData blockData;
 	TimestampType timestamp;
 	uint numUsers;
 }
@@ -456,16 +456,24 @@ BlockId getBlockId(Layer)(const ref Layer layer, int x, int y, int z)
 	return getBlockId(layer, BlockChunkIndex(x, y, z));
 }
 
+T getLayerItemNoncompressed(T, Layer)(const ref Layer layer, BlockChunkIndex index)
+	if (isSomeLayer!Layer)
+{
+	if (layer.type == StorageType.fullArray) return (cast(T*)layer.dataPtr)[index];
+	if (layer.type == StorageType.uniform) return cast(T)layer.uniformData;
+	assert(false);
+}
+
 bool isUniform(Layer)(const ref Layer layer) @property
 	if (isSomeLayer!Layer)
 {
 	return layer.type == StorageType.uniform;
 }
 
-BlockData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
+ChunkLayerData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
 	if (isSomeLayer!Layer)
 {
-	BlockData res;
+	ChunkLayerData res;
 	res.uniform = layer.type == StorageType.uniform;
 	res.metadata = layer.metadata;
 	res.layerId = layerId;
@@ -478,7 +486,7 @@ BlockData toBlockData(Layer)(const ref Layer layer, ubyte layerId)
 	return res;
 }
 
-ChunkLayerItem fromBlockData(const ref BlockData bd)
+ChunkLayerItem fromBlockData(const ref ChunkLayerData bd)
 {
 	if (bd.uniform)
 		return ChunkLayerItem(bd.layerId, bd.dataLength, 0, bd.uniformType, bd.metadata);
@@ -569,7 +577,8 @@ ubyte[] decompressLayerData(const ubyte[] _compressedData, ubyte[] outBuffer)
 }
 
 // Stores blocks of the chunk.
-struct BlockData
+// Still used because ChunkLayerSnap needs custom (de)serizalizer.
+struct ChunkLayerData
 {
 	void validate()
 	{

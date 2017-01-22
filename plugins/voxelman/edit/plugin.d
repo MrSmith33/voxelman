@@ -81,6 +81,7 @@ class EditPlugin : IPlugin
 		fillTool.connection = pluginman.getPlugin!NetClientPlugin;
 		fillTool.worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		fillTool.graphics = pluginman.getPlugin!GraphicsPlugin;
+		fillTool.blockInfos = blockManager.getBlocks();
 
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
@@ -100,7 +101,7 @@ class EditPlugin : IPlugin
 			}
 			else
 			{
-				fillTool.currentBlock = cast(BlockId)blockId;
+				fillTool.currentBlock = BlockIdAndMeta(cast(BlockId)blockId);
 			}
 		}
 	}

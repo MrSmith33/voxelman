@@ -22,12 +22,13 @@ import voxelman.core.config;
 import voxelman.utils.worker;
 import voxelman.world.storage;
 
+import voxelman.world.mesh.config;
 import voxelman.world.mesh.utils;
-import voxelman.world.mesh.blockmesher;
 import voxelman.world.mesh.extendedchunk;
 
 void genGeometry(const ref ExtendedChunk chunk,
 	ChunkLayerItem[27] entityLayers,
+	ChunkLayerItem[27] metadataLayers,
 	BlockEntityInfoTable beInfos,
 	SeparatedBlockInfoTable blockInfoTable,
 	ref Buffer!MeshVertex[3] geometry)
@@ -39,16 +40,16 @@ void genGeometry(const ref ExtendedChunk chunk,
 	BlockEntityMap[27] maps;
 	foreach (i, layer; entityLayers) maps[i] = getHashMapFromLayer(layer);
 
-	BlockEntityData getBlockEntity(ushort blockIndex, BlockEntityMap map) {
-		ulong* entity = blockIndex in map;
+	BlockEntityData getBlockEntity(ushort index, BlockEntityMap map) {
+		ulong* entity = index in map;
 		if (entity is null) return BlockEntityData.init;
 		return BlockEntityData(*entity);
 	}
 
-	BlockShape getEntityShape(BlockId blockId, ushort blockIndex)
+	BlockShape getEntityShape(BlockId blockId, ushort index)
 	{
 		ushort entityBlockIndex = blockEntityIndexFromBlockId(blockId);
-		auto cb = chunkAndBlockAt27FromExt(blockIndex);
+		auto cb = chunkAndBlockAt27FromExt(index);
 		BlockEntityData data = getBlockEntity(entityBlockIndex, maps[cb.chunk]);
 		auto entityChunkPos = BlockChunkPos(entityBlockIndex);
 		ivec3 blockChunkPos = ivec3(cb.bx, cb.by, cb.bz);
@@ -56,21 +57,38 @@ void genGeometry(const ref ExtendedChunk chunk,
 		return beInfos[data.id].blockShape(blockChunkPos, blockEntityPos, data);
 	}
 
-	pragma(inline, true)
-	ShapeSideMask getSideMask(size_t blockIndex, ubyte side)
+	BlockShape getShape(BlockId blockId, ushort index)
 	{
-		BlockId blockId = chunk.allBlocks.ptr[blockIndex];
-		if (isBlockEntity(blockId)) {
-			return getEntityShape(blockId, cast(ushort)blockIndex).sideMasks[side];
-		} else {
-			return blockInfoTable.sideMasks[blockId][side];
+		if (isBlockEntity(blockId))
+		{
+			return getEntityShape(blockId, index);
+		}
+		else
+		{
+			if (blockInfoTable.shapeDependsOnMeta[blockId])
+			{
+				auto cb = chunkAndBlockAt27FromExt(index);
+				auto blockMetadata = getLayerItemNoncompressed!BlockMetadata(metadataLayers[cb.chunk], BlockChunkIndex(cb.bx, cb.by, cb.bz));
+				return blockInfoTable.shapeMetaHandler[blockId](blockMetadata);
+			}
+			else
+			{
+				return blockInfoTable.shape[blockId];
+			}
 		}
 	}
 
 	pragma(inline, true)
-	bool isSideRendered(size_t blockIndex, ubyte side, const ShapeSideMask currentMask)
+	ShapeSideMask getSideMask(ushort index, ubyte side)
 	{
-		return blockInfoTable.sideTable.get(currentMask, getSideMask(blockIndex, side));
+		BlockId blockId = chunk.allBlocks.ptr[index];
+		return getShape(blockId, index).sideMasks[side];
+	}
+
+	pragma(inline, true)
+	bool isSideRendered(size_t index, ubyte side, const ShapeSideMask currentMask)
+	{
+		return blockInfoTable.sideTable.get(currentMask, getSideMask(cast(ushort)index, side));
 	}
 
 	ubyte checkSideSolidities(const ref ShapeSideMask[6] sideMasks, size_t index)
@@ -91,17 +109,14 @@ void genGeometry(const ref ExtendedChunk chunk,
 	// 0--3 // corner numbering of face verticies
 	// |\ |
 	// 1--2
-	ubyte getCorners(size_t blockIndex)
+	pragma(inline, true)
+	ubyte getCorners(size_t index)
 	{
-		BlockId blockId = chunk.allBlocks.ptr[blockIndex];
-
-		if (isBlockEntity(blockId)) {
-			return getEntityShape(blockId, cast(ushort)blockIndex).corners;
-		} else {
-			return blockInfoTable.corners[blockId];
-		}
+		BlockId blockId = chunk.allBlocks.ptr[index];
+		return getShape(blockId, cast(ushort)index).corners;
 	}
 
+	static if (AO_ENABLED)
 	ubyte[4] calcFaceCornerOcclusions(ushort blockIndex, CubeSide side)
 	{
 		int index = blockIndex + sideIndexOffsets[side];
@@ -132,22 +147,36 @@ void genGeometry(const ref ExtendedChunk chunk,
 		return [result0, result1, result2, result3];
 	}
 
+	static if (!AO_ENABLED)
+	ubyte[4] calcFaceCornerOcclusions(ushort blockIndex, CubeSide side)
+	{
+		return [0,0,0,0];
+	}
+
 	void meshBlock(BlockId blockId, ushort index, ubvec3 bpos)
 	{
 		const BlockInfo binfo = blockInfoTable.blockInfos[blockId];
 		if (binfo.isVisible)
 		{
-			ubyte sides = checkSideSolidities(binfo.shape.sideMasks, index);
+			auto shape = getShape(blockId, index);
+			ubyte sides = checkSideSolidities(shape.sideMasks, index);
 
-			if (binfo.shape.hasInternalGeometry || sides != 0)
+			if ((sides != 0) || shape.hasInternalGeometry)
 			{
+				BlockMetadata blockMetadata;
+				if (binfo.meshDependOnMeta)
+				{
+					auto cb = chunkAndBlockAt27FromExt(cast(ushort)index);
+					blockMetadata = getLayerItemNoncompressed!BlockMetadata(metadataLayers[cb.chunk], BlockChunkIndex(cb.bx, cb.by, cb.bz));
+				}
 				auto data = BlockMeshingData(
 					&geometry[binfo.solidity],
 					&calcFaceCornerOcclusions,
 					binfo.color,
 					bpos,
 					sides,
-					index);
+					index,
+					blockMetadata);
 				binfo.meshHandler(data);
 			}
 		}
@@ -155,7 +184,7 @@ void genGeometry(const ref ExtendedChunk chunk,
 
 	void meshBlockEntity(BlockId blockId, ushort index, ubvec3 bpos)
 	{
-		ubyte sides = checkSideSolidities(fullShapeSides, index);
+		ubyte sides = checkSideSolidities(getShape(blockId, index).sideMasks, index);
 		ushort entityBlockIndex = blockEntityIndexFromBlockId(blockId);
 		BlockEntityData data = getBlockEntity(entityBlockIndex, maps[26]);
 

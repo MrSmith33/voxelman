@@ -69,7 +69,7 @@ mixin template EntityTestPluginClient()
 		editPlugin.registerTool(
 			new class ITool
 			{
-				this() { name = "test.entity.place_entity"; }
+				this() { name = "test.sand_entity"; }
 				override void onMainActionRelease() {
 					placeEntity();
 				}

@@ -13,6 +13,12 @@ alias BlockMetadata = ubyte;
 alias TimestampType = uint;
 alias DimensionId = short;
 
+struct BlockIdAndMeta
+{
+	BlockId id;
+	BlockMetadata metadata;
+}
+
 enum CHUNK_SIZE = 32;
 enum CHUNK_SIZE_BITS = CHUNK_SIZE - 1;
 enum CHUNK_SIZE_SQR = CHUNK_SIZE * CHUNK_SIZE;

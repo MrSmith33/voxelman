@@ -87,6 +87,12 @@ enum WriteBufferPolicy
 	copySnapshotArray,
 }
 
+struct ChunkLayerInfo
+{
+	/// Defines the size of
+	LayerDataLenType uniformExpansionType;
+}
+
 enum MAX_CHUNK_LAYERS = 8;
 
 final class ChunkManager {
@@ -116,13 +122,20 @@ final class ChunkManager {
 	// total number of snapshot users of all 'snapshots'
 	// used to change state from added_loaded to removed_loaded_used
 	private size_t[ChunkWorldPos] totalSnapshotUsers;
+
 	ubyte numLayers;
+	private ChunkLayerInfo[] layerInfos;
 
 	void setup(ubyte _numLayers) {
 		numLayers = _numLayers;
 		snapshots.length = numLayers;
 		oldSnapshots.length = numLayers;
 		writeBuffers.length = numLayers;
+		layerInfos.length = numLayers;
+	}
+
+	void setLayerInfo(ChunkLayerInfo info, ubyte layer) {
+		layerInfos[layer] = info;
 	}
 
 	/// Performs save of all modified chunks.
@@ -163,6 +176,10 @@ final class ChunkManager {
 		with(ChunkState) {
 			return state == added_loaded || state == added_loading;
 		}
+	}
+
+	bool hasSnapshot(ChunkWorldPos cwp, ubyte layer) {
+		return (cwp in snapshots[layer]) !is null;
 	}
 
 	/// Sets number of users of chunk at cwp.
@@ -209,7 +226,9 @@ final class ChunkManager {
 			}
 			else
 			{
-				return Nullable!ChunkLayerSnap(ChunkLayerSnap.init);
+				auto res = ChunkLayerSnap.init;
+				res.dataLength = layerInfos[layer].uniformExpansionType;
+				return Nullable!ChunkLayerSnap(res);
 			}
 		}
 
@@ -530,6 +549,7 @@ final class ChunkManager {
 		assert(cwp !in writeBuffers[layer]);
 		auto wb = WriteBuffer.init;
 		wb.layer.layerId = layer;
+		wb.layer.dataLength = layerInfos[layer].uniformExpansionType;
 		writeBuffers[layer][cwp] = wb;
 		addInternalObserver(cwp); // prevent unload until commit
 		return cwp in writeBuffers[layer];

@@ -47,9 +47,9 @@ struct ViewRadiusPacket
 
 struct ChunkDataPacket
 {
-	import voxelman.world.storage.chunk : BlockData;
+	import voxelman.world.storage.chunk : ChunkLayerData;
 	ivec4 chunkPos;
-	BlockData[] layers;
+	ChunkLayerData[] layers;
 }
 
 struct DimensionInfoPacket
@@ -67,9 +67,10 @@ struct MultiblockChangePacket
 
 struct FillBlockBoxPacket
 {
-	import voxelman.core.config : BlockId;
+	import voxelman.core.config : BlockId, BlockMetadata;
 	WorldBox box;
 	BlockId blockId;
+	BlockMetadata blockMeta;
 }
 
 struct PlaceBlockEntityPacket

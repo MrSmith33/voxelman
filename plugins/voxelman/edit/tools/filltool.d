@@ -6,10 +6,12 @@ Authors: Andrey Penechko.
 
 module voxelman.edit.tools.filltool;
 
+import voxelman.log;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.core.packets;
 import voxelman.world.storage;
+import voxelman.world.block.utils;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;
@@ -23,8 +25,10 @@ final class FillTool : ITool
 	WorldInteractionPlugin worldInteraction;
 	GraphicsPlugin graphics;
 	NetClientPlugin connection;
+	BlockInfoTable blockInfos;
 
-	BlockId currentBlock = 4;
+	BlockIdAndMeta currentBlock = BlockIdAndMeta(4);
+
 	BlockWorldPos startingPos;
 	EditState state;
 	WorldBox selection;
@@ -112,11 +116,22 @@ final class FillTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			worldInteraction.fillBox(selection, currentBlock);
+			worldInteraction.fillBox(selection, currentBlock.id, currentBlock.metadata);
 		}
 	}
 
 	override void onTertiaryActionRelease() {
-		currentBlock = worldInteraction.pickBlock();
+		setCurrentBlock(worldInteraction.pickBlock());
+	}
+
+	override void onRotateAction() {
+		if (auto handler = blockInfos[currentBlock.id].rotationHandler)
+		{
+			currentBlock.metadata = handler(currentBlock.metadata);
+		}
+	}
+
+	void setCurrentBlock(BlockIdAndMeta block) {
+		currentBlock = block;
 	}
 }

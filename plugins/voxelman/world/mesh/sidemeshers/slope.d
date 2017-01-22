@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.mesh.sidemeshers.slope;
 
+import voxelman.log;
 import voxelman.container.buffer;
 import voxelman.math;
 import voxelman.geometry.cube;
@@ -35,26 +36,33 @@ void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 		[cast(ubyte)(vert2AoMult * r), cast(ubyte)(vert2AoMult * g), cast(ubyte)(vert2AoMult * b)],
 		[cast(ubyte)(vert3AoMult * r), cast(ubyte)(vert3AoMult * g), cast(ubyte)(vert3AoMult * b)]];
 
+	ubyte[3] indicies = slopeFaceCornerIndexes[d.rotation][side];
+	//ubyte[3] colorIndicies = slopeFaceCornerColorIndexes[side];
+	ubyte[3] colorIndicies = slopeFaceCornerColorIndexes[d.rotation];
 	d.buffer.put(
 		cast(MeshVertex)MeshVertex2(
-			slopeFaces[9*side  ] + d.blockPos.x,
-			slopeFaces[9*side+1] + d.blockPos.y,
-			slopeFaces[9*side+2] + d.blockPos.z,
-			finalColors[slopeFaceCornerIndexes[side][0]]),
+			cubeVerticies[indicies[0]][0] + d.blockPos.x,
+			cubeVerticies[indicies[0]][1] + d.blockPos.y,
+			cubeVerticies[indicies[0]][2] + d.blockPos.z,
+			finalColors[colorIndicies[0]]),
 		cast(MeshVertex)MeshVertex2(
-			slopeFaces[9*side+3] + d.blockPos.x,
-			slopeFaces[9*side+4] + d.blockPos.y,
-			slopeFaces[9*side+5] + d.blockPos.z,
-			finalColors[slopeFaceCornerIndexes[side][1]]),
+			cubeVerticies[indicies[1]][0] + d.blockPos.x,
+			cubeVerticies[indicies[1]][1] + d.blockPos.y,
+			cubeVerticies[indicies[1]][2] + d.blockPos.z,
+			finalColors[colorIndicies[1]]),
 		cast(MeshVertex)MeshVertex2(
-			slopeFaces[9*side+6] + d.blockPos.x,
-			slopeFaces[9*side+7] + d.blockPos.y,
-			slopeFaces[9*side+8] + d.blockPos.z,
-			finalColors[slopeFaceCornerIndexes[side][2]])
+			cubeVerticies[indicies[2]][0] + d.blockPos.x,
+			cubeVerticies[indicies[2]][1] + d.blockPos.y,
+			cubeVerticies[indicies[2]][2] + d.blockPos.z,
+			finalColors[colorIndicies[2]])
 	);
 }
 
-immutable ubyte[3][6] slopeFaceCornerIndexes = [
+immutable ubyte[3][6] slopeColorIndexesFromRotation = [
+	[1,3,0], [1,2,0], [1,2,3], [0,2,3]];
+
+immutable ubyte[3][6] slopeFaceCornerColorIndexes = [
+	// zneg
 	[1, 3, 0], // zneg
 	[1, 3, 0], // zpos
 	[1, 2, 3], // xpos valid TODO other
@@ -62,33 +70,20 @@ immutable ubyte[3][6] slopeFaceCornerIndexes = [
 	[1, 3, 0], // ypos
 	[1, 3, 0]]; // yneg
 
-// mesh for single block
-immutable ubyte[9 * 6] slopeFaces =
-[
-	1, 0, 0, // triangle 1 : begin // zneg
-	0, 1, 0,
-	1, 1, 0, // triangle 1 : end
-
-	0, 0, 1, // zpos
-	1, 1, 1,
-	0, 1, 1,
-
-	1, 0, 1, // xpos
-	1, 0, 0,
-	1, 1, 0,
-
-	0, 1, 0, // xneg
-	0, 0, 0,
-	0, 0, 1,
-
-	0, 1, 1, // ypos
-	1, 1, 0,
-	0, 1, 0,
-
-	1, 0, 1, // yneg
-	0, 0, 0,
-	1, 0, 0,
+// 0--3 // corner numbering of face verticies
+// |  |
+// 1--2
+// 2-1  2      2  0-2
+// |/   |\    /|   \|
+// 0    0-1  0-1    1
+//
+//  0    1    2    3  rotation
+// CCW
+// slopeFaceCornerIndexes[rotation,4][side,6][x/y/z,3]
+immutable ubyte[3][6][4] slopeFaceCornerIndexes =
+[	// zneg    zpos    xpos    xneg    ypos    yneg
+	[[1,4,5],[2,7,6],[3,5,7],[0,6,4],[6,5,4],[3,0,1],], // rotation 0
+	[[1,0,5],[2,3,6],[3,1,7],[0,2,4],[6,7,4],[3,2,1],], // rotation 1
+	[[1,0,4],[2,3,7],[3,1,5],[0,2,6],[6,7,5],[3,2,0],], // rotation 2
+	[[5,0,4],[6,3,7],[7,1,5],[4,2,6],[4,7,5],[1,2,0],], // rotation 3
 ];
-
-// internal geometry
-immutable ubyte[4] slopeIntIndexes = [4, 2, 3, 5];

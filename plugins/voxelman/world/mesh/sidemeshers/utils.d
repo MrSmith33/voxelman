@@ -41,6 +41,7 @@ struct SideParams
 {
 	ubvec3 blockPos;
 	ubvec3 color;
+	ubyte rotation;
 	Buffer!MeshVertex* buffer;
 }
 
@@ -102,9 +103,9 @@ void meshColoredQuad(bool flipped, T)(
 {
 	// index order
 	static if (flipped)
-		enum ind {i0=1, i1=3, i2=0, i3=1, i4=2, i5=3}
-	else
 		enum ind {i0=1, i1=2, i2=0, i3=0, i4=2, i5=3}
+	else
+		enum ind {i0=1, i1=3, i2=0, i3=1, i4=2, i5=3}
 
 	buffer.put(
 		cast(MeshVertex)MeshVertex2(

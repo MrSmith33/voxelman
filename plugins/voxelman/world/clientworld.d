@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.clientworld;
 
 import std.datetime : MonoTime, Duration, usecs, dur;
+import derelict.imgui.imgui;
 import voxelman.log;
 import netlib;
 import pluginlib;
@@ -34,6 +35,7 @@ import voxelman.dbg.plugin;
 import voxelman.net.packets;
 import voxelman.core.packets;
 
+import voxelman.world.block;
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 import voxelman.world.blockentity.blockentityaccess;
@@ -91,6 +93,7 @@ public:
 	bool doUpdateObserverPosition = true;
 	bool drawDebugMetadata;
 	size_t totalLoadedChunks;
+	size_t lastFrameLoadedChunks;
 
 	// Observer data
 	vec3 updatedCameraPos;
@@ -122,7 +125,7 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_RIGHT_BRACKET, "key.incViewRadius", null, &onIncViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_LEFT_BRACKET, "key.decViewRadius", null, &onDecViewRadius));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_U, "key.togglePosUpdate", null, &onTogglePositionUpdate));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F2, "key.toggleMetaData", null, &onToggleMetaData));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F2, "key.toggleChunkGrid", null, &onToggleChunkGrid));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewBox));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
 
@@ -140,6 +143,8 @@ public:
 		entityAccess = new BlockEntityAccess(chunkManager);
 
 		chunkManager.setup(NUM_CHUNK_LAYERS);
+		chunkManager.setLayerInfo(ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS), METADATA_LAYER);
+
 		chunkManager.loadChunkHandler = &handleLoadChunk;
 		chunkManager.cancelLoadChunkHandler = &handleLoadChunk;
 		chunkManager.isLoadCancelingEnabled = true;
@@ -219,8 +224,8 @@ public:
 		doUpdateObserverPosition = !doUpdateObserverPosition;
 	}
 
-	private void onToggleMetaData(string) {
-		drawDebugMetadata = !drawDebugMetadata;
+	private void onToggleChunkGrid(string) {
+		chunkDebug_showGrid = !chunkDebug_showGrid;
 	}
 
 	private void onRemeshViewBox(string) {
@@ -253,44 +258,123 @@ public:
 		updateObserverPosition();
 		chunkObserverManager.update();
 		chunkMeshMan.update();
+	}
 
-		if (drawDebugMetadata) {
-			chunkMeshMan.drawDebug(graphics.debugBatch);
-			drawDebugChunkInfo();
+	private void showDebugGui()
+	{
+		igBegin("Debug");
+
+		// heading
+		vec3 target = graphics.camera.target;
+		vec2 heading = graphics.camera.heading;
+		igTextf("Heading: %.1f %.1f", heading.x, heading.y);
+		igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
+
+		// position
+		vec3 pos = graphics.camera.position;
+		igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
+		ChunkWorldPos chunkPos = observerPosition;
+		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+
+		// dimension
+		igTextf("Dimension: %s", chunkPos.w); igSameLine();
+			if (igButton("-##decDimension")) decDimension(); igSameLine();
+			if (igButton("+##incDimension")) incDimension();
+
+		// view radius
+		igTextf("View radius: %s", viewRadius); igSameLine();
+			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
+			if (igButton("+##incVRadius")) incViewRadius();
+
+		if (igCollapsingHeader("Chunks"))
+		{
+			drawDebugChunkInfoGui();
+
+			igTextf("Chunks per frame loaded: %s", totalLoadedChunks - lastFrameLoadedChunks);
+			lastFrameLoadedChunks = totalLoadedChunks;
+			igTextf("Chunks total loaded: %s", totalLoadedChunks);
+			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
+
+			with(chunkMeshMan) {
+				igTextf("Chunks to mesh: %s", numMeshChunkTasks);
+				igTextf("New meshes: %s", newChunkMeshes.length);
+				size_t sum;
+				foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
+				igTextf("Task Queues: %s", sum);
+				sum = 0;
+				foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
+				igTextf("Res Queues: %s", sum);
+				float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
+				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
+			}
 		}
+		igEnd();
+	}
+
+	private bool chunkDebug_showGrid;
+	private int chunkDebug_viewRadius = 2;
+	private bool chunkDebug_showUniform;
+	private bool chunkDebug_showSideMetadata;
+	private bool chunkDebug_showBlockEntities;
+	private bool chunkDebug_showWastedMeshes;
+	private bool chunkDebug_showChunkLayers;
+
+	private void drawDebugChunkInfoGui()
+	{
+		// debug view radius
+		igTextf("Debug radius: %s", chunkDebug_viewRadius);
+		igSameLine();
+			if (igButton("-##decDebugRadius"))
+				--chunkDebug_viewRadius;
+			igSameLine();
+			if (igButton("+##incDebugRadius"))
+				++chunkDebug_viewRadius;
+
+		igCheckbox("show grid", &chunkDebug_showGrid);
+		igCheckbox("show uniform", &chunkDebug_showUniform);
+		igCheckbox("show side meta", &chunkDebug_showSideMetadata);
+		igCheckbox("show block entities", &chunkDebug_showBlockEntities);
+		igCheckbox("show wasted meshes", &chunkDebug_showWastedMeshes);
+		igCheckbox("show chunk layers", &chunkDebug_showChunkLayers);
 	}
 
 	private void drawDebugChunkInfo()
 	{
-		enum nearRadius = 2;
 		ChunkWorldPos chunkPos = BlockWorldPos(graphics.camera.position, currentDimension);
-		WorldBox nearBox = calcBox(chunkPos, nearRadius);
+		chunkDebug_viewRadius = clamp(chunkDebug_viewRadius, 0, 10);
+		WorldBox nearBox = calcBox(chunkPos, chunkDebug_viewRadius);
 
-		drawDebugChunkMetadata(nearBox);
-		drawDebugChunkGrid(nearBox);
-		drawDebugBlockentity(nearBox);
+		if (chunkDebug_showGrid) drawDebugChunkGrid(nearBox);
+		if (chunkDebug_showSideMetadata) drawDebugChunkSideMetadata(nearBox);
+		if (chunkDebug_showUniform) drawDebugChunkUniform(nearBox);
+		if (chunkDebug_showBlockEntities) drawDebugBlockentity(nearBox);
+		if (chunkDebug_showWastedMeshes) chunkMeshMan.drawDebug(graphics.debugBatch);
+		if (chunkDebug_showChunkLayers) drawDebugChunkLayers(nearBox);
 	}
 
-	private void drawDebugChunkMetadata(WorldBox box)
+	private void drawDebugChunkSideMetadata(WorldBox box)
 	{
-		import voxelman.world.block;
 		foreach(pos; box.positions)
 		{
 			vec3 blockPos = pos * CHUNK_SIZE;
-
-			auto snap = chunkManager.getChunkSnapshot(
-				ChunkWorldPos(pos, box.dimension), BLOCK_LAYER);
-
+			auto snap = chunkManager.getChunkSnapshot(ChunkWorldPos(pos, box.dimension), BLOCK_LAYER);
 			if (snap.isNull) continue;
-			foreach(ubyte side; 0..6)
-			{
+
+			foreach(ubyte side; 0..6) {
 				Solidity solidity = chunkSideSolidity(snap.metadata, cast(CubeSide)side);
 				static Color4ub[3] colors = [Colors.white, Colors.gray, Colors.black];
 				Color4ub color = colors[solidity];
 				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(CubeSide)side, color, true);
 			}
+		}
+	}
 
-			if (snap.isUniform) {
+	private void drawDebugChunkUniform(WorldBox box)
+	{
+		foreach(pos; box.positions) {
+			vec3 blockPos = pos * CHUNK_SIZE;
+			auto snap = chunkManager.getChunkSnapshot(ChunkWorldPos(pos, box.dimension), BLOCK_LAYER);
+			if (!snap.isNull && snap.isUniform) {
 				graphics.debugBatch.putCube(blockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
 			}
 		}
@@ -298,7 +382,6 @@ public:
 
 	private void drawDebugBlockentity(WorldBox box)
 	{
-		import voxelman.world.block;
 		foreach(pos; box.positions)
 		{
 			ivec3 chunkPos = pos * CHUNK_SIZE;
@@ -311,6 +394,12 @@ public:
 			foreach(id, entity; map)
 			{
 				if (BlockEntityData(entity).type == BlockEntityType.localBlockEntity)
+				{
+					auto pos = BlockChunkPos(id);
+					auto entityPos = chunkPos + pos.vector;
+					graphics.debugBatch.putCube(vec3(entityPos)+0.25, vec3(0.5,0.5,0.5), Colors.red, true);
+				}
+				else if (BlockEntityData(entity).type == BlockEntityType.foreignBlockEntity)
 				{
 					auto pos = BlockChunkPos(id);
 					auto entityPos = chunkPos + pos.vector;
@@ -328,6 +417,25 @@ public:
 		graphics.debugBatch.put3dGrid(gridPos, gridCount, gridOffset, Colors.blue);
 	}
 
+	private void drawDebugChunkLayers(WorldBox box)
+	{
+		foreach(pos; box.positions)
+		{
+			auto cwp = ChunkWorldPos(pos, box.dimension);
+			ivec3 chunkPos = pos * CHUNK_SIZE + CHUNK_SIZE/2;
+			graphics.debugBatch.putCube(vec3(chunkPos)+vec3(0.75, 0, 0), vec3(0.25,1,1), Colors.red, true);
+			foreach(ubyte layer; 0..chunkManager.numLayers)
+			{
+				ivec3 layerBlockPos = chunkPos;
+				layerBlockPos.x += layer + 1;
+				if (chunkManager.hasSnapshot(cwp, layer))
+					graphics.debugBatch.putCube(vec3(layerBlockPos)+0.25, vec3(0.5,0.5,0.5), Colors.white, true);
+				else
+					graphics.debugBatch.putCube(vec3(layerBlockPos)+0.25, vec3(0.5,0.5,0.5), Colors.black, false);
+			}
+		}
+	}
+
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
 		chunkManager.commitSnapshots(currentTimestamp);
@@ -340,6 +448,8 @@ public:
 			sendPosition(event.deltaTime);
 
 		dbg.setVar("wasted client loads", wastedClientLoads);
+		showDebugGui();
+		drawDebugChunkInfo();
 	}
 
 	private void handleGameStopEvent(ref GameStopEvent gameStopEvent)
@@ -429,7 +539,7 @@ public:
 	{
 		auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 
-		worldAccess.fillBox(packet.box, packet.blockId);
+		worldAccess.fillBox(packet.box, packet.blockId, packet.blockMeta);
 		onBlockBoxChanged(packet.box);
 	}
 

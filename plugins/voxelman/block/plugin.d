@@ -28,13 +28,7 @@ public:
 	{
 		regBaseBlocks(&regBlock);
 		sideTable = sideIntersectionTable(NUM_SIDE_MASKS);
-		sideTable.set(ShapeSideMask.full, ShapeSideMask.empty);
-		sideTable.set(ShapeSideMask.water, ShapeSideMask.empty);
-		sideTable.set(ShapeSideMask.full, ShapeSideMask.water);
-		sideTable.set(ShapeSideMask.water, ShapeSideMask.slope);
-		sideTable.set(ShapeSideMask.full, ShapeSideMask.slope);
-		sideTable.set(ShapeSideMask.slope, ShapeSideMask.empty);
-		sideTable.set(ShapeSideMask.slope, ShapeSideMask.water);
+		setSideTable(sideTable);
 	}
 
 	BlockInfoSetter regBlock(string name) {

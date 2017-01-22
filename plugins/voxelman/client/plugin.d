@@ -166,52 +166,6 @@ public:
 			}
 		}
 
-		// heading
-		vec3 target = graphics.camera.target;
-		vec2 heading = graphics.camera.heading;
-		igTextf("Heading: %.1f %.1f", heading.x, heading.y);
-		igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
-
-		// position
-		vec3 pos = graphics.camera.position;
-		igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
-		ChunkWorldPos chunkPos = clientWorld.observerPosition;
-		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
-
-		// dimension
-		igTextf("Dimension: %s", chunkPos.w); igSameLine();
-			if (igButton("-##decDimension")) clientWorld.decDimension(); igSameLine();
-			if (igButton("+##incDimension")) clientWorld.incDimension();
-
-		// view radius
-		igTextf("View radius: %s", clientWorld.viewRadius); igSameLine();
-			if (igButton("-##decVRadius")) clientWorld.decViewRadius(); igSameLine();
-			if (igButton("+##incVRadius")) clientWorld.incViewRadius();
-
-		if (igCollapsingHeader("Chunks"))
-		{
-			with(stats) {
-				igTextf("Chunks per frame loaded: %s",
-					totalLoadedChunks - lastFrameLoadedChunks);
-				igTextf("Chunks total loaded: %s",
-					totalLoadedChunks);
-				igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(clientWorld.chunkManager.totalLayerDataBytes));
-			}
-
-			with(clientWorld.chunkMeshMan) {
-				igTextf("Chunks to mesh: %s", numMeshChunkTasks);
-				igTextf("New meshes: %s", newChunkMeshes.length);
-				size_t sum;
-				foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
-				igTextf("Task Queues: %s", sum);
-				sum = 0;
-				foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
-				igTextf("Res Queues: %s", sum);
-				float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
-				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
-			}
-		}
-
 		igEnd();
 	}
 

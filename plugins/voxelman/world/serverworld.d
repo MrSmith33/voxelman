@@ -133,6 +133,7 @@ public:
 		chunkObserverManager = new ChunkObserverManager();
 
 		chunkManager.setup(NUM_CHUNK_LAYERS);
+		chunkManager.setLayerInfo(ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS), METADATA_LAYER);
 		chunkManager.isChunkSavingEnabled = true;
 
 		// Component connections
@@ -353,14 +354,16 @@ public:
 		import voxelman.core.packets : ChunkDataPacket;
 
 		if (!chunkManager.isChunkLoaded(cwp)) return;
-		BlockData[8] layerBuf;
+		ChunkLayerData[NUM_CHUNK_LAYERS] layerBuf;
 		size_t compressedSize;
 
 		ubyte numChunkLayers;
 		foreach(ubyte layerId; 0..chunkManager.numLayers)
 		{
+			if (!chunkManager.hasSnapshot(cwp, layerId)) continue;
+
 			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
-			if (layer.isNull) continue;
+			assert(!layer.isNull);
 
 			version(DBG_COMPR)if (layer.type != StorageType.uniform)
 			{
@@ -368,7 +371,7 @@ public:
 				infof("Send %s %s %s\n(%(%02x%))", cwp, compactBlocks.ptr, compactBlocks.length, cast(ubyte[])compactBlocks);
 			}
 
-			BlockData bd = toBlockData(layer, layerId);
+			ChunkLayerData bd = toBlockData(layer, layerId);
 			if (layer.type == StorageType.fullArray)
 			{
 				ubyte[] compactBlocks = compressLayerData(layer.getArray!ubyte, buf[compressedSize..$]);
@@ -401,7 +404,7 @@ public:
 		{
 			auto packet = unpackPacketNoDup!FillBlockBoxPacket(packetData);
 			// TODO send to observers only.
-			worldAccess.fillBox(packet.box, packet.blockId);
+			worldAccess.fillBox(packet.box, packet.blockId, packet.blockMeta);
 			connection.sendToAll(packet);
 		}
 	}

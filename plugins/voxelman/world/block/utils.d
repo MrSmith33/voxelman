@@ -15,20 +15,7 @@ import voxelman.world.storage;
 import voxelman.utils.mapping;
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
-import voxelman.world.mesh.blockmesher;
 
-
-enum SideMask : ubyte
-{
-	zneg = 0b_00_0001,
-	zpos = 0b_00_0010,
-
-	xpos = 0b_00_0100,
-	xneg = 0b_00_1000,
-
-	ypos = 0b_01_0000,
-	yneg = 0b_10_0000,
-}
 
 struct ChunkAndBlockAdjacent
 {
@@ -127,8 +114,11 @@ struct BlockMeshingData
 	ubvec3 chunkPos;
 	ubyte sides;
 	ushort blockIndex;
+	BlockMetadata metadata;
 }
 alias MeshHandler = void function(BlockMeshingData);
+alias ShapeMetaHandler = BlockShape function(BlockMetadata);
+alias RotationHandler = BlockMetadata function(BlockMetadata);
 void makeNullMesh(BlockMeshingData) {}
 
 alias SideSolidityHandler = Solidity function(CubeSide);
@@ -157,6 +147,10 @@ struct BlockInfo
 	bool isVisible = true;
 	Solidity solidity = Solidity.solid;
 	BlockShape shape = fullShape;
+	ShapeMetaHandler shapeMetaHandler;
+	RotationHandler rotationHandler;
+	bool shapeDependsOnMeta = false;
+	bool meshDependOnMeta = false;
 	size_t id;
 }
 
@@ -180,21 +174,29 @@ struct SeparatedBlockInfoTable
 	this(BlockInfoTable infoTable)
 	{
 		sideTable = infoTable.sideTable;
+		shape.length = infoTable.length;
 		corners.length = infoTable.length;
 		hasGeometry.length = infoTable.length;
 		hasInternalGeometry.length = infoTable.length;
 		sideMasks.length = infoTable.length;
 		color.length = infoTable.length;
 		meshHandler.length = infoTable.length;
+		shapeMetaHandler.length = infoTable.length;
+		shapeDependsOnMeta.length = infoTable.length;
+		meshDependOnMeta.length = infoTable.length;
 
 		foreach(i, binfo; infoTable.blockInfos)
 		{
+			shape[i] = binfo.shape;
 			corners[i] = binfo.shape.corners;
 			hasGeometry[i] = binfo.shape.hasGeometry;
 			hasInternalGeometry[i] = binfo.shape.hasInternalGeometry;
 			sideMasks[i] = binfo.shape.sideMasks;
 			color[i] = binfo.color;
 			meshHandler[i] = binfo.meshHandler;
+			shapeMetaHandler[i] = binfo.shapeMetaHandler;
+			shapeDependsOnMeta[i] = binfo.shapeDependsOnMeta;
+			meshDependOnMeta[i] = binfo.meshDependOnMeta;
 		}
 
 		blockInfos = infoTable.blockInfos;
@@ -202,12 +204,16 @@ struct SeparatedBlockInfoTable
 
 	immutable(BlockInfo)[] blockInfos;
 	SideIntersectionTable sideTable;
+	BlockShape[] shape;
 	ubyte[] corners;
 	bool[] hasGeometry;
 	bool[] hasInternalGeometry;
+	bool[] shapeDependsOnMeta;
+	bool[] meshDependOnMeta;
 	ShapeSideMask[6][] sideMasks;
 	ubvec3[] color;
 	MeshHandler[] meshHandler;
+	ShapeMetaHandler[] shapeMetaHandler;
 }
 
 /// Returned when registering block.
@@ -224,7 +230,18 @@ struct BlockInfoSetter
 	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
 	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
 	ref BlockInfoSetter blockShape(BlockShape val) { info.shape = val; return this; }
+	ref BlockInfoSetter shapeMetaHandler(ShapeMetaHandler val) {
+		info.shapeMetaHandler = val;
+		info.shapeDependsOnMeta = true;
+		return this;
+	}
+	//ref BlockInfoSetter shapeDependsOnMeta(bool val) { info.shapeDependsOnMeta = val; return this; }
+	ref BlockInfoSetter meshDependOnMeta(bool val) { info.meshDependOnMeta = val; return this; }
+	ref BlockInfoSetter rotationHandler(RotationHandler val) { info.rotationHandler = val; return this; }
 }
+
+import voxelman.world.mesh.blockmeshers.full;
+import voxelman.world.mesh.blockmeshers.slope;
 
 void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 {
@@ -237,5 +254,53 @@ void regBaseBlocks(BlockInfoSetter delegate(string name) regBlock)
 	regBlock("water").colorHex(0x0055AA).meshHandler(&makeColoredFullBlockMesh).solidity(Solidity.semiTransparent).blockShape(waterShape);
 	regBlock("lava").colorHex(0xFF6920).meshHandler(&makeColoredFullBlockMesh);
 	regBlock("snow").colorHex(0xDBECF6).meshHandler(&makeColoredFullBlockMesh);
-	regBlock("slope").colorHex(0x857FFF).meshHandler(&makeColoredSlopeBlockMesh).blockShape(slopeShape);
+	regBlock("slope").colorHex(0x857FFF).meshHandler(&makeColoredSlopeBlockMesh).shapeMetaHandler(&slopeShapeFromMeta)
+		.meshDependOnMeta(true).rotationHandler(&slopeRotationHandler);
+}
+
+void setSideTable(ref SideIntersectionTable sideTable)
+{
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.water, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.water);
+
+	sideTable.set(ShapeSideMask.water, ShapeSideMask.slope0);
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.slope0);
+	sideTable.set(ShapeSideMask.water, ShapeSideMask.slope1);
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.slope1);
+	sideTable.set(ShapeSideMask.water, ShapeSideMask.slope2);
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.slope2);
+	sideTable.set(ShapeSideMask.water, ShapeSideMask.slope3);
+	sideTable.set(ShapeSideMask.full, ShapeSideMask.slope3);
+
+	sideTable.set(ShapeSideMask.slope0, ShapeSideMask.slope0);
+	sideTable.set(ShapeSideMask.slope0, ShapeSideMask.slope1);
+	sideTable.set(ShapeSideMask.slope0, ShapeSideMask.slope2);
+	sideTable.set(ShapeSideMask.slope0, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.slope0, ShapeSideMask.water);
+
+	sideTable.set(ShapeSideMask.slope1, ShapeSideMask.slope0);
+	sideTable.set(ShapeSideMask.slope1, ShapeSideMask.slope1);
+	sideTable.set(ShapeSideMask.slope1, ShapeSideMask.slope3);
+	sideTable.set(ShapeSideMask.slope1, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.slope1, ShapeSideMask.water);
+
+	sideTable.set(ShapeSideMask.slope2, ShapeSideMask.slope0);
+	sideTable.set(ShapeSideMask.slope2, ShapeSideMask.slope2);
+	sideTable.set(ShapeSideMask.slope2, ShapeSideMask.slope3);
+	sideTable.set(ShapeSideMask.slope2, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.slope2, ShapeSideMask.water);
+
+	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.slope1);
+	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.slope2);
+	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.slope3);
+	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.empty);
+	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.water);
+
+}
+
+BlockMetadata slopeRotationHandler(BlockMetadata meta)
+{
+	if (meta == 3) return 0;
+	return cast(BlockMetadata)(meta + 1);
 }

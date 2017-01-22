@@ -176,8 +176,14 @@ Solidity railSideSolidity(CubeSide side, ivec3 chunkPos, ivec3 entityPos, BlockE
 
 BlockShape railBlockShapeHandler(ivec3 chunkPos, ivec3 entityPos, BlockEntityData data)
 {
-	if (RailData(data).bottomSolidity(calcBlockTilePos(chunkPos)))
-		return railBlockShape;
+	auto railData = RailData(data);
+	if (railData.bottomSolidity(calcBlockTilePos(chunkPos)))
+	{
+		if (railData.isSlope)
+			return railSlopeShapes[railData.data - SLOPE_RAIL_BIT];
+		else
+			return railBlockShape;
+	}
 	else
 		return emptyShape;
 }
@@ -191,3 +197,20 @@ const ShapeSideMask[6] railShapeSides = [
 	ShapeSideMask.full]; // bottom is full
 
 const BlockShape railBlockShape = BlockShape(railShapeSides, 0b_0000_1111, true, true);
+const BlockShape[4] railSlopeShapes = [
+	BlockShape([ // zneg
+		ShapeSideMask.full, ShapeSideMask.empty, ShapeSideMask.empty,
+		ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.full],
+		0b_0011_1111, true, true),
+	BlockShape([ // xneg
+		ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.empty,
+		ShapeSideMask.full, ShapeSideMask.empty, ShapeSideMask.full],
+		0b_0101_1111, true, true),
+	BlockShape([ // zpos
+		ShapeSideMask.empty, ShapeSideMask.full, ShapeSideMask.empty,
+		ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.full],
+		0b_1100_1111, true, true),
+	BlockShape([ // xpos
+		ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.full,
+		ShapeSideMask.empty, ShapeSideMask.empty, ShapeSideMask.full],
+		0b_1010_1111, true, true)];

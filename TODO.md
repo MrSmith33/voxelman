@@ -65,7 +65,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
 - [ ] Move metadata update on commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
-- [ ] Remove BlockData.
+- [ ] Remove BlockData. First ChunkLayerSnap needs custom (de)serizalizer.
 - [x] Do not uncompress unneeded chunks (non-visible). Decide by metadata.
 - [x] Do not uncompress chunks on client until requested.
 - [x] Implement heightmap caching in chunk gen.
@@ -99,6 +99,19 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ### OTHER
 
 - [ ] Color blind mode
+- [x] Use metadata in slope block.
+- [x] Add block metadata layer.
+- [x] Fill slope rail sides with faces when not occluded.
+- [x] Move chunk debug info gui into clientworld.
+- [x] Add block rotation handler.
+- [x] Add extra slope side shapes.
+- [x] Add ShapeMetaHandler.
+- [x] Fix AO flipped quad meshing.
+- [x] Fix non-existing chunk layers being sent to client (Chunk manager always returns empty snapshot when chunk is loaded).
+- [x] Add ChunkLayerInfo.
+- [x] Add hasSnapshot to chunk manager.
+- [x] Fix chunk manager returning layers with wrong data length for uniform chunks.
+- [x] Allow any vertex type being put in batch.
 - [x] 2d rendering
 - [x] Correctly handle clients with the same name.
 - [x] Minecraft save import

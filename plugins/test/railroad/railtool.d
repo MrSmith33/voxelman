@@ -93,7 +93,7 @@ final class RailTool : ITool
 	}
 
 	override void onMainActionRelease() {
-		auto blockId = worldInteraction.pickBlock();
+		auto blockId = worldInteraction.pickBlock().id;
 		if (isBlockEntity(blockId)) {
 			connection.send(RemoveBlockEntityPacket(worldInteraction.blockPos.vector));
 		}

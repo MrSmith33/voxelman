@@ -5,6 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.block.shape;
 
+import voxelman.log;
+import voxelman.core.config;
+
 /*
 block shapes:
 
@@ -67,7 +70,10 @@ enum ShapeSideMask : ubyte
 	water,
 	full,
 	half,
-	slope,
+	slope0, // top-left
+	slope1, // bot-left
+	slope2, // bot-right
+	slope3, // top-right
 	stairs,
 }
 
@@ -90,20 +96,37 @@ import std.array : array;
 const ShapeSideMask[6] fullShapeSides = ShapeSideMask.full.repeat.take(6).array;
 const ShapeSideMask[6] waterShapeSides = ShapeSideMask.water.repeat.take(6).array;
 const ShapeSideMask[6] emptyShapeSides = ShapeSideMask.empty.repeat.take(6).array;
-const ShapeSideMask[6] slopeShapeSides = [
-	ShapeSideMask.full,
-	ShapeSideMask.empty,
-	ShapeSideMask.slope,
-	ShapeSideMask.slope,
-	ShapeSideMask.empty,
-	ShapeSideMask.full];
 
 const BlockShape unknownShape = BlockShape(fullShapeSides, 0b_0000_0000, false, false);
 const BlockShape fullShape = BlockShape(fullShapeSides, 0b_1111_1111, true, false);
 const BlockShape waterShape = BlockShape(waterShapeSides, 0b_1111_1111, false, false);
 const BlockShape emptyShape = BlockShape(emptyShapeSides, 0b_0000_0000, false, false);
-const BlockShape slopeShape = BlockShape(slopeShapeSides, 0b_0011_1111, true, true);
 
+BlockShape slopeShapeFromMeta(BlockMetadata metadata)
+{
+	return metaToShapeTable[metadata];
+}
+
+private alias SSM = ShapeSideMask;
+BlockShape[12] metaToShapeTable = [
+	//zneg        zpos        xpos        xneg        ypos       yneg
+	{[SSM.full,   SSM.empty,  SSM.slope2, SSM.slope1, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // 0, yneg full
+	{[SSM.slope1, SSM.slope2, SSM.full,   SSM.empty,  SSM.empty, SSM.full], 0b_1010_1111, true, true}, // 1
+	{[SSM.empty,  SSM.full,   SSM.slope1, SSM.slope2, SSM.empty, SSM.full], 0b_1100_1111, true, true}, // 2
+	{[SSM.slope2, SSM.slope1, SSM.empty,  SSM.full,   SSM.empty, SSM.full], 0b_0101_1111, true, true}, // 3
+
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 0, vertiacl sides full
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 1
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 2
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 3
+
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 0, ypos full
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 1
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 2
+	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 3
+];
+
+/*
 struct SideIntersectionTable
 {
 	ubyte[] table;
@@ -135,5 +158,37 @@ SideIntersectionTable sideIntersectionTable(size_t numTypes)
 	size_t tableBits = numTypes * numTypes;
 	size_t tableBytes = tableBits/8 + 1;
 	return SideIntersectionTable(new ubyte[tableBytes], numTypes);
+}*/
+
+struct SideIntersectionTable
+{
+	bool[] table;
+	size_t numTypes;
+
+	/// Returns true if current shape side is visible
+	pragma(inline, true)
+	bool get(const ShapeSideMask current, const ShapeSideMask other)
+	{
+		size_t index = current * numTypes + other;
+		return table[index];
+	}
+
+	void set(const ShapeSideMask current, const ShapeSideMask other)
+	{
+		size_t index = current * numTypes + other;
+		table[index] = true;
+	}
+
+	void reset(const ShapeSideMask current, const ShapeSideMask other)
+	{
+		size_t index = current * numTypes + other;
+		table[index] = false;
+	}
 }
 
+SideIntersectionTable sideIntersectionTable(size_t numTypes)
+{
+	size_t tableBits = numTypes * numTypes;
+	//size_t tableBytes = tableBits/8 + 1;
+	return SideIntersectionTable(new bool[tableBits], numTypes);
+}

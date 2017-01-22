@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add rotatable slope block.
+- Add block side shapes/masks.
+- Add block metadata layer.
 - Do bottom meshing of rails/side meshing of slope rail.
 - Add block shape occlusion calculation.
 - Add block corner ambient occlusion calculation.
