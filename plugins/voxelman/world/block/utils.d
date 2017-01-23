@@ -301,6 +301,6 @@ void setSideTable(ref SideIntersectionTable sideTable)
 
 BlockMetadata slopeRotationHandler(BlockMetadata meta)
 {
-	if (meta == 3) return 0;
+	if (meta == 11) return 0;
 	return cast(BlockMetadata)(meta + 1);
 }

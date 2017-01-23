@@ -8,6 +8,8 @@ module voxelman.world.block.shape;
 import voxelman.log;
 import voxelman.core.config;
 
+import voxelman.world.mesh.tables.slope;
+
 /*
 block shapes:
 
@@ -106,25 +108,6 @@ BlockShape slopeShapeFromMeta(BlockMetadata metadata)
 {
 	return metaToShapeTable[metadata];
 }
-
-private alias SSM = ShapeSideMask;
-BlockShape[12] metaToShapeTable = [
-	//zneg        zpos        xpos        xneg        ypos       yneg
-	{[SSM.full,   SSM.empty,  SSM.slope2, SSM.slope1, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // 0, yneg full
-	{[SSM.slope1, SSM.slope2, SSM.full,   SSM.empty,  SSM.empty, SSM.full], 0b_1010_1111, true, true}, // 1
-	{[SSM.empty,  SSM.full,   SSM.slope1, SSM.slope2, SSM.empty, SSM.full], 0b_1100_1111, true, true}, // 2
-	{[SSM.slope2, SSM.slope1, SSM.empty,  SSM.full,   SSM.empty, SSM.full], 0b_0101_1111, true, true}, // 3
-
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 0, vertiacl sides full
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 1
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 2
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 3
-
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 0, ypos full
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 1
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 2
-	{[SSM.full, SSM.empty, SSM.slope0, SSM.slope0, SSM.empty, SSM.full], 0b_0011_1111, true, true}, // TODO 3
-];
 
 /*
 struct SideIntersectionTable

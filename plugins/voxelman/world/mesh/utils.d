@@ -150,3 +150,27 @@ static immutable ubyte[12][6] faceSideCorners = [
 	[2, 3, 1,  3, 1, 0,  1, 0, 2,  0, 2, 3], // ypos
 	[7, 6, 4,  6, 4, 5,  4, 5, 7,  5, 7, 6], // yneg
 ];
+
+// maps block side to map of 12 corner ids. 3 corners of adjacent cubes for each face corner.
+// each corner is a corner of cube adjacent to given face (one of 6 sides). Those cube corners will affect AO of face corners.
+// 2 | 1  15 | 14
+// --+-------+----
+// 3 | 0  12 | 13
+//   |       |
+// 5 | 4   8 | 11
+// --+-------+----
+// 6 | 7   9 | 10
+// those correspond to 4 face corners (marked as * above)
+// 0--3 // corner numbering of face verticies
+// |  |
+// 1--2
+// where cube corners are from CubeCorner
+
+static immutable ubyte[16][6] faceSideCorners4 = [
+	[7,3,2,6, 3,2,6,7, 2,6,7,3, 6,7,3,2], // zneg
+	[4,0,1,5, 0,1,5,4, 1,5,4,0, 5,4,0,1], // zpos
+	[6,2,0,4, 2,0,4,6, 0,4,6,2, 1,6,2,0], // xpos
+	[5,1,3,7, 1,3,7,5, 3,7,5,1, 7,5,1,3], // xneg
+	[0,2,3,1, 2,3,1,0, 3,1,0,2, 1,0,2,3], // ypos
+	[5,7,6,4, 7,6,4,5, 6,4,5,7, 4,5,7,6], // yneg
+];

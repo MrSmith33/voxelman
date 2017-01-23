@@ -121,28 +121,33 @@ void genGeometry(const ref ExtendedChunk chunk,
 	{
 		int index = blockIndex + sideIndexOffsets[side];
 
+		ubyte cornersC = getCorners(index);
 		ubyte cornersT = getCorners(index + faceSideIndexOffset[side][0]);
 		ubyte cornersL = getCorners(index + faceSideIndexOffset[side][1]);
 		ubyte cornersB = getCorners(index + faceSideIndexOffset[side][2]);
 		ubyte cornersR = getCorners(index + faceSideIndexOffset[side][3]);
-		ubyte[12] faceCornersToAdjCorners = faceSideCorners[side];
+		ubyte[16] faceCornersToAdjCorners = faceSideCorners4[side];
 
 		bool getCorner(ubyte corners, ubyte tableIndex)
 		{
-			return (corners & (1 << faceCornersToAdjCorners[tableIndex])) > 0;
+			return (corners & (1 << faceCornersToAdjCorners[tableIndex])) != 0;
 		}
 
-		ubyte result0 = getCorner(cornersT, 0) << 1 | getCorner(cornersL, 2) << 2;
-		if (result0 < 6) result0 |= getCorner(getCorners(index + faceSideIndexOffset[side][4]), 1);
+		ubyte result0 = getCorner(cornersT, 1) | getCorner(cornersL, 3) << 1;
+		if (result0 < 3) result0 |= getCorner(getCorners(index + faceSideIndexOffset[side][4]), 2) << 2;
+		result0 |= getCorner(cornersC, 0) << 3;
 
-		ubyte result1 = getCorner(cornersL, 3) << 1 | getCorner(cornersB, 5) << 2;
-		if (result1 < 6) result1 |= getCorner(getCorners(index + faceSideIndexOffset[side][5]), 4);
+		ubyte result1 = getCorner(cornersL, 5) | getCorner(cornersB, 7) << 1;
+		if (result1 < 3) result1 |= getCorner(getCorners(index + faceSideIndexOffset[side][5]), 6) << 2;
+		result1 |= getCorner(cornersC, 4) << 3;
 
-		ubyte result2 = getCorner(cornersB, 6) << 1 | getCorner(cornersR, 8) << 2;
-		if (result2 < 6) result2 |= getCorner(getCorners(index + faceSideIndexOffset[side][6]), 7);
+		ubyte result2 = getCorner(cornersB, 9) | getCorner(cornersR, 11) << 1;
+		if (result2 < 3) result2 |= getCorner(getCorners(index + faceSideIndexOffset[side][6]), 10) << 2;
+		result2 |= getCorner(cornersC, 8) << 3;
 
-		ubyte result3 = getCorner(cornersR, 9) << 1 | getCorner(cornersT, 11) << 2;
-		if (result3 < 6) result3 |= getCorner(getCorners(index + faceSideIndexOffset[side][7]), 10);
+		ubyte result3 = getCorner(cornersR, 13) | getCorner(cornersT, 15) << 1;
+		if (result3 < 3) result3 |= getCorner(getCorners(index + faceSideIndexOffset[side][7]), 14) << 2;
+		result3 |= getCorner(cornersC, 12) << 3;
 
 		return [result0, result1, result2, result3];
 	}

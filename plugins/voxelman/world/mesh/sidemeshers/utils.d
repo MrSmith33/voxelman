@@ -9,6 +9,7 @@ import voxelman.math : ubvec3;
 import voxelman.container.buffer : Buffer;
 import voxelman.world.block.utils : MeshVertex2;
 import voxelman.world.mesh.chunkmesh : MeshVertex;
+import voxelman.world.mesh.config;
 
 float random(uint num) pure nothrow
 {
@@ -51,16 +52,62 @@ enum AO_VALUE_2 = 0.9f;
 enum AO_VALUE_3 = 1.0f;
 
 __gshared immutable(float[]) occlusionTable = [
-	            // LT C
-	AO_VALUE_3, // 00 0 case 3
-	AO_VALUE_2, // 00 1 case 2
-	AO_VALUE_2, // 01 0 case 2
-	AO_VALUE_1, // 01 1 case 1
-	AO_VALUE_2, // 10 0 case 2
-	AO_VALUE_1, // 10 1 case 1
-	AO_VALUE_0, // 11 0 case 0
-	AO_VALUE_0, // 11 1 case 0
+	            // * C LT - center, corner, left, top
+	AO_VALUE_3, //   0 00 case 3
+	AO_VALUE_2, //   0 01 case 2
+	AO_VALUE_2, //   0 10 case 2
+	AO_VALUE_0, //   0 11 case 0
+	AO_VALUE_2, //   1 00 case 2
+	AO_VALUE_1, //   1 01 case 1
+	AO_VALUE_1, //   1 10 case 1
+	AO_VALUE_0, //   1 11 case 0
+
+	AO_VALUE_2, // 1 0 00
+	AO_VALUE_1, // 1 0 01
+	AO_VALUE_1, // 1 0 10
+	AO_VALUE_0, // 1 0 11
+	AO_VALUE_0, // 1 1 00
+	AO_VALUE_1, // 1 1 01
+	AO_VALUE_1, // 1 1 10
+	AO_VALUE_0, // 1 1 11
 ];
+
+enum AO_COLOR_0 = Colors.violet;
+enum AO_COLOR_1 = Colors.red;
+enum AO_COLOR_2 = Colors.orange;
+enum AO_COLOR_3 = Colors.white;
+
+import voxelman.graphics.color;
+Color4ub[] aoDebugColors = [
+	            // * C LT - center, corner, left, top
+	AO_COLOR_3, //   0 00 case 3
+	AO_COLOR_2, //   0 01 case 2
+	AO_COLOR_2, //   0 10 case 2
+	AO_COLOR_0, //   0 11 case 0
+	AO_COLOR_2, //   1 00 case 2
+	AO_COLOR_1, //   1 01 case 1
+	AO_COLOR_1, //   1 10 case 1
+	AO_COLOR_0, //   1 11 case 0
+
+	AO_COLOR_2, // 1 0 00
+	AO_COLOR_1, // 1 0 01
+	AO_COLOR_1, // 1 0 10
+	AO_COLOR_0, // 1 0 11
+	AO_COLOR_0, // 1 1 00
+	AO_COLOR_1, // 1 1 01
+	AO_COLOR_1, // 1 1 10
+	AO_COLOR_0, // 1 1 11
+];
+
+ubyte[3][4] getDebugAOColors(ubyte[4] cornerOcclusion)
+{
+	return [
+		aoDebugColors[cornerOcclusion[0]].rgb.arrayof,
+		aoDebugColors[cornerOcclusion[1]].rgb.arrayof,
+		aoDebugColors[cornerOcclusion[2]].rgb.arrayof,
+		aoDebugColors[cornerOcclusion[3]].rgb.arrayof,
+	];
+}
 
 pragma(inline, true)
 void meshOccludedQuad(T)(
@@ -77,11 +124,14 @@ void meshOccludedQuad(T)(
 	float vert2AoMult = occlusionTable[cornerOcclusion[2]];
 	float vert3AoMult = occlusionTable[cornerOcclusion[3]];
 
-	immutable ubyte[3][4] finalColors = [
-		[cast(ubyte)(vert0AoMult * color[0]), cast(ubyte)(vert0AoMult * color[1]), cast(ubyte)(vert0AoMult * color[2])],
-		[cast(ubyte)(vert1AoMult * color[0]), cast(ubyte)(vert1AoMult * color[1]), cast(ubyte)(vert1AoMult * color[2])],
-		[cast(ubyte)(vert2AoMult * color[0]), cast(ubyte)(vert2AoMult * color[1]), cast(ubyte)(vert2AoMult * color[2])],
-		[cast(ubyte)(vert3AoMult * color[0]), cast(ubyte)(vert3AoMult * color[1]), cast(ubyte)(vert3AoMult * color[2])]];
+	static if (AO_DEBUG_ENABLED)
+		immutable ubyte[3][4] finalColors = getDebugAOColors(cornerOcclusion);
+	else
+		immutable ubyte[3][4] finalColors = [
+			[cast(ubyte)(vert0AoMult * color[0]), cast(ubyte)(vert0AoMult * color[1]), cast(ubyte)(vert0AoMult * color[2])],
+			[cast(ubyte)(vert1AoMult * color[0]), cast(ubyte)(vert1AoMult * color[1]), cast(ubyte)(vert1AoMult * color[2])],
+			[cast(ubyte)(vert2AoMult * color[0]), cast(ubyte)(vert2AoMult * color[1]), cast(ubyte)(vert2AoMult * color[2])],
+			[cast(ubyte)(vert3AoMult * color[0]), cast(ubyte)(vert3AoMult * color[1]), cast(ubyte)(vert3AoMult * color[2])]];
 
 	if(vert0AoMult + vert2AoMult > vert1AoMult + vert3AoMult)
 	{

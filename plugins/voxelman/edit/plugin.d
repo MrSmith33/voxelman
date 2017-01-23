@@ -98,6 +98,7 @@ class EditPlugin : IPlugin
 			if (blockId == size_t.max)
 			{
 				// no block
+				infof("no block '%s'", params.args[1]);
 			}
 			else
 			{

@@ -17,6 +17,7 @@ import voxelman.world.mesh.config;
 import voxelman.world.mesh.sidemeshers.full;
 import voxelman.world.mesh.sidemeshers.slope;
 import voxelman.world.mesh.sidemeshers.utils;
+import voxelman.world.mesh.tables.slope;
 
 void makeColoredSlopeBlockMesh(BlockMeshingData data)
 {
@@ -58,57 +59,18 @@ void makeColoredSlopeBlockMesh(BlockMeshingData data)
 
 	// mesh internal geometry
 	CubeSide[2] occlusionSides = slopeOcclusionSides[data.metadata];
-	ubyte[4] occlusionsTop = data.occlusionHandler(data.blockIndex, occlusionSides[0]);
-	ubyte[4] occlusionsFront = data.occlusionHandler(data.blockIndex, occlusionSides[1]);
-	ubyte[2] topOcIndicies = slopeIntTopOcclusionIndicies[data.metadata];
+	ubyte[4] occlusions0 = data.occlusionHandler(data.blockIndex, occlusionSides[0]);
+	ubyte[4] occlusions1 = data.occlusionHandler(data.blockIndex, occlusionSides[1]);
+	ubyte[4] occIndicies = slopeInternalOcclusionIndicies[data.metadata];
 	ubyte[4] occlusionInternal = [
-		occlusionsTop[topOcIndicies[0]], occlusionsFront[1],
-		occlusionsFront[2], occlusionsTop[topOcIndicies[1]]];
+		occlusions0[occIndicies[0]],
+		occlusions1[occIndicies[2]],
+		occlusions1[occIndicies[3]],
+		occlusions0[occIndicies[1]]];
 
 	immutable float mult = (shadowMultipliers[occlusionSides[0]] + shadowMultipliers[occlusionSides[1]])/2;
 	float[3] colorInternal = [mult * color[0], mult * color[1], mult * color[2]];
 
 	meshOccludedQuad(*data.buffer, occlusionInternal, colorInternal, data.chunkPos,
-		slopeIntIndicies[data.metadata], cubeVerticies.ptr);
+		slopeInternalIndicies[data.metadata], cubeVerticies.ptr);
 }
-
-immutable ubyte[2][12] slopeIntTopOcclusionIndicies = [
-	[0,3],[3,2],[2,1],[1,0],
-	[0,3],[3,2],[2,1],[1,0], //TODO
-	[0,3],[3,2],[2,1],[1,0], //TODO
-];
-
-// internal geometry
-immutable ubyte[4][12] slopeIntIndicies = [
-	[4,2,3,5],
-	[5,0,2,7],
-	[7,1,0,6],
-	[6,3,1,4],
-
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-	[4,2,3,5], //TODO
-];
-
-immutable CubeSide[2][12] slopeOcclusionSides = [
-	[CubeSide.ypos, CubeSide.zpos],
-	[CubeSide.ypos, CubeSide.xneg],
-	[CubeSide.ypos, CubeSide.zneg],
-	[CubeSide.ypos, CubeSide.xpos],
-
-	[CubeSide.ypos, CubeSide.zpos], //TODO
-	[CubeSide.ypos, CubeSide.xneg], //TODO
-	[CubeSide.ypos, CubeSide.zneg], //TODO
-	[CubeSide.ypos, CubeSide.xpos], //TODO
-
-	[CubeSide.ypos, CubeSide.zpos], //TODO
-	[CubeSide.ypos, CubeSide.xneg], //TODO
-	[CubeSide.ypos, CubeSide.zneg], //TODO
-	[CubeSide.ypos, CubeSide.xpos], //TODO
-];

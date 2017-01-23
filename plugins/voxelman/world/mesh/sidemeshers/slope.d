@@ -13,7 +13,9 @@ import voxelman.geometry.cube;
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
 
+import voxelman.world.mesh.config;
 import voxelman.world.mesh.sidemeshers.utils;
+import voxelman.world.mesh.tables.slope;
 
 void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d)
 {
@@ -30,15 +32,17 @@ void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 	float vert2AoMult = occlusionTable[cornerOcclusion[2]];
 	float vert3AoMult = occlusionTable[cornerOcclusion[3]];
 
-	immutable ubyte[3][4] finalColors = [
-		[cast(ubyte)(vert0AoMult * r), cast(ubyte)(vert0AoMult * g), cast(ubyte)(vert0AoMult * b)],
-		[cast(ubyte)(vert1AoMult * r), cast(ubyte)(vert1AoMult * g), cast(ubyte)(vert1AoMult * b)],
-		[cast(ubyte)(vert2AoMult * r), cast(ubyte)(vert2AoMult * g), cast(ubyte)(vert2AoMult * b)],
-		[cast(ubyte)(vert3AoMult * r), cast(ubyte)(vert3AoMult * g), cast(ubyte)(vert3AoMult * b)]];
+	static if (AO_DEBUG_ENABLED)
+		immutable ubyte[3][4] finalColors = getDebugAOColors(cornerOcclusion);
+	else
+		immutable ubyte[3][4] finalColors = [
+			[cast(ubyte)(vert0AoMult * r), cast(ubyte)(vert0AoMult * g), cast(ubyte)(vert0AoMult * b)],
+			[cast(ubyte)(vert1AoMult * r), cast(ubyte)(vert1AoMult * g), cast(ubyte)(vert1AoMult * b)],
+			[cast(ubyte)(vert2AoMult * r), cast(ubyte)(vert2AoMult * g), cast(ubyte)(vert2AoMult * b)],
+			[cast(ubyte)(vert3AoMult * r), cast(ubyte)(vert3AoMult * g), cast(ubyte)(vert3AoMult * b)]];
 
-	ubyte[3] indicies = slopeFaceCornerIndexes[d.rotation][side];
-	//ubyte[3] colorIndicies = slopeFaceCornerColorIndexes[side];
-	ubyte[3] colorIndicies = slopeFaceCornerColorIndexes[d.rotation];
+	ubyte[3] indicies = slopeFaceIndicies[d.rotation][side];
+	ubyte[3] colorIndicies = slopeColorIndicies[d.rotation];
 	d.buffer.put(
 		cast(MeshVertex)MeshVertex2(
 			cubeVerticies[indicies[0]][0] + d.blockPos.x,
@@ -57,33 +61,3 @@ void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 			finalColors[colorIndicies[2]])
 	);
 }
-
-immutable ubyte[3][6] slopeColorIndexesFromRotation = [
-	[1,3,0], [1,2,0], [1,2,3], [0,2,3]];
-
-immutable ubyte[3][6] slopeFaceCornerColorIndexes = [
-	// zneg
-	[1, 3, 0], // zneg
-	[1, 3, 0], // zpos
-	[1, 2, 3], // xpos valid TODO other
-	[0, 1, 2], // xneg valid TODO other
-	[1, 3, 0], // ypos
-	[1, 3, 0]]; // yneg
-
-// 0--3 // corner numbering of face verticies
-// |  |
-// 1--2
-// 2-1  2      2  0-2
-// |/   |\    /|   \|
-// 0    0-1  0-1    1
-//
-//  0    1    2    3  rotation
-// CCW
-// slopeFaceCornerIndexes[rotation,4][side,6][x/y/z,3]
-immutable ubyte[3][6][4] slopeFaceCornerIndexes =
-[	// zneg    zpos    xpos    xneg    ypos    yneg
-	[[1,4,5],[2,7,6],[3,5,7],[0,6,4],[6,5,4],[3,0,1],], // rotation 0
-	[[1,0,5],[2,3,6],[3,1,7],[0,2,4],[6,7,4],[3,2,1],], // rotation 1
-	[[1,0,4],[2,3,7],[3,1,5],[0,2,6],[6,7,5],[3,2,0],], // rotation 2
-	[[5,0,4],[6,3,7],[7,1,5],[4,2,6],[4,7,5],[1,2,0],], // rotation 3
-];
