@@ -241,3 +241,31 @@ void genGeometry(const ref ExtendedChunk chunk,
 		index += EXTENDED_CHUNK_SIZE*2;
 	}
 }
+
+struct SingleBlockMesher
+{
+	Buffer!MeshVertex geometry;
+
+	void meshBlock(const BlockInfo binfo, BlockMetadata blockMetadata)
+	{
+		ubyte[4] calcFaceCornerOcclusions(ushort blockIndex, CubeSide side)
+		{
+			return [0,0,0,0];
+		}
+
+		auto data = BlockMeshingData(
+			&geometry,
+			&calcFaceCornerOcclusions,
+			binfo.color,
+			ubvec3(0,0,0),
+			0b111111,
+			0,
+			blockMetadata);
+		binfo.meshHandler(data);
+	}
+
+	void reset()
+	{
+		geometry.clear();
+	}
+}

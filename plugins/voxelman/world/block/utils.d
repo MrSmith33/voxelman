@@ -118,7 +118,7 @@ struct BlockMeshingData
 }
 alias MeshHandler = void function(BlockMeshingData);
 alias ShapeMetaHandler = BlockShape function(BlockMetadata);
-alias RotationHandler = BlockMetadata function(BlockMetadata);
+alias RotationHandler = void function(ref BlockMetadata, ubyte, CubeSide);
 void makeNullMesh(BlockMeshingData) {}
 
 alias SideSolidityHandler = Solidity function(CubeSide);
@@ -296,11 +296,10 @@ void setSideTable(ref SideIntersectionTable sideTable)
 	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.slope3);
 	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.empty);
 	sideTable.set(ShapeSideMask.slope3, ShapeSideMask.water);
-
 }
 
-BlockMetadata slopeRotationHandler(BlockMetadata meta)
+void slopeRotationHandler(ref BlockMetadata meta, ubyte rotation, CubeSide side)
 {
-	if (meta == 11) return 0;
-	return cast(BlockMetadata)(meta + 1);
+	import voxelman.world.mesh.tables.slope : slopeSideRotations;
+	meta = slopeSideRotations[side][rotation];
 }

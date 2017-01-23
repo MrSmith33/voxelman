@@ -7,4 +7,4 @@ module voxelman.world.mesh.config;
 
 enum AO_ENABLED = true;
 enum AO_DEBUG_ENABLED = false;
-enum RANDOM_BLOCK_TINT_ENABLED = false;
+enum RANDOM_BLOCK_TINT_ENABLED = true;

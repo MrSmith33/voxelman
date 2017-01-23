@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add single block mesher helper.
+- Add ability to append meshes to Batch.
 - Add rotatable slope block.
 - Add block side shapes/masks.
 - Add block metadata layer.

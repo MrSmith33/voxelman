@@ -8,10 +8,12 @@ module voxelman.edit.tools.filltool;
 
 import voxelman.log;
 import voxelman.math;
+import voxelman.geometry.cube;
 import voxelman.core.config;
 import voxelman.core.packets;
 import voxelman.world.storage;
 import voxelman.world.block.utils;
+import voxelman.world.mesh.meshgenerator : SingleBlockMesher;
 
 import voxelman.client.plugin;
 import voxelman.worldinteraction.plugin;
@@ -28,11 +30,14 @@ final class FillTool : ITool
 	BlockInfoTable blockInfos;
 
 	BlockIdAndMeta currentBlock = BlockIdAndMeta(4);
+	ubyte currentRotation = 0;
 
 	BlockWorldPos startingPos;
 	EditState state;
 	WorldBox selection;
 	bool showCursor = true;
+
+	SingleBlockMesher blockMesher;
 
 	enum EditState
 	{
@@ -54,7 +59,12 @@ final class FillTool : ITool
 		{
 			worldInteraction.drawCursor(worldInteraction.blockPos, Colors.red);
 			worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
+
+			blockMesher.meshBlock(blockInfos[currentBlock.id], currentBlock.metadata);
+			graphics.debugBatch.putSolidMesh(blockMesher.geometry.data, vec3(worldInteraction.sideBlockPos.xyz));
+			blockMesher.reset();
 		}
+		updateBlockRotation();
 	}
 
 	BlockWorldPos currentCursorPos() @property {
@@ -125,9 +135,15 @@ final class FillTool : ITool
 	}
 
 	override void onRotateAction() {
+		currentRotation = (currentRotation + 1) % 4;
+		updateBlockRotation();
+	}
+
+	void updateBlockRotation() {
 		if (auto handler = blockInfos[currentBlock.id].rotationHandler)
 		{
-			currentBlock.metadata = handler(currentBlock.metadata);
+			CubeSide side = oppSide[sideFromNormal(worldInteraction.hitNormal)];
+			handler(currentBlock.metadata, currentRotation, side);
 		}
 	}
 

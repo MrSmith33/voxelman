@@ -19,6 +19,11 @@ struct Batch
 	Buffer!ColoredVertex lineBuffer;
 	Buffer!ColoredVertex pointBuffer;
 
+	void putSolidMesh(VertRange)(VertRange vertices, vec3 offset)
+	{
+		putMesh(triBuffer, vertices, offset);
+	}
+
 	void putCube(T1, T2)(Vector!(T1, 3) pos, Vector!(T2, 3) size, Color4ub color, bool fill)
 	{
 		if (fill)
@@ -88,5 +93,17 @@ struct Batch
 		triBuffer.clear();
 		lineBuffer.clear();
 		pointBuffer.clear();
+	}
+}
+
+void putMesh(V, VertRange)(ref Buffer!V output, VertRange vertices, vec3 offset)
+{
+	foreach(vert; vertices)
+	{
+		auto v = V(
+			vert.position + offset,
+			vert.color
+		);
+		output.put(v);
 	}
 }
