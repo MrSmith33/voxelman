@@ -113,6 +113,15 @@ struct Mapping(InfoType, bool withTypeMap = false)
 			}
 			newArray[$-1].id = newId;
 		}
+
+		foreach(oldItem; infoArray)
+		if (oldItem.id != size_t.max)
+		{
+			size_t newId = newArray.length;
+			newArray ~= oldItem;
+			newArray[$-1].id = newId;
+		}
+
 		infoArray = newArray;
 
 		size_t[string] newMap;
