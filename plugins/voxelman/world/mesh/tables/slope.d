@@ -98,9 +98,9 @@ immutable ubyte[3][6][4] slopeFaceIndicies = // from rotation and side
 // each side includes 4 rotations that have this side as full.
 immutable ubyte[4][6] slopeSideRotations = [
 	[ 0, 4, 8, 7], // zneg (yneg, xneg, ypos, xpos)
-	[ 2, 5,10, 6], // zpos (yneg, xneg, ypos, xpos)
-	[ 9, 1, 6, 7], // xpos (ypos, yneg, zpos, zneg)
-	[ 3, 4, 5,11], // xneg (yneg, zneg, zpos, ypos)
-	[ 8, 9,10,11], // ypos (zneg, xpos, zpos, xneg)
-	[ 0, 1, 2, 3], // yneg (zneg, xpos, zpos, xneg)
+	[ 2, 6,10, 5], // zpos (yneg, xpos, ypos, xneg)
+	[ 1, 7, 9, 6], // xpos (yneg, zneg, ypos, zpos)
+	[ 3, 5,11, 4], // xneg (yneg, zpos, ypos, zneg)
+	[10,11, 8, 9], // ypos (zpos, xneg, zneg, xpos)
+	[ 2, 3, 0, 1], // yneg (zpos, xneg, zneg, xpos)
 ];
