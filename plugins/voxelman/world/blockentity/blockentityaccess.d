@@ -159,6 +159,7 @@ final class BlockEntityAccess
 		BlockEntityMap map = getHashMapFromLayer(writeBuffer.layer);
 		map[blockIndex] = beData.storage;
 		setLayerMap(writeBuffer.layer, map);
+		writeBuffer.removeSnapshot = false;
 		return true;
 	}
 
@@ -192,8 +193,8 @@ final class BlockEntityAccess
 
 		if (map.length == 0)
 			writeBuffer.removeSnapshot = true;
-		else
-			setLayerMap(writeBuffer.layer, map);
+
+		setLayerMap(writeBuffer.layer, map);
 
 		return true;
 	}
