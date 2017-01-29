@@ -23,7 +23,7 @@ import voxelman.world.gen.worker;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 
-enum saveUnmodifiedChunks = true;
+enum saveUnmodifiedChunks = false;
 
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData

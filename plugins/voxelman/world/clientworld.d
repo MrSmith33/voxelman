@@ -10,6 +10,7 @@ import derelict.imgui.imgui;
 import voxelman.log;
 import netlib;
 import pluginlib;
+import anchovy.irenderer;
 import voxelman.math;
 import voxelman.geometry.cube;
 import voxelman.geometry.box;
@@ -68,6 +69,7 @@ private:
 	EventDispatcherPlugin evDispatcher;
 	NetClientPlugin connection;
 	GraphicsPlugin graphics;
+	IRenderer renderer;
 	ClientSession session;
 	BlockPluginClient blockPlugin;
 	BlockEntityClient blockEntityPlugin;
@@ -91,9 +93,21 @@ public:
 
 	// toggles/debug
 	bool doUpdateObserverPosition = true;
-	bool drawDebugMetadata;
-	size_t totalLoadedChunks;
-	size_t lastFrameLoadedChunks;
+	size_t dbg_totalLoadedChunks;
+	size_t dbg_lastFrameLoadedChunks;
+	size_t dbg_meshesRenderedSolid;
+	size_t dbg_meshesRenderedSemitransparent;
+	size_t dbg_vertsRendered;
+	size_t dbg_trisRendered;
+
+	void resetCounters()
+	{
+		dbg_meshesRenderedSolid = 0;
+		dbg_meshesRenderedSemitransparent = 0;
+		dbg_vertsRendered = 0;
+		dbg_trisRendered = 0;
+		dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
+	}
 
 	// Observer data
 	vec3 updatedCameraPos;
@@ -103,6 +117,10 @@ public:
 
 	ConfigOption viewRadiusOpt;
 	int viewRadius;
+
+	// Graphics stuff
+	bool isCullingEnabled = true;
+	bool wireframeMode = false;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -128,6 +146,8 @@ public:
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F2, "key.toggleChunkGrid", null, &onToggleChunkGrid));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F5, "key.remesh", null, &onRemeshViewBox));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F1, "key.chunkmeta", null, &onPrintChunkMeta));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Y, "key.toggleWireframe", null, &onToggleWireframe));
 
 		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
@@ -184,6 +204,7 @@ public:
 		evDispatcher.subscribeToEvent(&handlePostUpdateEvent);
 		evDispatcher.subscribeToEvent(&handleGameStopEvent);
 		evDispatcher.subscribeToEvent(&handleSendClientSettingsEvent);
+		evDispatcher.subscribeToEvent(&drawSolid);
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacketHandler!ChunkDataPacket(&handleChunkDataPacket);
@@ -196,6 +217,11 @@ public:
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 
 		worldAccess.blockInfos = blockPlugin.getBlocks();
+	}
+
+	override void postInit()
+	{
+		renderer = graphics.renderer;
 	}
 
 	WorldBox calcClampedBox(ChunkWorldPos cwp, int boxRadius)
@@ -286,13 +312,28 @@ public:
 			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
 			if (igButton("+##incVRadius")) incViewRadius();
 
+		if (igCollapsingHeader("Graphics"))
+		{
+			size_t dbg_meshesVisible = chunkMeshMan.chunkMeshes[0].length + chunkMeshMan.chunkMeshes[1].length;
+			size_t dbg_totalRendered = dbg_meshesRenderedSemitransparent + dbg_meshesRenderedSolid;
+			igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
+				dbg_meshesRenderedSolid, dbg_meshesRenderedSemitransparent, dbg_totalRendered, dbg_meshesVisible,
+				dbg_meshesVisible ? cast(float)dbg_totalRendered/dbg_meshesVisible*100.0 : 0);
+			igTextf("Vertices %s", dbg_vertsRendered);
+			igTextf("Triangles %s", dbg_trisRendered);
+			import anchovy.vbo;
+			igTextf("Buffers: %s Mem: %s",
+				Vbo.numAllocated,
+				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
+		}
+
 		if (igCollapsingHeader("Chunks"))
 		{
 			drawDebugChunkInfoGui();
 
-			igTextf("Chunks per frame loaded: %s", totalLoadedChunks - lastFrameLoadedChunks);
-			lastFrameLoadedChunks = totalLoadedChunks;
-			igTextf("Chunks total loaded: %s", totalLoadedChunks);
+			igTextf("Chunks per frame loaded: %s", dbg_totalLoadedChunks - dbg_lastFrameLoadedChunks);
+			dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
+			igTextf("Chunks total loaded: %s", dbg_totalLoadedChunks);
 			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
 
 			with(chunkMeshMan) {
@@ -450,6 +491,69 @@ public:
 		dbg.setVar("wasted client loads", wastedClientLoads);
 		showDebugGui();
 		drawDebugChunkInfo();
+		resetCounters();
+	}
+
+	import dlib.geometry.frustum;
+	void drawSolid(ref RenderSolid3dEvent event)
+	{
+		renderer.wireFrameMode(wireframeMode);
+
+		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
+		Frustum frustum;
+		frustum.fromMVP(vp);
+
+		renderer.faceCulling(true);
+		renderer.faceCullMode(FaceCullMode.back);
+
+		drawMeshes(chunkMeshMan.chunkMeshes[0].byValue, frustum,
+			graphics.solidShader3d,
+			dbg_meshesRenderedSolid);
+
+		renderer.alphaBlending(true);
+		renderer.depthWrite(false);
+
+		graphics.transparentShader3d.bind;
+		graphics.transparentShader3d.setTransparency(0.5f);
+		drawMeshes(chunkMeshMan.chunkMeshes[1].byValue, frustum,
+			graphics.transparentShader3d,
+			dbg_meshesRenderedSemitransparent);
+
+		renderer.faceCulling(false);
+		renderer.depthWrite(true);
+		renderer.alphaBlending(false);
+
+		if (wireframeMode)
+			renderer.wireFrameMode(false);
+	}
+
+	private void drawMeshes(R, S)(R meshes, Frustum frustum, ref S shader, ref size_t meshCounter)
+	{
+		shader.bind;
+		shader.setVP(graphics.camera.cameraMatrix, graphics.camera.perspective);
+
+		foreach(const ref mesh; meshes)
+		{
+			if (isCullingEnabled) // Frustum culling
+			{
+				import dlib.geometry.aabb;
+				vec3 vecMin = mesh.position;
+				vec3 vecMax = vecMin + CHUNK_SIZE;
+				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
+				auto intersects = frustum.intersectsAABB(aabb);
+				if (!intersects) continue;
+			}
+
+			Matrix4f modelMatrix = translationMatrix!float(mesh.position);
+			shader.setModel(modelMatrix);
+
+			mesh.render();
+
+			++meshCounter;
+			dbg_vertsRendered += mesh.numVertexes;
+			dbg_trisRendered += mesh.numTris;
+		}
+		shader.unbind;
 	}
 
 	private void handleGameStopEvent(ref GameStopEvent gameStopEvent)
@@ -489,7 +593,7 @@ public:
 	void onChunkLoaded(ChunkWorldPos cwp, ChunkLayerItem[] layers)
 	{
 		//tracef("onChunkLoaded %s added %s", cwp, chunkManager.isChunkAdded(cwp));
-		++totalLoadedChunks;
+		++dbg_totalLoadedChunks;
 
 		if (chunkManager.isChunkLoaded(cwp))
 		{
@@ -697,5 +801,13 @@ public:
 		{
 			connection.send(ViewRadiusPacket(viewRadius));
 		}
+	}
+
+	void onToggleCulling(string) {
+		isCullingEnabled = !isCullingEnabled;
+	}
+
+	void onToggleWireframe(string) {
+		wireframeMode = !wireframeMode;
 	}
 }

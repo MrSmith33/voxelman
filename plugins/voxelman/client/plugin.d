@@ -10,14 +10,12 @@ import voxelman.log;
 
 import voxelman.math;
 import dlib.math.matrix : Matrix4f;
-import dlib.math.affine : translationMatrix;
 import derelict.enet.enet;
 import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
 
 import anchovy.fpshelper;
 import anchovy.glerrors;
-import anchovy.irenderer;
 
 import netlib;
 import pluginlib;
@@ -67,7 +65,6 @@ private:
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
-	IRenderer renderer;
 	GuiPlugin guiPlugin;
 	CommandPluginClient commandPlugin;
 	ClientWorld clientWorld;
@@ -77,6 +74,7 @@ private:
 public:
 	AppStatistics stats;
 	Console console;
+	bool isConsoleShown = false;
 
 	// Client data
 	bool isRunning = false;
@@ -86,11 +84,6 @@ public:
 	ConfigOption maxFpsOpt;
 	bool limitFps = true;
 	FpsHelper fpsHelper;
-
-	// Graphics stuff
-	bool isCullingEnabled = true;
-	bool isConsoleShown = false;
-	bool wireframeMode = false;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!"voxelman.client.plugininfo";
@@ -104,8 +97,6 @@ public:
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Y, "key.toggleWireframe", null, &onToggleWireframe));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
@@ -122,12 +113,10 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
-		renderer = graphics.renderer;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
-		evDispatcher.subscribeToEvent(&drawSolid);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
 
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
@@ -145,7 +134,7 @@ public:
 	void printDebug()
 	{
 		igBegin("Debug");
-		igTextf("FPS: %s", stats.fps); igSameLine();
+		igTextf("FPS: %s", fpsHelper.fps); igSameLine();
 		int fpsLimitVal = maxFpsOpt.get!int;
 		igPushItemWidth(60);
 		igSliderInt(limitFps ? "limited##limit" : "unlimited##limit",
@@ -153,22 +142,6 @@ public:
 		igPopItemWidth();
 		maxFpsOpt.set!int(fpsLimitVal);
 		updateFrameTime();
-
-		if (igCollapsingHeader("Graphics"))
-		{
-			with(stats) {
-				ulong totalRendered = chunksRenderedSemitransparent + chunksRendered;
-				igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
-					chunksRendered, chunksRenderedSemitransparent, totalRendered, chunksVisible,
-					chunksVisible ? cast(float)totalRendered/chunksVisible*100.0 : 0);
-				igTextf("Vertices %s", vertsRendered);
-				igTextf("Triangles %s", trisRendered);
-				import anchovy.vbo;
-				igTextf("Buffers: %s Mem: %s",
-					Vbo.numAllocated,
-					DigitSeparator!(long, 3, ' ')(clientWorld.chunkMeshMan.totalMeshDataBytes));
-			}
-		}
 
 		igEnd();
 	}
@@ -242,11 +215,8 @@ public:
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
-		stats.fps = fpsHelper.fps;
-		stats.totalLoadedChunks = clientWorld.totalLoadedChunks;
-
 		import std.compiler;
-		static if (version_minor == 72)
+		static if (version_minor >= 72)
 		{
 			import core.memory;
 			dbg.logVar("GC used", core.memory.GC.stats().usedSize, 128);
@@ -254,7 +224,6 @@ public:
 		}
 
 		printDebug();
-		stats.resetCounters();
 		if (isConsoleShown)
 			console.draw();
 		dbg.logVar("delta, ms", delta*1000.0, 256);
@@ -294,74 +263,6 @@ public:
 	void onLockMouse(string)
 	{
 		guiPlugin.toggleMouseLock();
-	}
-
-	void onToggleCulling(string)
-	{
-		isCullingEnabled = !isCullingEnabled;
-	}
-	void onToggleWireframe(string)
-	{
-		wireframeMode = !wireframeMode;
-	}
-
-	import dlib.geometry.frustum;
-	void drawSolid(ref RenderSolid3dEvent event)
-	{
-		renderer.wireFrameMode(wireframeMode);
-
-		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
-		Frustum frustum;
-		frustum.fromMVP(vp);
-
-		renderer.faceCulling(true);
-		renderer.faceCullMode(FaceCullMode.back);
-
-		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[0].byValue, frustum, graphics.solidShader3d);
-
-		renderer.alphaBlending(true);
-		renderer.depthWrite(false);
-
-		graphics.transparentShader3d.bind;
-		graphics.transparentShader3d.setTransparency(0.5f);
-		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[1].byValue, frustum, graphics.transparentShader3d);
-
-		renderer.faceCulling(false);
-		renderer.depthWrite(true);
-		renderer.alphaBlending(false);
-
-		if (wireframeMode)
-			renderer.wireFrameMode(false);
-	}
-
-	private void drawMeshes(R, S)(R meshes, Frustum frustum, ref S shader)
-	{
-		shader.bind;
-		shader.setVP(graphics.camera.cameraMatrix, graphics.camera.perspective);
-
-		foreach(const ref mesh; meshes)
-		{
-			++stats.chunksVisible;
-			if (isCullingEnabled) // Frustum culling
-			{
-				import dlib.geometry.aabb;
-				vec3 vecMin = mesh.position;
-				vec3 vecMax = vecMin + CHUNK_SIZE;
-				AABB aabb = boxFromMinMaxPoints(vecMin, vecMax);
-				auto intersects = frustum.intersectsAABB(aabb);
-				if (!intersects) continue;
-			}
-
-			Matrix4f modelMatrix = translationMatrix!float(mesh.position);
-			shader.setModel(modelMatrix);
-
-			mesh.render();
-
-			++stats.chunksRenderedSemitransparent;
-			stats.vertsRendered += mesh.numVertexes;
-			stats.trisRendered += mesh.numTris;
-		}
-		shader.unbind;
 	}
 
 	void drawOverlay()

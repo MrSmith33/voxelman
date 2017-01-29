@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.math;
 
 public import gfm.integers.half;
+public import dlib.math.affine : translationMatrix;
 public import dlib.math.vector;
 public import dlib.math.matrix;
 public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt;
