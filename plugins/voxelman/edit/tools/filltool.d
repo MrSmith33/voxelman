@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.edit.tools.filltool;
 
+import voxelman.container.buffer;
 import voxelman.log;
 import voxelman.math;
 import voxelman.geometry.cube;
@@ -20,12 +21,11 @@ import voxelman.worldinteraction.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 
-import voxelman.edit.plugin : ITool;
+import voxelman.edit.plugin;
 
 final class FillTool : ITool
 {
 	WorldInteractionPlugin worldInteraction;
-	GraphicsPlugin graphics;
 	NetClientPlugin connection;
 	BlockInfoTable blockInfos;
 
@@ -36,6 +36,7 @@ final class FillTool : ITool
 	EditState state;
 	WorldBox selection;
 	bool showCursor = true;
+	Buffer!ColoredVertex cursorBuffer;
 
 	SingleBlockMesher blockMesher;
 
@@ -54,17 +55,43 @@ final class FillTool : ITool
 			startingPos = currentCursorPos;
 		}
 		selection = worldBoxFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimensionId)currentCursorPos.w);
-		drawSelection();
+
+		updateBlockRotation();
+	}
+
+	override void onRender(GraphicsPlugin graphics) {
+		import derelict.opengl3.gl3;
+		drawSelection(graphics);
 		if (showCursor && !worldInteraction.cameraInSolidBlock)
 		{
-			worldInteraction.drawCursor(worldInteraction.blockPos, Colors.red);
-			worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
+			//worldInteraction.drawCursor(worldInteraction.blockPos, Colors.red);
+			//worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
 
 			blockMesher.meshBlock(blockInfos[currentBlock.id], currentBlock.metadata);
-			graphics.debugBatch.putSolidMesh(blockMesher.geometry.data, vec3(worldInteraction.sideBlockPos.xyz));
+			graphics.transparentBuffer.putMesh(blockMesher.geometry.data, vec3(worldInteraction.sideBlockPos.xyz));
+			//graphics.drawBuffer3d(cursorBuffer.data, GL_TRIANGLES);
+
+			//foreach(ref vert; cursorBuffer.data)
+			//	vert.color = Color4ub(0,0,0,255);
+
+
+			glEnable(GL_POLYGON_OFFSET_LINE);
+			glPolygonOffset(-1, 1);
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			//graphics.drawBuffer3d(cursorBuffer.data, GL_TRIANGLES);
+
+			//cursorBuffer.clear();
+			cursorBuffer.putLineBlock(vec3(worldInteraction.blockPos.xyz), vec3(1,1,1), Colors.red);
+			cursorBuffer.putLineBlock(vec3(worldInteraction.sideBlockPos.xyz), vec3(1,1,1), Colors.blue);
+			graphics.drawBuffer3d(cursorBuffer.data, GL_LINES);
+			glPolygonOffset(0,0);
+
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			glDisable(GL_POLYGON_OFFSET_LINE);
+
+			cursorBuffer.clear();
 			blockMesher.reset();
 		}
-		updateBlockRotation();
 	}
 
 	BlockWorldPos currentCursorPos() @property {
@@ -77,7 +104,7 @@ final class FillTool : ITool
 		}
 	}
 
-	void drawSelection() {
+	void drawSelection(GraphicsPlugin graphics) {
 		final switch(state) {
 			case EditState.none:
 				break;

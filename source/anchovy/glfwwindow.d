@@ -38,7 +38,7 @@ private:
 	bool isProcessingEvents = false;
 
 public:
-	override void init(uvec2 size, in string caption)
+	override void init(ivec2 size, in string caption)
 	{
 		if (!glfwInited)
 			initGlfw();
@@ -106,9 +106,9 @@ public:
 		return glfwGetTime();
 	}
 
-	override void reshape(uvec2 viewportSize)
+	override void reshape(ivec2 viewportSize)
 	{
-		glViewport(0, 0, cast(int)viewportSize.x, cast(int)viewportSize.y);
+		glViewport(0, 0, viewportSize.x, viewportSize.y);
 	}
 
 	override void releaseWindow()
@@ -126,7 +126,7 @@ public:
 	{
 		double x, y;
 		glfwGetCursorPos(glfwWindowPtr, &x, &y);
-		return ivec2(cast(int)x, cast(int)y);
+		return ivec2(x, y);
 	}
 
 	override void swapBuffers()
@@ -134,23 +134,23 @@ public:
 		glfwSwapBuffers(glfwWindowPtr);
 	}
 
-	override void size(uvec2 newSize) @property
+	override void size(ivec2 newSize) @property
 	{
-		glfwSetWindowSize(glfwWindowPtr, cast(int)newSize.x, cast(int)newSize.y);
+		glfwSetWindowSize(glfwWindowPtr, newSize.x, newSize.y);
 	}
 
-	override uvec2 size() @property
+	override ivec2 size() @property
 	{
 		int width, height;
 		glfwGetWindowSize(glfwWindowPtr, &width, &height);
-		return uvec2(cast(uint)width, cast(uint)height);
+		return ivec2(width, height);
 	}
 
-	override uvec2 framebufferSize() @property
+	override ivec2 framebufferSize() @property
 	{
 		int width, height;
 		glfwGetFramebufferSize(glfwWindowPtr, &width, &height);
-		return uvec2(cast(uint)width, cast(uint)height);
+		return ivec2(width, height);
 	}
 
 	override string clipboardString() @property
@@ -216,7 +216,7 @@ extern(C) nothrow
 	}
 	void windowsizefun(GLFWwindow* w, int newWidth, int newHeight)
 	{
-		try getWinFromUP(w).windowResized.emit(uvec2(cast(uint)newWidth, cast(uint)newHeight));
+		try getWinFromUP(w).windowResized.emit(ivec2(newWidth, newHeight));
 		catch(Exception e) throw new Error(to!string(e));
 	}
 	void windowclosefun(GLFWwindow* w)

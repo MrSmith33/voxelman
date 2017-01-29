@@ -77,10 +77,10 @@ struct FpsCamera
 		isUpdated = true;
 	}
 
-	float* cameraMatrix()
+	ref Matrix4f cameraMatrix()
 	{
 		if(!isUpdated) update();
-		return &(cameraToClipMatrix.arrayof[0]);
+		return cameraToClipMatrix;
 	}
 
 	void printVectors()

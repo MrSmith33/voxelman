@@ -7,6 +7,7 @@ module voxelman.math;
 
 public import gfm.integers.half;
 public import dlib.math.vector;
+public import dlib.math.matrix;
 public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt;
 public import voxelman.math.utils;
 public import voxelman.math.simplex;

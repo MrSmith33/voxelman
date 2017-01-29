@@ -16,6 +16,8 @@ import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
 
 import anchovy.fpshelper;
+import anchovy.glerrors;
+import anchovy.irenderer;
 
 import netlib;
 import pluginlib;
@@ -65,6 +67,7 @@ private:
 	// Plugins
 	EventDispatcherPlugin evDispatcher;
 	GraphicsPlugin graphics;
+	IRenderer renderer;
 	GuiPlugin guiPlugin;
 	CommandPluginClient commandPlugin;
 	ClientWorld clientWorld;
@@ -87,7 +90,7 @@ public:
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool isConsoleShown = false;
-	bool triangleMode = true;
+	bool wireframeMode = false;
 
 	// IPlugin stuff
 	mixin IdAndSemverFrom!"voxelman.client.plugininfo";
@@ -102,7 +105,7 @@ public:
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_C, "key.toggleCulling", null, &onToggleCulling));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Y, "key.toggleTriangle", null, &onToggleTriangle));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Y, "key.toggleWireframe", null, &onToggleWireframe));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
@@ -119,6 +122,7 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
+		renderer = graphics.renderer;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
@@ -296,45 +300,44 @@ public:
 	{
 		isCullingEnabled = !isCullingEnabled;
 	}
-	void onToggleTriangle(string)
+	void onToggleWireframe(string)
 	{
-		triangleMode = !triangleMode;
+		wireframeMode = !wireframeMode;
 	}
 
 	import dlib.geometry.frustum;
 	void drawSolid(ref RenderSolid3dEvent event)
 	{
+		renderer.wireFrameMode(wireframeMode);
+
 		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
 		Frustum frustum;
 		frustum.fromMVP(vp);
 
-		glEnable(GL_CULL_FACE);
-		glCullFace(GL_BACK);
+		renderer.faceCulling(true);
+		renderer.faceCullMode(FaceCullMode.back);
 
-		graphics.chunkShader.bind;
-		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[0].byValue, frustum);
-		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-		graphics.chunkShader.unbind;
+		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[0].byValue, frustum, graphics.solidShader3d);
 
-		graphics.renderer.enableAlphaBlending();
-		glDepthMask(GL_FALSE);
+		renderer.alphaBlending(true);
+		renderer.depthWrite(false);
 
-		graphics.transChunkShader.bind;
-		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[1].byValue, frustum);
-		glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)Matrix4f.identity.arrayof);
-		graphics.transChunkShader.unbind;
+		graphics.transparentShader3d.bind;
+		graphics.transparentShader3d.setTransparency(0.5f);
+		drawMeshes(clientWorld.chunkMeshMan.chunkMeshes[1].byValue, frustum, graphics.transparentShader3d);
 
-		glDisable(GL_CULL_FACE);
-		glDepthMask(GL_TRUE);
-		graphics.renderer.disableAlphaBlending();
+		renderer.faceCulling(false);
+		renderer.depthWrite(true);
+		renderer.alphaBlending(false);
+
+		if (wireframeMode)
+			renderer.wireFrameMode(false);
 	}
 
-	private void drawMeshes(R)(R meshes, Frustum frustum)
+	private void drawMeshes(R, S)(R meshes, Frustum frustum, ref S shader)
 	{
-		glUniformMatrix4fv(graphics.viewLoc, 1, GL_FALSE,
-			graphics.camera.cameraMatrix);
-		glUniformMatrix4fv(graphics.projectionLoc, 1, GL_FALSE,
-			cast(const float*)graphics.camera.perspective.arrayof);
+		shader.bind;
+		shader.setVP(graphics.camera.cameraMatrix, graphics.camera.perspective);
 
 		foreach(const ref mesh; meshes)
 		{
@@ -350,14 +353,15 @@ public:
 			}
 
 			Matrix4f modelMatrix = translationMatrix!float(mesh.position);
-			glUniformMatrix4fv(graphics.modelLoc, 1, GL_FALSE, cast(const float*)modelMatrix.arrayof);
+			shader.setModel(modelMatrix);
 
-			mesh.render(triangleMode);
+			mesh.render();
 
 			++stats.chunksRenderedSemitransparent;
 			stats.vertsRendered += mesh.numVertexes;
 			stats.trisRendered += mesh.numTris;
 		}
+		shader.unbind;
 	}
 
 	void drawOverlay()

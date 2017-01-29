@@ -59,7 +59,7 @@ struct Render3Event {
 
 struct WindowResizedEvent
 {
-	uvec2 newSize;
+	ivec2 newSize;
 }
 
 // emitted only by server plugin

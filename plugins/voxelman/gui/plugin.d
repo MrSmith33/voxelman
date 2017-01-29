@@ -56,7 +56,7 @@ public:
 		initLibs();
 
 		window = new GlfwWindow();
-		window.init(uvec2(resolution.get!(int[])), "Voxelman client");
+		window.init(ivec2(resolution.get!(int[])), "Voxelman client");
 		renderer = new OglRenderer(window);
 		igState.init((cast(GlfwWindow)window).handle);
 
@@ -82,7 +82,6 @@ public:
 		DerelictGL3.load();
 		loadLib(DerelictGLFW3, BUILD_TO_ROOT_PATH, "glfw3");
 		loadLib(DerelictImgui, BUILD_TO_ROOT_PATH, "cimgui");
-
 	}
 
 	override void init(IPluginManager pluginman)
@@ -122,7 +121,7 @@ public:
 		igState.shutdown();
 	}
 
-	private void windowResized(uvec2 newSize)
+	private void windowResized(ivec2 newSize)
 	{
 		evDispatcher.postEvent(WindowResizedEvent(newSize));
 	}

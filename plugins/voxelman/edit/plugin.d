@@ -32,6 +32,7 @@ abstract class ITool
 	string name;
 	size_t id;
 	void onUpdate() {}
+	void onRender(GraphicsPlugin renderer) {}
 	void onMainActionPress() {}
 	void onMainActionRelease() {}
 	void onSecondaryActionPress() {}
@@ -53,6 +54,7 @@ class EditPlugin : IPlugin
 
 	size_t selectedTool;
 	GuiPlugin guiPlugin;
+	GraphicsPlugin graphics;
 	BlockManager blockManager;
 	Mapping!ITool tools;
 	NullTool nullTool;
@@ -80,12 +82,13 @@ class EditPlugin : IPlugin
 	{
 		fillTool.connection = pluginman.getPlugin!NetClientPlugin;
 		fillTool.worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
-		fillTool.graphics = pluginman.getPlugin!GraphicsPlugin;
 		fillTool.blockInfos = blockManager.getBlocks();
 
+		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
 		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		evDispatcher.subscribeToEvent(&onRenderEvent);
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("pick", &onPickBlockName);
@@ -134,6 +137,9 @@ class EditPlugin : IPlugin
 		igTextf("Tool: %s", currentTool.name);
 		igEnd();
 		currentTool.onUpdate();
+	}
+	void onRenderEvent(ref RenderSolid3dEvent event) {
+		currentTool.onRender(graphics);
 	}
 	void onMainActionPress(string key) {
 		if (!guiPlugin.mouseLocked) return;

@@ -39,11 +39,10 @@ struct ChunkMesh
 		vao.unbind;
 	}
 
-	void render(bool trianlges) const
+	void render() const
 	{
 		vao.bind;
-		if (trianlges) vao.drawArrays(PrimitiveType.TRIANGLES, 0, cast(uint)numVertexes());
-		else vao.drawArrays(PrimitiveType.LINES, 0, cast(uint)numVertexes());
+		vao.drawArrays(PrimitiveType.TRIANGLES, 0, cast(uint)numVertexes());
 		vao.unbind;
 	}
 

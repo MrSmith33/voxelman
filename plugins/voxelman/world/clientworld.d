@@ -58,7 +58,7 @@ string fmtDur(Duration dur)
 	import std.string : format;
 	int seconds, msecs, usecs;
 	dur.split!("seconds", "msecs", "usecs")(seconds, msecs, usecs);
-	return format("%s.%03s,%1ss", seconds, msecs, usecs);
+	return format("%s.%03s,%03ss", seconds, msecs, usecs);
 }
 
 //version = DBG_COMPR;
@@ -589,7 +589,7 @@ public:
 			size_t numMeshed = chunkMeshMan.remeshChangedChunks(remeshedChunks, &onRemeshDone);
 			auto submitDuration = MonoTime.currTime - startTime;
 			auto avg = submitDuration / numMeshed;
-			infof("%s tasks submitted in %s, avg per task %s", numMeshed, fmtDur(submitDuration), avg);
+			infof("%s tasks submitted in %s, avg per task %s", numMeshed, submitDuration.fmtDur, avg.fmtDur);
 		}
 		else
 			chunkMeshMan.remeshChangedChunks(remeshedChunks);

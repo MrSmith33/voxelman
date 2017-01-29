@@ -12,9 +12,9 @@ import anchovy.isharedcontext;
 
 abstract class IWindow
 {
-	void init(uvec2 size, in string caption);
+	void init(ivec2 size, in string caption);
 	ISharedContext createSharedContext();
-	void reshape(uvec2 viewportSize);
+	void reshape(ivec2 viewportSize);
 	void processEvents(); // will emit signals
 	double elapsedTime() @property; // in seconds
 	void swapBuffers();
@@ -23,9 +23,9 @@ abstract class IWindow
 	void mousePosition(ivec2 newPosition) @property;
 	ivec2 mousePosition() @property;
 
-	uvec2 size() @property;
-	uvec2 framebufferSize() @property;
-	void size(uvec2 newSize) @property;
+	ivec2 size() @property;
+	ivec2 framebufferSize() @property;
+	void size(ivec2 newSize) @property;
 
 	bool isKeyPressed(uint key);
 
@@ -41,7 +41,7 @@ abstract class IWindow
 	Signal!uint mouseReleased;
 	Signal!ivec2 mouseMoved;
 	Signal!bool focusChanged;
-	Signal!uvec2 windowResized;
+	Signal!ivec2 windowResized;
 	Signal!ivec2 windowMoved;
 	Signal!bool windowIconified;
 	Signal!dvec2 wheelScrolled;

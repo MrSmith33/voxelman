@@ -14,6 +14,7 @@ import anchovy.irenderer;
 import anchovy.iwindow;
 import anchovy.shaderprogram;
 import anchovy.texture;
+import anchovy.glerrors;
 
 class Vao
 {
@@ -50,20 +51,52 @@ public:
 		this.window = window;
 	}
 
-	override void enableAlphaBlending()
+	override void alphaBlending(bool value)
 	{
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		if (value) {
+			checkgl!glEnable(GL_BLEND);
+			checkgl!glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
+		else
+			checkgl!glDisable(GL_BLEND);
 	}
 
-	override void disableAlphaBlending()
-	{
-		glDisable(GL_BLEND);
+	override void depthWrite(bool value) {
+		checkgl!glDepthMask(value);
+	}
+
+	override void depthTest(bool value) {
+		if (value)
+			checkgl!glEnable(GL_DEPTH_TEST);
+		else
+			checkgl!glDisable(GL_DEPTH_TEST);
+	}
+
+	override void faceCulling(bool value) {
+		if (value)
+			checkgl!glEnable(GL_CULL_FACE);
+		else
+			checkgl!glDisable(GL_CULL_FACE);
+	}
+
+	override void faceCullMode(FaceCullMode mode) {
+		checkgl!glCullFace(mode);
+	}
+
+	override void wireFrameMode(bool value) {
+		if (value)
+			checkgl!glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			checkgl!glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
+	override void setViewport(ivec2 pos, ivec2 size) {
+		checkgl!glViewport(pos.x, pos.y, size.x, size.y);
 	}
 
 	override void setClearColor(ubyte r, ubyte g, ubyte b, ubyte a = 255)
 	{
-		glClearColor(cast(float)r/255, cast(float)g/255, cast(float)b/255, cast(float)a/255);
+		checkgl!glClearColor(cast(float)r/255, cast(float)g/255, cast(float)b/255, cast(float)a/255);
 	}
 
 	override Texture createTexture(string filename)
@@ -84,7 +117,7 @@ public:
 		return newProgram;
 	}
 
-	override uvec2 framebufferSize() @property
+	override ivec2 framebufferSize() @property
 	{
 		return window.framebufferSize();
 	}

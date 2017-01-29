@@ -25,10 +25,9 @@ struct EngineStarter
 
 	void start(string[] args)
 	{
-		AppType appType;
+		AppType appType = AppType.combined;
 		std.getopt.getopt(args,
 			std.getopt.config.passThrough,
-			std.getopt.config.required,
 			"app", &appType);
 
 		setupLogs(appType);
