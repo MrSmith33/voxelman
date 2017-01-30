@@ -56,7 +56,8 @@ final class FillTool : ITool
 		}
 		selection = worldBoxFromCorners(startingPos.vector.xyz, currentCursorPos.vector.xyz, cast(DimensionId)currentCursorPos.w);
 
-		updateBlockRotation();
+		if (state != EditState.placing)
+			updateBlockRotation();
 	}
 
 	override void onRender(GraphicsPlugin graphics) {
