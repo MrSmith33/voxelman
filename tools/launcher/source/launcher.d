@@ -25,6 +25,11 @@ import gui;
 
 enum DEFAULT_PORT = 1234;
 
+version(Windows)
+	enum bool is_Windows = true;
+else
+	enum bool is_Windows = false;
+
 struct PluginInfo
 {
 	string id;
@@ -553,7 +558,12 @@ struct Launcher
 
 string makeCompileCommand(JobParams params)
 {
-	immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+	string arch;
+	if (params.compiler == Compiler.dmd && is_Windows)
+		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86_mscoff`;
+	else
+		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+
 	immutable deps = params.nodeps ? ` --nodeps` : ``;
 	immutable doForce = params.force ? ` --force` : ``;
 	immutable buildType = buildTypeSwitches[params.buildType];

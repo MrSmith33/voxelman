@@ -763,7 +763,7 @@ public:
 		if (session.isSpawned) {
 			if (observerSessionId != session.thisSessionId) {
 				chunkObserverManager.removeObserver(observerSessionId);
-				observerSessionId = session.thisSessionId;
+				observerSessionId = cast(SessionId)session.thisSessionId;
 			}
 
 			auto borders = dimMan.dimensionBorders(observerPosition.dimension);

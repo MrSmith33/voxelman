@@ -45,7 +45,6 @@ import voxelman.world.storage.utils;
 import voxelman.world.storage.worldaccess;
 import voxelman.utils.textformatter;
 
-import voxelman.client.appstatistics;
 import voxelman.client.console;
 
 //version = manualGC;
@@ -72,7 +71,6 @@ private:
 	Debugger dbg;
 
 public:
-	AppStatistics stats;
 	Console console;
 	bool isConsoleShown = false;
 

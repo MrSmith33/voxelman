@@ -100,7 +100,7 @@ struct LauncherGui
 		refresh();
 
 		window = new GlfwWindow();
-		window.init(uvec2(820, 600), "Voxelman launcher");
+		window.init(ivec2(820, 600), "Voxelman launcher");
 		igState.init(window.handle);
 		window.keyPressed.connect(&igState.onKeyPressed);
 		window.keyReleased.connect(&igState.onKeyReleased);

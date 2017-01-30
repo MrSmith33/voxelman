@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2015-2016 Andrey Penechko.
+Copyright: Copyright (c) 2015-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -15,33 +15,70 @@ import std.process;
 import std.datetime;
 
 enum ROOT_PATH = "../..";
+enum TEST_DIR_NAME = "test";
 string testDir;
+
+version(Windows)
+	enum bool is_Windows = true;
+else
+	enum bool is_Windows = false;
+
+void makePackage(ReleasePackage* pack)
+{
+	string archStr = archToString[pack.arch];
+	pack.addFiles("builds/default", "*.exe");
+	pack.addFiles("res", "*.ply");
+	pack.addFiles("config", "*.sdl");
+	pack.addFile("config/servers.txt");
+	pack.addFiles("lib/"~archStr, "*.dll");
+	pack.addFile("saves/test"~archStr~".db");
+	pack.addFile("README.md");
+	pack.addFile("CHANGELOG.md");
+	pack.addFile("LICENSE.md");
+	pack.addFile("pluginpacks/default.txt");
+	pack.addFile("launcher.exe");
+}
+
+string semver = "0.8.0-rc2";
+string compiler = "ldc";
+string buildType = "release-debug";
 
 void main(string[] args)
 {
-	string semver = "0.8.0-dev.2";
-	string compiler = "ldc";
-	testDir = buildNormalizedPath(ROOT_PATH, "test");
-	if (exists(testDir))
+	testDir = buildNormalizedPath(absolutePath(buildPath(ROOT_PATH, TEST_DIR_NAME)));
+	if (exists(testDir) && isDir(testDir))
+	{
+		writefln("Deleting test dir %s", testDir);
 		rmdirRecurse(testDir);
+	}
 
 	StopWatch sw;
 	sw.start();
-	//completeBuild(Arch.x32, semver, compiler);
-	writeln;
-	completeBuild(Arch.x64, semver, compiler);
+	doWork();
 	sw.stop();
 	writefln("Finished in %.1fs", sw.peek().to!("seconds", real));
 }
 
-void completeBuild(Arch arch, string semver, string compiler)
+void doWork()
 {
-	string dub_arch = arch == Arch.x32 ? "x86" : "x86_64";
-	string launcher_arch = arch == Arch.x32 ? "32" : "64";
+	completeBuild(Arch.x32, semver, compiler, buildType);
+	writeln;
+	completeBuild(Arch.x64, semver, compiler, buildType);
+}
+
+void completeBuild(Arch arch, string semver, string compiler, string buildType)
+{
+	string launcher_arch;
+	if (compiler == "dmd" && is_Windows)
+		launcher_arch = arch == Arch.x32 ? "x86_mscoff" : "x86_64";
+	else
+		launcher_arch = arch == Arch.x32 ? "x86" : "x86_64";
+
+	string voxelman_arch = arch == Arch.x32 ? "32" : "64";
 
 	string dubCom(Arch arch) {
-		return format(`dub run --root="tools/launcher" -q --nodeps --compiler=dmd --build=release --arch=%s -- --release=%s --compiler=%s`,
-				dub_arch, launcher_arch, compiler);
+		return format(`dub run --root="tools/launcher" -q --nodeps --compiler=ldc2 --arch=%s --build=debug -- --arch=%s --compiler=%s --build=%s`,
+			launcher_arch, voxelman_arch, compiler, buildType);
 	}
 
 	string com = dubCom(arch);
@@ -49,11 +86,13 @@ void completeBuild(Arch arch, string semver, string compiler)
 
 	auto dub = executeShell(com, null, Config.none, size_t.max, ROOT_PATH);
 
-	if (dub.status != 0)
-		writeln("Failed to run launcher");
 	dub.output.write;
+	if (dub.status != 0) {
+		writeln("Failed to run dub or launcher");
+		return;
+	}
 
-	writefln("Packing %sbit", launcher_arch); stdout.flush();
+	writefln("Packing %sbit", voxelman_arch); stdout.flush();
 	pack(semver, arch, Platform.windows);
 }
 
@@ -95,22 +134,9 @@ static this()
 	archToString = [Arch.x64 : "64", Arch.x32 : "32"];
 }
 
-void makePackage(ReleasePackage* pack)
-{
-	pack.addFiles("builds/default", "*.exe");
-	pack.addFiles("res", "*");
-	pack.addFiles("config", "*.sdl");
-	pack.addFile("config/servers.txt");
-	pack.addFiles("lib/"~archToString[pack.arch], "*.dll");
-	pack.addFile("README.md");
-	pack.addFile("CHANGELOG.md");
-	pack.addFile("LICENSE.md");
-	pack.addFile("pluginpacks/default.txt");
-	pack.addFile("launcher.exe");
-}
-
 void writePackage(ReleasePackage* pack, string path)
 {
+	writefln("Writing archive into %s", path);
 	std.file.write(path, pack.zip.build());
 }
 
@@ -135,30 +161,35 @@ void addFiles(ReleasePackage* pack, string path, string pattern)
 	}
 }
 
-void addFile(ReleasePackage* pack, string arch_name)
+void addFile(ReleasePackage* pack, string archive_name)
 {
-	addFile(pack.zip, buildPath(pack.fileRoot, arch_name).absPath.normPath, buildPath(pack.archRoot, arch_name));
+	addFile(pack.zip, buildPath(pack.fileRoot, archive_name).absPath.normPath, buildPath(pack.archRoot, archive_name));
 }
 
-void addFile(ReleasePackage* pack, string fs_name, string arch_name)
+void addFile(ReleasePackage* pack, string fs_name, string archive_name)
 {
-	addFile(pack.zip, fs_name.absPath.normPath, buildPath(pack.archRoot, arch_name));
+	addFile(pack.zip, fs_name.absPath.normPath, buildPath(pack.archRoot, archive_name));
 }
 
-void addFile(ZipArchive arch, string fs_name, string arch_name)
+void addFile(ZipArchive archive, string fs_name, string archive_name)
 {
-	string norm = arch_name.normPath;
+	string norm = archive_name.normPath;
+	if (!exists(fs_name)) {
+		writefln("Cannot find %s at %s", fs_name, norm);
+		return;
+	}
 	writefln("Add %s as %s", fs_name, norm);
 	void[] data = std.file.read(fs_name);
 	ArchiveMember am = new ArchiveMember();
 	am.name = norm;
 	am.compressionMethod = CompressionMethod.deflate;
 	am.expandedData(cast(ubyte[])data);
-	arch.addMember(am);
+	archive.addMember(am);
 }
 
 void extractArchive(string archive, string pathTo)
 {
+	writefln("Extracting %s into %s", archive, pathTo);
 	extractArchive(new ZipArchive(std.file.read(archive)), pathTo);
 }
 
