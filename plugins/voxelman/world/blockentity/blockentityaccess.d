@@ -36,17 +36,24 @@ Box chunkLocalBlockBox(ChunkWorldPos cwp, Box blockBox) {
 	return chunkLocalBox;
 }
 
+// Will not place entity if blockBox lies in non-loaded chunk.
 void placeEntity(WorldBox blockBox, ulong payload,
 	WorldAccess worldAccess, BlockEntityAccess entityAccess)
 {
+	ushort dimension = blockBox.dimension;
+	Box affectedChunks = blockBoxToChunkBox(blockBox);
+
+	foreach(chunkPos; affectedChunks.positions) {
+		auto cwp = ChunkWorldPos(chunkPos, dimension);
+		if (!worldAccess.isChunkLoaded(cwp)) return;
+	}
+
 	auto mainCwp = ChunkWorldPos(BlockWorldPos(blockBox.position, blockBox.dimension));
 	Box mainChunkBox = chunkLocalBlockBox(mainCwp, blockBox);
 	ushort mainBlockIndex = boxEntityIndex(mainChunkBox);
 	auto mainData = BlockEntityData(
 		BlockEntityType.localBlockEntity, payload);
 
-	Box affectedChunks = blockBoxToChunkBox(blockBox);
-	ushort dimension = blockBox.dimension;
 	foreach(chunkPos; affectedChunks.positions) {
 		auto cwp = ChunkWorldPos(chunkPos, dimension);
 		Box chunkLocalBox = chunkLocalBlockBox(cwp, blockBox);

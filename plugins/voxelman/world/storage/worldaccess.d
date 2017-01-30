@@ -29,6 +29,10 @@ final class WorldAccess
 		blockChanges[cwp] = blockChanges.get(cwp, null) ~ change;
 	}
 
+	bool isChunkLoaded(ChunkWorldPos cwp) {
+		return chunkManager.isChunkLoaded(cwp);
+	}
+
 	void applyBlockChanges(ChunkWorldPos cwp, BlockChange[] changes)
 	{
 		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
