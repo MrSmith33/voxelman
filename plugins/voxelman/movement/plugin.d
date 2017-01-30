@@ -98,6 +98,9 @@ class MovementPlugin : IPlugin
 		clientWorld = pluginman.getPlugin!ClientWorld;
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showDebugSettings, SETTINGS_ORDER, "Movement");
+
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 	}
@@ -153,16 +156,17 @@ class MovementPlugin : IPlugin
 		}
 	}
 
-	void onPostUpdateEvent(ref PostUpdateEvent event)
+	private void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		dbg.setVar("On ground", onGround);
 		dbg.setVar("Speed", speed.length);
 		dbg.setVar("Loaded", isCurrentChunkLoaded());
+	}
 
-		igBegin("Debug");
-			igCheckbox("[N]oclip", &noclip);
-			igCheckbox("[F]ly mode", &isFlying);
-		igEnd();
+	private void showDebugSettings()
+	{
+		igCheckbox("[N]oclip", &noclip);
+		igCheckbox("[F]ly mode", &isFlying);
 	}
 
 	bool isCurrentChunkLoaded()

@@ -7,6 +7,7 @@ module voxelman.dbg.plugin;
 
 import voxelman.log;
 import std.array;
+import std.container.rbtree;
 import pluginlib;
 import derelict.imgui.imgui;
 import voxelman.core.events;
@@ -14,6 +15,25 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.utils.textformatter;
 
+alias DebugGuiHandler = void delegate();
+
+enum FPS_ORDER = 0;
+enum INFO_ORDER = 20;
+enum DEBUG_ORDER = 100;
+enum SETTINGS_ORDER = 200;
+
+struct DebugGuiHandlerItem
+{
+	int order;
+	string name;
+	DebugGuiHandler handler;
+
+	int opCmp(ref const DebugGuiHandlerItem other) const {
+		int orderDiff = other.order - order;
+		if (orderDiff == 0) return other.name < name;
+		return orderDiff;
+	}
+}
 
 final class DebugClient : IPlugin
 {
@@ -21,10 +41,17 @@ final class DebugClient : IPlugin
 
 	Debugger dbg;
 	NetClientPlugin connection;
+	RedBlackTree!(DebugGuiHandlerItem, "a>b") handlerList;
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
 		registerHandler(dbg = new Debugger);
+	}
+
+	override void preInit()
+	{
+		handlerList = new typeof(handlerList);
+		registerDebugGuiHandler(&drawDebugGroup, DEBUG_ORDER, "Debug");
 	}
 
 	override void init(IPluginManager pluginman)
@@ -35,9 +62,24 @@ final class DebugClient : IPlugin
 		connection.registerPacket!TelemetryPacket(&handleTelemetryPacket);
 	}
 
+	// bigger order items go lower in menu
+	void registerDebugGuiHandler(DebugGuiHandler handler, int order, string name)
+	{
+		handlerList.insert(DebugGuiHandlerItem(order, name, handler));
+	}
+
 	void handleDoGuiEvent(ref DoGuiEvent event)
 	{
 		igBegin("Debug");
+		foreach(item; handlerList[])
+		{
+			item.handler();
+		}
+		igEnd();
+	}
+
+	private void drawDebugGroup()
+	{
 		if (igCollapsingHeader("Debug"))
 		{
 			foreach(key, var; dbg.vars) {
@@ -47,7 +89,6 @@ final class DebugClient : IPlugin
 				igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
 			}
 		}
-		igEnd();
 	}
 
 	private void handleTelemetryPacket(ubyte[] packetData)

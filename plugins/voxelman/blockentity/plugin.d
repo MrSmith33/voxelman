@@ -22,7 +22,7 @@ import voxelman.world.storage;
 
 import voxelman.block.plugin;
 import voxelman.edit.plugin;
-import voxelman.eventdispatcher.plugin;
+import voxelman.dbg.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
@@ -51,10 +51,10 @@ final class BlockEntityClient : IPlugin {
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 
-		EventDispatcherPlugin evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onUpdateEvent);
-
 		connection = pluginman.getPlugin!NetClientPlugin;
+
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showBlockInfo, INFO_ORDER, "BlockInfo");
 
 		auto entityTool = new class ITool
 		{
@@ -112,12 +112,12 @@ final class BlockEntityClient : IPlugin {
 		editPlugin.registerTool(entityTool);
 	}
 
-	void onUpdateEvent(ref UpdateEvent event)
+	void showBlockInfo()
 	{
 		auto block = worldInteraction.pickBlock();
 		auto bwp = worldInteraction.blockPos;
 		auto cwp = ChunkWorldPos(bwp);
-		igBegin("Debug");
+
 		if (isBlockEntity(block.id))
 		{
 			ushort blockIndex = blockEntityIndexFromBlockId(block.id);
@@ -167,7 +167,6 @@ final class BlockEntityClient : IPlugin {
 			auto binfo = blockPlugin.getBlocks()[block.id];
 			igTextf("Block: %s:%s %s", block.id, block.metadata, binfo.name);
 		}
-		igEnd();
 	}
 }
 

@@ -193,6 +193,11 @@ public:
 		session = pluginman.getPlugin!ClientSession;
 
 		auto gui = pluginman.getPlugin!GuiPlugin;
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showDebugGuiPosition, INFO_ORDER, "Position");
+		debugClient.registerDebugGuiHandler(&showDebugGuiSettings, SETTINGS_ORDER, "Settings");
+		debugClient.registerDebugGuiHandler(&showDebugGuiGraphics, DEBUG_ORDER, "Graphics");
+		debugClient.registerDebugGuiHandler(&showDebugGuiChunks, DEBUG_ORDER, "Chunks");
 
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
@@ -286,10 +291,8 @@ public:
 		chunkMeshMan.update();
 	}
 
-	private void showDebugGui()
+	private void showDebugGuiPosition()
 	{
-		igBegin("Debug");
-
 		// heading
 		vec3 target = graphics.camera.target;
 		vec2 heading = graphics.camera.heading;
@@ -301,9 +304,12 @@ public:
 		igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
 		ChunkWorldPos chunkPos = observerPosition;
 		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+	}
 
+	private void showDebugGuiSettings()
+	{
 		// dimension
-		igTextf("Dimension: %s", chunkPos.w); igSameLine();
+		igTextf("Dimension: %s", observerPosition.w); igSameLine();
 			if (igButton("-##decDimension")) decDimension(); igSameLine();
 			if (igButton("+##incDimension")) incDimension();
 
@@ -311,7 +317,10 @@ public:
 		igTextf("View radius: %s", viewRadius); igSameLine();
 			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
 			if (igButton("+##incVRadius")) incViewRadius();
+	}
 
+	private void showDebugGuiGraphics()
+	{
 		if (igCollapsingHeader("Graphics"))
 		{
 			size_t dbg_meshesVisible = chunkMeshMan.chunkMeshes[0].length + chunkMeshMan.chunkMeshes[1].length;
@@ -326,7 +335,10 @@ public:
 				Vbo.numAllocated,
 				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
 		}
+	}
 
+	private void showDebugGuiChunks()
+	{
 		if (igCollapsingHeader("Chunks"))
 		{
 			drawDebugChunkInfoGui();
@@ -349,7 +361,6 @@ public:
 				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
 			}
 		}
-		igEnd();
 	}
 
 	private bool chunkDebug_showGrid;
@@ -489,7 +500,6 @@ public:
 			sendPosition(event.deltaTime);
 
 		dbg.setVar("wasted client loads", wastedClientLoads);
-		showDebugGui();
 		drawDebugChunkInfo();
 		resetCounters();
 	}

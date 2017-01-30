@@ -112,6 +112,8 @@ public:
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&printFpsDebug, FPS_ORDER, "Fps");
 
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
@@ -129,9 +131,8 @@ public:
 
 	void onStopCommand(CommandParams) { isRunning = false; }
 
-	void printDebug()
+	void printFpsDebug()
 	{
-		igBegin("Debug");
 		igTextf("FPS: %s", fpsHelper.fps); igSameLine();
 		int fpsLimitVal = maxFpsOpt.get!int;
 		igPushItemWidth(60);
@@ -140,8 +141,6 @@ public:
 		igPopItemWidth();
 		maxFpsOpt.set!int(fpsLimitVal);
 		updateFrameTime();
-
-		igEnd();
 	}
 
 	void run(string[] args)
@@ -221,7 +220,6 @@ public:
 			dbg.logVar("GC free", core.memory.GC.stats().freeSize, 128);
 		}
 
-		printDebug();
 		if (isConsoleShown)
 			console.draw();
 		dbg.logVar("delta, ms", delta*1000.0, 256);

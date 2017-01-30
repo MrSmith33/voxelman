@@ -20,6 +20,7 @@ import voxelman.graphics.plugin;
 import voxelman.block.plugin;
 import voxelman.command.plugin;
 import voxelman.gui.plugin;
+import voxelman.dbg.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
 import voxelman.input.keybindingmanager;
@@ -90,8 +91,15 @@ class EditPlugin : IPlugin
 		evDispatcher.subscribeToEvent(&onUpdateEvent);
 		evDispatcher.subscribeToEvent(&onRenderEvent);
 
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showToolName, INFO_ORDER, "Tool");
+
 		auto commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("pick", &onPickBlockName);
+	}
+
+	private void showToolName() {
+		igTextf("Tool: %s", currentTool.name);
 	}
 
 	void onPickBlockName(CommandParams params) {
@@ -133,9 +141,6 @@ class EditPlugin : IPlugin
 	}
 
 	void onUpdateEvent(ref UpdateEvent event) {
-		igBegin("Debug");
-		igTextf("Tool: %s", currentTool.name);
-		igEnd();
 		currentTool.onUpdate();
 	}
 	void onRenderEvent(ref RenderSolid3dEvent event) {

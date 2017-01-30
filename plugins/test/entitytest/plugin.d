@@ -17,8 +17,9 @@ import voxelman.world.storage : BlockWorldPos;
 import derelict.imgui.imgui;
 import voxelman.utils.textformatter;
 
-import voxelman.entity.plugin;
+import voxelman.dbg.plugin;
 import voxelman.edit.plugin;
+import voxelman.entity.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
@@ -32,11 +33,15 @@ final class EntityTestPlugin(bool clientSide) : IPlugin
 	mixin IdAndSemverFrom!"test.entitytest.plugininfo";
 
 	EntityManager* eman;
+	Debugger dbg;
+
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto compRegistry = resmanRegistry.getResourceManager!EntityComponentRegistry;
 		eman = compRegistry.eman;
 		eman.registerComponent!Transform();
+
+		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
 
 	static if (clientSide)
@@ -100,9 +105,7 @@ mixin template EntityTestPluginClient()
 		{
 			batch.putCube(vec3(row.transform_0.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
 		}
-		igBegin("Debug");
-		igTextf("Entities %s", eman.getComponentStorage!Transform().length);
-		igEnd();
+		dbg.setVar("Sand entities", eman.getComponentStorage!Transform().length);
 	}
 
 	void drawEntities(ref RenderSolid3dEvent event)
