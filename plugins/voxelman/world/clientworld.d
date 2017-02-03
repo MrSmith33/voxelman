@@ -100,15 +100,6 @@ public:
 	size_t dbg_vertsRendered;
 	size_t dbg_trisRendered;
 
-	void resetCounters()
-	{
-		dbg_meshesRenderedSolid = 0;
-		dbg_meshesRenderedSemitransparent = 0;
-		dbg_vertsRendered = 0;
-		dbg_trisRendered = 0;
-		dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
-	}
-
 	// Observer data
 	vec3 updatedCameraPos;
 	ChunkWorldPos observerPosition;
@@ -278,7 +269,6 @@ public:
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
-		resetCounters();
 		++currentTimestamp;
 
 		if (doUpdateObserverPosition)
@@ -336,6 +326,10 @@ public:
 				Vbo.numAllocated,
 				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
 		}
+		dbg_meshesRenderedSolid = 0;
+		dbg_meshesRenderedSemitransparent = 0;
+		dbg_vertsRendered = 0;
+		dbg_trisRendered = 0;
 	}
 
 	private void showDebugGuiChunks()
