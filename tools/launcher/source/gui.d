@@ -409,7 +409,12 @@ struct PlayMenu
 		igColumns(1);
 		igEndChild();
 
-		if (newSaveDlg.show()) { refresh(); } igSameLine();
+		size_t newSaveIndex;
+		if (newSaveDlg.show(newSaveIndex)) {
+			refresh();
+			saves.currentItem = newSaveIndex;
+		}
+		igSameLine();
 
 		if (saves.hasSelected)
 		{
@@ -459,7 +464,7 @@ struct NewSaveDialog
 	char[128] saveInputBuffer;
 	Launcher* launcher;
 
-	bool show()
+	bool show(out size_t newSaveIndex)
 	{
 		bool result;
 		if (igButton("New"))
@@ -474,7 +479,7 @@ struct NewSaveDialog
 
 			if (igButton("Create") || entered)
 			{
-				launcher.createSave(saveInputBuffer.fromCString);
+				newSaveIndex = launcher.createSave(saveInputBuffer.fromCString);
 				resetFields();
 
 				igCloseCurrentPopup();

@@ -455,7 +455,8 @@ struct Launcher
 		}
 	}
 
-	void createSave(string name)
+	// returns new save index
+	size_t createSave(string name)
 	{
 		if (!exists(saveFolder))
 		{
@@ -465,9 +466,14 @@ struct Launcher
 		infof("delete %s", saveFilename);
 		worldDb.open(saveFilename);
 		worldDb.close();
-		ulong fileSize = std.file.getSize(saveFilename);
-		string displaySize = formatFileSize(fileSize);
-		saves ~= new SaveInfo(name, displaySize, saveFilename, fileSize);
+		refreshSaves();
+		foreach(i, save; saves)
+		{
+			if (save.name == name)
+				return i;
+		}
+
+		return 0;
 	}
 
 	void readSaves()
