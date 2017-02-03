@@ -1,7 +1,10 @@
 # Change Log
 
 ## [Unreleased]
+
+## [0.8.0] - 2017-02-03
 ### Added
+- Add `dim_spawn` and `dim_spawn set` commands.
 - Add single block mesher helper.
 - Add ability to append meshes to Batch.
 - Add rotatable slope block.
@@ -300,6 +303,8 @@
 - Fix server stop.
 - Fix wrong rendering when resizing window. Viewport wasn't updated.
 
-[Unreleased]: https://github.com/MrSmith33/voxelman/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/MrSmith33/voxelman/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/MrSmith33/voxelman/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/MrSmith33/voxelman/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/MrSmith33/voxelman/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/MrSmith33/voxelman/compare/v0.5.0...v0.6.0

@@ -39,7 +39,7 @@ void makePackage(ReleasePackage* pack)
 	pack.addFile("launcher.exe");
 }
 
-string semver = "0.8.0-rc2";
+string semver = "0.8.0";
 string compiler = "ldc";
 string buildType = "release-debug";
 

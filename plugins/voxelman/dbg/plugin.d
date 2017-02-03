@@ -70,6 +70,8 @@ final class DebugClient : IPlugin
 
 	void handleDoGuiEvent(ref DoGuiEvent event)
 	{
+		igSetNextWindowSize(ImVec2(225, 350), ImGuiSetCond_Once);
+		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 		igBegin("Debug");
 		foreach(item; handlerList[])
 		{

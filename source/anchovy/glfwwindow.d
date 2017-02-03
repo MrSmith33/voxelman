@@ -11,6 +11,7 @@ import std.string : toStringz, fromStringz, format;
 
 import derelict.glfw3.glfw3;
 import derelict.opengl3.gl3;
+import voxelman.log;
 import voxelman.math;
 import anchovy.iwindow : IWindow;
 import anchovy.isharedcontext;
@@ -38,7 +39,7 @@ private:
 	bool isProcessingEvents = false;
 
 public:
-	override void init(ivec2 size, in string caption)
+	override void init(ivec2 size, in string caption, bool center = false)
 	{
 		if (!glfwInited)
 			initGlfw();
@@ -48,6 +49,7 @@ public:
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+		glfwWindowHint(GLFW_VISIBLE, false);
 
 		//BUG: sometimes fails in Windows 8. Maybe because of old drivers.
 		glfwWindowPtr = glfwCreateWindow(size.x, size.y, toStringz(caption), null,  null);
@@ -56,6 +58,10 @@ public:
 		{
 			throw new Error("Error creating GLFW3 window");
 		}
+
+		if (center) moveToCenter();
+
+		glfwShowWindow(glfwWindowPtr);
 
 		glfwMakeContextCurrent(glfwWindowPtr);
 		glfwSwapInterval(0);
@@ -88,6 +94,18 @@ public:
 		glfwWindowHint(GLFW_VISIBLE, false);
 		GLFWwindow* sharedContext = glfwCreateWindow(100, 100, "", null, glfwWindowPtr);
 		return new GlfwSharedContext(sharedContext);
+	}
+
+	override void moveToCenter()
+	{
+		GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+		ivec2 currentSize = size();
+		ivec2 primPos;
+		glfwGetMonitorPos(primaryMonitor, &primPos.x, &primPos.y);
+		const GLFWvidmode* primMode = glfwGetVideoMode(primaryMonitor);
+		ivec2 primSize = ivec2(primMode.width, primMode.height);
+		ivec2 newPos = primPos + primSize/2 - currentSize/2;
+		glfwSetWindowPos(glfwWindowPtr, newPos.x, newPos.y);
 	}
 
 	override void processEvents()

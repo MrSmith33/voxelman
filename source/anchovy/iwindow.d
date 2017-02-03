@@ -12,9 +12,10 @@ import anchovy.isharedcontext;
 
 abstract class IWindow
 {
-	void init(ivec2 size, in string caption);
+	void init(ivec2 size, in string caption, bool center = false);
 	ISharedContext createSharedContext();
 	void reshape(ivec2 viewportSize);
+	void moveToCenter();
 	void processEvents(); // will emit signals
 	double elapsedTime() @property; // in seconds
 	void swapBuffers();

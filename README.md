@@ -27,7 +27,7 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 
 ### Multiplayer
 - To start a server select world and press `Server` button.
-- Connect to your server in `Connect` tab
+- Connect to your server in `Connect` tab of `Play` menu.
 - Select local server and press `Connect` at the bottom.
 - To stop the server, go to the `Code` menu and hit `Stop` button of your server instance.
 
@@ -41,19 +41,28 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - `tp u|d|l|r|f|b <num_blocks>` - teleports player in choosen direction
 - `spawn` teleports to starting world position
 - `spawn set` sets world spawn
+- `dim_spawn` teleports to dimension spawn pos
+- `dim_spawn set` sets dimension spawn pos
 
 ## Controls (Can be changed in `config/client.sdl`)
 - `Q` to lock mouse.
 - `WASD`, `LCtrl`, `Space` to move. `LShift` to boost.
 - `Right` and `Left` to switch tools.
-- `R` to rotate rails.
+- `R` to rotate blocks.
 - `RMB` to place
 - `LMB` to remove.
+- `MMB` to pick block.
+- `~` open console.
 - `[` and `]` to change view distance.
 - Keypad `-` and `+` to change movement speed.
 - `U` disable position update.
 - `F` flying mode.
 - `N` noclip.
+- `KP+`, `KP-` change movement speed.
+- `F2` chunk grid.
+- `F5` update all meshes.
+- `C` toggle frustum culling.
+- `Y` toggle wireframe mode.
 
 ## Building from sources
 ### Linux 

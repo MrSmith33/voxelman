@@ -309,15 +309,15 @@ public:
 
 	private void showDebugGuiSettings()
 	{
-		// dimension
 		igTextf("Dimension: %s", observerPosition.w); igSameLine();
 			if (igButton("-##decDimension")) decDimension(); igSameLine();
 			if (igButton("+##incDimension")) incDimension();
 
-		// view radius
 		igTextf("View radius: %s", viewRadius); igSameLine();
 			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
 			if (igButton("+##incVRadius")) incViewRadius();
+
+		igCheckbox("[U]pdate observer pos", &doUpdateObserverPosition);
 	}
 
 	private void showDebugGuiGraphics()

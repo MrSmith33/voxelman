@@ -92,18 +92,6 @@ public:
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
 	}
 
-	override void postInit()
-	{
-		igState.newFrame();
-		// set debug window size
-		igSetNextWindowSize(ImVec2(270, 500), ImGuiSetCond_FirstUseEver);
-		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_FirstUseEver);
-		igBegin("Debug");
-		igSameLine();
-		igEnd();
-		igState.render();
-	}
-
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		window.processEvents();
