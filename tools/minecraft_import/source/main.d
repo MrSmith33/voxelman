@@ -52,7 +52,7 @@ struct ImportParams
 	string outputFile;
 	string outputDirectory;
 	string outputWorldName;
-	ushort outDimension;
+	DimensionId outDimension;
 	bool appendDimention;
 	string regionDir;
 	bool centerRegions;

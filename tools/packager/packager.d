@@ -37,10 +37,21 @@ void makePackage(ReleasePackage* pack)
 	pack.addFile("LICENSE.md");
 	pack.addFile("pluginpacks/default.txt");
 	pack.addFile("launcher.exe");
+
+	pack.addFile("tools/minecraft_import/minecraft_import.exe");
+	pack.addFile("tools/minecraft_import/readme.md");
 }
 
+enum Compiler
+{
+	dmd,
+	ldc,
+	gdc
+}
+string[] compilerExeNames = ["dmd", "ldc2", "gdc"];
+
 string semver = "0.8.0";
-string compiler = "ldc";
+Compiler compiler = Compiler.ldc;
 string buildType = "release-debug";
 
 void main(string[] args)
@@ -66,22 +77,24 @@ void doWork()
 	completeBuild(Arch.x64, semver, compiler, buildType);
 }
 
-void completeBuild(Arch arch, string semver, string compiler, string buildType)
+void completeBuild(Arch arch, string semver, Compiler compiler, string buildType)
 {
+	buildApp(arch, semver, compiler, buildType, "tools/minecraft_import");
+
 	string launcher_arch;
-	if (compiler == "dmd" && is_Windows)
+	if (compiler == Compiler.dmd && is_Windows)
 		launcher_arch = arch == Arch.x32 ? "x86_mscoff" : "x86_64";
 	else
 		launcher_arch = arch == Arch.x32 ? "x86" : "x86_64";
 
 	string voxelman_arch = arch == Arch.x32 ? "32" : "64";
 
-	string dubCom(Arch arch) {
+	string dubCom() {
 		return format(`dub run --root="tools/launcher" -q --nodeps --compiler=ldc2 --arch=%s --build=debug -- --arch=%s --compiler=%s --build=%s`,
 			launcher_arch, voxelman_arch, compiler, buildType);
 	}
 
-	string com = dubCom(arch);
+	string com = dubCom();
 	writefln("Executing '%s'", com); stdout.flush();
 
 	auto dub = executeShell(com, null, Config.none, size_t.max, ROOT_PATH);
@@ -94,6 +107,30 @@ void completeBuild(Arch arch, string semver, string compiler, string buildType)
 
 	writefln("Packing %sbit", voxelman_arch); stdout.flush();
 	pack(semver, arch, Platform.windows);
+}
+
+void buildApp(Arch arch, string semver, Compiler compiler, string buildType, string root = "./")
+{
+	string app_arch;
+	if (compiler == Compiler.dmd && is_Windows)
+		app_arch = arch == Arch.x32 ? "x86_mscoff" : "x86_64";
+	else
+		app_arch = arch == Arch.x32 ? "x86" : "x86_64";
+
+	string dubCom() {
+		return format(`dub build --root="%s" -q --nodeps --compiler=%s --arch=%s --build=%s`,
+			root, compilerExeNames[compiler], app_arch, buildType);
+	}
+
+	string com = dubCom();
+	writefln("Executing '%s'", com); stdout.flush();
+
+	auto dub = executeShell(com, null, Config.none, size_t.max, ROOT_PATH);
+
+	dub.output.write;
+	if (dub.status != 0) {
+		writeln("Failed to run dub");
+	}
 }
 
 struct ReleasePackage
