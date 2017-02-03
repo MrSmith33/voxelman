@@ -278,6 +278,7 @@ public:
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)
 	{
+		resetCounters();
 		++currentTimestamp;
 
 		if (doUpdateObserverPosition)
@@ -501,7 +502,6 @@ public:
 
 		dbg.setVar("wasted client loads", wastedClientLoads);
 		drawDebugChunkInfo();
-		resetCounters();
 	}
 
 	import dlib.geometry.frustum;

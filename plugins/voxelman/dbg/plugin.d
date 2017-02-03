@@ -18,7 +18,7 @@ import voxelman.utils.textformatter;
 alias DebugGuiHandler = void delegate();
 
 enum FPS_ORDER = 0;
-enum INFO_ORDER = 20;
+enum INFO_ORDER = 50;
 enum DEBUG_ORDER = 100;
 enum SETTINGS_ORDER = 200;
 

@@ -54,7 +54,7 @@ final class BlockEntityClient : IPlugin {
 		connection = pluginman.getPlugin!NetClientPlugin;
 
 		auto debugClient = pluginman.getPlugin!DebugClient;
-		debugClient.registerDebugGuiHandler(&showBlockInfo, INFO_ORDER, "BlockInfo");
+		debugClient.registerDebugGuiHandler(&showBlockInfo, INFO_ORDER - 2, "BlockInfo");
 
 		auto entityTool = new class ITool
 		{
