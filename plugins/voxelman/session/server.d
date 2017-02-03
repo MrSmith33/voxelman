@@ -191,6 +191,7 @@ public:
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
 		commandPlugin.registerCommand("spawn", &onSpawnCommand);
+		commandPlugin.registerCommand("dim_spawn", &onDimensionSpawnCommand);
 		commandPlugin.registerCommand("tp", &onTeleport);
 		commandPlugin.registerCommand("dim", &changeDimensionCommand);
 		commandPlugin.registerCommand("add_active", &onAddActive);
@@ -261,13 +262,29 @@ public:
 			format(`world spawn is now dim %s pos %s`, dimension, position.dimPos.pos)));
 	}
 
+	void onDimensionSpawnCommand(CommandParams params)
+	{
+		Session* session = sessions[params.source];
+		if(session is null) return;
+
+		auto position = db.get!ClientPosition(session.dbKey);
+		if (params.args.length > 1 && params.args[1] == "set")
+		{
+			setDimensionSpawn(position.dimension, session);
+			return;
+		}
+
+		auto dimInfo = serverWorld.dimMan.getOrCreate(position.dimension);
+		clientPosMan.tpToPos(session, dimInfo.spawnPos, position.dimension);
+	}
+
 	void setDimensionSpawn(DimensionId dimension, Session* session)
 	{
 		auto dimInfo = serverWorld.dimMan.getOrCreate(dimension);
 		auto position = db.get!ClientPosition(session.dbKey);
 		dimInfo.spawnPos = position.dimPos;
 		connection.sendTo(session.sessionId, MessagePacket(
-			format(`spawn of %s dimension is now %s`, dimension, position.dimPos.pos)));
+			format(`spawn of dimension %s is now %s`, dimension, position.dimPos.pos)));
 	}
 
 	void onTeleport(CommandParams params)
