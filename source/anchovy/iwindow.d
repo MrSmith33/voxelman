@@ -33,7 +33,8 @@ abstract class IWindow
 	string clipboardString() @property;
 	void clipboardString(string newClipboardString) @property;
 
-	void setMouseLock(bool isMouseLocked);
+	void isCursorLocked(bool value);
+	bool isCursorLocked();
 
 	Signal!uint keyPressed;
 	Signal!uint keyReleased;

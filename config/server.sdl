@@ -4,3 +4,4 @@ num_workers 4
 
 port 1234
 max_players 32
+save_unmodified_chunks off

@@ -78,8 +78,9 @@ public:
 	bool isRunning = false;
 
 	double delta;
-	Duration frameTime;
+	Duration targetFrameTime;
 	ConfigOption maxFpsOpt;
+	ConfigOption limitFpsOpt;
 	bool limitFps = true;
 	FpsHelper fpsHelper;
 
@@ -89,19 +90,19 @@ public:
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
-		maxFpsOpt = config.registerOption!int("max_fps", true);
+		maxFpsOpt = config.registerOption!int("max_fps", 120);
+		limitFpsOpt = config.registerOption!bool("limit_fps", true);
 
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
 	}
 
 	override void preInit()
 	{
 		fpsHelper.maxFps = maxFpsOpt.get!uint;
-		if (fpsHelper.maxFps == 0) fpsHelper.limitFps = false;
+		limitFps = limitFpsOpt.get!bool;
 		console.init();
 	}
 
@@ -136,9 +137,10 @@ public:
 		igTextf("FPS: %s", fpsHelper.fps); igSameLine();
 		int fpsLimitVal = maxFpsOpt.get!int;
 		igPushItemWidth(60);
-		igSliderInt(limitFps ? "limited##limit" : "unlimited##limit",
-			&fpsLimitVal, 0, 240, null);
+		igSliderInt("##limit_val", &fpsLimitVal, 30, 240, null);
 		igPopItemWidth();
+		igSameLine();
+		igCheckbox("limit##limit_fps_toggle", &limitFps);
 		maxFpsOpt.set!int(fpsLimitVal);
 		updateFrameTime();
 	}
@@ -180,7 +182,7 @@ public:
 
 				if (limitFps) {
 					Duration updateTime = MonoTime.currTime - newTime;
-					Duration sleepTime = frameTime - updateTime;
+					Duration sleepTime = targetFrameTime - updateTime;
 					if (sleepTime > Duration.zero)
 						Thread.sleep(sleepTime);
 				}
@@ -194,15 +196,7 @@ public:
 
 	void updateFrameTime()
 	{
-		uint maxFps = maxFpsOpt.get!uint;
-		if (maxFps == 0) {
-			limitFps = false;
-			frameTime = Duration.zero;
-			return;
-		}
-
-		limitFps = true;
-		frameTime = (1_000_000 / maxFpsOpt.get!uint).usecs;
+		targetFrameTime = (1_000_000 / maxFpsOpt.get!uint).usecs;
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
@@ -254,11 +248,6 @@ public:
 	void onClosePressedEvent(ref ClosePressedEvent event)
 	{
 		isRunning = false;
-	}
-
-	void onLockMouse(string)
-	{
-		guiPlugin.toggleMouseLock();
 	}
 
 	void drawOverlay()

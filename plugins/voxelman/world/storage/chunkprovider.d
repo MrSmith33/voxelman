@@ -23,7 +23,6 @@ import voxelman.world.gen.worker;
 import voxelman.world.storage;
 import voxelman.world.worlddb : WorldDb;
 
-enum saveUnmodifiedChunks = false;
 
 /// Used to pass data to chunkmanager's onSnapshotLoaded.
 struct LoadedChunkData
@@ -110,6 +109,7 @@ struct ChunkProvider
 
 	shared SharedHashSet!TaskId canceledTasks;
 	TaskId[ChunkWorldPos] chunkTasks;
+	bool saveUnmodifiedChunks;
 
 	shared Worker[] genWorkers;
 
@@ -130,9 +130,10 @@ struct ChunkProvider
 		}
 	}
 
-	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks)
+	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks, bool saveUnmodifiedChunks)
 	{
 		canceledTasks = cast(shared) new SharedHashSet!TaskId;
+		this.saveUnmodifiedChunks = saveUnmodifiedChunks;
 
 		import std.algorithm.comparison : clamp;
 		numGenWorkers = clamp(numGenWorkers, 0, 16);

@@ -73,6 +73,7 @@ private:
 	Debugger dbg;
 
 	ConfigOption numGenWorkersOpt;
+	ConfigOption saveUnmodifiedChunksOpt;
 
 	ubyte[] buf;
 	auto dbKey = IoKey("voxelman.world.world_info");
@@ -110,6 +111,8 @@ public:
 	{
 		ConfigManager config = resmanRegistry.getResourceManager!ConfigManager;
 		numGenWorkersOpt = config.registerOption!int("num_workers", 4);
+		saveUnmodifiedChunksOpt = config.registerOption!bool("save_unmodified_chunks", false);
+
 		ioManager.registerWorldLoadSaveHandlers(&readWorldInfo, &writeWorldInfo);
 		ioManager.registerWorldLoadSaveHandlers(&activeChunks.read, &activeChunks.write);
 		ioManager.registerWorldLoadSaveHandlers(&dimMan.load, &dimMan.save);
@@ -179,7 +182,8 @@ public:
 		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
 		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
 
-		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint, blockPlugin.getBlocks());
+		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint,
+			blockPlugin.getBlocks(), saveUnmodifiedChunksOpt.get!bool);
 		worldDb = null;
 		activeChunks.loadActiveChunks();
 		worldAccess.blockInfos = blockPlugin.getBlocks();

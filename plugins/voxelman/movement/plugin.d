@@ -165,8 +165,8 @@ class MovementPlugin : IPlugin
 
 	private void showDebugSettings()
 	{
-		igCheckbox("[N]oclip", &noclip);
 		igCheckbox("[F]ly mode", &isFlying);
+		igCheckbox("[N]oclip", &noclip);
 	}
 
 	bool isCurrentChunkLoaded()

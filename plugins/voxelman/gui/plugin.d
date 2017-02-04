@@ -24,8 +24,10 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.world.storage;
 
+import voxelman.dbg.plugin;
 import voxelman.eventdispatcher.plugin;
 import voxelman.config.configmanager;
+import voxelman.input.keybindingmanager;
 
 
 struct ClosePressedEvent {}
@@ -49,6 +51,9 @@ public:
 	{
 		auto config = resmanRegistry.getResourceManager!ConfigManager;
 		resolution = config.registerOption!(int[])("resolution", [1280, 720]);
+
+		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
 	}
 
 	override void preInit()
@@ -90,20 +95,30 @@ public:
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onRender3Event);
 		evDispatcher.subscribeToEvent(&onGameStopEvent);
+
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showDebugSettings, SETTINGS_ORDER, "Q Lock mouse");
 	}
 
-	void onPreUpdateEvent(ref PreUpdateEvent event)
+	private void showDebugSettings()
 	{
+		igCheckbox("[Q] Lock mouse", &mouseLocked);
+		updateMouseLock();
+	}
+
+	private void onPreUpdateEvent(ref PreUpdateEvent event)
+	{
+		updateMouseLock();
 		window.processEvents();
 		igState.newFrame();
 	}
 
-	void onRender3Event(ref Render3Event event)
+	private void onRender3Event(ref Render3Event event)
 	{
 		igState.render();
 	}
 
-	void onGameStopEvent(ref GameStopEvent stopEvent)
+	private void onGameStopEvent(ref GameStopEvent stopEvent)
 	{
 		window.releaseWindow;
 		igState.shutdown();
@@ -119,13 +134,19 @@ public:
 		evDispatcher.postEvent(ClosePressedEvent());
 	}
 
-	void toggleMouseLock()
+	private void onLockMouse(string)
 	{
 		mouseLocked = !mouseLocked;
-		if (mouseLocked)
+		updateMouseLock();
+	}
+
+	private void updateMouseLock()
+	{
+		if (window.isCursorLocked != mouseLocked)
 		{
-			window.mousePosition = cast(ivec2)(window.size) / 2;
+			window.isCursorLocked = mouseLocked;
+			if (mouseLocked)
+				window.mousePosition = cast(ivec2)(window.size) / 2;
 		}
-		window.setMouseLock(mouseLocked);
 	}
 }
