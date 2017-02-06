@@ -65,7 +65,7 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 - [ ] Use regions to store number of chunk users. This can help boost user add/removal, if chunks will store their user count in a region table.
 - [ ] Move metadata update on commit stage. Useful when multiple changes per frame occur to a chunk. Metadata update can be done in parallel.
 - [ ] Add storage for uncompressed layer data in chunk manager. Compressed data can be stored along with decompressed.
-- [ ] Remove BlockData. First ChunkLayerSnap needs custom (de)serizalizer.
+- [ ] Remove BlockData. First ChunkLayerSnap needs custom (de)serizalizer due to union usage.
 - [x] Do not uncompress unneeded chunks (non-visible). Decide by metadata.
 - [x] Do not uncompress chunks on client until requested.
 - [x] Implement heightmap caching in chunk gen.

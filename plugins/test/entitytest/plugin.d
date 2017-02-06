@@ -26,6 +26,8 @@ import voxelman.worldinteraction.plugin;
 import voxelman.world.serverworld;
 import voxelman.world.storage;
 
+import voxelman.edit.tools.itool;
+
 
 final class EntityTestPlugin(bool clientSide) : IPlugin
 {

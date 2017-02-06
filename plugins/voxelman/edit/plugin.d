@@ -25,23 +25,8 @@ import voxelman.net.plugin;
 import voxelman.worldinteraction.plugin;
 import voxelman.input.keybindingmanager;
 
+import voxelman.edit.tools.itool;
 import voxelman.edit.tools.filltool;
-
-
-abstract class ITool
-{
-	string name;
-	size_t id;
-	void onUpdate() {}
-	void onRender(GraphicsPlugin renderer) {}
-	void onMainActionPress() {}
-	void onMainActionRelease() {}
-	void onSecondaryActionPress() {}
-	void onSecondaryActionRelease() {}
-	void onTertiaryActionPress() {}
-	void onTertiaryActionRelease() {}
-	void onRotateAction() {}
-}
 
 final class NullTool : ITool
 {
@@ -93,6 +78,7 @@ class EditPlugin : IPlugin
 
 		auto debugClient = pluginman.getPlugin!DebugClient;
 		debugClient.registerDebugGuiHandler(&showToolName, INFO_ORDER, "Tool");
+		debugClient.registerDebugGuiHandler(&showToolHandler, INFO_ORDER, "ToolDebug");
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("pick", &onPickBlockName);
@@ -100,6 +86,10 @@ class EditPlugin : IPlugin
 
 	private void showToolName() {
 		igTextf("Tool: %s", currentTool.name);
+	}
+
+	private void showToolHandler() {
+		currentTool.onShowDebug();
 	}
 
 	void onPickBlockName(CommandParams params) {
@@ -118,8 +108,7 @@ class EditPlugin : IPlugin
 		}
 	}
 
-	void registerTool(ITool tool)
-	{
+	void registerTool(ITool tool) {
 		assert(tool);
 		tools.put(tool);
 	}

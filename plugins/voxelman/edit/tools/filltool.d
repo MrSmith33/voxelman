@@ -21,6 +21,7 @@ import voxelman.worldinteraction.plugin;
 import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 
+import voxelman.edit.tools.itool;
 import voxelman.edit.plugin;
 
 final class FillTool : ITool
@@ -93,6 +94,12 @@ final class FillTool : ITool
 			cursorBuffer.clear();
 			blockMesher.reset();
 		}
+	}
+
+	override void onShowDebug() {
+		import voxelman.utils.textformatter;
+		auto binfo = blockInfos[currentBlock.id];
+		igTextf("Fill block: %s:%s", binfo.name, currentBlock.metadata);
 	}
 
 	BlockWorldPos currentCursorPos() @property {

@@ -79,6 +79,7 @@ struct RailPos {
 		return bwp;
 	}
 	svec4 vector;
+	alias vector this;
 }
 
 struct RailData
@@ -114,6 +115,18 @@ struct RailData
 		else
 		{
 			data |= newRail.data;
+		}
+	}
+
+	void removeRail(RailData newRail)
+	{
+		if (data == newRail.data) // slope or multiple same rails
+		{
+			data = 0;
+		}
+		else
+		{
+			data &= ~newRail.data;
 		}
 	}
 

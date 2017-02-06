@@ -8,6 +8,9 @@ Voxelman plugin pack includes plugins for a voxel-based game(s).
 Launcher will allow for any plugin combination, while master-server will host all plugins and online server list.
 
 ## Screenshots and videos
+
+[Twitter](https://twitter.com/MrSmith33)
+
 [Imgur album](http://imgur.com/a/L5g1B)
 
 See [releases](https://github.com/MrSmith33/voxelman/releases) for binaries.

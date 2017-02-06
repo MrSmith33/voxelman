@@ -29,6 +29,7 @@ import voxelman.world.clientworld;
 import voxelman.world.serverworld;
 import voxelman.worldinteraction.plugin;
 
+import voxelman.edit.tools.itool;
 import voxelman.blockentity.blockentityman;
 import voxelman.world.blockentity;
 

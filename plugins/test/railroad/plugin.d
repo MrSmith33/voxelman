@@ -13,7 +13,6 @@ import voxelman.core.packets;
 import voxelman.blockentity.blockentityman;
 import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
-import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.world.serverworld;
@@ -37,6 +36,19 @@ struct PlaceRailPacket
 	ubyte data;
 }
 
+enum RailEditOp
+{
+	add,
+	remove
+}
+
+struct EditRailLinePacket
+{
+	RailPos from;
+	size_t length;
+	RailOrientation orientation;
+	RailEditOp editOp;
+}
 
 final class RailroadPluginClient : IPlugin
 {
@@ -44,7 +56,6 @@ final class RailroadPluginClient : IPlugin
 	mixin RailroadPluginCommon;
 
 	ClientWorld clientWorld;
-	GraphicsPlugin graphics;
 	NetClientPlugin connection;
 	WorldInteractionPlugin worldInteraction;
 
@@ -68,14 +79,14 @@ final class RailroadPluginClient : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
-		graphics = pluginman.getPlugin!GraphicsPlugin;
 		clientWorld = pluginman.getPlugin!ClientWorld;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacket!PlaceRailPacket;
+		connection.registerPacket!EditRailLinePacket;
 
 		auto railTool = new RailTool(clientWorld, blockEntityManager,
-			graphics, connection, worldInteraction);
+			connection, worldInteraction);
 
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
 		editPlugin.registerTool(railTool);
@@ -95,6 +106,7 @@ final class RailroadPluginServer : IPlugin
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!PlaceRailPacket(&handlePlaceRailPacket);
+		connection.registerPacket!EditRailLinePacket(&handleEditRailLinePacket);
 		serverWorld = pluginman.getPlugin!ServerWorld;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
 	}
@@ -104,10 +116,40 @@ final class RailroadPluginServer : IPlugin
 		auto packet = unpackPacket!PlaceRailPacket(packetData);
 		RailPos railPos = packet.pos;
 		RailData railData = RailData(packet.data);
-		placeRail(railPos, railData);
+		editRail(railPos, railData);
 	}
 
-	void placeRail(RailPos railPos, RailData railData)
+	void handleEditRailLinePacket(ubyte[] packetData, SessionId sessionId)
+	{
+		auto packet = unpackPacket!EditRailLinePacket(packetData);
+		RailPos from = packet.from;
+		final switch(packet.orientation) {
+			case RailOrientation.x:
+				RailData railData = RailData(RailSegment.xpos);
+				foreach(dx; 0..packet.length)
+				{
+					RailPos railPos = from;
+					railPos.x += dx;
+					editRail(railPos, railData, packet.editOp);
+				}
+				break;
+			case RailOrientation.z:
+				RailData railData = RailData(RailSegment.zneg);
+				foreach(dz; 0..packet.length)
+				{
+					RailPos railPos = from;
+					railPos.z += dz;
+					editRail(railPos, railData, packet.editOp);
+				}
+				break;
+			case RailOrientation.xzSameSign:
+				break;
+			case RailOrientation.xzOppSign:
+				break;
+		}
+	}
+
+	void editRail(RailPos railPos, RailData railData, RailEditOp editOp = RailEditOp.add)
 	{
 		ChunkWorldPos cwp = railPos.chunkPos();
 		ushort railEntityId = blockEntityManager.getId("rail");
@@ -115,24 +157,34 @@ final class RailroadPluginServer : IPlugin
 		RailData railOnGround = getRailAt(railPos, railEntityId,
 			serverWorld.worldAccess, serverWorld.entityAccess);
 
+		if (railOnGround.empty && editOp == RailEditOp.remove) return;
+
 		if (!railOnGround.empty)
 		{
-			WorldBox oldBox = railData.boundingBox(railPos);
-			BlockWorldPos delPos = railPos.deletePos;
-
-			RailData combined = railOnGround;
-			combined.addRail(railData); // combine rails
+			RailData modified = railOnGround;
+			final switch(editOp)
+			{
+				case RailEditOp.add:
+					modified.addRail(railData); // combine rails
+					break;
+				case RailEditOp.remove:
+					modified.removeRail(railData); // remove rails
+					break;
+			}
 
 			// Adding existing rail segment
-			if (railOnGround == combined)
+			if (railOnGround == modified)
 				return;
 
+			BlockWorldPos delPos = railPos.deletePos;
 			WorldBox changedBox = removeEntity(delPos, blockEntityPlugin.blockEntityInfos,
 				serverWorld.worldAccess, serverWorld.entityAccess, BlockId(1));
 			connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 				RemoveBlockEntityPacket(delPos.vector));
-			railData = combined;
+			railData = modified;
 		}
+
+		if (railData.empty) return;
 
 		WorldBox blockBox = railData.boundingBox(railPos);
 		ulong payload = payloadFromIdAndEntityData(railEntityId, railData.data);
