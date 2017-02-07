@@ -10,10 +10,25 @@ import voxelman.log;
 
 import voxelman.container.buffer;
 
-import voxelman.geometry.cube : CubeSide, cubeFaces;
+import voxelman.geometry.cube;
 import voxelman.math;
 import voxelman.graphics;
 
+void put4gonalPrismTris(V)(ref Buffer!V output, const vec3[8] corners, vec3 offset, Color4ub color)
+{
+	output.reserve(6 * 6); // 6 faces, 6 points per edge
+
+	if (offset == vec3(0,0,0))
+	{
+		foreach(ind; cubeFullTriIndicies)
+			output.put(V(corners[ind], color));
+	}
+	else
+	{
+		foreach(ind; cubeFullTriIndicies)
+			output.put(V(corners[ind] + offset, color));
+	}
+}
 
 void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color4ub color)
 {

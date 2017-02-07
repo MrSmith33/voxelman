@@ -20,6 +20,7 @@ import voxelman.world.blockentity;
 import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 
+import voxelman.geometry.cube;
 import voxelman.math;
 import voxelman.world.storage;
 import voxelman.edit.tools.itool;
@@ -28,13 +29,6 @@ import test.railroad.plugin;
 import test.railroad.mesh;
 import test.railroad.utils;
 
-enum RailOrientation
-{
-	x,
-	z,
-	xzSameSign, //xneg-zneg, xpos-zpos
-	xzOppSign // xneg-zpos, xpos-zneg
-}
 
 final class RailTool : ITool
 {
@@ -48,8 +42,10 @@ final class RailTool : ITool
 	BlockWorldPos cursorPos;
 
 	RailOrientation cursorOrientation;
+	DiagonalRailSide diagonalRailSide;
 	uint curLength;
 	RailPos minPos;
+	RailPos maxPos;
 
 	enum EditState
 	{
@@ -94,40 +90,137 @@ final class RailTool : ITool
 	void drawLine(BlockWorldPos start, BlockWorldPos end,
 		GraphicsPlugin graphics, Colors color)
 	{
+		CubeSide side0;
+		CubeSide side1;
+
+		// little hack to fix preview crossing caused by special combination of offsets
+		// happens when two sides with the same sign are emitted.
+		bool flipEndOffset = false;
+
 		final switch(cursorOrientation) {
 			case RailOrientation.x:
 				auto railPos1 = RailPos(start);
 				auto railPos2 = RailPos(end);
 				short minX = min(railPos1.x, railPos2.x);
-				short maxX = cast(short)(max(railPos1.x, railPos2.x) + 1);
-				minPos = railPos1;
-				minPos.x = minX;
-				curLength = (maxX - minX);
-				int length = curLength * RAIL_TILE_SIZE;
-				vec3 cubePos = vec3(minX*RAIL_TILE_SIZE, start.y+0.25, railPos1.z*RAIL_TILE_SIZE+RAIL_TILE_SIZE/2-0.25);
-				graphics.debugBatch.putCube(cubePos+vec3(0,0,1), vec3(length, 0.5, 0.5), color, true);
-				graphics.debugBatch.putCube(cubePos-vec3(0,0,1), vec3(length, 0.5, 0.5), color, true);
+				short maxX = max(railPos1.x, railPos2.x);
+				minPos.vector = svec4(minX, railPos1.y, railPos1.z, railPos1.w);
+				maxPos.vector = svec4(maxX, railPos1.y, railPos1.z, railPos1.w);
+				curLength = (maxX - minX) + 1;
+				side0 = CubeSide.xneg;
+				side1 = CubeSide.xpos;
 				break;
 			case RailOrientation.z:
 				auto railPos1 = RailPos(start);
 				auto railPos2 = RailPos(end);
 				short minZ = min(railPos1.z, railPos2.z);
-				short maxZ = cast(short)(max(railPos1.z, railPos2.z) + 1);
-				minPos = railPos1;
-				minPos.z = minZ;
-				curLength = (maxZ - minZ);
-				int length = curLength * RAIL_TILE_SIZE;
-				vec3 cubePos = vec3(railPos1.x*RAIL_TILE_SIZE+RAIL_TILE_SIZE/2-0.25, start.y+0.25, minZ*RAIL_TILE_SIZE);
-				graphics.debugBatch.putCube(cubePos+vec3(1,0,0), vec3(0.5, 0.5, length), color, true);
-				graphics.debugBatch.putCube(cubePos-vec3(1,0,0), vec3(0.5, 0.5, length), color, true);
+				short maxZ = max(railPos1.z, railPos2.z);
+				minPos.vector = svec4(railPos1.x, railPos1.y, minZ, railPos1.w);
+				maxPos.vector = svec4(railPos1.x, railPos1.y, maxZ, railPos1.w);
+				curLength = (maxZ - minZ) + 1;
+				side0 = CubeSide.zneg;
+				side1 = CubeSide.zpos;
 				break;
 			case RailOrientation.xzSameSign:
+				minPos = RailPos(start);
+				vec2 origin = vec2(minPos.xz);
+				vec2 cursor = vec2(end.xz) / RAIL_TILE_SIZE - origin - vec2(0,1); // relative to the start of selection
+				vec2 dividingAxisVector = vec2(1, -1);
 
+				//     ^ H   /
+				//  +---+---& 2 H   | P - values
+				//  |  X ^ /|  H    |
+				//^ | X   P | H     | 1
+				// ^|X   / ^|H      |
+				//  +   &1  +       | 0.5
+				// L|^ /   X|^      |      +---> X
+				//L | P   X | ^     | 0    |
+				//  |/ ^ X  |  ^    |      |
+				//  &---+---+   ^   |-0.5  v Z
+				// /0  L ^       ^
+				//    L   ^       ^
+				// & - sample vectors of (0, 0), (0.5, -0.5) and (1, -1) give results of 0, 1, 2
+				// Points marked as 'P' divide diagonal of rail tile in 4 equal pieces
+				// and they have dot results of 0.5 and 1.5
+				// Cursor locations between P-points should result in rail pieces marked as 'X'
+				// Locations between 0 and 0.5 are L pieces, between 1.5 and 2 are H pieces.
+				// dot(dividingAxisVector, cursor) of vec2(1, -1) will give result of 2
+				// we substract 0.5 to bring 0 to the first P piece. Second P piece has a value of 1.
+				float projection = dot(dividingAxisVector, cursor) - 0.5f;
+
+				// section inside current tile has index of 0
+				int cursorSection = cast(int)floor(projection);
+
+				// use length of 0 when no selection
+				if (state == EditState.none) cursorSection = 0;
+
+				DiagonalRailSide startSide = cast(DiagonalRailSide)(dot(vec2(1, 1), cursor) < 0);
+
+				DiagonalRailSide endSide = startSide;
+				if (cursorSection % 2 != 0) endSide = cast(DiagonalRailSide)(!startSide);
+
+				ivec2 endTile = addDiagonalManhattan(ivec2(minPos.xz), cursorSection, cursorOrientation, startSide);
+				maxPos.vector = svec4(cast(short)endTile.x, minPos.y, cast(short)endTile.y, minPos.w);
+
+				if (cursorSection < 0)
+				{
+					swap(minPos, maxPos);
+					cursorSection = -cursorSection;
+					if (cursorSection % 2 != 0)
+					{
+						swap(startSide, endSide);
+					}
+				}
+
+				diagonalRailSide = startSide;
+
+				// uses manhattan distance
+				curLength = cursorSection + 1;
+
+				side0 = [CubeSide.zpos, CubeSide.xneg][startSide];
+				side1 = [CubeSide.xpos, CubeSide.zneg][endSide];
+				flipEndOffset = startSide == endSide;
 				break;
 			case RailOrientation.xzOppSign:
+				minPos = RailPos(start);
+				vec2 origin = vec2(minPos.xz);
+				vec2 cursor = vec2(end.xz) / RAIL_TILE_SIZE - origin; // relative to the start of selection
+				vec2 dividingAxisVector = vec2(1, 1);
+				float projection = dot(dividingAxisVector, cursor) - 0.5f;
 
+				// section inside current tile has index of 0
+				int cursorSection = cast(int)floor(projection);
+
+				// use length of 0 when no selection
+				if (state == EditState.none) cursorSection = 0;
+
+				DiagonalRailSide startSide = cast(DiagonalRailSide)(dot(vec2(-1, 1), cursor) < 0);
+
+				DiagonalRailSide endSide = startSide;
+				if (cursorSection % 2 != 0) endSide = cast(DiagonalRailSide)(!startSide);
+
+				ivec2 endTile = addDiagonalManhattan(ivec2(minPos.xz), cursorSection, cursorOrientation, startSide);
+				maxPos.vector = svec4(cast(short)endTile.x, minPos.y, cast(short)endTile.y, minPos.w);
+
+				if (cursorSection < 0)
+				{
+					swap(minPos, maxPos);
+					cursorSection = -cursorSection;
+					if (cursorSection % 2 != 0)
+					{
+						swap(startSide, endSide);
+					}
+				}
+
+				diagonalRailSide = startSide;
+
+				// uses manhattan distance
+				curLength = cursorSection + 1;
+
+				side0 = [CubeSide.xneg, CubeSide.zneg][startSide];
+				side1 = [CubeSide.zpos, CubeSide.xpos][endSide];
 				break;
 		}
+		graphics.debugBatch.triBuffer.putRailPreview(minPos, maxPos, side0, side1, flipEndOffset, color);
 	}
 
 	override void onShowDebug() {
@@ -148,7 +241,7 @@ final class RailTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			connection.send(EditRailLinePacket(minPos, curLength, cursorOrientation, RailEditOp.remove));
+			connection.send(EditRailLinePacket(minPos, curLength, cursorOrientation, diagonalRailSide, RailEditOp.remove));
 		}
 	}
 
@@ -180,11 +273,11 @@ final class RailTool : ITool
 
 		if (worldInteraction.cursorHit)
 		{
-			connection.send(EditRailLinePacket(minPos, curLength, cursorOrientation, RailEditOp.add));
+			connection.send(EditRailLinePacket(minPos, curLength, cursorOrientation, diagonalRailSide, RailEditOp.add));
 		}
 	}
 
 	override void onRotateAction() {
-		cursorOrientation = cast(RailOrientation)((cursorOrientation + 1) % 2);
+		cursorOrientation = cast(RailOrientation)((cursorOrientation + 1) % 4);
 	}
 }

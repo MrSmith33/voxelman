@@ -27,9 +27,9 @@ struct Batch
 	void putCube(T1, T2)(Vector!(T1, 3) pos, Vector!(T2, 3) size, Color4ub color, bool fill)
 	{
 		if (fill)
-			putFilledBlock(triBuffer, pos, size, color);
+			putFilledBlock(triBuffer, vec3(pos), vec3(size), color);
 		else
-			putLineBlock(lineBuffer, pos, size, color);
+			putLineBlock(lineBuffer, vec3(pos), vec3(size), color);
 	}
 
 	void putCubeFace(T1, T2)(Vector!(T1, 3) cubePos, Vector!(T2, 3) size, CubeSide side, Color4ub color, bool fill)
@@ -41,6 +41,20 @@ struct Batch
 	}
 
 	void putLine(T1, T2)(Vector!(T1, 3) start, Vector!(T2, 3) end, Color4ub color)
+	{
+		lineBuffer.put(
+			ColoredVertex(start, color),
+			ColoredVertex(end, color));
+	}
+
+	void putLine(T1, T2)(Vector!(T1, 3) start, Vector!(T2, 3) end, Color4ub color1, Color4ub color2)
+	{
+		lineBuffer.put(
+			ColoredVertex(start, color1),
+			ColoredVertex(end, color2));
+	}
+
+	void putLineVolumetric(T1, T2)(Vector!(T1, 3) start, Vector!(T2, 3) end, Color4ub color)
 	{
 		lineBuffer.put(
 			ColoredVertex(start, color),

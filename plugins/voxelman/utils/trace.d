@@ -22,7 +22,7 @@ bool traceRay(
 	vec3 startingPosition, // starting position
 	vec3 rayDirection, // direction
 	double maxDistance,
-	out vec3 hitPosition, // resulting position hit
+	out ivec3 hitPosition, // resulting position hit
 	out ivec3 hitNormal, // normal of hit surface
 	ref Batch batch)
 {
@@ -117,7 +117,7 @@ bool traceRay(
 	{
 		if (isBlockSolid(ivec3(x, y, z)))
 		{
-			hitPosition = vec3(x, y, z);
+			hitPosition = ivec3(x, y, z);
 			return true;
 		}
 

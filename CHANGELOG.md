@@ -1,6 +1,7 @@
 # Change Log
 
 ## [Unreleased]
+- Implement click-and-drag rail placement.
 
 ## [0.8.0] - 2017-02-03
 ### Added

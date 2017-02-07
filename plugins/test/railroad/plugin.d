@@ -47,6 +47,7 @@ struct EditRailLinePacket
 	RailPos from;
 	size_t length;
 	RailOrientation orientation;
+	DiagonalRailSide diagonalRailSide;
 	RailEditOp editOp;
 }
 
@@ -122,13 +123,12 @@ final class RailroadPluginServer : IPlugin
 	void handleEditRailLinePacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!EditRailLinePacket(packetData);
-		RailPos from = packet.from;
 		final switch(packet.orientation) {
 			case RailOrientation.x:
 				RailData railData = RailData(RailSegment.xpos);
 				foreach(dx; 0..packet.length)
 				{
-					RailPos railPos = from;
+					RailPos railPos = packet.from;
 					railPos.x += dx;
 					editRail(railPos, railData, packet.editOp);
 				}
@@ -137,15 +137,37 @@ final class RailroadPluginServer : IPlugin
 				RailData railData = RailData(RailSegment.zneg);
 				foreach(dz; 0..packet.length)
 				{
-					RailPos railPos = from;
+					RailPos railPos = packet.from;
 					railPos.z += dz;
 					editRail(railPos, railData, packet.editOp);
 				}
 				break;
 			case RailOrientation.xzSameSign:
+				bool topSide = packet.diagonalRailSide == DiagonalRailSide.zneg;
+				RailSegment[2] sides = [RailSegment.xposZpos, RailSegment.xnegZneg];
+				ivec2[2] increments = [ivec2(1, 0), ivec2(0, -1)];
+				placeDiagonalRail(topSide, packet.from, sides, increments, packet.length, packet.editOp);
 				break;
 			case RailOrientation.xzOppSign:
+				bool topSide = packet.diagonalRailSide == DiagonalRailSide.zneg;
+				RailSegment[2] sides = [RailSegment.xnegZpos, RailSegment.xposZneg];
+				ivec2[2] increments = [ivec2(0, 1), ivec2(1, 0)];
+				placeDiagonalRail(topSide, packet.from, sides, increments, packet.length, packet.editOp);
 				break;
+		}
+	}
+
+	private void placeDiagonalRail(bool topSide, RailPos railPos, RailSegment[2] sides, ivec2[2] increments, size_t length, RailEditOp editOp)
+	{
+		foreach(i; 0..length)
+		{
+			RailData railData = RailData(sides[cast(size_t)topSide]);
+			editRail(railPos, railData, editOp);
+
+			auto inc = increments[cast(size_t)topSide];
+			railPos.x += inc.x;
+			railPos.z += inc.y;
+			topSide = !topSide;
 		}
 	}
 

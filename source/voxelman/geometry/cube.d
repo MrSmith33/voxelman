@@ -335,3 +335,12 @@ immutable ubyte[4][6] cubeSideVertIndices = [
 	[4,6,7,5], // ypos
 	[1,3,2,0], // yneg
 ];
+
+immutable ubyte[36] cubeFullTriIndicies = [
+	1, 4, 5, 1, 0, 4, // zneg
+	2, 7, 6, 2, 3, 7, // zpos
+	3, 5, 7, 3, 1, 5, // xpos
+	0, 6, 4, 0, 2, 6, // xneg
+	6, 5, 4, 6, 7, 5, // ypos
+	3, 0, 1, 3, 2, 0, // yneg
+];

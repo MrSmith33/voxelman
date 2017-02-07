@@ -52,7 +52,7 @@ class WorldInteractionPlugin : IPlugin
 	vec3 cursorPos;
 	vec3 lineStart, lineEnd;
 	bool traceVisible;
-	vec3 hitPosition;
+	ivec3 hitPosition;
 	Duration cursorTraceTime;
 	Batch traceBatch;
 	Batch hitBatch;

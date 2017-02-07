@@ -47,7 +47,7 @@
 ### RAILROAD
 - [ ] Separate stub meshes and read adjacent rails for advanced meshing.
 - [x] Use stone/gravel material for rail's bottom side and for slope's side.
-- [ ] Click-and-drag rail placement.
+- [x] Click-and-drag rail placement.
 - [x] Improve rail solidity check. Use bitmaps to get solidity info for each rail segment.
 - [x] Multiple rails per tile.
 - [x] Add mesh rotation.

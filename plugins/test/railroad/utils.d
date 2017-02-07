@@ -21,7 +21,7 @@ immutable ivec4 railPickOffset = ivec4(RAIL_TILE_SIZE/2, 0, RAIL_TILE_SIZE/2, 0)
 
 ivec3 railTilePos(ivec3 bwp) {
 	return ivec3(floor(cast(float)bwp.x / RAIL_TILE_SIZE) * RAIL_TILE_SIZE,
-		cast(float)bwp.y,
+		bwp.y,
 		floor(cast(float)bwp.z / RAIL_TILE_SIZE) * RAIL_TILE_SIZE);
 }
 
@@ -396,3 +396,40 @@ void drawSolidityDebug(ref Batch b, RailData data, BlockWorldPos bwp)
 		}
 	}
 }
+
+
+// Diagonal rail utils
+
+enum RailOrientation
+{
+	x,
+	xzOppSign, // xneg-zpos, xpos-zneg
+	z,
+	xzSameSign, //xneg-zneg, xpos-zpos
+}
+
+enum DiagonalRailSide
+{
+	zpos,
+	zneg
+}
+
+ivec2 addDiagonalManhattan(ivec2 origin, int distance, RailOrientation orientation, DiagonalRailSide side)
+{
+	bool topSide = side == DiagonalRailSide.zneg;
+	int odd = distance % 2 != 0;
+
+	switch(orientation)
+	{
+		case RailOrientation.xzSameSign:
+			ivec2 oddIncrement = topSide ? ivec2(0, -1) : ivec2(1, 0);
+			return origin + ivec2(1, -1) * cast(int)floor(distance/2.0f) + oddIncrement * odd;
+
+		case RailOrientation.xzOppSign:
+			ivec2 oddIncrement = topSide ? ivec2(1, 0) : ivec2(0,  1);
+			return origin + ivec2(1,  1) * cast(int)floor(distance/2.0f) + oddIncrement * odd;
+
+		default: assert(false);
+	}
+}
+
