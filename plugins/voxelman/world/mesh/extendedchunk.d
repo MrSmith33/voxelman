@@ -6,8 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.extendedchunk;
 
 import voxelman.math;
-import voxelman.geometry.cube;
-import voxelman.geometry.box;
+import voxelman.geometry;
 import voxelman.core.config;
 import voxelman.world.mesh.utils;
 import voxelman.world.storage;

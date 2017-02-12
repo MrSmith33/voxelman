@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.texture;
+module voxelman.graphics.texture;
 
 import std.conv, std.file;
 import std.stdio;
@@ -12,7 +12,7 @@ import std.string;
 
 import derelict.opengl3.gl3;
 import dlib.image.image : SuperImage;
-import anchovy.glerrors;
+import voxelman.graphics.glerrors;
 
 //version = debugTexture;
 

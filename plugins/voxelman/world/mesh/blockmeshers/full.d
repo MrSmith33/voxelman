@@ -7,7 +7,7 @@ module voxelman.world.mesh.blockmeshers.full;
 
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;

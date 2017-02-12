@@ -21,7 +21,7 @@ import voxelman.world.storage;
 
 import voxelman.world.block;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.blockentity;
 

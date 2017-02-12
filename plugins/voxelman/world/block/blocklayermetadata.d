@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.block.blocklayermetadata;
 
 import voxelman.log;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 import voxelman.core.config;
 import voxelman.world.block;
 import voxelman.world.storage;

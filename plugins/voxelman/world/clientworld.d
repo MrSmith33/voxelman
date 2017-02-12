@@ -10,10 +10,9 @@ import derelict.imgui.imgui;
 import voxelman.log;
 import netlib;
 import pluginlib;
-import anchovy.irenderer;
+import voxelman.graphics.irenderer;
 import voxelman.math;
-import voxelman.geometry.cube;
-import voxelman.geometry.box;
+import voxelman.geometry;
 import voxelman.utils.textformatter;
 
 import voxelman.core.config;
@@ -321,7 +320,7 @@ public:
 				dbg_meshesVisible ? cast(float)dbg_totalRendered/dbg_meshesVisible*100.0 : 0);
 			igTextf("Vertices %s", dbg_vertsRendered);
 			igTextf("Triangles %s", dbg_trisRendered);
-			import anchovy.vbo;
+			import voxelman.graphics.vbo;
 			igTextf("Buffers: %s Mem: %s",
 				Vbo.numAllocated,
 				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));

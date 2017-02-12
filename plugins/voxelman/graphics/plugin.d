@@ -12,10 +12,10 @@ import voxelman.container.buffer;
 import voxelman.math;
 
 import pluginlib;
-import anchovy.iwindow;
-import anchovy.irenderer;
-import anchovy.shaderprogram;
-import anchovy.glerrors;
+import voxelman.platform.iwindow;
+import voxelman.graphics.irenderer;
+import voxelman.graphics.shaderprogram;
+import voxelman.graphics.glerrors;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;

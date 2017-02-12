@@ -7,7 +7,7 @@ module voxelman.graphics.batch;
 
 import voxelman.container.buffer;
 import voxelman.model.vertex;
-import voxelman.geometry.cube : CubeSide;
+import voxelman.geometry;
 import voxelman.math;
 import voxelman.graphics;
 

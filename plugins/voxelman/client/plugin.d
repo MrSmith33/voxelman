@@ -14,8 +14,8 @@ import derelict.enet.enet;
 import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
 
-import anchovy.fpshelper;
-import anchovy.glerrors;
+import voxelman.utils.fpshelper;
+import voxelman.graphics.glerrors;
 
 import netlib;
 import pluginlib;

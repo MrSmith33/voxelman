@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.mesh.tables.slope;
 
-import voxelman.geometry.cube;
+import voxelman.geometry;
 import voxelman.world.block.shape;
 
 private alias SSM = ShapeSideMask;

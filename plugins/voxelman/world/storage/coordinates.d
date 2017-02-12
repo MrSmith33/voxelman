@@ -269,7 +269,7 @@ struct ChunkWorldPos
 void adjacentPositions(size_t numAdjacent, T)(T center, out T[numAdjacent] positions)
 	if (numAdjacent == 6 || numAdjacent == 26)
 {
-	import voxelman.geometry.cube : sideOffsets;
+	import voxelman.geometry : sideOffsets;
 	foreach(i, offset; sideOffsets!numAdjacent)
 	{
 		positions[i] = T(center.x + offset[0],

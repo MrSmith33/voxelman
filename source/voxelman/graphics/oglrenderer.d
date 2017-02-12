@@ -4,39 +4,17 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.oglrenderer;
+module voxelman.graphics.oglrenderer;
 
 import derelict.opengl3.gl3;
 
-
 import voxelman.math;
-import anchovy.irenderer;
-import anchovy.iwindow;
-import anchovy.shaderprogram;
-import anchovy.texture;
-import anchovy.glerrors;
+import voxelman.graphics.irenderer;
+import voxelman.platform.iwindow;
+import voxelman.graphics.shaderprogram;
+import voxelman.graphics.texture;
+import voxelman.graphics.glerrors;
 
-class Vao
-{
-	this()
-	{
-		glGenVertexArrays(1, &handle);
-	}
-	void close()
-	{
-		glDeleteVertexArrays(1, &handle);
-	}
-	void bind()
-	{
-		glBindVertexArray(handle);
-	}
-
-	static void unbind()
-	{
-		glBindVertexArray(0);
-	}
-	uint handle;
-}
 
 class OglRenderer : IRenderer
 {

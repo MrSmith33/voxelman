@@ -13,7 +13,6 @@ import netlib : SessionId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
 import voxelman.world.storage.worldbox : WorldBox, TrisectResult,
 	trisect4d, calcBox, shiftAndClampBoxByBorders;
-import voxelman.geometry.box;
 
 enum chunkPackLoadSize = 200;
 

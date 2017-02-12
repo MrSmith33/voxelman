@@ -7,12 +7,11 @@ module voxelman.world.storage.worldbox;
 
 import voxelman.log;
 import voxelman.math;
+import voxelman.graphics;
 
 import voxelman.core.config;
 import voxelman.world.storage.coordinates;
 
-import voxelman.graphics;
-import voxelman.geometry.box;
 
 void putCube(ref Batch batch, Box box, Color4ub color, bool fill, bool offset = true)
 {

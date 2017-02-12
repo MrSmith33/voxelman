@@ -11,11 +11,11 @@ import std.string : format;
 import voxelman.math;
 import derelict.imgui.imgui;
 
-import anchovy.glfwwindow;
-import anchovy.input;
-import anchovy.irenderer;
-import anchovy.iwindow;
-import anchovy.oglrenderer;
+import voxelman.platform.iwindow;
+import voxelman.platform.glfwwindow;
+import voxelman.platform.input;
+import voxelman.graphics.irenderer;
+import voxelman.graphics.oglrenderer;
 
 import pluginlib;
 import voxelman.imgui_glfw;

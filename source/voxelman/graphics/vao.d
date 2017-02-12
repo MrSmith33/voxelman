@@ -3,11 +3,11 @@ Copyright: Copyright (c) 2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module anchovy.vao;
+module voxelman.graphics.vao;
 
 import derelict.opengl3.gl3;
-import anchovy.glerrors;
-import anchovy.vbo;
+import voxelman.graphics.glerrors;
+import voxelman.graphics.vbo;
 
 enum PrimitiveType : GLenum
 {

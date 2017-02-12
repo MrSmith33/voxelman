@@ -4,9 +4,12 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.isharedcontext;
+module voxelman.platform.platform;
 
-interface ISharedContext
+import voxelman.platform.monitorman;
+
+struct Platform
 {
-	void makeCurrent();
+	MonitorManager monitorman;
+
 }

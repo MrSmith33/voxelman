@@ -9,7 +9,7 @@ import voxelman.log;
 
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 import voxelman.core.config;
 import voxelman.world.storage;
 import voxelman.utils.mapping;

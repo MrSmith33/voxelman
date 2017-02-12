@@ -20,7 +20,7 @@ import voxelman.math;
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
 import derelict.opengl3.gl3;
-import anchovy.glfwwindow;
+import voxelman.platform.glfwwindow;
 import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
 import voxelman.utils.textformatter;

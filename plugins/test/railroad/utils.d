@@ -6,9 +6,7 @@ Authors: Andrey Penechko.
 module test.railroad.utils;
 
 import voxelman.math;
-import voxelman.geometry.cube : CubeSide;
-import voxelman.geometry.box;
-import voxelman.geometry.utils;
+import voxelman.geometry;
 import voxelman.world.block;
 import voxelman.world.blockentity.blockentitydata;
 import voxelman.world.blockentity.blockentityaccess;

@@ -7,7 +7,7 @@ module voxelman.world.storage.worldaccess;
 
 import voxelman.log;
 import std.string;
-import voxelman.geometry.box;
+import voxelman.math.box;
 import voxelman.core.config;
 import voxelman.world.block;
 import voxelman.world.storage;

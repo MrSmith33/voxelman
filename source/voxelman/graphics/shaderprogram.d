@@ -4,14 +4,14 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.shaderprogram;
+module voxelman.graphics.shaderprogram;
 
 import std.exception;
 import std.stdio;
 import std.string;
 import std.variant;
 import derelict.opengl3.gl3;
-import anchovy.glerrors;
+import voxelman.graphics.glerrors;
 
 final class ShaderProgram
 {

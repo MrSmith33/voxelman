@@ -9,7 +9,6 @@ module voxelman.movement.plugin;
 import voxelman.log;
 
 import voxelman.math;
-static import voxelman.math.utils;
 
 import pluginlib;
 import voxelman.core.events;

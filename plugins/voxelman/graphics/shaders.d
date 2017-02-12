@@ -7,9 +7,9 @@ Authors: Andrey Penechko.
 module voxelman.graphics.shaders;
 
 import derelict.opengl3.gl3;
-import anchovy.irenderer;
-import anchovy.shaderprogram;
-import anchovy.glerrors;
+import voxelman.graphics.irenderer;
+import voxelman.graphics.shaderprogram;
+import voxelman.graphics.glerrors;
 import voxelman.math;
 
 

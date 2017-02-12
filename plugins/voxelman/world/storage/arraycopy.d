@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.world.storage.arraycopy;
 
 import voxelman.math;
-import voxelman.geometry.box;
 
 /// writes source to a box within dest
 void setSubArray(T)(

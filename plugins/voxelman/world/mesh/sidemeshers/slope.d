@@ -8,7 +8,7 @@ module voxelman.world.mesh.sidemeshers.slope;
 import voxelman.log;
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;

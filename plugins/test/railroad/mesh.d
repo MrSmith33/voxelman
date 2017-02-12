@@ -12,8 +12,7 @@ import voxelman.container.buffer;
 import voxelman.math;
 
 import voxelman.graphics;
-import voxelman.geometry.cube;
-import voxelman.geometry.utils;
+import voxelman.geometry;
 
 import voxelman.world.mesh.chunkmesh;
 import voxelman.world.mesh.sidemeshers.full;

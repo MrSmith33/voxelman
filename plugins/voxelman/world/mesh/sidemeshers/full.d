@@ -8,7 +8,7 @@ module voxelman.world.mesh.sidemeshers.full;
 
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
@@ -23,8 +23,6 @@ void meshFullSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d)
 	meshOccludedQuad(*d.buffer, cornerOcclusion, color, d.blockPos,
 		cubeSideVertIndices[side], cubeVerticies.ptr);
 }
-
-
 
 void meshFullSideOccluded2(CubeSide side, ubyte[4] cornerOcclusion, SideParams d)
 {

@@ -20,7 +20,7 @@ import voxelman.world.blockentity;
 import voxelman.world.clientworld;
 import voxelman.worldinteraction.plugin;
 
-import voxelman.geometry.cube;
+import voxelman.geometry;
 import voxelman.math;
 import voxelman.world.storage;
 import voxelman.edit.tools.itool;

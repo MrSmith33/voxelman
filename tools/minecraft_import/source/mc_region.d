@@ -19,7 +19,6 @@ import voxelman.world.storage.chunkmanager : ChunkManager;
 import voxelman.world.storage.chunkprovider : ChunkProvider;
 import voxelman.world.storage.chunkobservermanager : ChunkObserverManager;
 import voxelman.world.worlddb : WorldDb;
-import voxelman.geometry.box;
 import voxelman.world.storage.worldbox;
 
 enum regionExt = ".mca";

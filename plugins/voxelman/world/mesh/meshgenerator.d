@@ -11,8 +11,7 @@ import core.exception : Throwable;
 
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.box;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.block;
 import voxelman.world.blockentity;

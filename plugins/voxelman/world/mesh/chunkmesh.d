@@ -6,8 +6,8 @@ Authors: Andrey Penechko.
 
 module voxelman.world.mesh.chunkmesh;
 
-import anchovy.vao;
-import anchovy.vbo;
+import voxelman.graphics.vao;
+import voxelman.graphics.vbo;
 import voxelman.math;
 import voxelman.model.vertex;
 import voxelman.graphics;

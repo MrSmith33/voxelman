@@ -5,9 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.dimensionman;
 
-import voxelman.log;
-import voxelman.geometry.box;
 import std.typecons : Nullable;
+import voxelman.log;
 import voxelman.math;
 import voxelman.core.config;
 import voxelman.world.storage;

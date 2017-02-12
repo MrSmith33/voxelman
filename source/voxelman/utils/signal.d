@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.signal;
+module voxelman.utils.signal;
 
 import std.algorithm : countUntil;
 import std.functional : toDelegate;

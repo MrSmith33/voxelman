@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module voxelman.core.events;
 
-import anchovy.irenderer;
+import voxelman.graphics.irenderer;
 import voxelman.math;
 
 struct GameStartEvent {}

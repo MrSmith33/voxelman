@@ -3,9 +3,8 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.geometry.rect;
+module voxelman.math.rect;
 
-//import std.algorithm : alg_min = min, alg_max = max;
 import voxelman.math;
 
 struct Rect

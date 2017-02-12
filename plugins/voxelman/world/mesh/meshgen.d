@@ -9,11 +9,11 @@ import voxelman.log;
 import std.datetime;
 import std.conv : to;
 import core.exception : Throwable;
-import anchovy.isharedcontext;
+import voxelman.platform.isharedcontext;
 
 import voxelman.container.buffer;
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 import voxelman.world.block;
 import voxelman.world.blockentity;

@@ -4,11 +4,11 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.irenderer;
+module voxelman.graphics.irenderer;
 
 import voxelman.math;
-import anchovy.texture;
-import anchovy.shaderprogram;
+import voxelman.graphics.texture;
+import voxelman.graphics.shaderprogram;
 
 interface IRenderer
 {

@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.glerrors;
+module voxelman.graphics.glerrors;
 
 import std.conv: to;
 import derelict.opengl3.gl3;

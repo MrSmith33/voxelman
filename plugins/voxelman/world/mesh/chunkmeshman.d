@@ -8,9 +8,8 @@ module voxelman.world.mesh.chunkmeshman;
 import voxelman.log;
 import std.datetime : Duration;
 import std.typecons : Nullable;
-import anchovy.isharedcontext;
+import voxelman.platform.isharedcontext;
 
-import voxelman.geometry.box;
 import voxelman.math;
 import voxelman.world.block;
 import voxelman.world.blockentity;
@@ -21,7 +20,7 @@ import voxelman.world.storage;
 import voxelman.utils.worker;
 import voxelman.container.hashset;
 import voxelman.graphics;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 
 
 alias MeshingPassDoneHandler = void delegate(size_t chunksRemeshed, Duration totalDuration);

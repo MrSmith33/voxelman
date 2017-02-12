@@ -8,7 +8,6 @@ module voxelman.core.packets;
 import netlib;
 import voxelman.math;
 import voxelman.core.config : DimensionId;
-import voxelman.geometry.box : Box;
 import voxelman.world.storage.worldbox : WorldBox;
 import voxelman.world.storage.coordinates : ClientDimPos;
 

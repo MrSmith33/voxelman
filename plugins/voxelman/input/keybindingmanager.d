@@ -10,7 +10,7 @@ import voxelman.log;
 import pluginlib;
 import voxelman.config.configmanager;
 import voxelman.utils.keynamemap;
-public import anchovy.input : KeyCode, PointerButton;
+public import voxelman.platform.input : KeyCode, PointerButton;
 
 
 struct KeyBinding

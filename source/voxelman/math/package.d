@@ -12,6 +12,8 @@ public import dlib.math.matrix;
 public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt;
 public import voxelman.math.utils;
 public import voxelman.math.simplex;
+public import voxelman.math.box;
+public import voxelman.math.rect;
 public import std.algorithm : clamp, min, max, swap;
 
 alias bvec3 = Vector!(byte, 3);

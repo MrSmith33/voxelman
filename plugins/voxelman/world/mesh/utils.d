@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.utils;
 
 import voxelman.math;
-import voxelman.geometry.cube;
+import voxelman.geometry;
 import voxelman.core.config;
 import voxelman.world.block;
 
@@ -52,7 +52,6 @@ ChunkAndBlockAt chunkAndBlockAt27FromExt(ushort index)
 }
 
 import voxelman.world.storage.arraycopy;
-import voxelman.geometry.box;
 
 immutable short[6] sideIndexOffsets = [
 	-EXTENDED_CHUNK_SIZE, // zneg

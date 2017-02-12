@@ -13,7 +13,6 @@ import netlib;
 import pluginlib;
 
 import voxelman.container.buffer;
-import voxelman.geometry.box;
 import voxelman.log;
 import voxelman.math;
 

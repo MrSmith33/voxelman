@@ -4,7 +4,7 @@ License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module anchovy.glfwwindow;
+module voxelman.platform.glfwwindow;
 
 import std.conv : to;
 import std.string : toStringz, fromStringz, format;
@@ -13,8 +13,8 @@ import derelict.glfw3.glfw3;
 import derelict.opengl3.gl3;
 import voxelman.log;
 import voxelman.math;
-import anchovy.iwindow : IWindow;
-import anchovy.isharedcontext;
+import voxelman.platform.iwindow : IWindow;
+import voxelman.platform.isharedcontext;
 
 class GlfwSharedContext : ISharedContext
 {

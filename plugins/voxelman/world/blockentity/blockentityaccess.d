@@ -8,7 +8,6 @@ module voxelman.world.blockentity.blockentityaccess;
 import voxelman.log;
 import std.string;
 import voxelman.math;
-import voxelman.geometry.box;
 import voxelman.core.config;
 import voxelman.world.block;
 import voxelman.world.storage;

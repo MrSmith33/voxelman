@@ -14,7 +14,6 @@ import std.string : format;
 
 import voxelman.log;
 import voxelman.math;
-import voxelman.geometry.box;
 import voxelman.geometry.rect;
 import voxelman.utils.mapping;
 
