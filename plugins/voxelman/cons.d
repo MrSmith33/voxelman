@@ -20,3 +20,5 @@ import voxelman.server.plugininfo;
 import voxelman.session.plugininfo;
 import voxelman.world.plugininfo;
 import voxelman.worldinteraction.plugininfo;
+
+import railroad.plugininfo;

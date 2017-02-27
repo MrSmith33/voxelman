@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.utils.worker;
+module voxelman.thread.worker;
 
 import std.concurrency : spawn, Tid;
 import std.string : format;
@@ -14,7 +14,7 @@ import core.sync.mutex;
 import core.thread : Thread;
 
 import voxelman.core.config : QUEUE_LENGTH;
-public import voxelman.utils.sharedqueue;
+public import voxelman.thread.sharedqueue;
 
 
 shared struct Worker

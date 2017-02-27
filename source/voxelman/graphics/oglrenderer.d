@@ -77,14 +77,19 @@ public:
 		checkgl!glClearColor(cast(float)r/255, cast(float)g/255, cast(float)b/255, cast(float)a/255);
 	}
 
-	override Texture createTexture(string filename)
+	override SuperImage loadImage(string filename)
 	{
-		import dlib.image.io.io : loadImage;
-		import dlib.image.image : SuperImage, ImageRGBA8, convert;
-		SuperImage image = loadImage(filename);
-		SuperImage convertedImage = convert!ImageRGBA8(image);
-		Texture tex = new Texture(convertedImage, TextureTarget.target2d, TextureFormat.rgba);
-		return tex;
+		import dlib.image.io.io : dlib_loadImage = loadImage;
+		import dlib.image.image : ImageRGBA8, convert, PixelFormat;
+		SuperImage image = dlib_loadImage(filename);
+		if (image.pixelFormat != PixelFormat.RGBA8)
+			image = convert!ImageRGBA8(image);
+		return image;
+	}
+
+	override Texture createTexture(SuperImage image)
+	{
+		return new Texture(image, TextureTarget.target2d, TextureFormat.rgba);
 	}
 
 	override ShaderProgram createShaderProgram(string vertexSource, string fragmentSource)

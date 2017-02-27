@@ -12,6 +12,7 @@ import voxelman.math;
 import pluginlib;
 import voxelman.gui.plugin;
 import voxelman.input.keybindingmanager;
+import voxelman.dbg.plugin;
 
 
 final class InputPlugin : IPlugin
@@ -34,6 +35,9 @@ final class InputPlugin : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
+
+		auto debugClient = pluginman.getPlugin!DebugClient;
+		debugClient.registerDebugGuiHandler(&showDebugInput, DEBUG_ORDER, "Input");
 	}
 
 	override void postInit()
@@ -109,5 +113,56 @@ final class InputPlugin : IPlugin
 	{
 		guiPlugin.window.mousePosition = newMousePosition;
 		return guiPlugin.window.mousePosition;
+	}
+
+	private void showDebugInput()
+	{
+		import derelict.glfw3.glfw3;
+		import derelict.imgui.imgui;
+		import voxelman.utils.textformatter;
+		import std.string : fromStringz;
+
+		if (igCollapsingHeader("Input"))
+		{
+			if (igTreeNode("Joystick"))
+			{
+				foreach(joy; GLFW_JOYSTICK_1..GLFW_JOYSTICK_LAST+1)
+				{
+					if (glfwJoystickPresent(joy))
+					{
+						const char* name = glfwGetJoystickName(joy);
+						auto strName = makeFormattedTextPtrs("Joystick %s: %s", joy, fromStringz(name));
+						if (igTreeNode(strName.start))
+						{
+							int count;
+
+							const float* axes = glfwGetJoystickAxes(joy, &count);
+							auto strAxes = makeFormattedTextPtrs("Axes: %s", count);
+							if (igTreeNode(strAxes.start))
+							{
+								foreach(i, axis; axes[0..count])
+								{
+									igTextf("%s: %.2f", i, axis);
+								}
+								igTreePop();
+							}
+
+							ubyte* buttons = glfwGetJoystickButtons(joy, &count);
+							auto strButtons = makeFormattedTextPtrs("Buttons: %s", count);
+							if (igTreeNode(strButtons.start))
+							{
+								foreach(i, button; buttons[0..count])
+								{
+									igTextf("%s: %s", i, button);
+								}
+								igTreePop();
+							}
+							igTreePop();
+						}
+					}
+				}
+				igTreePop();
+			}
+		}
 	}
 }

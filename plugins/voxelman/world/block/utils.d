@@ -71,26 +71,6 @@ ChunkAndBlockAt chunkAndBlockAt27(int x, int y, int z)
 	return ChunkAndBlockAt(chunk_index, bx, by, bz);
 }
 
-CubeSide sideFromNormal(ivec3 normal)
-{
-	if (normal.x == 1)
-		return CubeSide.xpos;
-	else if (normal.x == -1)
-		return CubeSide.xneg;
-
-	if (normal.y == 1)
-		return CubeSide.ypos;
-	else if (normal.y == -1)
-		return CubeSide.yneg;
-
-	if (normal.z == 1)
-		return CubeSide.zpos;
-	else if (normal.z == -1)
-		return CubeSide.zneg;
-
-	return CubeSide.zneg;
-}
-
 struct MeshVertex2
 {
 	align(4):

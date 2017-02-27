@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 
 // Based on Martin Nowak's lock-free package.
-module voxelman.utils.sharedqueue;
+module voxelman.thread.sharedqueue;
 
 import core.atomic;
 import core.thread : Thread;

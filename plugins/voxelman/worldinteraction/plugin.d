@@ -13,7 +13,7 @@ import std.datetime : StopWatch;
 import pluginlib;
 import voxelman.math;
 import voxelman.core.config;
-import voxelman.utils.trace : traceRay;
+import voxelman.geometry.gridraytrace : traceRay;
 import voxelman.world.block;
 
 import voxelman.core.events;

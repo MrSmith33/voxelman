@@ -10,7 +10,7 @@ import voxelman.math : ivec3, SimplexNoise;
 
 import voxelman.world.block;
 import voxelman.core.config;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 

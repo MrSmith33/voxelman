@@ -10,7 +10,7 @@ import voxelman.log;
 import voxelman.container.sharedhashset;
 import voxelman.world.block;
 import voxelman.core.config;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage.chunkprovider : TaskId, TASK_CANCELED_METADATA;

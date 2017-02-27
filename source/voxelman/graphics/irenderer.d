@@ -9,6 +9,7 @@ module voxelman.graphics.irenderer;
 import voxelman.math;
 import voxelman.graphics.texture;
 import voxelman.graphics.shaderprogram;
+public import dlib.image.image : SuperImage;
 
 interface IRenderer
 {
@@ -20,7 +21,8 @@ interface IRenderer
 	void wireFrameMode(bool value);
 	void setViewport(ivec2 pos, ivec2 size);
 	void setClearColor(ubyte r, ubyte g, ubyte b, ubyte a = 255);
-	Texture createTexture(string filename);
+	SuperImage loadImage(string filename);
+	Texture createTexture(SuperImage image);
 	ShaderProgram createShaderProgram(string vertexSource, string fragmentSource);
 	ivec2 framebufferSize() @property;
 	void flush();

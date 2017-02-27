@@ -19,7 +19,7 @@ import voxelman.math;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
-import voxelman.utils.compression;
+import voxelman.platform.compression;
 
 import voxelman.input.keybindingmanager;
 import voxelman.config.configmanager : ConfigOption, ConfigManager;

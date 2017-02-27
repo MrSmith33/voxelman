@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module test.railroad.railtool;
+module railroad.railtool;
 
 import voxelman.log;
 import voxelman.container.buffer : Buffer;
@@ -25,9 +25,9 @@ import voxelman.math;
 import voxelman.world.storage;
 import voxelman.edit.tools.itool;
 
-import test.railroad.plugin;
-import test.railroad.mesh;
-import test.railroad.utils;
+import railroad.plugin;
+import railroad.mesh;
+import railroad.utils;
 
 
 final class RailTool : ITool
@@ -62,7 +62,7 @@ final class RailTool : ITool
 		this.blockEntityManager = blockEntityManager;
 		this.connection = connection;
 		this.worldInteraction = worldInteraction;
-		name = "test.entity.place_rail";
+		name = "entity.place_rail";
 	}
 
 	override void onUpdate()

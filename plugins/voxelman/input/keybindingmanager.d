@@ -9,7 +9,7 @@ import voxelman.log;
 
 import pluginlib;
 import voxelman.config.configmanager;
-import voxelman.utils.keynamemap;
+import voxelman.platform.keynamemap;
 public import voxelman.platform.input : KeyCode, PointerButton;
 
 

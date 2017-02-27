@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module test.railroad.mesh;
+module railroad.mesh;
 
 import voxelman.log;
 import std.range;
@@ -22,7 +22,7 @@ import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.blockentity.blockentitydata;
 import voxelman.world.blockentity.utils;
 
-import test.railroad.utils;
+import railroad.utils;
 
 void makeRailMesh(BlockEntityMeshingData meshingData)
 {

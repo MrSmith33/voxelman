@@ -21,7 +21,7 @@ import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.gui.plugin;
 import voxelman.config.configmanager;
-import voxelman.utils.fpscamera;
+import voxelman.graphics.fpscamera;
 public import voxelman.graphics;
 
 import voxelman.graphics.shaders;

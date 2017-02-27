@@ -16,7 +16,7 @@ import voxelman.container.sharedhashset;
 
 import voxelman.world.block : BlockInfoTable;
 import voxelman.core.config;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.world.gen.generator : IGenerator;
 import voxelman.world.gen.utils;
 import voxelman.world.gen.worker;

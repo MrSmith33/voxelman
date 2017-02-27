@@ -18,7 +18,7 @@ import voxelman.world.block;
 import voxelman.world.storage.arraycopy;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
-import voxelman.utils.compression;
+import voxelman.platform.compression;
 
 enum BLOCK_LAYER = 0;
 enum ENTITY_LAYER = 1;

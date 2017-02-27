@@ -18,7 +18,7 @@ import voxelman.world.blockentity;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.world.storage.arraycopy;
 import voxelman.core.config;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.world.storage;
 
 import voxelman.world.mesh.config;

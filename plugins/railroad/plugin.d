@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module test.railroad.plugin;
+module railroad.plugin;
 
 import voxelman.log;
 import pluginlib;
@@ -25,9 +25,10 @@ import voxelman.geometry;
 
 import voxelman.world.blockentity;
 
-import test.railroad.mesh;
-import test.railroad.utils;
-import test.railroad.railtool;
+import railroad.mesh;
+import railroad.utils;
+import railroad.railtool;
+import railroad.railgraph;
 
 
 struct PlaceRailPacket
@@ -53,7 +54,7 @@ struct EditRailLinePacket
 
 final class RailroadPluginClient : IPlugin
 {
-	mixin IdAndSemverFrom!"test.railroad.plugininfo";
+	mixin IdAndSemverFrom!"railroad.plugininfo";
 	mixin RailroadPluginCommon;
 
 	ClientWorld clientWorld;
@@ -96,12 +97,19 @@ final class RailroadPluginClient : IPlugin
 
 final class RailroadPluginServer : IPlugin
 {
-	mixin IdAndSemverFrom!"test.railroad.plugininfo";
+	mixin IdAndSemverFrom!"railroad.plugininfo";
 	mixin RailroadPluginCommon;
 
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
 	BlockEntityServer blockEntityPlugin;
+	RailGraph railGraph;
+
+	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	{
+		auto ioman = resmanRegistry.getResourceManager!IoManager;
+		ioman.registerWorldLoadSaveHandlers(&railGraph.read, &railGraph.write);
+	}
 
 	override void init(IPluginManager pluginman)
 	{
@@ -187,9 +195,11 @@ final class RailroadPluginServer : IPlugin
 			final switch(editOp)
 			{
 				case RailEditOp.add:
+					railGraph.onRailAdd(railPos, railData);
 					modified.addRail(railData); // combine rails
 					break;
 				case RailEditOp.remove:
+					railGraph.onRailRemove(railPos, railData);
 					modified.removeRail(railData); // remove rails
 					break;
 			}

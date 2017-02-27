@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module test.railroad.utils;
+module railroad.utils;
 
 import voxelman.math;
 import voxelman.geometry;
@@ -48,6 +48,9 @@ RailData getRailAt(RailPos railPos, ushort railEntityId,
 }
 
 struct RailPos {
+	this(svec4 vec) {
+		vector = vec;
+	}
 	this(BlockWorldPos bwp)
 	{
 		vector = svec4(
@@ -78,6 +81,19 @@ struct RailPos {
 	}
 	svec4 vector;
 	alias vector this;
+
+	ulong asUlong() @property
+	{
+		ulong res = cast(ulong)vector.w<<48 |
+				cast(ulong)(cast(ushort)vector.z)<<32 |
+				cast(ulong)(cast(ushort)vector.y)<<16 |
+				cast(ulong)(cast(ushort)vector.x);
+		return res;
+	}
+}
+
+RailPos[2] getAdjacentPositions(RailPos pos, RailData railData) {
+	return [RailPos(), RailPos()];
 }
 
 struct RailData
@@ -98,6 +114,18 @@ struct RailData
 
 	bool isSlope() {
 		return (data & SLOPE_RAIL_BIT) != 0;
+	}
+
+	bool hasSingleSegment() {
+		if ((data & SLOPE_RAIL_BIT) != 0)
+		{
+			return 1;
+		}
+		else
+		{
+			import core.bitop : popcnt;
+			return popcnt(data) == 1;
+		}
 	}
 
 	bool empty() {

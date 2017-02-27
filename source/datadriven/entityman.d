@@ -38,14 +38,14 @@ private struct ComponentInfo
 	}
 }
 
-enum bool isFlagComponent(C) = C.tupleof.length == 0;
+enum bool isTagComponent(C) = C.tupleof.length == 0;
 
 private struct _Totally_empty_struct {}
-static assert(isFlagComponent!_Totally_empty_struct);
+static assert(isTagComponent!_Totally_empty_struct);
 
 template ComponentStorage(C)
 {
-	static if(isFlagComponent!C)
+	static if(isTagComponent!C)
 		alias ComponentStorage = EntitySet;
 	else
 		alias ComponentStorage = HashmapComponentStorage!C;
@@ -100,7 +100,7 @@ struct EntityManager
 	}
 
 	/// Returns pointer to the storage of components C.
-	/// Storage type depends on component type (flag or not).
+	/// Storage type depends on component type (tag or not).
 	auto getComponentStorage(C)()
 	{
 		ComponentInfo* untyped = componentInfoMap[typeid(C)];
@@ -112,7 +112,7 @@ struct EntityManager
 	{
 		foreach(i, C; Components)
 		{
-			static if(isFlagComponent!C)
+			static if(isTagComponent!C)
 				getComponentStorage!C().set(eid);
 			else
 				getComponentStorage!C().set(eid, components[i]);
@@ -121,23 +121,23 @@ struct EntityManager
 
 	/// Returns pointer to the component of type C.
 	/// Returns null if entity has no such component.
-	/// Works only with non-flag components.
+	/// Works only with non-tag components.
 	C* get(C)(EntityId eid)
 	{
-		static assert (!isFlagComponent!C, "Cannot use get for flag component, use has method");
+		static assert (!isTagComponent!C, "Cannot use get for tag component, use has method");
 		return getComponentStorage!C().get(eid);
 	}
 
 	/// Returns pointer to the component of type C.
 	/// Creates component first if entity had no such component.
-	/// Works only with non-flag components.
+	/// Works only with non-tag components.
 	C* getOrCreate(C)(EntityId eid, C defVal = C.init)
 	{
-		static assert (!isFlagComponent!C, "Cannot use getOrCreate for flag component");
+		static assert (!isTagComponent!C, "Cannot use getOrCreate for tag component");
 		return getComponentStorage!C().getOrCreate(eid, defVal);
 	}
 
-	/// Used to check for presence of given component or flag.
+	/// Used to check for presence of given component or tag.
 	bool has(C)(EntityId eid)
 	{
 		return cast(bool)getComponentStorage!C().get(eid);

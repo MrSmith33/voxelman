@@ -17,7 +17,7 @@ import voxelman.world.mesh.chunkmesh;
 import voxelman.core.config;
 import voxelman.world.mesh.meshgen;
 import voxelman.world.storage;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.container.hashset;
 import voxelman.graphics;
 import voxelman.geometry;

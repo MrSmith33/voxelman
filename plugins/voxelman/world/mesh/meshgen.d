@@ -22,7 +22,7 @@ import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
 import voxelman.world.mesh.extendedchunk;
 import voxelman.core.config;
-import voxelman.utils.worker;
+import voxelman.thread.worker;
 import voxelman.world.storage;
 
 

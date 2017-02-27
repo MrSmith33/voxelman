@@ -39,6 +39,18 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 	void remove(Key key) {
 		auto idx = findIndex(key);
 		if (idx == size_t.max) return;
+		removeAtIndex(idx);
+	}
+
+	/// Removes value via pointer returned by getOrCreate or opIn
+	/// Prevents extra lookup
+	void removeByPtr(Value* value) {
+		auto idx = indexFromPtr(value);
+		if (idx == size_t.max) return;
+		removeAtIndex(idx);
+	}
+
+	private void removeAtIndex(size_t idx) {
 		auto i = idx;
 		while (true)
 		{
@@ -58,6 +70,13 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 			keys[j] = keys[i];
 			values[j] = values[i];
 		}
+	}
+
+	private size_t indexFromPtr(Value* value) {
+		auto offset = value - values.ptr;
+		if (offset > values.length || offset < 0)
+			return size_t.max;
+		return cast(size_t)offset;
 	}
 
 	Value get(Key key, Value default_value = Value.init) {

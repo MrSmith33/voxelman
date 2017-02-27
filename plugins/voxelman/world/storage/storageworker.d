@@ -16,8 +16,8 @@ import cbor;
 
 import voxelman.world.block;
 import voxelman.core.config;
-import voxelman.utils.compression;
-import voxelman.utils.worker;
+import voxelman.platform.compression;
+import voxelman.thread.worker;
 import voxelman.world.gen.generator : IGenerator;
 import voxelman.world.gen.utils;
 import voxelman.world.storage.chunk;

@@ -5,6 +5,8 @@ Authors: Andrey Penechko.
 */
 module voxelman.geometry.cube;
 
+import voxelman.math : ivec3;
+
 enum CubeSide : ubyte
 {
 	zneg = 0,
@@ -136,6 +138,26 @@ template sideOffsets(size_t numAdjacent) {
 		alias sideOffsets = sideOffsets6;
 	else static if (numAdjacent == 26)
 		alias sideOffsets = sideOffsets26;
+}
+
+CubeSide sideFromNormal(ivec3 normal)
+{
+	if (normal.x == 1)
+		return CubeSide.xpos;
+	else if (normal.x == -1)
+		return CubeSide.xneg;
+
+	if (normal.y == 1)
+		return CubeSide.ypos;
+	else if (normal.y == -1)
+		return CubeSide.yneg;
+
+	if (normal.z == 1)
+		return CubeSide.zpos;
+	else if (normal.z == -1)
+		return CubeSide.zneg;
+
+	return CubeSide.zneg;
 }
 
 // does not include center

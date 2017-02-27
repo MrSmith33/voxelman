@@ -18,7 +18,7 @@ import voxelman.utils.textformatter;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
-import voxelman.utils.compression;
+import voxelman.platform.compression;
 import voxelman.container.hashset;
 
 import voxelman.block.plugin;
@@ -250,7 +250,7 @@ public:
 	}
 
 	private void onRemeshViewBox(string) {
-		WorldBox box = chunkObserverManager.getObserverBox(observerSessionId);
+		WorldBox box = chunkObserverManager.viewBoxes[observerSessionId];
 		remeshBox(box, true);
 	}
 
@@ -652,7 +652,7 @@ public:
 
 	void onBlockBoxChanged(WorldBox blockBox)
 	{
-		WorldBox observedBox = chunkObserverManager.getObserverBox(observerSessionId);
+		WorldBox observedBox = chunkObserverManager.viewBoxes[observerSessionId];
 		WorldBox modifiedBox = calcModifiedMeshesBox(blockBox);
 		WorldBox box = worldBoxIntersection(observedBox, modifiedBox);
 
