@@ -43,7 +43,7 @@ void main(string[] args)
 		}
 		params.compiler = compiler;
 
-		string comBuild = makeCompileCommand(params);
+		string comBuild = makeBuildOrTestCommand(params);
 		writefln("Building voxelman %sbit '%s'", arch, comBuild);
 		executeShell(comBuild);
 	}

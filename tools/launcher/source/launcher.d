@@ -65,7 +65,8 @@ enum JobType : int
 {
 	run,
 	compile,
-	compileAndRun
+	compileAndRun,
+	test
 }
 
 enum JobState
@@ -85,15 +86,14 @@ enum BuildType
 {
 	bt_debug,
 	bt_release,
-	bt_release_debug,
-	test
+	bt_release_debug
 }
 
 string[] compilerExeNames = ["dmd", "ldc2", "gdc"];
-string compilerUiSelectionString = "dmd\0ldc\0\0";
+string compilerUiSelectionString = "dmd\0ldc\0gdc\0\0";
 
-string[] buildTypeSwitches = ["debug", "release", "release-debug", "unittest"];
-string buildTypeUiSelectionString = "dbg\0rel\0rel-deb\0unit\0\0";
+string[] buildTypeSwitches = ["debug", "release", "release-debug"];
+string buildTypeUiSelectionString = "dbg\0rel\0rel-deb\0\0";
 
 struct JobParams
 {
@@ -141,6 +141,7 @@ string jobStateString(Job* job)
 		case run: return "[INVALID]";
 		case compile: return "[BUILDING]";
 		case compileAndRun: return "[BUILDING]";
+		case test: return "[TESTING]";
 	}
 	assert(false);
 }
@@ -225,6 +226,10 @@ struct Launcher
 				job.params.build = Yes.build;
 				job.params.start = Yes.start;
 				break;
+			case test:
+				job.params.build = Yes.build;
+				job.params.start = No.start;
+				break;
 		}
 	}
 
@@ -234,6 +239,7 @@ struct Launcher
 			case run: job.jobState = JobState.run; break;
 			case compile: job.jobState = JobState.build; break;
 			case compileAndRun: job.jobState = JobState.build; break;
+			case test: job.jobState = JobState.build; break;
 		}
 	}
 
@@ -253,8 +259,9 @@ struct Launcher
 			final switch(job.params.jobType) with(JobType) {
 				case run: return;
 				case compile: goto case;
+				case test: goto case;
 				case compileAndRun:
-					command = makeCompileCommand(job.params);
+					command = makeBuildOrTestCommand(job.params);
 					workDir = "";
 					break;
 			}
@@ -562,19 +569,12 @@ struct Launcher
 	}
 }
 
-string makeCompileCommand(JobParams params)
+string makeBuildOrTestCommand(JobParams params)
 {
-	string arch;
-	if (params.compiler == Compiler.dmd && is_Windows)
-		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86_mscoff`;
+	if (params.jobType == JobType.test)
+		return makeTestCommand(params);
 	else
-		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
-
-	immutable deps = params.nodeps ? ` --nodeps` : ``;
-	immutable doForce = params.force ? ` --force` : ``;
-	immutable buildType = buildTypeSwitches[params.buildType];
-	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
-	return format("dub build -q %s %s --config=exe%s%s --build=%s\0", arch, compiler, deps, doForce, buildType)[0..$-1];
+		return makeBuildCommand(params);
 }
 
 string makeRunCommand(JobParams params)
@@ -597,6 +597,21 @@ string makeRunCommand(JobParams params)
 	return command[0..$-1];
 }
 
+string makeBuildCommand(JobParams params)
+{
+	string arch;
+	if (params.compiler == Compiler.dmd && is_Windows)
+		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86_mscoff`;
+	else
+		arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
+
+	immutable deps = params.nodeps ? ` --nodeps` : ``;
+	immutable doForce = params.force ? ` --force` : ``;
+	immutable buildType = buildTypeSwitches[params.buildType];
+	immutable compiler = format(`--compiler=%s`, compilerExeNames[params.compiler]);
+	return format("dub build -q %s %s --config=exe%s%s --build=%s\0", arch, compiler, deps, doForce, buildType)[0..$-1];
+}
+
 string makeTestCommand(JobParams params)
 {
 	immutable arch = params.arch64 ? `--arch=x86_64` : `--arch=x86`;
@@ -608,7 +623,8 @@ string makeTestCommand(JobParams params)
 
 void onJobBuildCompletion(Job* job, bool success)
 {
-	job.messageWindow.putln(success ? "Compilation successful" : "Compilation failed");
+	if (job.params.jobType != JobType.test)
+		job.messageWindow.putln(success ? "Compilation successful" : "Compilation failed");
 }
 
 void sendCommand(Job* job, string command)
