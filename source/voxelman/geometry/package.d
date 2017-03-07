@@ -7,4 +7,5 @@ module voxelman.geometry;
 
 public import voxelman.geometry.cube;
 public import voxelman.geometry.cubeutils;
+public import voxelman.geometry.rect;
 public import voxelman.geometry.rotation;

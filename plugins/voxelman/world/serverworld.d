@@ -85,6 +85,7 @@ private:
 
 public:
 	ChunkManager chunkManager;
+	ChunkEditor chunkEditor;
 	ChunkProvider chunkProvider;
 	ChunkObserverManager chunkObserverManager;
 
@@ -129,29 +130,29 @@ public:
 		idMapManager.regIdMap("string_map", ioManager.stringMap.strings);
 
 		buf = new ubyte[](1024*64*4);
-		chunkManager = new ChunkManager();
-		worldAccess = new WorldAccess(chunkManager);
-		entityAccess = new BlockEntityAccess(chunkManager);
+		chunkManager = new ChunkManager(NUM_CHUNK_LAYERS);
+		chunkEditor = new ChunkEditor(NUM_CHUNK_LAYERS, chunkManager);
+		worldAccess = new WorldAccess(chunkManager, chunkEditor);
+		entityAccess = new BlockEntityAccess(chunkManager, chunkEditor);
 		chunkObserverManager = new ChunkObserverManager();
+		chunkProvider = new ChunkProvider(chunkManager);
 
-		chunkManager.setup(NUM_CHUNK_LAYERS);
-		chunkManager.setLayerInfo(ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS), METADATA_LAYER);
-		chunkManager.isChunkSavingEnabled = true;
+		chunkManager.setLayerInfo(METADATA_LAYER, ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS));
 
 		// Component connections
-		chunkManager.startChunkSave = &chunkProvider.startChunkSave;
-		chunkManager.pushLayer = &chunkProvider.pushLayer;
-		chunkManager.endChunkSave = &chunkProvider.endChunkSave;
 		chunkManager.loadChunkHandler = &chunkProvider.loadChunk;
+		chunkManager.saveChunkHandler = &chunkProvider.saveChunk;
 		chunkManager.cancelLoadChunkHandler = &chunkProvider.cancelLoad;
 
+		chunkEditor.addServerObserverHandler = &chunkObserverManager.addServerObserver;
+		chunkEditor.removeServerObserverHandler = &chunkObserverManager.removeServerObserver;
+
 		chunkProvider.onChunkLoadedHandler = &chunkManager.onSnapshotLoaded;
-		chunkProvider.onChunkSavedHandler = &chunkManager.onSnapshotSaved;
 		chunkProvider.generatorGetter = &dimMan.generatorMan.opIndex;
 
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
-		chunkObserverManager.chunkObserverAdded = &onChunkObserverAdded;
-		chunkObserverManager.loadQueueSpaceAvaliable = &chunkProvider.loadQueueSpaceAvaliable;
+		chunkObserverManager.loadChunkHandler = &chunkManager.loadChunk;
+		chunkObserverManager.unloadChunkHandler = &chunkManager.unloadChunk;
+		chunkObserverManager.chunkObserverAddedHandler = &onChunkObserverAdded;
 
 		dimObserverMan.dimensionObserverAdded = &onDimensionObserverAdded;
 
@@ -204,7 +205,7 @@ public:
 	{
 		if (!atomicLoad(isSaving)) {
 			atomicStore(isSaving, true);
-			chunkManager.save();
+			chunkProvider.save();
 			foreach(saveHandler; ioManager.worldSaveHandlers) {
 				saveHandler(pluginDataSaver);
 			}
@@ -281,7 +282,7 @@ public:
 
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
-		chunkManager.commitSnapshots(currentTimestamp);
+		chunkEditor.commitSnapshots(currentTimestamp);
 		sendChanges(worldAccess.blockChanges);
 		worldAccess.blockChanges = null;
 

@@ -21,6 +21,15 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 
 	alias allocator = A.instance;
 
+	pragma(inline, true)
+	private static size_t getHash(Key key) {
+		import std.traits : isIntegral;
+		static if (isIntegral!Key)
+			return cast(size_t)key;
+		else
+			return hashOf(key);
+	}
+
 	this(ubyte[] array, size_t length) {
 		assert(array.length % (Key.sizeof + Value.sizeof) == 0);
 		size_t size = array.length / (Key.sizeof + Value.sizeof);
@@ -64,7 +73,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 					--length;
 					return;
 				}
-				r = keys[i] & (keys.length-1);
+				r = getHash(keys[i]) & (keys.length-1);
 			}
 			while ((j<r && r<=i) || (i<j && j<r) || (r<=i && i<j));
 			keys[j] = keys[i];
@@ -122,6 +131,20 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 		return &values[idx];
 	}
 
+	auto byKey() {
+		struct ByKey {
+			Key[] keys;
+			int opApply(scope int delegate(Key) del) {
+				foreach (key; keys)
+					if (key != nullKey)
+						if (auto ret = del(key))
+							return ret;
+				return 0;
+			}
+		}
+		return ByKey(keys);
+	}
+
 	int opApply(scope int delegate(ref Value) del) {
 		foreach (i; 0 .. keys.length)
 			if (keys[i] != nullKey)
@@ -170,7 +193,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 
 	private size_t findIndex(Key key) const {
 		if (length == 0) return size_t.max;
-		size_t start = key & (keys.length-1);
+		size_t start = getHash(key) & (keys.length-1);
 		auto i = start;
 		while (keys[i] != key) {
 			if (keys[i] == nullKey) return size_t.max;
@@ -181,7 +204,7 @@ struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 	}
 
 	private size_t findInsertIndex(Key key) const {
-		size_t target = key & (keys.length-1);
+		size_t target = getHash(key) & (keys.length-1);
 		auto i = target;
 		while (keys[i] != nullKey && keys[i] != key) {
 			if (++i >= keys.length) i -= keys.length;

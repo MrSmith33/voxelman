@@ -10,7 +10,6 @@ import std.math : floor;
 import std.range : chain, only;
 
 import voxelman.math;
-import voxelman.core.config;
 
 size_t manhattanDist(ivec3 position, ivec3 other)
 {

@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.chunkprovider;
+module voxelman.world.storage.chunk.chunkprovider;
 
 import voxelman.log;
 import core.sync.condition;
@@ -87,7 +87,7 @@ enum TASK_OK_METADATA = 0;
 enum TASK_CANCELED_METADATA = 1;
 
 //version = DBG_OUT;
-struct ChunkProvider
+final class ChunkProvider
 {
 	private Thread storeWorker;
 	private shared bool workerRunning = true;
@@ -113,6 +113,7 @@ struct ChunkProvider
 
 	shared Worker[] genWorkers;
 
+	ChunkManager chunkManager;
 	void delegate(ChunkWorldPos cwp, ChunkLayerItem[] layers, bool needsSave) onChunkLoadedHandler;
 	void delegate(ChunkWorldPos cwp, ChunkLayerTimestampItem[] timestamps) onChunkSavedHandler;
 	IGenerator delegate(DimensionId dimensionId) generatorGetter;
@@ -128,6 +129,10 @@ struct ChunkProvider
 		{
 			workAvaliable.notify();
 		}
+	}
+
+	this(ChunkManager chunkManager) {
+		this.chunkManager = chunkManager;
 	}
 
 	void init(WorldDb worldDb, uint numGenWorkers, BlockInfoTable blocks, bool saveUnmodifiedChunks)
@@ -208,7 +213,7 @@ struct ChunkProvider
 		while(!saveResQueue.empty)
 		{
 			auto data = SavedChunkData.getFromQueue(&saveResQueue);
-			onChunkSavedHandler(data.cwp, data.layers);
+			onSnapshotSaved(data.cwp, data.layers);
 		}
 		foreach(ref w; genWorkers)
 		{
@@ -300,21 +305,36 @@ struct ChunkProvider
 		notify();
 	}
 
-	size_t startChunkSave()
-	{
+	/// Performs save of all modified chunks.
+	/// Modified chunks are those that were committed.
+	/// Perform save right after commit.
+	void save() {
+		foreach(cwp; chunkManager.getModifiedChunks()) {
+			saveChunk(cwp);
+		}
+		chunkManager.clearModifiedChunks();
+	}
+
+	void saveChunk(ChunkWorldPos cwp) {
 		saveTaskQueue.startMessage();
 		saveTaskQueue.pushMessagePart(SaveItemType.chunk);
 		size_t headerPos = saveTaskQueue.skipMessageItem!ChunkHeaderItem();
-		return headerPos;
-	}
-	void pushLayer(ChunkLayerItem layer)
-	{
-		saveTaskQueue.pushMessagePart(layer);
-	}
-	void endChunkSave(size_t headerPos, ChunkHeaderItem header)
-	{
-		saveTaskQueue.setItem(header, headerPos);
+
+		uint numChunkLayers;
+		foreach(ChunkLayerItem layerItem; chunkManager.iterateChunkSnapshotsAddUsers(cwp)) {
+			saveTaskQueue.pushMessagePart(layerItem);
+			++numChunkLayers;
+		}
+
+		saveTaskQueue.setItem(ChunkHeaderItem(cwp, numChunkLayers), headerPos);
 		saveTaskQueue.endMessage();
+
 		notify();
+	}
+
+	private void onSnapshotSaved(ChunkWorldPos cwp, ChunkLayerTimestampItem[] timestamps) {
+		foreach(item; timestamps) {
+			chunkManager.removeSnapshotUser(cwp, item.timestamp, item.layerId);
+		}
 	}
 }

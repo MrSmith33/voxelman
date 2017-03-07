@@ -61,6 +61,10 @@ final class RailroadPluginClient : IPlugin
 	NetClientPlugin connection;
 	WorldInteractionPlugin worldInteraction;
 
+	override void registerResources(IResourceManagerRegistry resmanRegistry) {
+		retreiveBlockEntityManager(resmanRegistry);
+	}
+
 	override void preInit() {
 		import voxelman.globalconfig;
 		import voxelman.model.obj;
@@ -109,6 +113,7 @@ final class RailroadPluginServer : IPlugin
 	{
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
 		ioman.registerWorldLoadSaveHandlers(&railGraph.read, &railGraph.write);
+		retreiveBlockEntityManager(resmanRegistry);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -231,7 +236,7 @@ final class RailroadPluginServer : IPlugin
 mixin template RailroadPluginCommon()
 {
 	BlockEntityManager blockEntityManager;
-	override void registerResources(IResourceManagerRegistry resmanRegistry)
+	void retreiveBlockEntityManager(IResourceManagerRegistry resmanRegistry)
 	{
 		blockEntityManager = resmanRegistry.getResourceManager!BlockEntityManager;
 		blockEntityManager.regBlockEntity("rail")

@@ -154,10 +154,6 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 	auto bm = pluginman.getResourceManager!BlockManager;
 	BlockInfoTable blocks = bm.getBlocks();
 	auto serverWorld = pluginman.getPlugin!ServerWorld;
-	ChunkManager chunkManager = serverWorld.chunkManager;
-
-	chunkManager.isLoadCancelingEnabled = true;
-	chunkManager.loadChunkHandler = (ChunkWorldPos){};
 
 	evDispatcher.postEvent(GameStartEvent());
 
@@ -172,10 +168,10 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 void transferRegions(ImportParams params, ServerWorld serverWorld, BlockInfoTable blocks)
 {
 	setDimensionBorders(serverWorld, params.outDimension);
-	transferRegionsImpl(params, serverWorld.chunkManager, serverWorld.chunkProvider, blocks);
+	transferRegionsImpl(params, serverWorld.chunkEditor, serverWorld.chunkProvider, blocks);
 
-	updateMetadata(serverWorld.chunkManager.getWriteBuffers(BLOCK_LAYER), blocks);
-	serverWorld.chunkManager.commitSnapshots(TimestampType(0));
+	updateMetadata(serverWorld.chunkEditor.getWriteBuffers(BLOCK_LAYER), blocks);
+	serverWorld.chunkEditor.commitSnapshots(TimestampType(0));
 }
 
 void setDimensionBorders(ServerWorld serverWorld, DimensionId outDimension)
@@ -185,8 +181,8 @@ void setDimensionBorders(ServerWorld serverWorld, DimensionId outDimension)
 	dimInfo.borders.size.y = 8;
 }
 
-void transferRegionsImpl(ImportParams params, ChunkManager chunkManager,
-	ref ChunkProvider chunkProvider, BlockInfoTable blocks)
+void transferRegionsImpl(ImportParams params, ChunkEditor chunkEditor,
+	ChunkProvider chunkProvider, BlockInfoTable blocks)
 {
 	McRegion region;
 	region.buffer = new ubyte[1024 * 1024 * 10];
@@ -232,12 +228,12 @@ void transferRegionsImpl(ImportParams params, ChunkManager chunkManager,
 		foreach(chunkInfo; region)
 		{
 			//writefln("chunk %s %s", chunkInfo.x, chunkInfo.z);
-			importChunk(region, chunkInfo, chunkManager, params.outDimension);
+			importChunk(region, chunkInfo, chunkEditor, params.outDimension);
 			++numChunkColumns;
 		}
 
-		updateMetadata(chunkManager.getWriteBuffers(BLOCK_LAYER), blocks);
-		chunkManager.commitSnapshots(TimestampType(0));
+		updateMetadata(chunkEditor.getWriteBuffers(BLOCK_LAYER), blocks);
+		chunkEditor.commitSnapshots(TimestampType(0));
 		++currentRegionIndex;
 		chunkProvider.update();
 	}
@@ -251,7 +247,7 @@ void updateMetadata(WriteBuffer[ChunkWorldPos] writeBuffers, BlockInfoTable bloc
 	}
 }
 
-void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkManager, DimensionId outDimension)
+void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkEditor chunkEditor, DimensionId outDimension)
 {
 	ubyte[] data = chunkInfo.data;
 	//std.file.write("test.data", data);
@@ -268,7 +264,7 @@ void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkM
 		if (y_counter == blocks_counter)
 		{
 			auto cwp = ivec3(region.x * MC_REGION_WIDTH + chunkInfo.x, y, region.z * MC_REGION_WIDTH + chunkInfo.z);
-			importSection(blocks, cwp, chunkManager, outDimension);
+			importSection(blocks, cwp, chunkEditor, outDimension);
 		}
 	}
 
@@ -299,7 +295,7 @@ void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkManager chunkM
 	visitNbtStream(data, &visitor);
 }
 
-void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, DimensionId outDimension)
+void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkEditor chunkEditor, DimensionId outDimension)
 {
 	//writefln("section %s", mc_cwp);
 	ivec3 pos = ivec3(
@@ -320,7 +316,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 
 	auto cwp = ChunkWorldPos(pos, outDimension);
 
-	WriteBuffer* wb = chunkManager.getOrCreateWriteBuffer(cwp, BLOCK_LAYER, WriteBufferPolicy.createUniform, true);
+	WriteBuffer* wb = chunkEditor.getOrCreateWriteBuffer(cwp, BLOCK_LAYER, WriteBufferPolicy.createUniform, true);
 	if (wb.isUniform)
 	{
 		wb.layer.dataLength = BLOCKID_UNIFORM_FILL_BITS;
@@ -336,7 +332,7 @@ void importSection(ubyte[] blocks, ivec3 mc_cwp, ChunkManager chunkManager, Dime
 	}
 
 	// set blocks
-	setSubArray(wb.layer.getArray!BlockId, CHUNK_SIZE_VECTOR, destPos, convertedBlocks, mcChunkSize, sourceBox);
+	setSubArray3d(wb.layer.getArray!BlockId, CHUNK_SIZE_VECTOR, destPos, convertedBlocks, mcChunkSize, sourceBox);
 }
 
 enum WOOD = DIRT;

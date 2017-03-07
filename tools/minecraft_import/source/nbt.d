@@ -399,7 +399,7 @@ private:
 
 auto customEmplace(T, A...)(void[] buffer, A args) @nogc
 {
-	buffer[] = typeid(T).init;
+	buffer[] = typeid(T).initializer;
 	return (cast(T)buffer.ptr).__ctor(args);
 }
 

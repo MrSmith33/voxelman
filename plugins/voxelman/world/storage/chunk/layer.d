@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.chunk;
+module voxelman.world.storage.chunk.layer;
 
 import voxelman.log;
 import std.array : uninitializedArray;
@@ -15,7 +15,7 @@ import voxelman.math;
 
 import voxelman.core.config;
 import voxelman.world.block;
-import voxelman.world.storage.arraycopy;
+import voxelman.algorithm.arraycopy3d;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.platform.compression;
@@ -532,7 +532,7 @@ void applyChanges(WriteBuffer* writeBuffer, ChunkChange[] changes)
 	BlockId[] blocks = writeBuffer.layer.getArray!BlockId;
 	foreach(change; changes)
 	{
-		setSubArray(blocks, CHUNK_SIZE_VECTOR, Box(ivec3(change.a), ivec3(change.b)), change.blockId);
+		setSubArray3d(blocks, CHUNK_SIZE_VECTOR, Box(ivec3(change.a), ivec3(change.b)), change.blockId);
 	}
 }
 

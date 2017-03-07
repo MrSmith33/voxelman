@@ -188,6 +188,8 @@ struct ChunkRegionIndex
 // Position of chunk in world space. -int.max..int.max
 struct ChunkWorldPos
 {
+	enum ChunkWorldPos MAX = ChunkWorldPos(svec4(short.max,short.max,short.max,short.max));
+
 	this(BlockWorldPos blockWorldPos)
 	{
 		vector = svec4(

@@ -15,11 +15,13 @@ import voxelman.world.storage;
 final class WorldAccess
 {
 	private ChunkManager chunkManager;
+	private ChunkEditor chunkEditor;
 	BlockInfoTable blockInfos;
 	BlockChange[][ChunkWorldPos] blockChanges;
 
-	this(ChunkManager chunkManager) {
+	this(ChunkManager chunkManager, ChunkEditor chunkEditor) {
 		this.chunkManager = chunkManager;
+		this.chunkEditor = chunkEditor;
 	}
 
 	// TODO move out change management
@@ -35,7 +37,7 @@ final class WorldAccess
 
 	void applyBlockChanges(ChunkWorldPos cwp, BlockChange[] changes)
 	{
-		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+		WriteBuffer* writeBuffer = chunkEditor.getOrCreateWriteBuffer(cwp,
 				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return;
 		applyChanges(writeBuffer, changes);
@@ -45,7 +47,7 @@ final class WorldAccess
 	bool setBlock(BlockWorldPos bwp, BlockId blockId, BlockMetadata blockMeta = 0) {
 		auto blockIndex = BlockChunkIndex(bwp);
 		auto cwp = ChunkWorldPos(bwp);
-		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+		WriteBuffer* writeBuffer = chunkEditor.getOrCreateWriteBuffer(cwp,
 				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 		if (writeBuffer is null) return false;
 
@@ -91,17 +93,17 @@ final class WorldAccess
 		// uniform fill
 		if (blockBox.size == CHUNK_SIZE_VECTOR)
 		{
-			blockWB = chunkManager.getOrCreateWriteBuffer(cwp, BLOCK_LAYER);
+			blockWB = chunkEditor.getOrCreateWriteBuffer(cwp, BLOCK_LAYER);
 			if (blockWB is null) return false;
 			blockWB.makeUniform!BlockId(blockId);
 		}
 		else
 		{
-			blockWB = chunkManager.getOrCreateWriteBuffer(cwp,
+			blockWB = chunkEditor.getOrCreateWriteBuffer(cwp,
 				BLOCK_LAYER, WriteBufferPolicy.copySnapshotArray);
 			BlockId[] blocks = blockWB.getArray!BlockId;
 			assert(blocks.length == CHUNK_SIZE_CUBE, format("blocks %s", blocks.length));
-			setSubArray(blocks, CHUNK_SIZE_VECTOR, blockBox, blockId);
+			setSubArray3d(blocks, CHUNK_SIZE_VECTOR, blockBox, blockId);
 		}
 		fillChunkBoxMetadata(cwp, blockBox, blockMeta);
 		updateWriteBufferMetadata(blockWB);
@@ -121,7 +123,7 @@ final class WorldAccess
 
 		if (blockBox.size == CHUNK_SIZE_VECTOR)
 		{
-			WriteBuffer* metadataWB = chunkManager.getOrCreateWriteBuffer(cwp, METADATA_LAYER);
+			WriteBuffer* metadataWB = chunkEditor.getOrCreateWriteBuffer(cwp, METADATA_LAYER);
 			metadataWB.makeUniform!BlockMetadata(blockMeta);
 			if (blockMeta == 0) {
 				metadataWB.removeSnapshot = true;
@@ -129,12 +131,12 @@ final class WorldAccess
 		}
 		else
 		{
-			WriteBuffer* metadataWB = chunkManager.getOrCreateWriteBuffer(cwp,
+			WriteBuffer* metadataWB = chunkEditor.getOrCreateWriteBuffer(cwp,
 				METADATA_LAYER, WriteBufferPolicy.copySnapshotArray);
 			assert(metadataWB.layer.type == StorageType.fullArray);
 			BlockMetadata[] metas = metadataWB.getArray!BlockMetadata;
 			assert(metas.length == CHUNK_SIZE_CUBE, format("metas %s", metas.length));
-			setSubArray(metas, CHUNK_SIZE_VECTOR, blockBox, blockMeta);
+			setSubArray3d(metas, CHUNK_SIZE_VECTOR, blockBox, blockMeta);
 		}
 	}
 

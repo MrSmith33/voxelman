@@ -80,15 +80,18 @@ private:
 
 public:
 	ChunkManager chunkManager;
+	ChunkEditor chunkEditor;
 	ChunkObserverManager chunkObserverManager;
-	IdMapManagerClient idMapManager;
 	WorldAccess worldAccess;
 	BlockEntityAccess entityAccess;
+
 	ChunkMeshMan chunkMeshMan;
-	TimestampType currentTimestamp;
 	HashSet!ChunkWorldPos chunksToRemesh;
 
 	DimensionManager dimMan;
+	IdMapManagerClient idMapManager;
+	TimestampType currentTimestamp;
+
 
 	// toggles/debug
 	bool doUpdateObserverPosition = true;
@@ -143,30 +146,28 @@ public:
 	}
 
 	// stubs
-	private void handleLoadChunk(ChunkWorldPos) {}
+	private void nullChunkHandler(ChunkWorldPos) {}
 	private void handleChunkObserverAdded(ChunkWorldPos, SessionId) {}
 
 	override void preInit()
 	{
-		chunkManager = new ChunkManager();
-		worldAccess = new WorldAccess(chunkManager);
-		entityAccess = new BlockEntityAccess(chunkManager);
+		chunkManager = new ChunkManager(NUM_CHUNK_LAYERS);
+		chunkEditor = new ChunkEditor(NUM_CHUNK_LAYERS, chunkManager);
+		worldAccess = new WorldAccess(chunkManager, chunkEditor);
+		entityAccess = new BlockEntityAccess(chunkManager, chunkEditor);
 
-		chunkManager.setup(NUM_CHUNK_LAYERS);
-		chunkManager.setLayerInfo(ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS), METADATA_LAYER);
+		chunkManager.setLayerInfo(METADATA_LAYER, ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS));
+		chunkManager.onChunkRemovedHandler = &chunkMeshMan.onChunkRemoved;
 
-		chunkManager.loadChunkHandler = &handleLoadChunk;
-		chunkManager.cancelLoadChunkHandler = &handleLoadChunk;
-		chunkManager.isLoadCancelingEnabled = true;
-		chunkManager.isChunkSavingEnabled = false;
-		chunkManager.onChunkRemovedHandlers ~= &chunkMeshMan.onChunkRemoved;
+		chunkEditor.addServerObserverHandler = &chunkObserverManager.addServerObserver;
+		chunkEditor.removeServerObserverHandler = &chunkObserverManager.removeServerObserver;
 
 		chunkMeshMan.getDimensionBorders = &dimMan.dimensionBorders;
 
 		chunkObserverManager = new ChunkObserverManager();
-		chunkObserverManager.changeChunkNumObservers = &chunkManager.setExternalChunkObservers;
-		chunkObserverManager.chunkObserverAdded = &handleChunkObserverAdded;
-		chunkObserverManager.loadQueueSpaceAvaliable = () => size_t.max;
+		chunkObserverManager.loadChunkHandler = &chunkManager.loadChunk;
+		chunkObserverManager.unloadChunkHandler = &chunkManager.unloadChunk;
+		chunkObserverManager.chunkObserverAddedHandler = &handleChunkObserverAdded;
 
 		idMapManager.regIdMapHandler("string_map", &onServerStringMapReceived);
 	}
@@ -340,6 +341,7 @@ public:
 			igTextf("Chunks per frame loaded: %s", dbg_totalLoadedChunks - dbg_lastFrameLoadedChunks);
 			dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
 			igTextf("Chunks total loaded: %s", dbg_totalLoadedChunks);
+			igTextf("Chunks tracked/loaded: %s/%s", chunkManager.numTrackedChunks, chunkManager.numLoadedChunks);
 			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
 
 			with(chunkMeshMan) {
@@ -484,7 +486,7 @@ public:
 
 	private void handlePostUpdateEvent(ref PostUpdateEvent event)
 	{
-		chunkManager.commitSnapshots(currentTimestamp);
+		chunkEditor.commitSnapshots(currentTimestamp);
 		//chunkMeshMan.remeshChangedChunks(chunkManager.getModifiedChunks());
 		chunkManager.clearModifiedChunks();
 		chunkMeshMan.remeshChangedChunks(chunksToRemesh);
@@ -603,7 +605,7 @@ public:
 			// TODO possible bug, copyLayer could be called when write buffer is not empty
 			foreach(layer; layers)
 			{
-				WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp, layer.layerId);
+				WriteBuffer* writeBuffer = chunkEditor.getOrCreateWriteBuffer(cwp, layer.layerId);
 				copyLayer(layer, writeBuffer.layer);
 			}
 		}

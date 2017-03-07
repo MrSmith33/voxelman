@@ -3,12 +3,12 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.arraycopy;
+module voxelman.algorithm.arraycopy3d;
 
 import voxelman.math;
 
 /// writes source to a box within dest
-void setSubArray(T)(
+void setSubArray3d(T)(
 	T[] dest,
 	ivec3 destSize,  // 7x8x9
 	ivec3 destPos,
@@ -41,7 +41,7 @@ void setSubArray(T)(
 }
 
 /// writes full source to a box within dest
-void setSubArray(T)(T[] dest, ivec3 destSize, Box box, T[] source) @nogc
+void setSubArray3d(T)(T[] dest, ivec3 destSize, Box box, T[] source) @nogc
 {
 	const int dest_size_y = destSize.x * destSize.z; // 1 y slice
 	assert(dest.length == dest_size_y * destSize.y);
@@ -99,7 +99,7 @@ void setSubArray(T)(T[] dest, ivec3 destSize, Box box, T[] source) @nogc
 	}
 }
 
-void setSubArray(T)(T[] dest, ivec3 destSize, Box box, T item) @nogc
+void setSubArray3d(T)(T[] dest, ivec3 destSize, Box box, T item) @nogc
 {
 	const int dest_size_y = destSize.x * destSize.z; // 1 y slice
 	assert(dest.length == destSize.x * destSize.y * destSize.z);

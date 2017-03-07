@@ -51,7 +51,7 @@ ChunkAndBlockAt chunkAndBlockAt27FromExt(ushort index)
 	return ChunkAndBlockAt(chunk_index, bx, by, bz);
 }
 
-import voxelman.world.storage.arraycopy;
+import voxelman.algorithm.arraycopy3d;
 
 immutable short[6] sideIndexOffsets = [
 	-EXTENDED_CHUNK_SIZE, // zneg

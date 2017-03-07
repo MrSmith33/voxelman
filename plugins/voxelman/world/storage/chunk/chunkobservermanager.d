@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2015-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.chunkobservermanager;
+module voxelman.world.storage.chunk.chunkobservermanager;
 
 import voxelman.container.buffer;
 import voxelman.log;
@@ -17,9 +17,9 @@ import voxelman.world.storage.worldbox : WorldBox, TrisectResult,
 
 // Manages lists of observers per chunk
 final class ChunkObserverManager {
-	void delegate(ChunkWorldPos, size_t numObservers) changeChunkNumObservers;
-	void delegate(ChunkWorldPos, SessionId) chunkObserverAdded;
-	size_t delegate() loadQueueSpaceAvaliable;
+	void delegate(ChunkWorldPos) loadChunkHandler;
+	void delegate(ChunkWorldPos) unloadChunkHandler;
+	void delegate(ChunkWorldPos, SessionId) chunkObserverAddedHandler;
 
 	private ChunkObservers[ChunkWorldPos] chunkObservers;
 	ViewBoxes viewBoxes;
@@ -47,14 +47,14 @@ final class ChunkObserverManager {
 	void addServerObserver(ChunkWorldPos cwp) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		++list.numServerObservers;
-		changeChunkNumObservers(cwp, list.numObservers);
+		onChunkNumObserversChanged(cwp, list.numObservers);
 		chunkObservers[cwp] = list;
 	}
 
 	void removeServerObserver(ChunkWorldPos cwp) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		--list.numServerObservers;
-		changeChunkNumObservers(cwp, list.numObservers);
+		onChunkNumObserversChanged(cwp, list.numObservers);
 		if (list.empty)
 			chunkObservers.remove(cwp);
 		else
@@ -95,8 +95,8 @@ final class ChunkObserverManager {
 	private bool addChunkObserver(ChunkWorldPos cwp, SessionId sessionId) {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		if (list.add(sessionId)) {
-			changeChunkNumObservers(cwp, list.numObservers);
-			chunkObserverAdded(cwp, sessionId);
+			onChunkNumObserversChanged(cwp, list.numObservers);
+			chunkObserverAddedHandler(cwp, sessionId);
 			chunkObservers[cwp] = list;
 			return true;
 		}
@@ -107,11 +107,20 @@ final class ChunkObserverManager {
 		auto list = chunkObservers.get(cwp, ChunkObservers.init);
 		bool removed = list.remove(sessionId);
 		if (removed)
-			changeChunkNumObservers(cwp, list.numObservers);
+			onChunkNumObserversChanged(cwp, list.numObservers);
 		if (list.empty)
 			chunkObservers.remove(cwp);
 		else
 			chunkObservers[cwp] = list;
+	}
+
+	// Here comes sum of all internal and external chunk users which results in loading or unloading of specific chunk.
+	private void onChunkNumObserversChanged(ChunkWorldPos cwp, size_t numObservers) {
+		if (numObservers > 0) {
+			loadChunkHandler(cwp);
+		} else {
+			unloadChunkHandler(cwp);
+		}
 	}
 }
 

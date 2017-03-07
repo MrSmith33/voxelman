@@ -17,6 +17,15 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 
 	private bool resizing;
 
+	pragma(inline, true)
+	private static size_t getHash(Key key) {
+		import std.traits : isIntegral;
+		static if (isIntegral!Key)
+			return cast(size_t)key;
+		else
+			return typeid(Key).getHash(&key);
+	}
+
 	//alias allocator = Mallocator.instance;
 	alias allocator = GCAllocator.instance;
 
@@ -48,7 +57,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 					--length;
 					return true;
 				}
-				r = keys[i] & (keys.length-1);
+				r = getHash(keys[i]) & (keys.length-1);
 			}
 			while ((j<r && r<=i) || (i<j && j<r) || (r<=i && i<j));
 			keys[j] = keys[i];
@@ -98,7 +107,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 
 	private size_t findIndex(Key key) const {
 		if (length == 0) return size_t.max;
-		size_t start = key & (keys.length-1);
+		size_t start = getHash(key) & (keys.length-1);
 		auto i = start;
 		while (keys[i] != key) {
 			if (keys[i] == nullKey) return size_t.max;
@@ -109,7 +118,7 @@ struct IntKeyHashSet(Key, Key nullKey = Key.max)
 	}
 
 	private size_t findInsertIndex(Key key) const {
-		size_t target = key & (keys.length-1);
+		size_t target = getHash(key) & (keys.length-1);
 		auto i = target;
 		while (keys[i] != nullKey && keys[i] != key) {
 			if (++i >= keys.length) i -= keys.length;

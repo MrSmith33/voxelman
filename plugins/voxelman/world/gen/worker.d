@@ -12,8 +12,8 @@ import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.thread.worker;
 import voxelman.world.storage.coordinates;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkprovider : TaskId, TASK_CANCELED_METADATA;
+import voxelman.world.storage.chunk.layer;
+import voxelman.world.storage.chunk.chunkprovider : TaskId, TASK_CANCELED_METADATA;
 
 import voxelman.world.gen.utils;
 import voxelman.world.gen.generator;

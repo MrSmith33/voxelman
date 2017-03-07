@@ -18,9 +18,9 @@ void setExtendedArray(
 	Box sourceBox)
 {
 	if (source.isUniform)
-		setSubArray(dest, EXTENDED_SIZE_VECTOR, Box(destPos, sourceBox.size), source.getUniform!BlockId);
+		setSubArray3d(dest, EXTENDED_SIZE_VECTOR, Box(destPos, sourceBox.size), source.getUniform!BlockId);
 	else
-		setSubArray(dest, EXTENDED_SIZE_VECTOR, destPos, source.getArray!BlockId, CHUNK_SIZE_VECTOR, sourceBox);
+		setSubArray3d(dest, EXTENDED_SIZE_VECTOR, destPos, source.getArray!BlockId, CHUNK_SIZE_VECTOR, sourceBox);
 }
 
 struct ExtendedChunk

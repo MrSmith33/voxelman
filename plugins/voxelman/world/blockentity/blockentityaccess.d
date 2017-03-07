@@ -148,9 +148,11 @@ WorldBox removeEntity(BlockWorldPos bwp, BlockEntityInfoTable beInfos,
 final class BlockEntityAccess
 {
 	private ChunkManager chunkManager;
+	private ChunkEditor chunkEditor;
 
-	this(ChunkManager chunkManager) {
+	this(ChunkManager chunkManager, ChunkEditor chunkEditor) {
 		this.chunkManager = chunkManager;
+		this.chunkEditor = chunkEditor;
 	}
 
 	bool setBlockEntity(ChunkWorldPos cwp, ushort blockIndex, BlockEntityData beData)
@@ -158,7 +160,7 @@ final class BlockEntityAccess
 		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
 		if (!chunkManager.isChunkLoaded(cwp)) return false;
 
-		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+		WriteBuffer* writeBuffer = chunkEditor.getOrCreateWriteBuffer(cwp,
 				ENTITY_LAYER, WriteBufferPolicy.copySnapshotArray);
 		assert(writeBuffer);
 
@@ -189,7 +191,7 @@ final class BlockEntityAccess
 		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
 		if (!chunkManager.isChunkLoaded(cwp)) return false;
 
-		WriteBuffer* writeBuffer = chunkManager.getOrCreateWriteBuffer(cwp,
+		WriteBuffer* writeBuffer = chunkEditor.getOrCreateWriteBuffer(cwp,
 				ENTITY_LAYER, WriteBufferPolicy.copySnapshotArray);
 		assert(writeBuffer);
 

@@ -14,12 +14,7 @@ import std.stdio;
 
 import voxelman.math;
 import voxelman.core.config;
-import voxelman.world.block : BlockInfoTable;
-import voxelman.world.storage.chunkmanager : ChunkManager;
-import voxelman.world.storage.chunkprovider : ChunkProvider;
-import voxelman.world.storage.chunkobservermanager : ChunkObserverManager;
-import voxelman.world.worlddb : WorldDb;
-import voxelman.world.storage.worldbox;
+import voxelman.math.box;
 
 enum regionExt = ".mca";
 enum MC_REGION_WIDTH = 32;

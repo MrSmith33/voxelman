@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2014-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.storage.storageworker;
+module voxelman.world.storage.chunk.storageworker;
 
 import voxelman.log;
 import voxelman.container.sharedhashset;
@@ -20,8 +20,8 @@ import voxelman.platform.compression;
 import voxelman.thread.worker;
 import voxelman.world.gen.generator : IGenerator;
 import voxelman.world.gen.utils;
-import voxelman.world.storage.chunk;
-import voxelman.world.storage.chunkprovider;
+import voxelman.world.storage.chunk.layer;
+import voxelman.world.storage.chunk.chunkprovider;
 import voxelman.world.storage.coordinates;
 import voxelman.world.worlddb;
 
