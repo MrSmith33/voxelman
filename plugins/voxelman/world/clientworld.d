@@ -155,6 +155,7 @@ public:
 		chunkEditor = new ChunkEditor(NUM_CHUNK_LAYERS, chunkManager);
 		worldAccess = new WorldAccess(chunkManager, chunkEditor);
 		entityAccess = new BlockEntityAccess(chunkManager, chunkEditor);
+		chunkObserverManager = new ChunkObserverManager();
 
 		chunkManager.setLayerInfo(METADATA_LAYER, ChunkLayerInfo(BLOCK_METADATA_UNIFORM_FILL_BITS));
 		chunkManager.onChunkRemovedHandler = &chunkMeshMan.onChunkRemoved;
@@ -164,7 +165,6 @@ public:
 
 		chunkMeshMan.getDimensionBorders = &dimMan.dimensionBorders;
 
-		chunkObserverManager = new ChunkObserverManager();
 		chunkObserverManager.loadChunkHandler = &chunkManager.loadChunk;
 		chunkObserverManager.unloadChunkHandler = &chunkManager.unloadChunk;
 		chunkObserverManager.chunkObserverAddedHandler = &handleChunkObserverAdded;
