@@ -7,7 +7,7 @@ module voxelman.world.storage.dimensionobservermanager;
 
 import voxelman.log;
 import voxelman.container.buffer;
-import voxelman.container.hashmap;
+import voxelman.container.hash.map;
 import voxelman.container.multihashset;
 import netlib : SessionId;
 import voxelman.core.config : DimensionId;

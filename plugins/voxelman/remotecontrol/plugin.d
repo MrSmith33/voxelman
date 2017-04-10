@@ -50,7 +50,9 @@ final class RemoteControl(bool clientSide) : IPlugin
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
 		try readStdin();
-		catch (Exception e) { warningf("Exception while reading stdin: %s", e); }
+		catch (Exception e) {
+			//warningf("Exception while reading stdin: %s", e);
+		}
 	}
 
 	void readStdin()

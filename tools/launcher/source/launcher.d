@@ -583,7 +583,7 @@ string makeRunCommand(JobParams params)
 		enum exeSuffix = ".exe";
 	else version(Posix)
 		enum exeSuffix = "";
-	string command = format("voxelman%s --app=%s", exeSuffix, appTypeString[params.appType]);
+	string command = format("voxelman%s --app=%s --console_log", exeSuffix, appTypeString[params.appType]);
 
 	foreach(paramName, paramValue; params.runParameters)
 	{

@@ -5,6 +5,8 @@
 
 ## [0.8.0] - 2017-02-03
 ### Added
+- Implement new generic hashmap/hashset/multihashset.
+- Add packet sniffing debug code (easier network debugging).
 - Add `dim_spawn` and `dim_spawn set` commands.
 - Add single block mesher helper.
 - Add ability to append meshes to Batch.
@@ -49,6 +51,8 @@
 - Add ability to start game from world selection screen. Can be started in combined and dedicated server mode.
 
 ### Changed
+- Store length and capacity of hashmap chunk layers inside data itself (Invalidates older saves that have block entities).
+- Separate [de]serialization of hashmap/hashset into voxelman.serialization.hashtable module.
 - Now chunk manager returns special timestamp for non-existent snapshots on user add. It is then - ignored on user remove.
 - Start server internally in minecraft import tool.
 - Move all engine initialization code into enginestarter.d.
@@ -69,6 +73,7 @@
 - Do not uncompress chunks on client until requested. Less memory consumption.
 
 ### Fixed
+- Fix nextPOT (static if had size in bits not in bytes).
 - Fix holes in terrain. Chunks was sent before SpawnPacket was sent, so they were rejected.
 - Fix assert when non-added chunk is loaded. Ignore it instead.
 - Fix bug when commitLayerSnapshot uses StorageType.fullArray instead of writeBuffer.layer.type when committing new snapshot. This caused compressed layer to have type of full layer.

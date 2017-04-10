@@ -11,7 +11,7 @@ import datadriven.api;
 import datadriven.storage;
 import datadriven.query;
 import voxelman.container.buffer;
-import voxelman.container.intkeyhashset;
+import voxelman.container.hash.set;
 import voxelman.world.storage.iomanager;
 
 private struct ComponentInfo
@@ -22,7 +22,7 @@ private struct ComponentInfo
 	void delegate(EntityId) remove;
 	void delegate() removeAll;
 	void delegate(Buffer!ubyte*) serialize;
-	void delegate(Buffer!ubyte*, IntKeyHashSet!EntityId) serializePartial;
+	void delegate(Buffer!ubyte*, HashSet!EntityId) serializePartial;
 	void delegate(ubyte[]) deserialize;
 	void* storage;
 

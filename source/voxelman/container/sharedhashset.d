@@ -5,12 +5,12 @@ Authors: Andrey Penechko.
 */
 module voxelman.container.sharedhashset;
 
-import voxelman.container.intkeyhashset;
+import voxelman.container.hash.set;
 import core.sync.rwmutex;
 
 shared final class SharedHashSet(Key, Key nullKey = Key.max)
 {
-	alias SetType = IntKeyHashSet!(Key, nullKey);
+	alias SetType = HashSet!(Key);
 	private SetType hashSet;
 	private ReadWriteMutex mutex;
 

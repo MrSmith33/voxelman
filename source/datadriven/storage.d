@@ -5,16 +5,15 @@ Authors: Andrey Penechko.
 */
 module datadriven.storage;
 
-import std.range : save;
 import datadriven.api;
-import cbor;
 import voxelman.container.buffer;
-import voxelman.container.hashmap;
-import voxelman.container.intkeyhashset;
+import voxelman.container.hash.map;
+import voxelman.container.hash.set;
+import voxelman.serialization.hashtable;
 
 struct HashmapComponentStorage(_ComponentType)
 {
-	private HashMap!(EntityId, ComponentType) components;
+	private HashMap!(EntityId, ComponentType, EntityId.max, EntityId.max-1) components;
 	alias ComponentType = _ComponentType;
 
 	void set(EntityId eid, ComponentType component)
@@ -47,70 +46,23 @@ struct HashmapComponentStorage(_ComponentType)
 		return components.getOrCreate(eid, defVal);
 	}
 
-	int opApply(scope int delegate(EntityId, ref ComponentType) del) {
+	int opApply(scope int delegate(in EntityId, ref ComponentType) del) {
 		return components.opApply(del);
 	}
 
 	void serialize(Buffer!ubyte* sink)
 	{
-		if (components.empty) return;
-
-		encodeCborMapHeader(sink, components.length);
-		foreach(key, value; components) {
-			encodeCbor!(Yes.Flatten)(sink, key);
-			encodeCbor!(Yes.Flatten)(sink, value);
-		}
+		serializeMap(components, sink);
 	}
 
-	void serializePartial(Buffer!ubyte* sink, IntKeyHashSet!EntityId externalEntities)
+	void serializePartial(Buffer!ubyte* sink, HashSet!EntityId externalEntities)
 	{
-		if (components.empty) return;
-
-		encodeCborMapHeader(sink);
-
-		if (externalEntities.length < components.length) {
-			foreach(eid; externalEntities) {
-				if (auto value = eid in components) {
-					encodeCbor!(Yes.Flatten)(sink, eid);
-					encodeCbor!(Yes.Flatten)(sink, *value);
-				}
-			}
-		} else {
-			foreach(eid, value; components) {
-				if (externalEntities[eid]) {
-					encodeCbor!(Yes.Flatten)(sink, eid);
-					encodeCbor!(Yes.Flatten)(sink, value);
-				}
-			}
-		}
-		encodeCborBreak(sink);
+		serializeMapPartial(components, sink, externalEntities);
 	}
 
 	void deserialize(ubyte[] input)
 	{
-		if (input.length == 0) return;
-		CborToken token = decodeCborToken(input);
-		if (token.type == CborTokenType.mapHeader) {
-			size_t lengthToRead = cast(size_t)token.uinteger;
-			components.reserve(lengthToRead);
-			while (lengthToRead > 0) {
-				auto eid = decodeCborSingle!EntityId(input);
-				auto component = decodeCborSingleDup!(ComponentType, Yes.Flatten)(input);
-				components[eid] = component;
-				--lengthToRead;
-			}
-		} else if (token.type == CborTokenType.mapIndefiniteHeader) {
-			while (true) {
-				token = decodeCborToken(input.save);
-				if (token.type == CborTokenType.breakCode) {
-					break;
-				} else {
-					auto eid = decodeCborSingle!EntityId(input);
-					auto component = decodeCborSingleDup!(ComponentType, Yes.Flatten)(input);
-					components[eid] = component;
-				}
-			}
-		}
+		deserializeMap(components, input);
 	}
 }
 
@@ -118,7 +70,7 @@ static assert(isComponentStorage!(HashmapComponentStorage!int, int));
 
 struct EntitySet
 {
-	private IntKeyHashSet!EntityId entities;
+	private HashSet!EntityId entities;
 
 	void set(EntityId eid)
 	{
@@ -145,55 +97,23 @@ struct EntitySet
 		return eid in entities;
 	}
 
-	int opApply(scope int delegate(EntityId) del) {
+	int opApply(scope int delegate(in EntityId) del) {
 		return entities.opApply(del);
 	}
 
 	void serialize(Buffer!ubyte* sink)
 	{
-		if (entities.empty) return;
-
-		encodeCborArrayHeader(sink, entities.length);
-		foreach(eid; entities) {
-			encodeCbor(sink, eid);
-		}
+		serializeSet(entities, sink);
 	}
 
-	void serializePartial(Buffer!ubyte* sink, IntKeyHashSet!EntityId externalEntities)
+	void serializePartial(Buffer!ubyte* sink, HashSet!EntityId externalEntities)
 	{
-		if (entities.empty) return;
-		encodeCborMapHeader(sink);
-
-		if (externalEntities.length < entities.length) {
-			foreach(eid; externalEntities)
-				if (entities[eid]) encodeCbor(sink, eid);
-		} else {
-			foreach(eid; entities)
-				if (externalEntities[eid]) encodeCbor(sink, eid);
-		}
-		encodeCborBreak(sink);
+		serializeSetPartial(entities, sink, externalEntities);
 	}
 
 	void deserialize(ubyte[] input)
 	{
-		if (input.length == 0) return;
-		CborToken token = decodeCborToken(input);
-		if (token.type == CborTokenType.arrayHeader) {
-			size_t lengthToRead = cast(size_t)token.uinteger;
-			entities.reserve(lengthToRead);
-			while (lengthToRead > 0) {
-				entities.put(decodeCborSingle!EntityId(input));
-				--lengthToRead;
-			}
-		} else if (token.type == CborTokenType.arrayIndefiniteHeader) {
-			while (true) {
-				token = decodeCborToken(input.save);
-				if (token.type == CborTokenType.breakCode)
-					break;
-				else
-					entities.put(decodeCborSingle!EntityId(input));
-			}
-		}
+		deserializeSet(entities, input);
 	}
 }
 

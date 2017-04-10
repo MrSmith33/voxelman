@@ -25,6 +25,8 @@ void main(string[] args)
 
 	if (arch == 32 || arch == 64)
 	{
+		setupLoggers(true);
+
 		import launcher;
 		import std.process;
 		import std.stdio;
@@ -49,7 +51,16 @@ void main(string[] args)
 	}
 	else
 	{
+		setupLoggers(false);
 		LauncherGui app;
 		app.run();
 	}
+}
+
+void setupLoggers(bool logToConsole)
+{
+	import voxelman.log;
+	auto logger = setupMultiLogger();
+	if (logToConsole)
+		setupStdoutLogger(logger);
 }

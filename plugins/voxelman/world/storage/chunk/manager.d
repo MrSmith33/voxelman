@@ -11,7 +11,7 @@ import std.string : format;
 public import std.typecons : Flag, Yes, No;
 
 import voxelman.container.multihashset;
-import voxelman.container.hashset;
+import voxelman.container.hash.set;
 import voxelman.world.block;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
@@ -97,7 +97,7 @@ struct ChunkLayerInfo
 struct ModifiedChunksRange
 {
 	private HashSet!ChunkWorldPos modifiedChunks;
-	int opApply(scope int delegate(ChunkWorldPos) del) {
+	int opApply(scope int delegate(in ChunkWorldPos) del) {
 		return modifiedChunks.opApply(del);
 	}
 }
@@ -122,7 +122,7 @@ final class ChunkManager {
 	private ChunkState[ChunkWorldPos] chunkStates;
 	private HashSet!ChunkWorldPos modifiedChunks;
 	// used to change state from added_loaded to removed_loaded_used
-	private MultiHashSet!(ChunkWorldPos, ChunkWorldPos.MAX) totalSnapshotUsers;
+	private MultiHashSet!ChunkWorldPos totalSnapshotUsers;
 
 
 	ubyte numLayers;
@@ -225,14 +225,13 @@ final class ChunkManager {
 		{
 			return TimestampType.max;
 		}
+		version(TRACE_SNAP_USERS) tracef("#%s:%s (before add) %s/%s", cwp, layer, snap.numUsers, totalSnapshotUsers[cwp]);
 
 		auto state = getChunkState(cwp);
 		assert(state == ChunkState.added_loaded,
 			format("To add user chunk must be both added and loaded, not %s", state));
 
-		size_t before = totalSnapshotUsers[cwp];
 		totalSnapshotUsers.add(cwp);
-		assert(totalSnapshotUsers[cwp] == before + 1);
 
 		++snap.numUsers;
 		version(TRACE_SNAP_USERS) tracef("#%s:%s (add cur:+1) %s/%s @%s", cwp, layer, snap.numUsers, totalSnapshotUsers[cwp], snap.timestamp);
@@ -270,7 +269,7 @@ final class ChunkManager {
 		private ChunkLayerSnap[ChunkWorldPos][] snapshots;
 		private ubyte numLayers;
 		private ChunkWorldPos cwp;
-		private MultiHashSet!(ChunkWorldPos, ChunkWorldPos.MAX)* totalSnapshotUsers;
+		private MultiHashSet!ChunkWorldPos* totalSnapshotUsers;
 		int opApply(scope int delegate(ChunkLayerItem) del) {
 			ubyte numChunkLayers;
 			foreach(ubyte layerId; 0..numLayers)
@@ -451,6 +450,8 @@ final class ChunkManager {
 		auto snap = cwp in snapshots[layer];
 		assert(snap && snap.numUsers > 0, "cannot remove chunk user. Snapshot has 0 users");
 
+		version(TRACE_SNAP_USERS) tracef("#%s:%s (rem before) %s/%s", cwp, layer, snap.numUsers, totalSnapshotUsers[cwp]);
+
 		--snap.numUsers;
 		assert(totalSnapshotUsers[cwp] > 0, "cannot remove chunk user. Snapshot has 0 users");
 		totalSnapshotUsers.remove(cwp);
@@ -482,20 +483,20 @@ final class ChunkManager {
 	private void handleCurrentSnapCommit(ChunkWorldPos cwp, ubyte layer, ChunkLayerSnap currentSnapshot)
 	{
 		if (currentSnapshot.numUsers == 0) {
-			version(TRACE_SNAP_USERS) tracef("#%s:%s (commit:%s) %s/%s @%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp], currentTime);
+			version(TRACE_SNAP_USERS) tracef("#%s:%s (commit:%s) %s/%s", cwp, layer, currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp]);
 			recycleSnapshotMemory(currentSnapshot);
 		} else {
 			// transfer users from current layer snapshot into old snapshot
 			totalSnapshotUsers.remove(cwp, currentSnapshot.numUsers);
 
 			if (auto layerSnaps = cwp in oldSnapshots[layer]) {
-				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit add:%s) %s/%s @%s", cwp, layer,
-					currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp], currentTime);
+				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit add:%s) %s/%s", cwp, layer,
+					currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp]);
 				assert(currentSnapshot.timestamp !in *layerSnaps);
 				(*layerSnaps)[currentSnapshot.timestamp] = currentSnapshot;
 			} else {
-				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit new:%s) %s/%s @%s", cwp, layer,
-					currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp], currentTime);
+				version(TRACE_SNAP_USERS) tracef("#%s:%s (commit new:%s) %s/%s", cwp, layer,
+					currentSnapshot.numUsers, 0, totalSnapshotUsers[cwp]);
 				oldSnapshots[layer][cwp] = [currentSnapshot.timestamp : currentSnapshot];
 				version(TRACE_SNAP_USERS) tracef("oldSnapshots[%s][%s] == %s", layer, cwp, oldSnapshots[layer][cwp]);
 			}

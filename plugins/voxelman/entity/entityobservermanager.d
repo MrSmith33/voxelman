@@ -9,16 +9,15 @@ module voxelman.entity.entityobservermanager;
 import voxelman.log;
 import datadriven.api;
 import datadriven.entityman;
-import voxelman.container.hashmap;
-import voxelman.container.hashset;
-import voxelman.container.intkeyhashset;
+import voxelman.container.hash.map;
+import voxelman.container.hash.set;
 import voxelman.world.storage;
 import voxelman.entity.plugin;
 import voxelman.net.plugin;
 
 struct EntityObserverManager
 {
-	HashMap!(ulong, IntKeyHashSet!EntityId) chunkToEntitySet;
+	HashMap!(ulong, HashSet!EntityId) chunkToEntitySet;
 	//HashSet!ChunkWorldPos observedEntityChunks;
 	HashMap!(EntityId, ChunkWorldPos) entityToChunk;
 

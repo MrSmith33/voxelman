@@ -75,24 +75,6 @@ struct LauncherGui
 
 	void init()
 	{
-		import std.datetime : SysTime;
-		import std.concurrency : Tid;
-		class ConciseLogger : FileLogger {
-			this(File file, const LogLevel lv = LogLevel.info) @safe {
-				super(file, lv);
-			}
-
-			override protected void beginLogMsg(string file, int line, string funcName,
-				string prettyFuncName, string moduleName, LogLevel logLevel,
-				Tid threadId, SysTime timestamp, Logger logger)
-				@safe {}
-		}
-		//auto file = File(filename, "w");
-		auto logger = new MultiLogger;
-		//logger.insertLogger("fileLogger", new FileLogger(file));
-		logger.insertLogger("stdoutLogger", new ConciseLogger(stdout));
-		sharedLog = logger;
-
 		launcher.init();
 
 		playMenu.init(&launcher);

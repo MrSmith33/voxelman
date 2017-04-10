@@ -5,13 +5,12 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.storage.chunk.editor;
 
-import voxelman.container.hashset;
+import voxelman.container.hash.set;
 import voxelman.core.config;
 import voxelman.world.storage.chunk;
 import voxelman.world.storage;
 
 
-// TODO: removeInternalObserver addInternalObserver
 final class ChunkEditor
 {
 	private ubyte numLayers;

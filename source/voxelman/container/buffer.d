@@ -7,19 +7,8 @@ module voxelman.container.buffer;
 
 import std.experimental.allocator.gc_allocator;
 alias allocator = GCAllocator.instance;
+import voxelman.math : nextPOT;
 
-T nextPOT(T)(T x) {
-	--x;
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	static if (T.sizeof >= 16) x |= x >>  8;
-	static if (T.sizeof >= 32) x |= x >> 16;
-	static if (T.sizeof >= 64) x |= x >> 32;
-	++x;
-
-	return x;
-}
 
 struct Buffer(T)
 {

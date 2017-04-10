@@ -18,7 +18,7 @@ import voxelman.core.config;
 import voxelman.world.mesh.meshgen;
 import voxelman.world.storage;
 import voxelman.thread.worker;
-import voxelman.container.hashset;
+import voxelman.container.hash.set;
 import voxelman.graphics;
 import voxelman.geometry;
 

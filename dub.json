@@ -33,7 +33,6 @@
 	"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib"],
 
 	"lflags-windows": [
-		"libcmt.lib",
 		"/nodefaultlib:msvcrt.lib",
 		"/nodefaultlib:vcruntime.lib"
 	],

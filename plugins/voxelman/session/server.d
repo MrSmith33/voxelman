@@ -451,8 +451,7 @@ public:
 
 		if (createdNew)
 		{
-			infof("new client registered %s %s", clientId, name);
-			db.set(clientId, ClientPosition(), ClientSettings());
+			onCreatedNewClientRecord(clientId, name);
 		}
 		else
 		{
@@ -469,13 +468,10 @@ public:
 				string requestedName = name;
 				name = db.resolveNameConflict(requestedName, &hasConflict);
 				infof("Using '%s' instead of '%s'", name, requestedName);
+
 				clientId = db.getOrCreate(name, createdNew);
 
-				if (createdNew)
-				{
-					infof("new client registered %s %s", clientId, name);
-					db.set(clientId, ClientPosition(), ClientSettings());
-				}
+				if (createdNew) onCreatedNewClientRecord(clientId, name);
 			}
 			infof("client logged in %s %s", clientId, name);
 		}
@@ -491,6 +487,11 @@ public:
 		evDispatcher.postEvent(ClientLoggedInEvent(clientId, createdNew));
 
 		infof("%s %s logged in", sessionId, sessions[sessionId].name);
+	}
+
+	private void onCreatedNewClientRecord(EntityId clientId, string name) {
+		infof("new client registered %s %s", clientId, name);
+		db.set(clientId, ClientPosition(), ClientSettings());
 	}
 
 	private void handleGameStartPacket(ubyte[] packetData, SessionId sessionId)

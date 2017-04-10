@@ -11,7 +11,7 @@ import std.string;
 import std.experimental.allocator.gc_allocator;
 import voxelman.math : nextPOT;
 
-struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
+deprecated struct HashMap(Key, Value, Key nullKey = Key.max, A = GCAllocator)
 {
 	Key[] keys;
 	Value[] values;
@@ -309,7 +309,7 @@ unittest {
 	map.reserve(100);
 	map.printStats();
 }*/
-
+/*
 unittest {
 	ushort[] keys = [140,268,396,524,652,780,908,28,156,284,
 		412,540,668,796,924,920,792,664,536,408,280,152,24];
@@ -324,3 +324,4 @@ unittest {
 		assert(map.get(key, 0) == key);
 	}
 }
+*/

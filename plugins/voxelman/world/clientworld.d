@@ -19,7 +19,7 @@ import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.net.events;
 import voxelman.platform.compression;
-import voxelman.container.hashset;
+import voxelman.container.hash.set;
 
 import voxelman.block.plugin;
 import voxelman.blockentity.plugin;
@@ -40,6 +40,7 @@ import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.blockentity.blockentitydata;
+import voxelman.world.blockentity.blockentitymap;
 
 import voxelman.world.mesh.chunkmeshman;
 

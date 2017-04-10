@@ -8,7 +8,7 @@ module voxelman.world.storage.chunk.activechunks;
 import voxelman.log;
 import std.array : empty;
 import cbor;
-import voxelman.container.hashset;
+import voxelman.container.hash.set;
 
 import voxelman.world.storage;
 

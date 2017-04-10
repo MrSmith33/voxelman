@@ -36,6 +36,11 @@ mixin template NetCommon()
 		import voxelman.utils.libloader;
 		loadEnet(BUILD_TO_ROOT_PATH);
 
+		sniffer.disallowedPakets.put("TelemetryPacket");
+		sniffer.disallowedPakets.put("ComponentSyncStartPacket");
+		sniffer.disallowedPakets.put("ComponentSyncEndPacket");
+		sniffer.disallowedPakets.put("ChunkDataPacket");
+
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;
 		voxelman.net.packets.registerPackets(connection);

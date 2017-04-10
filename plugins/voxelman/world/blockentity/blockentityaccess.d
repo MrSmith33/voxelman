@@ -207,16 +207,3 @@ final class BlockEntityAccess
 		return true;
 	}
 }
-
-void setLayerMap(Layer)(ref Layer layer, BlockEntityMap map) {
-	ubyte[] arr = map.getTable();
-	layer.dataPtr = arr.ptr;
-	layer.dataLength = cast(LayerDataLenType)arr.length;
-	layer.metadata = cast(ushort)map.length;
-}
-
-BlockEntityMap getHashMapFromLayer(Layer)(const ref Layer layer) {
-	if (layer.type == StorageType.uniform)
-		return BlockEntityMap();
-	return BlockEntityMap(layer.getArray!ubyte, layer.metadata);
-}

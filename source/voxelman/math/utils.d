@@ -44,14 +44,15 @@ void nansToZero(T, int size)(ref T[size] vector) pure nothrow
 	}
 }
 
-T nextPOT(T)(T x) pure nothrow {
+T nextPOT(T)(T x)
+{
 	--x;
-	x |= x >> 1;
-	x |= x >> 2;
-	x |= x >> 4;
-	static if (T.sizeof >= 16) x |= x >>  8;
-	static if (T.sizeof >= 32) x |= x >> 16;
-	static if (T.sizeof >= 64) x |= x >> 32;
+	x |= x >> 1;  // handle  2 bit numbers
+	x |= x >> 2;  // handle  4 bit numbers
+	x |= x >> 4;  // handle  8 bit numbers
+	static if (T.sizeof >= 2) x |= x >> 8;  // handle 16 bit numbers
+	static if (T.sizeof >= 4) x |= x >> 16; // handle 32 bit numbers
+	static if (T.sizeof >= 8) x |= x >> 32; // handle 64 bit numbers
 	++x;
 
 	return x;
@@ -66,6 +67,7 @@ unittest {
 	assert(nextPOT(10) == 16);
 	assert(nextPOT(30) == 32);
 	assert(nextPOT(250) == 256);
+	assert(nextPOT(514) == 1024);
 	assert(nextPOT(1<<15+1) == 1<<16);
 	assert(nextPOT(1UL<<31+1) == 1UL<<32);
 	assert(nextPOT(1UL<<49+1) == 1UL<<50);

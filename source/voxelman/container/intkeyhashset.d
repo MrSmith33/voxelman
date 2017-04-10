@@ -7,7 +7,7 @@ module voxelman.container.intkeyhashset;
 
 import voxelman.math : nextPOT;
 
-struct IntKeyHashSet(Key, Key nullKey = Key.max)
+deprecated struct IntKeyHashSet(Key, Key nullKey = Key.max)
 {
 	import std.experimental.allocator.gc_allocator;
 	import std.experimental.allocator.mallocator;

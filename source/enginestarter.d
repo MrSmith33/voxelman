@@ -26,11 +26,13 @@ struct EngineStarter
 	void start(string[] args)
 	{
 		AppType appType = AppType.combined;
+		bool logToConsole;
 		std.getopt.getopt(args,
 			std.getopt.config.passThrough,
-			"app", &appType);
+			"app", &appType,
+			"console_log", &logToConsole);
 
-		setupLogs(appType);
+		setupLogs(appType, logToConsole);
 		scope(exit) closeBinLog();
 
 		final switch(appType) with(AppType)
@@ -43,7 +45,7 @@ struct EngineStarter
 		waitForThreads();
 	}
 
-	void setupLogs(AppType appType, string logsFolder = "../logs")
+	void setupLogs(AppType appType, bool logToConsole = true, string logsFolder = "../logs")
 	{
 		mkdirRecurse(logsFolder);
 		enum textFormat = ".log";
@@ -56,7 +58,12 @@ struct EngineStarter
 			case server: name = "server"; break;
 			case combined: name = "client"; break;
 		}
-		setupLogger(buildPath(logsFolder, name ~ textFormat));
+
+		auto logger = setupMultiLogger();
+		setupFileLogger(logger, buildPath(logsFolder, name ~ textFormat));
+		if (logToConsole)
+			setupStdoutLogger(logger);
+
 		initBinLog(buildPath(logsFolder, name ~ binFormat));
 	}
 

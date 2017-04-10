@@ -31,21 +31,25 @@ class ConciseLogger : FileLogger
 	}
 }
 
-void setupLogger(string filename)
+MultiLogger setupMultiLogger()
 {
 	globalLogLevel = LogLevel.all;
-
 	auto logger = new MultiLogger;
+	sharedLog = logger;
+	return logger;
+}
 
+void setupFileLogger(MultiLogger parentLogger, string filename)
+{
 	auto file = File(filename, "w");
 	auto fileLogger = new ConciseLogger(file);
 	fileLogger.logLevel = LogLevel.all;
+	parentLogger.insertLogger("fileLogger", fileLogger);
+}
 
+void setupStdoutLogger(MultiLogger parentLogger)
+{
 	auto conciseLogger = new ConciseLogger(stdout);
 	conciseLogger.logLevel = LogLevel.info;
-
-	logger.insertLogger("fileLogger", fileLogger);
-	logger.insertLogger("stdoutLogger", conciseLogger);
-
-	sharedLog = logger;
+	parentLogger.insertLogger("stdoutLogger", conciseLogger);
 }

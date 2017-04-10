@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.container.hashset;
 
-struct HashSet(Key) {
+deprecated struct HashSet(Key) {
 	private void[0][Key] set;
 
 	void put()(auto ref Key key) {

@@ -9,6 +9,7 @@ module netlib.packetmanagement;
 import cbor;
 import voxelman.log;
 import derelict.enet.enet;
+import voxelman.container.hash.set;
 
 void loadEnet(string rootPath)
 {
@@ -43,12 +44,36 @@ P unpackPacketNoDup(P)(ubyte[] packetData)
 	return decodeCborSingle!P(packetData);
 }
 
+//version = Packet_Sniffing;
+
+struct PacketSniffer(bool client)
+{
+	private enum sideName = client ? "[CLIENT]" : "[SERVER]";
+	HashSet!string disallowedPakets;
+
+	void onPacketCreate(string name) {
+		version (Packet_Sniffing) {
+			if (name !in disallowedPakets)
+				infof(sideName ~ " create %s", name);
+		}
+	}
+
+	void onPacketHandle(string name) {
+		version (Packet_Sniffing) {
+			if (name !in disallowedPakets)
+				infof(sideName ~ " handle %s", name);
+		}
+	}
+}
+
 mixin template PacketManagement(bool client)
 {
 	static if (client)
 		alias PacketHandler = void delegate(ubyte[] packetData);
 	else
 		alias PacketHandler = void delegate(ubyte[] packetData, SessionId sessionId);
+
+	PacketSniffer!client sniffer;
 
 	static struct PacketInfo
 	{
@@ -95,6 +120,8 @@ mixin template PacketManagement(bool client)
 		if (packetId >= packetArray.length)
 			return false; // invalid packet
 
+		sniffer.onPacketHandle(packetArray[packetId].name);
+
 		auto handler = packetArray[packetId].handler;
 		if (handler is null)
 			return false; // handler is not set
@@ -114,8 +141,9 @@ mixin template PacketManagement(bool client)
 		ubyte[] bufferTemp = buffer;
 		size_t size;
 
-		auto pid = packetId!P;
-		size = encodeCbor(bufferTemp[], packetId!P);
+		size_t pid = packetId!P;
+		sniffer.onPacketCreate(packetArray[pid].name);
+		size = encodeCbor(bufferTemp[], pid);
 		size += encodeCbor(bufferTemp[size..$], packet);
 
 		return bufferTemp[0..size];
@@ -144,5 +172,3 @@ mixin template PacketManagement(bool client)
 			packetInfo.id = i;
 	}
 }
-
-
