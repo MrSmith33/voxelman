@@ -37,12 +37,6 @@ struct PlaceRailPacket
 	ubyte data;
 }
 
-enum RailEditOp
-{
-	add,
-	remove
-}
-
 struct EditRailLinePacket
 {
 	RailPos from;
@@ -184,7 +178,7 @@ final class RailroadPluginServer : IPlugin
 		}
 	}
 
-	void editRail(RailPos railPos, RailData railData, RailEditOp editOp = RailEditOp.add)
+	void editRail(const RailPos railPos, const RailData railData, RailEditOp editOp = RailEditOp.add)
 	{
 		ChunkWorldPos cwp = railPos.chunkPos();
 		ushort railEntityId = blockEntityManager.getId("rail");
@@ -192,39 +186,27 @@ final class RailroadPluginServer : IPlugin
 		RailData railOnGround = getRailAt(railPos, railEntityId,
 			serverWorld.worldAccess, serverWorld.entityAccess);
 
-		if (railOnGround.empty && editOp == RailEditOp.remove) return;
+		RailData edited = railOnGround;
+		edited.editRail(railData, editOp);
+
+		// Adding existing rail segment / removing non-existing
+		if (railOnGround == edited) return;
+
+		railGraph.onRailEdit(railPos, railData, editOp);
 
 		if (!railOnGround.empty)
 		{
-			RailData modified = railOnGround;
-			final switch(editOp)
-			{
-				case RailEditOp.add:
-					railGraph.onRailAdd(railPos, railData);
-					modified.addRail(railData); // combine rails
-					break;
-				case RailEditOp.remove:
-					railGraph.onRailRemove(railPos, railData);
-					modified.removeRail(railData); // remove rails
-					break;
-			}
-
-			// Adding existing rail segment
-			if (railOnGround == modified)
-				return;
-
 			BlockWorldPos delPos = railPos.deletePos;
 			WorldBox changedBox = removeEntity(delPos, blockEntityPlugin.blockEntityInfos,
 				serverWorld.worldAccess, serverWorld.entityAccess, BlockId(1));
 			connection.sendTo(serverWorld.chunkObserverManager.getChunkObservers(cwp),
 				RemoveBlockEntityPacket(delPos.vector));
-			railData = modified;
 		}
 
-		if (railData.empty) return;
+		if (edited.empty) return;
 
-		WorldBox blockBox = railData.boundingBox(railPos);
-		ulong payload = payloadFromIdAndEntityData(railEntityId, railData.data);
+		WorldBox blockBox = edited.boundingBox(railPos);
+		ulong payload = payloadFromIdAndEntityData(railEntityId, edited.data);
 
 		placeEntity(blockBox, payload, serverWorld.worldAccess, serverWorld.entityAccess);
 

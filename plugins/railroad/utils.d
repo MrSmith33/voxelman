@@ -47,6 +47,12 @@ RailData getRailAt(RailPos railPos, ushort railEntityId,
 	return RailData();
 }
 
+enum RailEditOp
+{
+	add,
+	remove
+}
+
 struct RailPos {
 	this(svec4 vec) {
 		vector = vec;
@@ -59,21 +65,21 @@ struct RailPos {
 			floor(cast(float)bwp.z / RAIL_TILE_SIZE),
 			bwp.w);
 	}
-	ChunkWorldPos chunkPos() {
+	ChunkWorldPos chunkPos() const {
 		return ChunkWorldPos(toBlockWorldPos());
 	}
-	BlockWorldPos toBlockWorldPos() {
+	BlockWorldPos toBlockWorldPos() const {
 		return BlockWorldPos(
 			vector.x * RAIL_TILE_SIZE,
 			vector.y,
 			vector.z * RAIL_TILE_SIZE,
 			vector.w);
 	}
-	WorldBox toBlockBox()
+	WorldBox toBlockBox() const
 	{
 		return WorldBox(toBlockWorldPos().xyz, railSizeVector, vector.w);
 	}
-	BlockWorldPos deletePos()
+	BlockWorldPos deletePos() const
 	{
 		auto bwp = toBlockWorldPos;
 		bwp.vector += railPickOffset;
@@ -82,7 +88,7 @@ struct RailPos {
 	svec4 vector;
 	alias vector this;
 
-	ulong asUlong() @property
+	ulong asUlong() const @property
 	{
 		ulong res = cast(ulong)vector.w<<48 |
 				cast(ulong)(cast(ushort)vector.z)<<32 |
@@ -112,11 +118,11 @@ struct RailData
 		data = cast(ubyte)(beData.entityData);
 	}
 
-	bool isSlope() {
+	bool isSlope() const {
 		return (data & SLOPE_RAIL_BIT) != 0;
 	}
 
-	bool hasSingleSegment() {
+	bool hasSingleSegment() const {
 		if ((data & SLOPE_RAIL_BIT) != 0)
 		{
 			return 1;
@@ -128,7 +134,7 @@ struct RailData
 		}
 	}
 
-	bool empty() {
+	bool empty() const {
 		return data == 0;
 	}
 
@@ -156,12 +162,21 @@ struct RailData
 		}
 	}
 
-	SegmentRange getSegments()
+	void editRail(RailData railData, RailEditOp editOp)
+	{
+		final switch(editOp)
+		{
+			case RailEditOp.add: addRail(railData); break; // combine rails
+			case RailEditOp.remove: removeRail(railData); break; // remove rails
+		}
+	}
+
+	SegmentRange getSegments() const
 	{
 		return SegmentRange(data);
 	}
 
-	Solidity bottomSolidity(ivec3 blockTilePos)
+	Solidity bottomSolidity(ivec3 blockTilePos) const
 	{
 		foreach(segment; getSegments)
 		{
@@ -172,12 +187,12 @@ struct RailData
 		return Solidity.transparent;
 	}
 
-	WorldBox boundingBox(RailPos railPos)
+	WorldBox boundingBox(RailPos railPos) const
 	{
 		return boundingBox(railPos.toBlockWorldPos());
 	}
 
-	WorldBox boundingBox(BlockWorldPos bwp)
+	WorldBox boundingBox(BlockWorldPos bwp) const
 	{
 		if (isSlope)
 		{

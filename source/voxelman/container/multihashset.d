@@ -20,9 +20,7 @@ struct MultiHashSet(Key)
 	mixin MultiHashSetImpl!(Key, HashMap!(Key, size_t));
 }
 
-
-/// ditto
-mixin template MultiHashSetImpl(Key, HashMapT) {
+private mixin template MultiHashSetImpl(Key, HashMapT) {
 	HashMapT keys;
 
 	size_t get(Key key) {
@@ -72,7 +70,7 @@ unittest {
 	import std.stdio;
 	MultiHashSet!int multiset;
 
-	enum iter = 1024;
+	enum iter = 64;
 	foreach (i; 0..iter) {
 		foreach (j; 0..iter) {
 			multiset.add(j);

@@ -55,7 +55,7 @@ void deserializeMap(HashMapT)(ref HashMapT hashmap, ubyte[] input)
 		size_t lengthToRead = cast(size_t)token.uinteger;
 		hashmap.reserve(lengthToRead);
 		while (lengthToRead > 0) {
-			auto eid = decodeCborSingle!(HashMapT.KeyT)(input);
+			auto eid = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
 			auto component = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
 			hashmap[eid] = component;
 			--lengthToRead;
@@ -66,7 +66,7 @@ void deserializeMap(HashMapT)(ref HashMapT hashmap, ubyte[] input)
 			if (token.type == CborTokenType.breakCode) {
 				break;
 			} else {
-				auto eid = decodeCborSingle!(HashMapT.KeyT)(input);
+				auto eid = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
 				auto component = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
 				hashmap[eid] = component;
 			}
@@ -81,7 +81,7 @@ void serializeSet(HashSetT, Sink)(ref HashSetT hashset, Sink sink)
 
 	encodeCborArrayHeader(sink, hashset.length);
 	foreach(eid; hashset) {
-		encodeCbor(sink, eid);
+		encodeCbor!(Yes.Flatten)(sink, eid);
 	}
 }
 
@@ -92,10 +92,10 @@ void serializeSetPartial(Key, Sink)(ref HashSet!Key hashset, Sink sink, HashSet!
 
 	if (externalEntities.length < hashset.length) {
 		foreach(eid; externalEntities)
-			if (hashset[eid]) encodeCbor(sink, eid);
+			if (hashset[eid]) encodeCbor!(Yes.Flatten)(sink, eid);
 	} else {
 		foreach(eid; hashset)
-			if (externalEntities[eid]) encodeCbor(sink, eid);
+			if (externalEntities[eid]) encodeCbor!(Yes.Flatten)(sink, eid);
 	}
 	encodeCborBreak(sink);
 }
@@ -108,7 +108,7 @@ void deserializeSet(Key)(ref HashSet!Key hashset, ubyte[] input)
 		size_t lengthToRead = cast(size_t)token.uinteger;
 		hashset.reserve(lengthToRead);
 		while (lengthToRead > 0) {
-			hashset.put(decodeCborSingle!Key(input));
+			hashset.put(decodeCborSingle!(Key, Yes.Flatten)(input));
 			--lengthToRead;
 		}
 	} else if (token.type == CborTokenType.arrayIndefiniteHeader) {
@@ -117,7 +117,7 @@ void deserializeSet(Key)(ref HashSet!Key hashset, ubyte[] input)
 			if (token.type == CborTokenType.breakCode)
 				break;
 			else
-				hashset.put(decodeCborSingle!Key(input));
+				hashset.put(decodeCborSingle!(Key, Yes.Flatten)(input));
 		}
 	}
 }

@@ -5,13 +5,15 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.blockentity.blockentitymap;
 
+import voxelman.log;
 import voxelman.container.hash.map;
 import std.experimental.allocator.mallocator;
 import voxelman.world.storage.chunk.layer;
 
 alias BlockEntityMap = HashMap!(ushort, ulong, ushort.max, ushort.max-1, BlockEntityMapAllocator);
 
-void setLayerMap(Layer)(ref Layer layer, BlockEntityMap map) {
+void setLayerMap(Layer)(ref Layer layer, BlockEntityMap map)
+{
 	void[] arr = map.getStorage();
 
 	void* dataPtr = arr.ptr - ExtraMapData.sizeof;
@@ -25,18 +27,22 @@ void setLayerMap(Layer)(ref Layer layer, BlockEntityMap map) {
 	layer.dataLength = cast(LayerDataLenType)dataLength;
 }
 
-BlockEntityMap getHashMapFromLayer(Layer)(const ref Layer layer) {
+BlockEntityMap getHashMapFromLayer(Layer)(const ref Layer layer)
+{
 	BlockEntityMap result;
 
 	if (layer.type == StorageType.fullArray)
 	{
 		ubyte[] data = layer.getArray!ubyte;
-		auto extraMapData = cast(ExtraMapData*)data.ptr;
-
-		void[] mapData = data[ExtraMapData.sizeof..$];
-
-		result.setStorage(mapData, extraMapData.length, extraMapData.occupiedBuckets);
-	} else if (layer.type == StorageType.compressedArray) {
+		if (data.length >= ExtraMapData.sizeof)
+		{
+			auto extraMapData = cast(ExtraMapData*)data.ptr;
+			void[] mapData = data[ExtraMapData.sizeof..$];
+			result.setStorage(mapData, extraMapData.length, extraMapData.occupiedBuckets);
+		}
+	}
+	else if (layer.type == StorageType.compressedArray)
+	{
 		assert(false, "Cannot get map from compressed chunk layer");
 	}
 

@@ -7,6 +7,8 @@ module railroad.railgraph;
 
 import voxelman.container.hash.map;
 import voxelman.math;
+import voxelman.log;
+import voxelman.serialization.hashtable;
 
 import voxelman.world.storage;
 import railroad.utils;
@@ -21,12 +23,23 @@ struct RailGraph
 	void read(ref PluginDataLoader loader)
 	{
 		ubyte[] data = loader.readEntryRaw(dbKey);
-
+		deserializeMap(rails, data);
 	}
 
 	void write(ref PluginDataSaver saver)
 	{
+		auto sink = saver.beginWrite();
+		serializeMap(rails, sink);
+		saver.endWrite(dbKey);
+	}
 
+	void onRailEdit(RailPos pos, RailData railData, RailEditOp editOp)
+	{
+		final switch(editOp)
+		{
+			case RailEditOp.add: onRailAdd(pos, railData); break;
+			case RailEditOp.remove: onRailRemove(pos, railData); break;
+		}
 	}
 
 	void onRailAdd(RailPos pos, RailData railData)
@@ -37,10 +50,9 @@ struct RailGraph
 
 	void onRailRemove(RailPos pos, RailData railData)
 	{
-		auto data = pos in rails;
-		if (data) {
+		if (auto data = pos in rails) {
 			(*data).removeRail(railData);
-			if (data.empty) {
+			if ((*data).empty) {
 				rails.removeByPtr(data);
 			}
 		}

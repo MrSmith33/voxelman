@@ -436,7 +436,7 @@ public:
 			ivec3 chunkPos = pos * CHUNK_SIZE;
 
 			auto snap = chunkManager.getChunkSnapshot(
-				ChunkWorldPos(pos, box.dimension), ENTITY_LAYER);
+				ChunkWorldPos(pos, box.dimension), ENTITY_LAYER, Yes.Uncompress);
 
 			if (snap.isNull) continue;
 			auto map = getHashMapFromLayer(snap);

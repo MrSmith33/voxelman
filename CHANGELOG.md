@@ -5,6 +5,7 @@
 
 ## [0.8.0] - 2017-02-03
 ### Added
+- Implement rail graph sync with actual rail entities.
 - Implement new generic hashmap/hashset/multihashset.
 - Add packet sniffing debug code (easier network debugging).
 - Add `dim_spawn` and `dim_spawn set` commands.

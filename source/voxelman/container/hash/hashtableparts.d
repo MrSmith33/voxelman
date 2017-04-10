@@ -357,6 +357,17 @@ mixin template HashMapImpl()
 		}
 		writefln("totalUsed %s length %s", totalUsed, length);
 	}
+
+	void toString()(scope void delegate(const(char)[]) sink)
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("[",);
+		foreach(key, value; this)
+		{
+			sink.formattedWrite("%s:%s, ", key, value);
+		}
+		sink.formattedWrite("]");
+	}
 }
 
 mixin template HashSetImpl()
@@ -403,5 +414,16 @@ mixin template HashSetImpl()
 				if (auto ret = del(bucket.key))
 					return ret;
 		return 0;
+	}
+
+	void toString()(scope void delegate(const(char)[]) sink)
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("[",);
+		foreach(key; this)
+		{
+			sink.formattedWrite("%s, ", key);
+		}
+		sink.formattedWrite("]");
 	}
 }
