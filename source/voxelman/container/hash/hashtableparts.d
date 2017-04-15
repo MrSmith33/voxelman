@@ -388,10 +388,16 @@ mixin template HashSetImpl()
 	private void putKey(Key key)
 	{
 		size_t index = findInsertIndex(key);
-		if (keyBuckets[index].key != key)
-		{
+		if (keyBuckets[index].empty) {
+			++occupiedBuckets;
 			++length;
-			if (keyBuckets[index].empty) ++occupiedBuckets;
+		}
+		else if (keyBuckets[index].deleted) {
+			++length;
+		}
+		else {
+			assert(keyBuckets[index].key == key);
+			assert(keyBuckets[index].used);
 		}
 		keyBuckets[index].assignKey(key);
 		version(DEBUG_INVARIANT) checkUsed();

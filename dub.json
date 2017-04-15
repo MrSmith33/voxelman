@@ -25,6 +25,10 @@
 	"buildTypes": {
 		"debug": {
 			"buildOptions": ["debugMode", "debugInfoC", "alwaysStackFrame"]
+		},
+		"unittest": {
+			"buildOptions": ["unittests", "debugMode", "debugInfo"],
+			"versions": ["DEBUG_INVARIANT"]
 		}
 	},
 
