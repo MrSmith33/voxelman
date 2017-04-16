@@ -40,6 +40,7 @@ mixin template NetCommon()
 		sniffer.disallowedPakets.put("ComponentSyncStartPacket");
 		sniffer.disallowedPakets.put("ComponentSyncEndPacket");
 		sniffer.disallowedPakets.put("ChunkDataPacket");
+		sniffer.disallowedPakets.put("ClientPositionPacket");
 
 		connection.connectHandler = &onConnect;
 		connection.disconnectHandler = &onDisconnect;

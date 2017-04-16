@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module railroad.railgraph;
+module railroad.rail.railgraph;
 
 import voxelman.container.hash.map;
 import voxelman.math;
@@ -11,7 +11,7 @@ import voxelman.log;
 import voxelman.serialization.hashtable;
 
 import voxelman.world.storage;
-import railroad.utils;
+import railroad.rail.utils;
 
 
 struct RailGraph

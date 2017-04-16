@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module railroad.railtool;
+module railroad.rail.railtool;
 
 import voxelman.log;
 import voxelman.container.buffer : Buffer;
@@ -26,8 +26,9 @@ import voxelman.world.storage;
 import voxelman.edit.tools.itool;
 
 import railroad.plugin;
-import railroad.mesh;
-import railroad.utils;
+import railroad.rail.mesh;
+import railroad.rail.packets;
+import railroad.rail.utils;
 
 
 final class RailTool : ITool

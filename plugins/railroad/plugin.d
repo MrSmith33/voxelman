@@ -5,19 +5,24 @@ Authors: Andrey Penechko.
 */
 module railroad.plugin;
 
-import voxelman.log;
+import datadriven;
 import pluginlib;
 import voxelman.core.config;
+import voxelman.core.events;
 import voxelman.core.packets;
+import voxelman.log;
 
 import voxelman.blockentity.blockentityman;
 import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
+import voxelman.entity.plugin;
+import voxelman.eventdispatcher.plugin;
+import voxelman.graphics.plugin;
 import voxelman.net.plugin;
 import voxelman.world.clientworld;
 import voxelman.world.serverworld;
-import voxelman.worldinteraction.plugin;
 import voxelman.world.storage;
+import voxelman.worldinteraction.plugin;
 
 import voxelman.world.block;
 import voxelman.math;
@@ -25,26 +30,16 @@ import voxelman.geometry;
 
 import voxelman.world.blockentity;
 
-import railroad.mesh;
-import railroad.utils;
-import railroad.railtool;
-import railroad.railgraph;
+import railroad.rail.mesh;
+import railroad.rail.utils;
+import railroad.rail.railtool;
+import railroad.rail.railgraph;
+import railroad.rail.packets;
 
+import railroad.wagon.wagontool;
+import railroad.wagon.packets;
+import railroad.wagon.wagon;
 
-struct PlaceRailPacket
-{
-	RailPos pos;
-	ubyte data;
-}
-
-struct EditRailLinePacket
-{
-	RailPos from;
-	size_t length;
-	RailOrientation orientation;
-	DiagonalRailSide diagonalRailSide;
-	RailEditOp editOp;
-}
 
 final class RailroadPluginClient : IPlugin
 {
@@ -54,9 +49,16 @@ final class RailroadPluginClient : IPlugin
 	ClientWorld clientWorld;
 	NetClientPlugin connection;
 	WorldInteractionPlugin worldInteraction;
+	GraphicsPlugin graphics;
+
+	Batch batch;
+	EntityManager* eman;
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry) {
 		retreiveBlockEntityManager(resmanRegistry);
+		auto components = resmanRegistry.getResourceManager!EntityComponentRegistry;
+		eman = components.eman;
+		eman.registerComponent!WagonClientComponent();
 	}
 
 	override void preInit() {
@@ -80,16 +82,39 @@ final class RailroadPluginClient : IPlugin
 	{
 		worldInteraction = pluginman.getPlugin!WorldInteractionPlugin;
 		clientWorld = pluginman.getPlugin!ClientWorld;
+		graphics = pluginman.getPlugin!GraphicsPlugin;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacket!PlaceRailPacket;
 		connection.registerPacket!EditRailLinePacket;
+		connection.registerPacket!CreateWagonPacket;
 
 		auto railTool = new RailTool(clientWorld, blockEntityManager,
 			connection, worldInteraction);
 
+		auto wagonTool = new WagonTool(clientWorld, blockEntityManager,
+			connection, worldInteraction);
+
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
 		editPlugin.registerTool(railTool);
+		editPlugin.registerTool(wagonTool);
+
+		auto evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&drawEntities);
+	}
+
+	void drawEntities(ref RenderSolid3dEvent event)
+	{
+		batch.reset();
+		auto query = eman.query!WagonClientComponent;
+		foreach (row; query)
+		{
+			if (row.wagonClientComponent_0.dimension == clientWorld.currentDimension)
+			{
+				batch.putCube(row.wagonClientComponent_0.dimPos - vec3(0.5,0.5,0.5), vec3(1,1,1), Colors.black, true);
+			}
+		}
+		graphics.draw(batch);
 	}
 }
 
@@ -98,6 +123,8 @@ final class RailroadPluginServer : IPlugin
 	mixin IdAndSemverFrom!"railroad.plugininfo";
 	mixin RailroadPluginCommon;
 
+	WagonLogicServer wagonLogic;
+
 	NetServerPlugin connection;
 	ServerWorld serverWorld;
 	BlockEntityServer blockEntityPlugin;
@@ -105,6 +132,7 @@ final class RailroadPluginServer : IPlugin
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		wagonLogic.registerResources(resmanRegistry);
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
 		ioman.registerWorldLoadSaveHandlers(&railGraph.read, &railGraph.write);
 		retreiveBlockEntityManager(resmanRegistry);
@@ -115,8 +143,16 @@ final class RailroadPluginServer : IPlugin
 		connection = pluginman.getPlugin!NetServerPlugin;
 		connection.registerPacket!PlaceRailPacket(&handlePlaceRailPacket);
 		connection.registerPacket!EditRailLinePacket(&handleEditRailLinePacket);
+		connection.registerPacket!CreateWagonPacket(&wagonLogic.handleCreateWagonPacket);
+
 		serverWorld = pluginman.getPlugin!ServerWorld;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityServer;
+
+		wagonLogic.entityPlugin = pluginman.getPlugin!EntityPluginServer;
+		wagonLogic.railGraph = &railGraph;
+
+		auto evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
+		evDispatcher.subscribeToEvent(&wagonLogic.process);
 	}
 
 	void handlePlaceRailPacket(ubyte[] packetData, SessionId sessionId)

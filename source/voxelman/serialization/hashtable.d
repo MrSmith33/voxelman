@@ -6,13 +6,14 @@ Authors: Andrey Penechko.
 
 module voxelman.serialization.hashtable;
 
+import voxelman.log;
 import std.range : save;
 import voxelman.serialization;
 import voxelman.container.buffer;
 import voxelman.container.hash.map;
 import voxelman.container.hash.set;
 
-void serializeMap(HashMapT, Sink)(ref HashMapT hashmap, Sink sink)
+void serializeMap(HashMapT, Sink)(ref HashMapT hashmap, auto ref Sink sink)
 {
 	if (hashmap.empty) return;
 
@@ -23,23 +24,23 @@ void serializeMap(HashMapT, Sink)(ref HashMapT hashmap, Sink sink)
 	}
 }
 
-void serializeMapPartial(HashMapT, Key, Sink)(ref HashMapT hashmap, Sink sink, HashSet!Key externalEntities)
+void serializeMapPartial(HashMapT, Key, Sink)(ref HashMapT hashmap, auto ref Sink sink, HashSet!Key externalKeys)
 {
-	if (hashmap.empty) return;
+	if (hashmap.empty || externalKeys.empty) return;
 
 	encodeCborMapHeader(sink);
 
-	if (externalEntities.length < hashmap.length) {
-		foreach(eid; externalEntities) {
-			if (auto value = eid in hashmap) {
-				encodeCbor!(Yes.Flatten)(sink, eid);
+	if (externalKeys.length < hashmap.length) {
+		foreach(key; externalKeys) {
+			if (auto value = key in hashmap) {
+				encodeCbor!(Yes.Flatten)(sink, key);
 				encodeCbor!(Yes.Flatten)(sink, *value);
 			}
 		}
 	} else {
-		foreach(eid, value; hashmap) {
-			if (externalEntities[eid]) {
-				encodeCbor!(Yes.Flatten)(sink, eid);
+		foreach(key, value; hashmap) {
+			if (externalKeys[key]) {
+				encodeCbor!(Yes.Flatten)(sink, key);
 				encodeCbor!(Yes.Flatten)(sink, value);
 			}
 		}
@@ -55,9 +56,9 @@ void deserializeMap(HashMapT)(ref HashMapT hashmap, ubyte[] input)
 		size_t lengthToRead = cast(size_t)token.uinteger;
 		hashmap.reserve(lengthToRead);
 		while (lengthToRead > 0) {
-			auto eid = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
-			auto component = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
-			hashmap[eid] = component;
+			auto key = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
+			auto value = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
+			hashmap[key] = value;
 			--lengthToRead;
 		}
 	} else if (token.type == CborTokenType.mapIndefiniteHeader) {
@@ -66,36 +67,36 @@ void deserializeMap(HashMapT)(ref HashMapT hashmap, ubyte[] input)
 			if (token.type == CborTokenType.breakCode) {
 				break;
 			} else {
-				auto eid = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
-				auto component = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
-				hashmap[eid] = component;
+				auto key = decodeCborSingle!(HashMapT.KeyT, Yes.Flatten)(input);
+				auto value = decodeCborSingleDup!(HashMapT.ValueT, Yes.Flatten)(input);
+				hashmap[key] = value;
 			}
 		}
 	}
 }
 
 
-void serializeSet(HashSetT, Sink)(ref HashSetT hashset, Sink sink)
+void serializeSet(HashSetT, Sink)(ref HashSetT hashset, auto ref Sink sink)
 {
 	if (hashset.empty) return;
 
 	encodeCborArrayHeader(sink, hashset.length);
-	foreach(eid; hashset) {
-		encodeCbor!(Yes.Flatten)(sink, eid);
+	foreach(key; hashset) {
+		encodeCbor!(Yes.Flatten)(sink, key);
 	}
 }
 
-void serializeSetPartial(Key, Sink)(ref HashSet!Key hashset, Sink sink, HashSet!Key externalEntities)
+void serializeSetPartial(Key, Sink)(ref HashSet!Key hashset, auto ref Sink sink, HashSet!Key externalKeys)
 {
-	if (hashset.empty) return;
+	if (hashset.empty || externalKeys.empty) return;
 	encodeCborMapHeader(sink);
 
-	if (externalEntities.length < hashset.length) {
-		foreach(eid; externalEntities)
-			if (hashset[eid]) encodeCbor!(Yes.Flatten)(sink, eid);
+	if (externalKeys.length < hashset.length) {
+		foreach(key; externalKeys)
+			if (hashset[key]) encodeCbor!(Yes.Flatten)(sink, key);
 	} else {
-		foreach(eid; hashset)
-			if (externalEntities[eid]) encodeCbor!(Yes.Flatten)(sink, eid);
+		foreach(key; hashset)
+			if (externalKeys[key]) encodeCbor!(Yes.Flatten)(sink, key);
 	}
 	encodeCborBreak(sink);
 }

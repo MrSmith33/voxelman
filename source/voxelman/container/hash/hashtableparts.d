@@ -274,7 +274,7 @@ mixin template HashMapImpl()
 		return &values[index];
 	}
 
-	inout(Value) opIndex(Key key) inout
+	ref inout(Value) opIndex(Key key) inout
 	{
 		import std.exception : enforce;
 		auto index = findIndex(key);
@@ -295,6 +295,19 @@ mixin template HashMapImpl()
 		auto index = findIndex(key);
 		//tracef("getOrCreate index %s", index);
 		if (index == size_t.max) return tryAssignValue(key, default_value);
+		return &values[index];
+	}
+
+	Value* getOrCreate(Key key, out bool wasCreated, Value default_value = Value.init)
+	{
+		auto index = findIndex(key);
+
+		if (index == size_t.max)
+		{
+			wasCreated = true;
+			return tryAssignValue(key, default_value);
+		}
+
 		return &values[index];
 	}
 

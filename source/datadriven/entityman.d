@@ -87,8 +87,8 @@ struct EntityManager
 		auto storage = new ComponentStorage!C;
 		auto info =	new ComponentInfo(
 			IoKey(componentUda!C.key),
-			componentUda!C.serializeToDb,
-			componentUda!C.serializeToNet,
+			cast(bool)(componentUda!C.replication & Replication.toDb),
+			cast(bool)(componentUda!C.replication & Replication.toClient),
 			&storage.remove,
 			&storage.removeAll,
 			&storage.serialize,
@@ -97,6 +97,25 @@ struct EntityManager
 			storage);
 		componentInfoMap[typeid(C)] = info;
 		componentInfoArray ~= info;
+
+		tracef("Register component %s", *info);
+	}
+
+	auto getIoKeys() {
+		static struct IoKeyRange
+		{
+			ComponentInfo*[] array;
+			int opApply(scope int delegate(ref IoKey) del) {
+				foreach(info; array)
+				{
+					if (auto ret = del(info.ioKey))
+						return ret;
+				}
+				return 0;
+			}
+		}
+
+		return IoKeyRange(componentInfoArray);
 	}
 
 	/// Returns pointer to the storage of components C.
@@ -222,7 +241,7 @@ struct EntityManager
 	}
 }
 
-private  string genTempComponentStorages(Components...)()
+private string genTempComponentStorages(Components...)()
 {
 	import std.conv : to;
 	string result;

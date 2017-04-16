@@ -19,7 +19,7 @@ import voxelman.world.clientworld;
 import voxelman.world.storage.coordinates : ClientDimPos;
 
 
-@Component("avatar.AvatarPosition", false, true)
+@Component("avatar.AvatarPosition", Replication.toClient)
 struct AvatarPosition
 {
 	ClientDimPos dimPos;

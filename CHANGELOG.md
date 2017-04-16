@@ -1,13 +1,27 @@
 # Change Log
 
 ## [Unreleased]
-- Implement click-and-drag rail placement.
-
-## [0.8.0] - 2017-02-03
 ### Added
+- Add fixed buffer.
+- Add simple wagon implementation.
+- Add wagon tool.
 - Implement rail graph sync with actual rail entities.
 - Implement new generic hashmap/hashset/multihashset.
 - Add packet sniffing debug code (easier network debugging).
+- Implement click-and-drag rail placement.
+
+### Changed
+- Split railroad package into subpackages.
+- Use delayed id map sync.
+- Use BitFlags for component replication annotation instead of bool flags.
+
+### Fixed
+- Fix entity/entityobservermanager.d not adding entity to chunk.
+- Fix enitity component id sync.
+
+
+## [0.8.0] - 2017-02-03
+### Added
 - Add `dim_spawn` and `dim_spawn set` commands.
 - Add single block mesher helper.
 - Add ability to append meshes to Batch.

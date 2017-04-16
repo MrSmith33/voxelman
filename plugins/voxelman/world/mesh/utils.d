@@ -110,6 +110,13 @@ enum FaceSide : ubyte {
 	right
 }
 
+FaceSide[4] oppFaceSides = [
+	FaceSide.bottom,
+	FaceSide.right,
+	FaceSide.top,
+	FaceSide.left,
+];
+
 // for each cube side
 //   8 index offsets
 //   first four are offsets to 4 adjacent sides, next 4 are for corner

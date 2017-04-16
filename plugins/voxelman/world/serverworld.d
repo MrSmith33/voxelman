@@ -42,12 +42,13 @@ public import voxelman.world.worlddb : WorldDb;
 
 enum START_NEW_WORLD = false;
 
+alias IdMapHandler = string[] delegate();
 struct IdMapManagerServer
 {
-	string[][string] idMaps;
-	void regIdMap(string name, string[] mapItems)
+	IdMapHandler[string] idMapHandlers;
+	void regIdMapHandler(string name, IdMapHandler handler)
 	{
-		idMaps[name] = mapItems;
+		idMapHandlers[name] = handler;
 	}
 }
 
@@ -127,7 +128,7 @@ public:
 	override void preInit()
 	{
 		pluginDataSaver.stringMap = &ioManager.stringMap;
-		idMapManager.regIdMap("string_map", ioManager.stringMap.strings);
+		idMapManager.regIdMapHandler("string_map", () => ioManager.stringMap.strings);
 
 		buf = new ubyte[](1024*64*4);
 		chunkManager = new ChunkManager(NUM_CHUNK_LAYERS);
@@ -317,9 +318,9 @@ public:
 
 	private void handleClientConnectedEvent(ref ClientConnectedEvent event)
 	{
-		foreach(key, idmap; idMapManager.idMaps)
+		foreach(key, handler; idMapManager.idMapHandlers)
 		{
-			connection.sendTo(event.sessionId, IdMapPacket(key, idmap));
+			connection.sendTo(event.sessionId, IdMapPacket(key, handler()));
 		}
 	}
 

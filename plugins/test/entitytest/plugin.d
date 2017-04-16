@@ -41,7 +41,7 @@ final class EntityTestPlugin(bool clientSide) : IPlugin
 	{
 		auto compRegistry = resmanRegistry.getResourceManager!EntityComponentRegistry;
 		eman = compRegistry.eman;
-		eman.registerComponent!Transform();
+		eman.registerComponent!SandTransform();
 
 		dbg = resmanRegistry.getResourceManager!Debugger;
 	}
@@ -102,12 +102,12 @@ mixin template EntityTestPluginClient()
 	void process(ref ProcessComponentsEvent event)
 	{
 		batch.reset();
-		auto query = eman.query!Transform();
+		auto query = eman.query!SandTransform();
 		foreach(row; query)
 		{
-			batch.putCube(vec3(row.transform_0.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
+			batch.putCube(vec3(row.sandTransform_0.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
 		}
-		dbg.setVar("Sand entities", eman.getComponentStorage!Transform().length);
+		dbg.setVar("Sand entities", eman.getComponentStorage!SandTransform().length);
 	}
 
 	void drawEntities(ref RenderSolid3dEvent event)
@@ -137,7 +137,7 @@ mixin template EntityTestPluginServer()
 	void process(ref ProcessComponentsEvent event)
 	{
 		auto wa = serverWorld.worldAccess;
-		auto query = eman.query!Transform();
+		auto query = eman.query!SandTransform();
 		bool isFree(ivec4 pos) {
 			return wa.isFree(BlockWorldPos(pos));
 		}
@@ -147,31 +147,31 @@ mixin template EntityTestPluginServer()
 
 		foreach(row; query)
 		{
-			ivec4 pos = row.transform_0.pos;
+			ivec4 pos = row.sandTransform_0.pos;
 			if (!isLoaded(pos) || !isLoaded(pos+ivec4(0, -1, 0, 0))) continue;
 			if (isFree(pos+ivec4(0, -1, 0, 0))) // lower
 			{
-				row.transform_0.pos += ivec4(0,-1,0, 0);
+				row.sandTransform_0.pos += ivec4(0,-1,0, 0);
 			}
 			else if (isFree(pos+ivec4( 0, 0, -1, 0)) && // side and lower
 					isFree(pos+ivec4( 0, -1, -1, 0)))
 			{
-				row.transform_0.pos = pos+ivec4( 0, 0, -1, 0);
+				row.sandTransform_0.pos = pos+ivec4( 0, 0, -1, 0);
 			}
 			else if (isFree(pos+ivec4( 0, 0,  1, 0)) && // side and lower
 					isFree(pos+ivec4( 0, -1,  1, 0)))
 			{
-				row.transform_0.pos = pos+ivec4( 0, 0,  1, 0);
+				row.sandTransform_0.pos = pos+ivec4( 0, 0,  1, 0);
 			}
 			else if (isFree(pos+ivec4(-1, 0,  0, 0)) && // side and lower
 					isFree(pos+ivec4(-1, -1,  0, 0)))
 			{
-				row.transform_0.pos = pos+ivec4(-1, 0,  0, 0);
+				row.sandTransform_0.pos = pos+ivec4(-1, 0,  0, 0);
 			}
 			else if (isFree(pos+ivec4( 1, 0,  0, 0)) && // side and lower
 					isFree(pos+ivec4( 1, -1,  0, 0)))
 			{
-				row.transform_0.pos = pos+ivec4( 1, 0,  0, 0);
+				row.sandTransform_0.pos = pos+ivec4( 1, 0,  0, 0);
 			}
 			else // set sand
 			{
@@ -180,10 +180,10 @@ mixin template EntityTestPluginServer()
 			}
 			entityPlugin.entityObserverManager.updateEntityPos(
 				row.id,
-				ChunkWorldPos(BlockWorldPos(row.transform_0.pos)));
+				ChunkWorldPos(BlockWorldPos(row.sandTransform_0.pos)));
 		}
 
-		auto storage = eman.getComponentStorage!Transform();
+		auto storage = eman.getComponentStorage!SandTransform();
 		foreach(eid; entitiesToRemove.data) {
 			storage.remove(eid);
 			entityPlugin.entityObserverManager.removeEntity(eid);
@@ -195,13 +195,13 @@ mixin template EntityTestPluginServer()
 	{
 		auto packet = unpackPacket!EntityCreatePacket(packetData);
 		EntityId eid = eman.eidMan.nextEntityId;
-		eman.set(eid, Transform(packet.pos));
+		eman.set(eid, SandTransform(packet.pos));
 		entityPlugin.entityObserverManager.addEntity(eid, ChunkWorldPos(BlockWorldPos(packet.pos)));
 	}
 }
 
-@Component("component.Transform")
-struct Transform
+@Component("component.SandTransform", Replication.toDb | Replication.toClient)
+struct SandTransform
 {
 	ivec4 pos;
 }

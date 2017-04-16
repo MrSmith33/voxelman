@@ -21,15 +21,15 @@ void registerSessionComponents(EntityManager* eman)
 	eman.registerComponent!ClientSessionInfo();
 }
 
-@Component("session.SpawnedFlag", false, false)
+@Component("session.SpawnedFlag", Replication.none)
 struct SpawnedFlag
 {}
 
-@Component("session.LoggedInFlag", false, false)
+@Component("session.LoggedInFlag", Replication.none)
 struct LoggedInFlag
 {}
 
-@Component("session.ClientPosition", true, false)
+@Component("session.ClientPosition", Replication.toDb)
 struct ClientPosition
 {
 	ClientDimPos dimPos;
@@ -47,13 +47,13 @@ struct ClientPosition
 	}
 }
 
-@Component("session.ClientSettings", true, false)
+@Component("session.ClientSettings", Replication.toDb)
 struct ClientSettings
 {
 	int viewRadius = DEFAULT_VIEW_RADIUS;
 }
 
-@Component("session.ClientSessionInfo", false, false)
+@Component("session.ClientSessionInfo", Replication.none)
 struct ClientSessionInfo
 {
 	string name;

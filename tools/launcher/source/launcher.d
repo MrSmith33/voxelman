@@ -470,7 +470,7 @@ struct Launcher
 			mkdirRecurse(saveFolder);
 		}
 		auto saveFilename = buildPath(saveFolder, name~saveExtention).absolutePath;
-		infof("delete %s", saveFilename);
+		infof("create %s", saveFilename);
 		worldDb.open(saveFilename);
 		worldDb.close();
 		refreshSaves();
@@ -553,7 +553,7 @@ struct Launcher
 			serverProcess.autoClose = true;
 			serverProcess.onClose = &onServerClose;
 			startJob(serverProcess);
-			infof("%s", serverProcess.command);
+			infof("$> %s", serverProcess.command);
 		}
 	}
 

@@ -51,17 +51,17 @@ struct PacketSniffer(bool client)
 	private enum sideName = client ? "[CLIENT]" : "[SERVER]";
 	HashSet!string disallowedPakets;
 
-	void onPacketCreate(string name) {
+	void onPacketCreate(string name, ubyte[] packetData) {
 		version (Packet_Sniffing) {
 			if (name !in disallowedPakets)
-				infof(sideName ~ " create %s", name);
+				tracef(sideName ~ " create %s %(%02x%)", name, packetData);
 		}
 	}
 
-	void onPacketHandle(string name) {
+	void onPacketHandle(string name, ubyte[] packetData) {
 		version (Packet_Sniffing) {
 			if (name !in disallowedPakets)
-				infof(sideName ~ " handle %s", name);
+				tracef(sideName ~ " handle %s %(%02x%)", name, packetData);
 		}
 	}
 }
@@ -120,7 +120,7 @@ mixin template PacketManagement(bool client)
 		if (packetId >= packetArray.length)
 			return false; // invalid packet
 
-		sniffer.onPacketHandle(packetArray[packetId].name);
+		sniffer.onPacketHandle(packetArray[packetId].name, packetData);
 
 		auto handler = packetArray[packetId].handler;
 		if (handler is null)
@@ -142,9 +142,9 @@ mixin template PacketManagement(bool client)
 		size_t size;
 
 		size_t pid = packetId!P;
-		sniffer.onPacketCreate(packetArray[pid].name);
 		size = encodeCbor(bufferTemp[], pid);
 		size += encodeCbor(bufferTemp[size..$], packet);
+		sniffer.onPacketCreate(packetArray[pid].name, bufferTemp[0..size]);
 
 		return bufferTemp[0..size];
 	}

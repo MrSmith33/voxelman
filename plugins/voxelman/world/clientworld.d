@@ -233,6 +233,7 @@ public:
 		auto packet = unpackPacket!IdMapPacket(packetData);
 		if (auto h = idMapManager.onMapReceivedHandlers.get(packet.mapName, null))
 		{
+			tracef("Load id map %s", packet.names);
 			h(packet.names);
 		}
 	}

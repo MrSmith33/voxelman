@@ -17,7 +17,7 @@ import voxelman.net.plugin;
 
 struct EntityObserverManager
 {
-	HashMap!(ulong, HashSet!EntityId) chunkToEntitySet;
+	HashMap!(ChunkWorldPos, HashSet!EntityId) chunkToEntitySet;
 	//HashSet!ChunkWorldPos observedEntityChunks;
 	HashMap!(EntityId, ChunkWorldPos) entityToChunk;
 
@@ -29,13 +29,18 @@ struct EntityObserverManager
 
 	void updateEntityPos(EntityId eid, ChunkWorldPos newCwp)
 	{
-		ChunkWorldPos* cwp = entityToChunk.getOrCreate(eid, newCwp);
-		if (*cwp != newCwp)
+		bool wasCreated;
+		ChunkWorldPos* cwp = entityToChunk.getOrCreate(eid, wasCreated, newCwp);
+		if (wasCreated)
+		{
+			addEntityToChunk(eid, newCwp);
+		}
+		else if (*cwp != newCwp)
 		{
 			removeEntityFromChunk(eid, *cwp);
 			addEntityToChunk(eid, newCwp);
+			*cwp = newCwp;
 		}
-		*cwp = newCwp;
 	}
 
 	void removeEntity(EntityId eid)
@@ -49,19 +54,19 @@ struct EntityObserverManager
 
 	private void addEntityToChunk(EntityId eid, ChunkWorldPos cwp)
 	{
-		auto entitySetPtr = chunkToEntitySet.getOrCreate(cwp.asUlong);
+		auto entitySetPtr = chunkToEntitySet.getOrCreate(cwp);
 		entitySetPtr.put(eid);
 		//observedEntityChunks.put(cwp);
 	}
 
 	private void removeEntityFromChunk(EntityId eid, ChunkWorldPos cwp)
 	{
-		if (auto set = cwp.asUlong in chunkToEntitySet)
+		if (auto set = cwp in chunkToEntitySet)
 		{
 			set.remove(eid);
 			if (set.empty)
 			{
-				chunkToEntitySet.remove(cwp.asUlong);
+				chunkToEntitySet.remove(cwp);
 				//observedEntityChunks.remove(cwp);
 			}
 		}
@@ -77,7 +82,9 @@ struct EntityObserverManager
 		connection.sendToAll(ComponentSyncStartPacket());
 		foreach(cwp, entities; chunkToEntitySet)
 		{
-			auto observers = chunkObserverManager.getChunkObservers(ChunkWorldPos(cwp));
+			auto observers = chunkObserverManager.getChunkObservers(cwp);
+			if (observers.length == 0) continue;
+
 			//auto entities = chunkToEntitySet[cwp];
 			eman.savePartial(netSaver, entities);
 			connection.sendTo(observers, ComponentSyncPacket(netSaver.data));

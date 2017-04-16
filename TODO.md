@@ -59,6 +59,7 @@
 ----
 ### STORAGE
 - [ ] Improve calculation of modified chunks.
+- [x] Fix component id sync
 - [ ] BUG: In chunk manager when layer has users, buffer allocated for uncompressed data is never freed.
 - [ ] BUG: In chunk manager returned pointer points inside hash table. If new write buffer is added hash table can reallocate. Do not use more than one write buffer at a time.
 Reallocation can prevent changes to buffers obtained earlier than reallocation to be invisible.

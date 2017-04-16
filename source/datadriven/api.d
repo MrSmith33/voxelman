@@ -6,11 +6,22 @@ Authors: Andrey Penechko.
 module datadriven.api;
 
 import std.traits : TemplateArgsOf;
+import std.typecons : BitFlags;
+
+enum Replication
+{
+	none,
+	toDb = 1 << 0,
+	toClient = 1 << 1,
+}
 
 struct Component {
+	this(string _key, Replication flags) {
+		key = _key;
+		replication = flags;
+	}
 	string key;
-	bool serializeToDb = true;
-	bool serializeToNet = true;
+	BitFlags!Replication replication = BitFlags!Replication(Replication.toDb, Replication.toClient);
 }
 
 template componentUda(C)

@@ -98,7 +98,7 @@ final class BlockPluginServer : IPlugin
 	override void init(IPluginManager pluginman)
 	{
 		auto serverWorld = pluginman.getPlugin!ServerWorld;
-		serverWorld.idMapManager.regIdMap(dbKey.str, bm.blockMapping.nameRange.array);
+		serverWorld.idMapManager.regIdMapHandler(dbKey.str, () => bm.blockMapping.nameRange.array);
 	}
 
 	void readBlockMap(ref PluginDataLoader loader)

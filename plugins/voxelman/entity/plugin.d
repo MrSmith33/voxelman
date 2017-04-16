@@ -97,27 +97,14 @@ final class EntityPluginClient : IPlugin
 
 		NetworkLoader netLoader;
 		netLoader.stringMap = &clientWorld.serverStrings;
-
-		ubyte[] data = packet.data;
-		while(!data.empty)
-		{
-			ubyte[4] _key = data[$-4..$];
-			uint key = *cast(uint*)&_key;
-			uint entrySize = *cast(uint*)(data[$-4-4..$-4].ptr);
-			ubyte[] entry = data[$-4-4-entrySize..$-4-4];
-			netLoader.ioKeyToData[key] = entry;
-			data = data[0..$-4-4-entrySize];
-		}
-
+		netLoader.parseSavedData(packet.data);
 		enum bool clearComponents = false;
 		eman.load(netLoader, clearComponents);
 		netLoader.ioKeyToData.clear();
 	}
 
 	private void handleComponentSyncEndPacket(ubyte[] packetData)
-	{
-
-	}
+	{}
 }
 
 final class EntityPluginServer : IPlugin
@@ -128,12 +115,14 @@ final class EntityPluginServer : IPlugin
 	EventDispatcherPlugin evDispatcher;
 	NetServerPlugin connection;
 	EntityObserverManager entityObserverManager;
+	StringMap* stringMap;
 
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
 		auto ioman = resmanRegistry.getResourceManager!IoManager;
 		ioman.registerWorldLoadSaveHandlers(&load, &save);
-		entityObserverManager.netSaver.stringMap = ioman.getStringMap();
+		stringMap = ioman.getStringMap();
+		entityObserverManager.netSaver.stringMap = stringMap;
 		entityObserverManager.eman = &eman;
 	}
 
@@ -150,6 +139,15 @@ final class EntityPluginServer : IPlugin
 		entityObserverManager.connection = connection;
 		auto world = pluginman.getPlugin!ServerWorld;
 		entityObserverManager.chunkObserverManager = world.chunkObserverManager;
+	}
+
+	override void postInit()
+	{
+		// force stringMap sync
+		foreach(ref ioKey; eman.getIoKeys)
+		{
+			stringMap.get(ioKey);
+		}
 	}
 
 	private void onUpdateEvent(ref UpdateEvent event)
@@ -214,4 +212,83 @@ struct NetworkLoader
 		auto data = ioKeyToData.get(intKey, null);
 		return data;
 	}
+
+	void parseSavedData(ubyte[] data) {
+		while(!data.empty)
+		{
+			ubyte[4] _key = data[$-4..$];
+			uint key = *cast(uint*)&_key;
+			uint entrySize = *cast(uint*)(data[$-4-4..$-4].ptr);
+			ubyte[] entry = data[$-4-4-entrySize..$-4-4];
+			ioKeyToData[key] = entry;
+			data = data[0..$-4-4-entrySize];
+		}
+	}
+}
+
+// test full save/load cycle
+unittest
+{
+	//import std.stdio;
+	static struct Test_vec2 { float x, y; }
+	static struct Test_vec3 { float x, y, z; }
+
+	static struct Test_ClientDimPos {
+		Test_vec3 pos = Test_vec3(0,0,0);
+		Test_vec2 heading = Test_vec2(0,0);
+	}
+
+	@Component("avatar.Test_AvatarPosition", Replication.toClient)
+	static struct Test_AvatarPosition {
+		Test_ClientDimPos dimPos;
+		ushort dimension;
+	}
+
+	@Component("avatar.Test_Wagon", Replication.toClient)
+	static struct Test_Wagon {
+		Test_vec3 pos = Test_vec3(0,0,0);
+		ushort dimension;
+	}
+
+	// reg components
+	EntityManager eman;
+	eman.registerComponent!Test_AvatarPosition;
+	eman.registerComponent!Test_Wagon;
+
+	// set components
+	auto component1 = Test_AvatarPosition(Test_ClientDimPos(Test_vec3(1,2,3),Test_vec2(4,5)), 6);
+	eman.set(1, component1);
+	auto component2 = Test_Wagon(Test_vec3(1,2,3), 6);
+	eman.set(1, component2);
+
+	// prepare NetworkSaver
+	StringMap stringMap;
+	NetworkSaver netSaver;
+	netSaver.stringMap = &stringMap;
+
+	// serialize
+	import voxelman.container.hash.set;
+	HashSet!EntityId entities;
+	entities.put(1);
+	eman.savePartial(netSaver, entities);
+
+	// prepare NetworkLoader
+	NetworkLoader netLoader;
+	netLoader.stringMap = &stringMap;
+
+	// begin sync
+	eman.removeSerializedComponents(IoStorageType.network);
+	assert(eman.get!Test_AvatarPosition(1) is null);
+
+	netLoader.parseSavedData(netSaver.data);
+	enum bool clearComponents = false;
+	eman.load(netLoader, clearComponents);
+
+	// clear temp buffers
+	netLoader.ioKeyToData.clear();
+	netSaver.reset();
+
+	// test
+	assert(*eman.get!Test_AvatarPosition(1) == component1);
+	assert(*eman.get!Test_Wagon(1) == component2);
 }

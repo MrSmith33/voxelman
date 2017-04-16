@@ -13,7 +13,10 @@ public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt;
 public import voxelman.math.utils;
 public import voxelman.math.simplex;
 public import voxelman.math.box;
+public import dlib.math.interpolation : lerp;
 public import std.algorithm : clamp, min, max, swap;
+
+enum double SQRT_2 = sqrt(2.0);
 
 alias bvec3 = Vector!(byte, 3);
 alias ubvec3 = Vector!(ubyte, 3);

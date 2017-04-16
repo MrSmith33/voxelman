@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2016-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module railroad.utils;
+module railroad.rail.utils;
 
 import voxelman.math;
 import voxelman.geometry;
@@ -12,6 +12,7 @@ import voxelman.world.blockentity.blockentitydata;
 import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.blockentity.utils;
 import voxelman.world.storage;
+import voxelman.world.mesh.utils : FaceSide;
 
 enum RAIL_TILE_SIZE = 8;
 immutable ivec3 railSizeVector = ivec3(RAIL_TILE_SIZE, 1, RAIL_TILE_SIZE);
@@ -96,11 +97,23 @@ struct RailPos {
 				cast(ulong)(cast(ushort)vector.x);
 		return res;
 	}
+
+	RailPos posInDirection(FaceSide direction)
+	{
+		byte[3] offset = sideToOffset[direction];
+		return RailPos(svec4(
+			vector.x+offset[0],
+			vector.y+offset[1],
+			vector.z+offset[2],
+			vector.w));
+	}
 }
 
-RailPos[2] getAdjacentPositions(RailPos pos, RailData railData) {
-	return [RailPos(), RailPos()];
-}
+immutable byte[3][4] sideToOffset = [
+	[ 0, 0,-1],
+	[-1, 0, 0],
+	[ 0, 0, 1],
+	[ 1, 0, 0]];
 
 struct RailData
 {
@@ -176,6 +189,17 @@ struct RailData
 		return SegmentRange(data);
 	}
 
+	SegmentBuffer getSegmentsFromSide(FaceSide side)
+	{
+		SegmentBuffer result;
+		foreach(RailSegment segment; getSegments)
+		{
+			if (segmentInfos[segment].sideConnections[side])
+				result.put(segment);
+		}
+		return result;
+	}
+
 	Solidity bottomSolidity(ivec3 blockTilePos) const
 	{
 		foreach(segment; getSegments)
@@ -230,6 +254,9 @@ struct RailData
 	}
 }
 
+import voxelman.container.fixedbuffer;
+alias SegmentBuffer = FixedBuffer!(RailSegment, 3);
+
 struct SegmentRange
 {
 	this(ubyte _data)
@@ -240,12 +267,12 @@ struct SegmentRange
 
 	private ubyte data;
 
-	int opApply(scope int delegate(ubyte) del)
+	int opApply(scope int delegate(RailSegment) del)
 	{
 		if ((data & SLOPE_RAIL_BIT) != 0)
 		{
 			ubyte segment = cast(ubyte)(data - SLOPE_RAIL_BIT + RailSegment.znegUp);
-			if (auto ret = del(segment))
+			if (auto ret = del(cast(RailSegment)segment))
 				return ret;
 		}
 		else
@@ -258,7 +285,7 @@ struct SegmentRange
 			while(segment <= RailSegment.xposZneg)
 			{
 				if (flag & data)
-					if (auto ret = del(segment))
+					if (auto ret = del(cast(RailSegment)segment))
 						return ret;
 				flag <<= 1;
 				++segment;
@@ -288,6 +315,25 @@ enum RailSegment
 	//xposDown = xnegUp,
 	//xnegDown = xposUp,
 }
+
+enum SEGMENT_LENGTH_STRAIGHT = 8;
+enum SEGMENT_LENGTH_DIAGONAL = 4*SQRT_2;
+enum SEGMENT_LENGTH_SLOPE = sqrt(8.0*8.0 + 1*1);
+
+float[] segmentLengths = [
+	SEGMENT_LENGTH_STRAIGHT,
+	SEGMENT_LENGTH_STRAIGHT,
+
+	SEGMENT_LENGTH_DIAGONAL,
+	SEGMENT_LENGTH_DIAGONAL,
+	SEGMENT_LENGTH_DIAGONAL,
+	SEGMENT_LENGTH_DIAGONAL,
+
+	SEGMENT_LENGTH_SLOPE,
+	SEGMENT_LENGTH_SLOPE,
+	SEGMENT_LENGTH_SLOPE,
+	SEGMENT_LENGTH_SLOPE,
+];
 
 enum SLOPE_RAIL_BIT = 0b0100_0000;
 ubyte[] railSegmentData =
@@ -375,7 +421,7 @@ void rotateSegment(ref RailSegment segment)
 		segment = RailSegment.min;
 }
 
-bool isSegmentSolid(ubyte segment, ivec3 blockTilePos)
+bool isSegmentSolid(RailSegment segment, ivec3 blockTilePos)
 {
 	import core.bitop : bt;
 	auto bitmapId = bt(cast(size_t*)&railSegmentBottomSolidityIndex, segment);
@@ -409,6 +455,39 @@ mixin("0b"~
 "00000000"~
 "00000000")];
 
+struct SegmentInfo
+{
+	// Sides of rail tile that this segment connects to
+	// 0 zneg, 1 xneg, 2 zpos, 3 xpos
+	FaceSide[2] sides;
+	bool[4] sideConnections;
+	ubyte[4] sideIndicies;
+}
+
+// relative to 8x8 tile
+vec3[] railTileConnectionPoints = [
+	vec3(4, 0.5, 0),
+	vec3(0, 0.5, 4),
+	vec3(4, 0.5, 8),
+	vec3(8, 0.5, 4),
+];
+
+SegmentInfo[] segmentInfos = [
+	{cast(FaceSide[2])[0, 2], [true,  false, true,  false], [0, 0, 1, 0]}, // zneg,
+	{cast(FaceSide[2])[1, 3], [false, true,  false, true ], [0, 0, 0, 1]}, // xpos,
+
+	{cast(FaceSide[2])[1, 0], [true,  true,  false, false], [1, 0, 0, 0]}, // xnegZneg,
+	{cast(FaceSide[2])[1, 2], [false, true,  true,  false], [0, 0, 1, 0]}, // xnegZpos,
+	{cast(FaceSide[2])[3, 2], [false, false, true,  true ], [0, 0, 1, 0]}, // xposZpos,
+	{cast(FaceSide[2])[3, 0], [true,  false, false, true ], [1, 0, 0, 0]}, // xposZneg,
+
+	{cast(FaceSide[2])[0, 2], [true,  false, false, false], [0, 0, 0, 0]}, // znegUp,
+	{cast(FaceSide[2])[1, 3], [false, true,  false, false], [0, 0, 0, 0]}, // xnegUp,
+	{cast(FaceSide[2])[2, 0], [false, false, true,  false], [0, 0, 0, 0]}, // zposUp,
+	{cast(FaceSide[2])[3, 1], [false, false, false, true ], [0, 0, 0, 0]}, // xposUp,
+];
+
+
 import voxelman.graphics;
 
 void railDebugHandler(ref BlockEntityDebugContext context)
@@ -437,7 +516,6 @@ void drawSolidityDebug(ref Batch b, RailData data, BlockWorldPos bwp)
 		}
 	}
 }
-
 
 // Diagonal rail utils
 
