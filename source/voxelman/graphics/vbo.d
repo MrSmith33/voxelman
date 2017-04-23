@@ -57,8 +57,8 @@ struct Vbo
 	}
 
 	// requires binding
-	void uploadData(Vert)(const Vert[] data) {
+	void uploadData(Vert)(const Vert[] data, int usage = GL_STATIC_DRAW) {
 		uploadedBytes_ = data.length*Vert.sizeof;
-		checkgl!glBufferData(GL_ARRAY_BUFFER, uploadedBytes_, data.ptr, GL_STATIC_DRAW);
+		checkgl!glBufferData(GL_ARRAY_BUFFER, uploadedBytes_, data.ptr, usage);
 	}
 }

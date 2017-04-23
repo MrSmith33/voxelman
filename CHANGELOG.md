@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 ### Added
+- Add frect and irect instead of Rect.
+- Add TexturedBatch2d.
+- Add VertexPosUvColor.
+- Add algorithms for 2d array copying.
+- Port rect bin packer from anchovy.
+- Add bitmap.
+- Add bitmap font loader.
+- Add font.
+- Add font manager.
+- Add text geometry generator.
+- Add texture atlas.
 - Add fixed buffer.
 - Add simple wagon implementation.
 - Add wagon tool.
@@ -11,6 +22,7 @@
 - Implement click-and-drag rail placement.
 
 ### Changed
+- Move shaders to voxelman.graphics.
 - Split railroad package into subpackages.
 - Use delayed id map sync.
 - Use BitFlags for component replication annotation instead of bool flags.

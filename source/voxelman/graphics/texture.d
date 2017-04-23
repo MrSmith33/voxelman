@@ -57,6 +57,7 @@ public:
 
 	void bind(uint textureUnit = 0)
 	{
+		checkgl!glActiveTexture(GL_TEXTURE0 + textureUnit);
 		checkgl!glBindTexture(texTarget, glTextureHandle);
 	}
 
@@ -65,12 +66,17 @@ public:
 		checkgl!glBindTexture(texTarget, 0);
 	}
 
+	static void unbind(TextureTarget target)
+	{
+		checkgl!glBindTexture(target, 0);
+	}
+
 	void loadFromImage(SuperImage img)
 	{
 		bind();
 		checkgl!glTexImage2D(texTarget, 0, texFormat, img.width, img.height, 0, texFormat, GL_UNSIGNED_BYTE, img.data.ptr);
-		checkgl!glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		checkgl!glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		checkgl!glTexParameteri(texTarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		checkgl!glTexParameteri(texTarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		unbind();
 	}
 

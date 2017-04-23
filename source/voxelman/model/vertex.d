@@ -15,22 +15,22 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 	static if (pos_size == 2)
 	this(Pos, Col)(Pos x, Pos y, Col color)
 	{
-		this.position = Vector!(PosType, pos_size)(x, y);
+		this.position.arrayof = [x, y];
 		this.color = Vector!(ColType, col_size)(color);
 	}
 
 	static if (pos_size == 3)
 	this(Pos, Col)(Pos x, Pos y, Pos z, Col color)
 	{
-		this.position = Vector!(PosType, pos_size)(x, y, z);
+		this.position.arrayof = [x, y, z];
 		this.color = Vector!(ColType, col_size)(color);
 	}
 
 	static if (pos_size == 3)
 	this(Pos, Col)(Pos x, Pos y, Pos z, ColType[col_size] color)
 	{
-		this.positionArray = [x, y, z];
-		this.colorArray = color;
+		this.position.arrayof = [x, y, z];
+		this.color.arrayof = color;
 	}
 
 	this(Vector!(PosType, pos_size) p, Vector!(ColType, col_size) color)
@@ -39,18 +39,9 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 		this.color = color;
 	}
 
-	union {
-		struct {
-			align(4):
-			Vector!(PosType, pos_size) position;
-			Vector!(ColType, col_size) color;
-		}
-		struct {
-			align(4):
-			PosType[pos_size] positionArray;
-			ColType[col_size] colorArray;
-		}
-	}
+	align(4):
+	Vector!(PosType, pos_size) position;
+	Vector!(ColType, col_size) color;
 
 	void toString()(scope void delegate(const(char)[]) sink) const
 	{
@@ -60,29 +51,47 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 
 	static void setAttributes() {
 		enum Size = typeof(this).sizeof;
-
-		// position
-		glEnableVertexAttribArray(0);
-		enum uint posGlType = glTypeOf!PosType;
-		enum posOffset = position.offsetof;
-		enum bool doPosNomalization = GL_FALSE;
-		glVertexAttribPointer(0, pos_size, posGlType, doPosNomalization, Size, null);
-
-		// color
-		glEnableVertexAttribArray(1);
-		enum uint colGlType = glTypeOf!ColType;
-		enum colOffset = color.offsetof;
-		enum bool doColNomalization = normalizeColorType!ColType;
-		glVertexAttribPointer(1, col_size, colGlType, doColNomalization, Size, cast(void*)colOffset);
+		setupAttribute!(0, pos_size, PosType, false, Size, position.offsetof);
+		setupAttribute!(1, col_size, ColType, true, Size, color.offsetof);
 	}
+}
+
+align(4) struct VertexPosUvColor(PosType, uint pos_size, UvType, uint uv_size, ColType, uint col_size)
+{
+	align(4):
+	Vector!(PosType, pos_size) position;
+	Vector!(UvType, uv_size) uv;
+	Vector!(ColType, col_size) color;
+
+	void toString()(scope void delegate(const(char)[]) sink) const
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("V!(%s,%s,%s)(%s, %s, %s)",
+			stringof(PosType), stringof(UvType), stringof(ColType),
+			position, uv, color);
+	}
+
+	static void setAttributes() {
+		enum Size = typeof(this).sizeof;
+		setupAttribute!(0, pos_size, PosType, false, Size, position.offsetof);
+		setupAttribute!(1, uv_size, UvType, true, Size, uv.offsetof);
+		setupAttribute!(2, col_size, ColType, true, Size, color.offsetof);
+	}
+}
+
+void setupAttribute(int index, int numComponents, AttrT, bool normalize, int totalSize, int offset)()
+{
+	glEnableVertexAttribArray(index);
+	enum bool doPosNomalization = normalize && normalizeAttributeType!AttrT;
+	glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalSize, cast(void*)offset);
 }
 
 template glTypeOf(T) {
 	enum glTypeOf = glTypes[glTypeIndex!T];
 }
 
-template normalizeColorType(T) {
-	enum normalizeColorType = normalizeColorTable[glTypeIndex!T];
+template normalizeAttributeType(T) {
+	enum normalizeAttributeType = normalizeTypeTable[glTypeIndex!T];
 }
 
 alias glTypeIndex(T) = staticIndexOf!(T,
@@ -109,7 +118,7 @@ static immutable uint[] glTypes = [
 	GL_DOUBLE,
 ];
 
-static immutable bool[] normalizeColorTable = [
+static immutable bool[] normalizeTypeTable = [
 	true,  // GL_BYTE
 	true,  // GL_UNSIGNED_BYTE
 	true,  // GL_SHORT

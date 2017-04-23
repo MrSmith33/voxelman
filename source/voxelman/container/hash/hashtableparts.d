@@ -108,7 +108,8 @@ mixin template HashTablePart(KeyBucketT, bool store_values)
 	{
 		size_t index = getHash(key) & (capacity - 1);
 		version(DEBUG_TRACE) tracef("[%s] insert %s at %s cap %s", debugId, key, index, capacity);
-		while (!keyBuckets[index].empty && keyBuckets[index].key != key) {
+		while (keyBuckets[index].used && keyBuckets[index].key != key)
+		{
 			version(DEBUG_TRACE) {
 				if (keyBuckets[index].used)
 					tracef("  U @%s key %s", index, keyBuckets[index].key);

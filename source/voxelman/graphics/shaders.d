@@ -62,6 +62,34 @@ void main() {
 }
 `;
 
+string tex_col_pos_vert_shader_2d = `
+#version 330
+uniform mat4 projection_uniform;
+layout(location = 0) in vec2 position;
+layout(location = 1) in vec2 uv;
+layout(location = 2) in vec4 color;
+out vec2 frag_uv;
+smooth out vec4 frag_color;
+
+void main() {
+	frag_uv = uv;
+	frag_color = color;
+	gl_Position = projection_uniform * vec4(position.xy, 0, 1);
+}
+`;
+
+string tex_col_frag_shader = `
+#version 330
+uniform sampler2D tex_uniform;
+in vec2 frag_uv;
+smooth in vec4 frag_color;
+out vec4 out_color;
+
+void main() {
+	out_color = frag_color * texture(tex_uniform, frag_uv.st / textureSize(tex_uniform, 0));
+}
+`;
+
 immutable Matrix4f matrix4fIdentity = Matrix4f.identity;
 
 mixin template ModelSetter()
@@ -103,6 +131,12 @@ mixin template TransparencySetter() {
 	}
 }
 
+mixin template TextureSetter() {
+	void setTexture(int textureUnit) {
+		checkgl!glUniform1i(uv_location, textureUnit);
+	}
+}
+
 mixin template MvpSetter()
 {
 	void setMVP(Matrix4f model, Matrix4f view, Matrix4f projection) {
@@ -138,9 +172,9 @@ struct SolidShader3d
 	void compile(IRenderer renderer) {
 		shader = renderer.createShaderProgram(solid_vert_shader, solid_frag_shader);
 
-		model_location = checkgl!glGetUniformLocation(shader.handle, "model");
-		view_location = checkgl!glGetUniformLocation(shader.handle, "view");
-		projection_location = checkgl!glGetUniformLocation(shader.handle, "projection");
+		model_location = checkgl!glGetUniformLocation(handle, "model");
+		view_location = checkgl!glGetUniformLocation(handle, "view");
+		projection_location = checkgl!glGetUniformLocation(handle, "projection");
 	}
 }
 
@@ -164,10 +198,10 @@ struct TransparentShader3d
 	void compile(IRenderer renderer) {
 		shader = renderer.createShaderProgram(solid_vert_shader, color_frag_shader_transparent);
 
-		model_location = checkgl!glGetUniformLocation(shader.handle, "model");
-		view_location = checkgl!glGetUniformLocation(shader.handle, "view");
-		projection_location = checkgl!glGetUniformLocation(shader.handle, "projection");
-		transparency_location = checkgl!glGetUniformLocation(shader.handle, "transparency");
+		model_location = checkgl!glGetUniformLocation(handle, "model");
+		view_location = checkgl!glGetUniformLocation(handle, "view");
+		projection_location = checkgl!glGetUniformLocation(handle, "projection");
+		transparency_location = checkgl!glGetUniformLocation(handle, "transparency");
 	}
 }
 
@@ -183,6 +217,25 @@ struct SolidShader2d
 	void compile(IRenderer renderer) {
 		shader = renderer.createShaderProgram(vert_shader_2d, solid_frag_shader);
 
-		projection_location = checkgl!glGetUniformLocation(shader.handle, "projection");
+		projection_location = checkgl!glGetUniformLocation(handle, "projection");
+	}
+}
+
+struct ColUvShader2d
+{
+	ShaderProgram shader;
+	alias shader this;
+
+	mixin ProjectionSetter;
+	mixin TextureSetter;
+
+	GLint projection_location = -1;
+	GLint uv_location = -1;
+
+	void compile(IRenderer renderer) {
+		shader = renderer.createShaderProgram(tex_col_pos_vert_shader_2d, tex_col_frag_shader);
+
+		projection_location = checkgl!glGetUniformLocation(handle, "projection_uniform");
+		uv_location = checkgl!glGetUniformLocation(handle, "tex_uniform");
 	}
 }
