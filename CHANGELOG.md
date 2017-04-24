@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add depth layering to 2d renderer.
+- Add default font loading.
 - Add frect and irect instead of Rect.
 - Add TexturedBatch2d.
 - Add VertexPosUvColor.

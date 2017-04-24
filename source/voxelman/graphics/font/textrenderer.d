@@ -13,16 +13,13 @@ struct TextRendererAppender
 {
 	TextRenderer* renderer;
 	Font* font;
+	float depth;
 	Color4ub color;
 	int scale = 1;
 
-	//void put(dchar chr)
-	//{
-	//	renderer.appendGlyphs(only(chr), font, color, scale);
-	//}
 	void put(Range)(Range chars)
 	{
-		renderer.appendGlyphs(chars, font, color, scale);
+		renderer.appendGlyphs(chars, font, depth, color, scale);
 	}
 }
 
@@ -30,12 +27,12 @@ struct TextRenderer
 {
 	TexturedBatch2d* sink;
 	Texture texture;
-	ivec2 origin;
-	ivec2 cursor;
+	vec2 origin = vec2(0,0);
+	vec2 cursor = vec2(0,0);
 
 	uint tabSize = 4;
 
-	void appendGlyphs(R)(R textRange, Font* font, Color4ub color, int scale = 1)
+	void appendGlyphs(R)(R textRange, Font* font, float depth, Color4ub color, int scale = 1)
 	{
 		foreach(dchar chr; textRange)
 		{
@@ -60,27 +57,27 @@ struct TextRenderer
 				continue;
 			}
 
-			int x  =  glyph.metrics.offsetX + origin.x + cursor.x;
-			int y  =  font.metrics.verticalOffset - glyph.metrics.offsetY + origin.y + cursor.y;
-			int w  =  glyph.metrics.width;
-			int h  =  glyph.metrics.height;
-			int tx =  glyph.atlasPosition.x;
-			int ty =  glyph.atlasPosition.y;
+			float x  = glyph.metrics.offsetX + origin.x + cursor.x;
+			float y  = font.metrics.verticalOffset - glyph.metrics.offsetY + origin.y + cursor.y;
+			float w  = glyph.metrics.width;
+			float h  = glyph.metrics.height;
+			float tx = glyph.atlasPosition.x;
+			float ty = glyph.atlasPosition.y;
 
-			sink.putRect(frect(x, y, w*scale, h*scale), frect(tx, ty, w, h), color, texture);
+			sink.putRect(frect(x, y, w*scale, h*scale), frect(tx, ty, w, h), depth, color, texture);
 			cursor.x += glyph.metrics.advanceX * scale;
 		}
 	}
 
-	void writef(Args...)(Font* font, Color4ub color, int scale, string fmt, Args args)
+	void writef(Args...)(Font* font, float depth, Color4ub color, int scale, string fmt, Args args)
 	{
 		import std.format : formattedWrite;
-		formattedWrite(TextRendererAppender(&this, font, color, scale), fmt, args);
+		formattedWrite(TextRendererAppender(&this, font, depth, color, scale), fmt, args);
 	}
 
-	void writef(Args...)(Font* font, Color4ub color, string fmt, Args args)
+	void writef(Args...)(Font* font, float depth, Color4ub color, string fmt, Args args)
 	{
 		import std.format : formattedWrite;
-		formattedWrite(TextRendererAppender(&this, font, color), fmt, args);
+		formattedWrite(TextRendererAppender(&this, font, depth, color), fmt, args);
 	}
 }

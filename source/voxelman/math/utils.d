@@ -9,6 +9,7 @@ module voxelman.math.utils;
 import std.traits : isFloatingPoint;
 import voxelman.math;
 import std.algorithm : std_clamp = clamp;
+import dlib.math.utils : isConsiderZero;
 
 Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 {
@@ -16,6 +17,25 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 	foreach(i, elem; vector.arrayof)
 		result[i] = elem < 0 ? -elem : elem;
 	return result;
+}
+
+int sign(T)(T number)
+{
+	return number < 0 ? -1: 1;
+}
+
+T distance(T) (Vector!(T,2) a, Vector!(T,2) b)
+body
+{
+	T dx = a.x - b.x;
+	T dy = a.y - b.y;
+	return sqrt((dx * dx) + (dy * dy));
+}
+
+bool isAlmostZero(Vector2f v)
+{
+	return (isConsiderZero(v.x) &&
+			isConsiderZero(v.y));
 }
 
 Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper) pure nothrow

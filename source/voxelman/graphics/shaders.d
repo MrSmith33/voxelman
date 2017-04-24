@@ -86,7 +86,10 @@ smooth in vec4 frag_color;
 out vec4 out_color;
 
 void main() {
-	out_color = frag_color * texture(tex_uniform, frag_uv.st / textureSize(tex_uniform, 0));
+	vec4 color = frag_color * texture(tex_uniform, frag_uv.st / textureSize(tex_uniform, 0));
+	if (color.a == 0)
+		discard;
+	out_color = color;
 }
 `;
 

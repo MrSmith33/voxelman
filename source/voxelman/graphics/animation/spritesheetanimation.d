@@ -21,8 +21,11 @@ struct SpriteSheetAnimation
 	float totalDuration;
 }
 
+alias SpriteSheetAnimationRef = SpriteSheetAnimation*;
+
+
 import std.json;
-SpriteSheetAnimation* loadAnimation(string filename, TextureAtlas texAtlas)
+SpriteSheetAnimationRef loadSpriteSheetAnimation(string filename, TextureAtlas texAtlas)
 {
 	// create filenames
 	import std.path : setExtension;
@@ -87,19 +90,21 @@ enum AnimationStatus
 
 struct AnimationInstance
 {
-	SpriteSheetAnimation* sheet;
+	SpriteSheetAnimationRef sheet;
 	AnimationStatus status;
-	float timer = 0;
+	double timer = 0;
 	size_t currentFrame = 0;
+	vec2 scale = vec2(1, 1);
+	vec2 origin = vec2(0, 0);
 	void delegate() onLoop;
 
-	private void update(float dt)
+	void update(double dt)
 	{
 		if (status != AnimationStatus.playing) return;
 
 		timer = timer + dt;
 
-		float loops = floor(timer / sheet.totalDuration);
+		double loops = floor(timer / sheet.totalDuration);
 		if (loops != 0)
 		{
 			timer = timer - sheet.totalDuration * loops;
@@ -109,14 +114,7 @@ struct AnimationInstance
 		currentFrame = seekFrameIndex(timer);
 	}
 
-	void drawAt(ref TexturedBatch2d batch, Texture texture, ivec2 traget, Color4ub color, float dt)
-	{
-		update(dt);
-		auto frameRect = currentFrameInfo;
-		batch.putRect(frect(traget, frameRect.size), frect(frameRect), color, texture);
-	}
-
-	irect currentFrameInfo()
+	irect currentFrameRect()
 	{
 		auto frame = sheet.frames[currentFrame];
 		return irect(frame.x, frame.y, frame.w, frame.h);
@@ -130,6 +128,12 @@ struct AnimationInstance
 	void resume()
 	{
 		status = AnimationStatus.playing;
+	}
+
+	void gotoFrame(int frame)
+	{
+		currentFrame = clamp(frame, 0, sheet.frames.length-1);
+		timer = sheet.frames[currentFrame].timelineStart;
 	}
 
 	size_t seekFrameIndex(float timer)

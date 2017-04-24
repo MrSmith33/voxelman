@@ -69,18 +69,18 @@ struct Command
 }
 
 import voxelman.model.vertex;
-alias UvColVertex2d = VertexPosUvColor!(float, 2, float, 2, ubyte, 4);
+alias UvColVertex2d = VertexPosUvColor!(float, 3, float, 2, ubyte, 4);
 struct TexturedBatch2d
 {
 	Buffer!UvColVertex2d buffer;
 	Buffer!Command commands;
 
-	void putRect(frect target, frect source, Color4ub color, Texture tex)
+	void putRect(frect target, frect source, float depth, Color4ub color, Texture tex)
 	{
-		auto pos0 = target.position;
-		auto pos1 = vec2(target.position.x, target.position.y + target.size.y);
-		auto pos2 = vec2(target.position.x + target.size.x, target.position.y + target.size.y);
-		auto pos3 = vec2(target.position.x + target.size.x, target.position.y);
+		auto pos0 = vec3(target.position.x, target.position.y, depth);
+		auto pos1 = vec3(target.position.x, target.position.y + target.size.y, depth);
+		auto pos2 = vec3(target.position.x + target.size.x, target.position.y + target.size.y, depth);
+		auto pos3 = vec3(target.position.x + target.size.x, target.position.y, depth);
 
 		auto tex0 = source.position;
 		auto tex1 = vec2(source.position.x, source.position.y + source.size.y);
