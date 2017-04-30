@@ -13,7 +13,7 @@ import pluginlib;
 import voxelman.graphics.irenderer;
 import voxelman.math;
 import voxelman.geometry;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 import voxelman.core.config;
 import voxelman.core.events;

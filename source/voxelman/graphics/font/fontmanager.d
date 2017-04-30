@@ -25,8 +25,6 @@ class FontManager
 	{
 		this.texAtlas = texAtlas;
 		defaultFont = createFont("font_hor.png", 10, GLYPHS);
-		defaultFont.metrics.monoAdvanceX = 7;
-		defaultFont.metrics.lineGap = 12;
 	}
 
 	FontRef createFont(in string filename, in uint size, in dchar[] chars = GLYPHS)

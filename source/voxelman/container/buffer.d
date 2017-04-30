@@ -13,6 +13,8 @@ import voxelman.math : nextPOT;
 struct Buffer(T)
 {
 	T[] buf;
+	// Must be kept private since it can be used to check for avaliable space
+	// when used as output range
 	private size_t length;
 
 	void put(T[] items ...)

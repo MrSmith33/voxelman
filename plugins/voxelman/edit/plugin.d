@@ -12,7 +12,7 @@ import pluginlib;
 import voxelman.core.events;
 import derelict.imgui.imgui;
 import dlib.math.utils;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 import voxelman.core.config;
 import voxelman.eventdispatcher.plugin;

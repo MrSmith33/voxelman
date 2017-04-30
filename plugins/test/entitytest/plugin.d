@@ -15,7 +15,7 @@ import voxelman.core.events;
 import voxelman.core.config : BlockId;
 import voxelman.world.storage : BlockWorldPos;
 import derelict.imgui.imgui;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 import voxelman.dbg.plugin;
 import voxelman.edit.plugin;

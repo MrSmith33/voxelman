@@ -13,7 +13,7 @@ import derelict.imgui.imgui;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 alias DebugGuiHandler = void delegate();
 

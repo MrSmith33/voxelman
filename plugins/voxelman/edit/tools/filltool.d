@@ -97,7 +97,7 @@ final class FillTool : ITool
 	}
 
 	override void onShowDebug() {
-		import voxelman.utils.textformatter;
+		import voxelman.text.textformatter;
 		auto binfo = blockInfos[currentBlock.id];
 		igTextf("Fill block: %s:%s", binfo.name, currentBlock.metadata);
 	}

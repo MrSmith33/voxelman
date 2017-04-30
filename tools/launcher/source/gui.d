@@ -23,8 +23,8 @@ import derelict.opengl3.gl3;
 import voxelman.platform.glfwwindow;
 import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
-import voxelman.utils.textformatter;
-import voxelman.utils.linebuffer;
+import voxelman.text.textformatter;
+import voxelman.text.linebuffer;
 
 import launcher;
 

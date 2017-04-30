@@ -12,7 +12,7 @@ import voxelman.container.buffer;
 import voxelman.math;
 
 import derelict.imgui.imgui;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 import voxelman.world.block;
 import voxelman.core.config;

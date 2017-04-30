@@ -2,7 +2,7 @@ module voxelman.chat.plugin;
 
 import voxelman.log;
 import pluginlib;
-import voxelman.utils.messagewindow : MessageWindow;
+import voxelman.text.messagewindow : MessageWindow;
 
 import voxelman.core.events;
 import voxelman.net.packets;

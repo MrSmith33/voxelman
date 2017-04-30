@@ -119,7 +119,7 @@ final class InputPlugin : IPlugin
 	{
 		import derelict.glfw3.glfw3;
 		import derelict.imgui.imgui;
-		import voxelman.utils.textformatter;
+		import voxelman.text.textformatter;
 		import std.string : fromStringz;
 
 		if (igCollapsingHeader("Input"))

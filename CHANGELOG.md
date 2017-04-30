@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add monospaced text meshing.
+- Automatically calculate font line size and monospaced glyph width. 
 - Add previous frame duration storage to client.
 - Add RenderQueue to graphics.
 - Add depth layering to 2d renderer.
@@ -26,6 +28,7 @@
 - Implement click-and-drag rail placement.
 
 ### Changed
+- Move text related things into voxelman.text.
 - Crop glyphs on font load.
 - Use TextMesherParams struct for passing parameters to text mesher.
 - Use 3d rendering for 2d batched geometry (Supports layering with depth buffer).

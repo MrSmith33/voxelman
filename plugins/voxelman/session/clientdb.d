@@ -42,7 +42,7 @@ struct ClientDb
 	{
 		import std.regex : matchFirst, regex;
 		import std.conv : to;
-		import voxelman.utils.textformatter;
+		import voxelman.text.textformatter;
 
 		auto re = regex(`(.*)(\d+)$`, "m");
 		auto captures = matchFirst(conflictingName, re);

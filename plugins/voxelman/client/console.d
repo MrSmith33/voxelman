@@ -9,7 +9,7 @@ import voxelman.log;
 
 struct Console
 {
-	import voxelman.utils.messagewindow : MessageWindow;
+	import voxelman.text.messagewindow : MessageWindow;
 	MessageWindow messageWindow;
 	alias messageWindow this;
 

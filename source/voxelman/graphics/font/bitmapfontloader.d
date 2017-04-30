@@ -65,6 +65,9 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		return cursor.x < image.width && cursor.y < image.height;
 	}
 
+	int maxGlyphWidth = 0;
+	int maxGlyphHeight = 0;
+
 	foreach (dchar glyph; chars)
 	{
 		//writefln("glyph '%s'", glyph);
@@ -97,10 +100,18 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 			glyphOffsetX, glyphOffsetY,
 			glyphAdvanceX, glyphAdvanceY);
 
+		maxGlyphWidth = max(maxGlyphWidth, glyphSize.x);
+		// use uncropped height here since there can be no glyphs
+		// that reach both top and bottom of line
+		maxGlyphHeight = max(maxGlyphHeight, glyphHeight);
+
 		//writefln("glyph '%s' %s %s", glyph, atlasPos, metrics);
 
 		font.glyphs[glyph] = Glyph(atlasPos, metrics);
 
 		advanceCursor();
 	}
+
+	font.metrics.monoAdvanceX = maxGlyphWidth + 1;
+	font.metrics.lineGap = maxGlyphHeight + 1;
 }

@@ -109,7 +109,7 @@ ubyte[3][4] getDebugAOColors(ubyte[4] cornerOcclusion)
 	];
 }
 
-pragma(inline, true)
+//pragma(inline, true)
 void meshOccludedQuad(T)(
 	ref Buffer!MeshVertex buffer,
 	ubyte[4] cornerOcclusion,
@@ -143,7 +143,7 @@ void meshOccludedQuad(T)(
 	}
 }
 
-pragma(inline, true)
+//pragma(inline, true)
 void meshColoredQuad(bool flipped, T)(
 	ref Buffer!MeshVertex buffer,
 	ref const ubyte[3][4] cornerColors,

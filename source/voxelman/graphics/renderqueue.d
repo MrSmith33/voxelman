@@ -86,35 +86,36 @@ final class RenderQueue
 		return resourceManager.fontManager.defaultFont;
 	}
 
-	StatefullTextMesher textMesher()
+	TextMesherParams defaultText()
 	{
-		auto mesher = StatefullTextMesher(&texBatch, resourceManager.atlasTexture);
-		mesher.params.depth = maxDepth2d;
-		mesher.params.font = defaultFont;
-		return mesher;
+		TextMesherParams params;
+		params.sink = TextRectSink(&texBatch, resourceManager.atlasTexture);
+		params.depth = maxDepth2d;
+		params.font = defaultFont;
+		return params;
 	}
 
-	StatefullTextMesher startTextAt(vec2 origin)
+	TextMesherParams startTextAt(vec2 origin)
 	{
-		auto mesher = textMesher();
-		mesher.params.origin = origin;
-		return mesher;
+		auto params = defaultText();
+		params.origin = origin;
+		return params;
 	}
 
 	void print(vec2 pos, Color4ub color, int scale, const(char[]) str)
 	{
-		auto mesher = startTextAt(pos);
-		mesher.params.color = color;
-		mesher.params.scale = scale;
-		mesher.meshText(str);
+		auto params = startTextAt(pos);
+		params.color = color;
+		params.scale = scale;
+		params.meshText(str);
 	}
 
 	void print(Args...)(vec2 pos, Color4ub color, int scale, const(char[]) fmt, Args args)
 	{
-		auto mesher = startTextAt(pos);
-		mesher.params.color = color;
-		mesher.params.scale = scale;
-		mesher.meshText(fmt, args);
+		auto params = startTextAt(pos);
+		params.color = color;
+		params.scale = scale;
+		params.meshText(fmt, args);
 	}
 
 	void print(Args...)(vec2 pos, Color4ub color, const(char[]) fmt, Args args)

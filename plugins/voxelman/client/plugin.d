@@ -43,7 +43,7 @@ import voxelman.world.storage.chunk;
 import voxelman.world.storage.coordinates;
 import voxelman.world.storage.utils;
 import voxelman.world.storage.worldaccess;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 import voxelman.client.console;
 

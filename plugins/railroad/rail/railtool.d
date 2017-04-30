@@ -225,7 +225,7 @@ final class RailTool : ITool
 	}
 
 	override void onShowDebug() {
-		import voxelman.utils.textformatter;
+		import voxelman.text.textformatter;
 		igTextf("Orientation: %s", cursorOrientation);
 	}
 

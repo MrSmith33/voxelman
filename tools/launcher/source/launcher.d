@@ -20,7 +20,7 @@ import std.conv : to;
 
 import voxelman.world.worlddb;
 import voxelman.utils.messagewindow;
-import voxelman.utils.linebuffer;
+import voxelman.text.linebuffer;
 import gui;
 
 enum DEFAULT_PORT = 1234;

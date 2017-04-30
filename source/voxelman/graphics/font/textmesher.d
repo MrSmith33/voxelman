@@ -12,11 +12,11 @@ import voxelman.graphics.font.font;
 /// Output range for use with formattedWrite, etc
 struct TextMesherSink
 {
-	TextMesherParams!TextRectSink params;
+	TextMesherParams* params;
 
 	void put(Range)(Range chars)
 	{
-		meshText(params, chars);
+		meshText(*params, chars);
 	}
 }
 
@@ -32,43 +32,9 @@ struct TextRectSink
 	}
 }
 
-struct StatefullTextMesher
+struct TextMesherParams
 {
-	TextMesherParams!TextRectSink params;
-
-	this(TexturedBatch2d* texturedBatch, Texture texture)
-	{
-		params.sink = TextRectSink(texturedBatch, texture);
-	}
-	//this(TexturedBatch2d* texturedBatch, Texture texture, )
-
-	void meshText(R)(auto ref R textRange)
-	{
-		.meshText(params, textRange);
-	}
-
-	void meshTextf(Args...)(string fmt, Args args)
-	{
-		import std.format : formattedWrite;
-		formattedWrite(TextMesherSink(params), fmt, args);
-	}
-/*
-	void meshTextf(Args...)(Font* font, float depth, Color4ub color, int scale, string fmt, Args args)
-	{
-		import std.format : formattedWrite;
-		formattedWrite(TextMesherSink(&this, font, depth, color, scale), fmt, args);
-	}
-
-	void meshTextf(Args...)(Font* font, float depth, Color4ub color, string fmt, Args args)
-	{
-		import std.format : formattedWrite;
-		formattedWrite(TextMesherSink(&this, font, depth, color), fmt, args);
-	}*/
-}
-
-struct TextMesherParams(Sink)
-{
-	Sink sink;
+	TextRectSink sink;
 	FontRef font;
 	vec2 origin = vec2(0,0);
 	vec2 cursor = vec2(0,0);
@@ -76,21 +42,25 @@ struct TextMesherParams(Sink)
 	Color4ub color = Colors.black;
 	int scale = 1;
 	int tabSize = 4;
+	bool monospaced = false;
 }
 
+/// Modifies params.cursor and params.sink
 void meshText(P, R)(ref P params, R textRange)
 {
-	foreach(dchar chr; textRange)
+	foreach(ubyte chr; textRange)
 	{
 		Glyph* glyph = params.font.getGlyph(chr);
+
+		int glyphAdvanceX = params.monospaced ? params.font.metrics.monoAdvanceX : glyph.metrics.advanceX;
 
 		switch(chr) // special chars
 		{
 			case ' ':
-				params.cursor.x += glyph.metrics.advanceX * params.scale;
+				params.cursor.x += glyphAdvanceX * params.scale;
 				continue;
 			case '\t':
-				params.cursor.x += glyph.metrics.advanceX * params.tabSize * params.scale;
+				params.cursor.x += glyphAdvanceX * params.tabSize * params.scale;
 				continue;
 			case '\n':
 				params.cursor.x = 0;
@@ -107,6 +77,12 @@ void meshText(P, R)(ref P params, R textRange)
 		float ty = glyph.atlasPosition.y;
 
 		params.sink.putRect(frect(x, y, w*params.scale, h*params.scale), frect(tx, ty, w, h), params.depth, params.color);
-		params.cursor.x += glyph.metrics.advanceX * params.scale;
+		params.cursor.x += glyphAdvanceX * params.scale;
 	}
+}
+
+void meshTextf(P, Args...)(ref P params, string fmt, Args args)
+{
+	import std.format : formattedWrite;
+	formattedWrite(TextMesherSink(&params), fmt, args);
 }

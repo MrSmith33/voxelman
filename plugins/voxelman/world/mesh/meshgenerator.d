@@ -77,14 +77,14 @@ void genGeometry(const ref ExtendedChunk chunk,
 		}
 	}
 
-	pragma(inline, true)
+	//pragma(inline, true)
 	ShapeSideMask getSideMask(ushort index, ubyte side)
 	{
 		BlockId blockId = chunk.allBlocks.ptr[index];
 		return getShape(blockId, index).sideMasks[side];
 	}
 
-	pragma(inline, true)
+	//pragma(inline, true)
 	bool isSideRendered(size_t index, ubyte side, const ShapeSideMask currentMask)
 	{
 		return blockInfoTable.sideTable.get(currentMask, getSideMask(cast(ushort)index, side));
@@ -108,7 +108,7 @@ void genGeometry(const ref ExtendedChunk chunk,
 	// 0--3 // corner numbering of face verticies
 	// |\ |
 	// 1--2
-	pragma(inline, true)
+	//pragma(inline, true)
 	ubyte getCorners(size_t index)
 	{
 		BlockId blockId = chunk.allBlocks.ptr[index];

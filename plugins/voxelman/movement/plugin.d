@@ -24,7 +24,7 @@ import voxelman.input.keybindingmanager;
 import voxelman.world.clientworld;
 
 import derelict.imgui.imgui;
-import voxelman.utils.textformatter;
+import voxelman.text.textformatter;
 
 
 class MovementPlugin : IPlugin
