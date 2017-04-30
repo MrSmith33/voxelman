@@ -77,8 +77,9 @@ public:
 	// Client data
 	bool isRunning = false;
 
-	double delta;
-	Duration targetFrameTime;
+	double delta = 0;
+	double updateTime = 0;
+	//Duration targetFrameTime;
 	ConfigOption maxFpsOpt;
 	ConfigOption limitFpsOpt;
 	bool limitFps = true;
@@ -142,7 +143,6 @@ public:
 		igSameLine();
 		igCheckbox("limit##limit_fps_toggle", &limitFps);
 		maxFpsOpt.set!int(fpsLimitVal);
-		updateFrameTime();
 	}
 
 	void run(string[] args)
@@ -155,7 +155,6 @@ public:
 		evDispatcher.postEvent(GameStartEvent());
 
 		MonoTime prevTime = MonoTime.currTime;
-		updateFrameTime();
 
 		isRunning = true;
 		ulong frame;
@@ -164,6 +163,8 @@ public:
 			MonoTime newTime = MonoTime.currTime;
 			delta = (newTime - prevTime).total!"usecs" / 1_000_000.0;
 			prevTime = newTime;
+
+				fpsHelper.update(delta, updateTime);
 
 				evDispatcher.postEvent(PreUpdateEvent(delta, frame));
 				evDispatcher.postEvent(UpdateEvent(delta, frame));
@@ -180,9 +181,11 @@ public:
 					dbg.logVar("GC, ms", collectDurFloat, 512);
 				}
 
+				Duration updateTimeDur = MonoTime.currTime - newTime;
+				updateTime = updateTimeDur.total!"usecs" / 1_000_000.0;
+
 				if (limitFps) {
-					Duration updateTime = MonoTime.currTime - newTime;
-					Duration sleepTime = targetFrameTime - updateTime;
+					Duration sleepTime = targetFrameTime - updateTimeDur;
 					if (sleepTime > Duration.zero)
 						Thread.sleep(sleepTime);
 				}
@@ -194,14 +197,13 @@ public:
 		evDispatcher.postEvent(GameStopEvent());
 	}
 
-	void updateFrameTime()
+	Duration targetFrameTime()
 	{
-		targetFrameTime = (1_000_000 / maxFpsOpt.get!uint).usecs;
+		return (1_000_000 / maxFpsOpt.get!uint).usecs;
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)
 	{
-		fpsHelper.update(event.deltaTime);
 	}
 
 	void onPostUpdateEvent(ref PostUpdateEvent event)

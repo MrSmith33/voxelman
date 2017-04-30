@@ -61,3 +61,5 @@ struct Font
 	int[dchar][dchar] kerningTable;
 	bool kerningEnabled = true;
 }
+
+alias FontRef = Font*;

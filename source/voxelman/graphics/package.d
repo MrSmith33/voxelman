@@ -18,6 +18,7 @@ public import voxelman.graphics.fpscamera;
 public import voxelman.graphics.glerrors;
 public import voxelman.graphics.irenderer;
 public import voxelman.graphics.oglrenderer;
+public import voxelman.graphics.renderqueue;
 public import voxelman.graphics.resourcemanager;
 public import voxelman.graphics.shaderprogram;
 public import voxelman.graphics.shaders;

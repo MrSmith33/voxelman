@@ -19,29 +19,31 @@ class FontManager
 {
 	public:
 
-	Font* defaultFont;
+	FontRef defaultFont;
 
 	this(TextureAtlas texAtlas)
 	{
 		this.texAtlas = texAtlas;
 		defaultFont = createFont("font_hor.png", 10, GLYPHS);
+		defaultFont.metrics.monoAdvanceX = 7;
+		defaultFont.metrics.lineGap = 12;
 	}
 
-	Font* createFont(in string filename, in uint size, in dchar[] chars = GLYPHS)
+	FontRef createFont(in string filename, in uint size, in dchar[] chars = GLYPHS)
 	{
-		Font* newFont = loadFont(filename, size, chars, texAtlas);
+		FontRef newFont = loadFont(filename, size, chars, texAtlas);
 		fonts[filename] = newFont;
 		return newFont;
 	}
 
 	TextureAtlas texAtlas;
-	Font*[string] fonts;
+	FontRef[string] fonts;
 }
 
-Font* loadFont(in string filename, in uint size, in dchar[] chars, TextureAtlas texAtlas)
+FontRef loadFont(in string filename, in uint size, in dchar[] chars, TextureAtlas texAtlas)
 {
 	import voxelman.graphics.font.bitmapfontloader;
-	Font* result = new Font(filename);
+	FontRef result = new Font(filename);
 
 	import std.path;
 	string ext = std.path.extension(filename);

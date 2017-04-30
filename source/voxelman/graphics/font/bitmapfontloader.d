@@ -5,8 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.graphics.font.bitmapfontloader;
 
-import voxelman.math;
 import dlib.image.io.png;
+import voxelman.math;
+import voxelman.graphics.image.crop;
 import voxelman.graphics.bitmap;
 import voxelman.graphics.font.font;
 import voxelman.graphics.textureatlas;
@@ -17,9 +18,6 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 {
 	auto image = new Bitmap(loadPNG(font.filename));
 	if (image.width == 0 || image.height == 0) return;
-
-	font.metrics.monoAdvanceX = 7;
-	font.metrics.lineGap = 12;
 
 	auto sentinelPixel = image[0,0];
 	//writefln("sent %s", sentinelPixel);
@@ -79,8 +77,11 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		auto glyphStart = cursor + ivec2(1,0);
 
 		int glyphWidth = nextCursorX - cursor.x - 1;
-		int glyphHeight = nextLineY - cursor.y - 1;
+		int glyphHeight = nextLineY - cursor.y;
 		auto glyphSize = ivec2(glyphWidth, glyphHeight);
+
+		// crop all transparent pixels
+		cropImage(image, glyphStart, glyphSize);
 
 		// write to texture
 		ivec2 atlasPos = texAtlas.insert(image, irect(glyphStart, glyphSize));

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 ### Added
+- Add previous frame duration storage to client.
+- Add RenderQueue to graphics.
 - Add depth layering to 2d renderer.
 - Add default font loading.
 - Add frect and irect instead of Rect.
@@ -24,6 +26,10 @@
 - Implement click-and-drag rail placement.
 
 ### Changed
+- Crop glyphs on font load.
+- Use TextMesherParams struct for passing parameters to text mesher.
+- Use 3d rendering for 2d batched geometry (Supports layering with depth buffer).
+- Rename textrenderer into textmesher.
 - Move shaders to voxelman.graphics.
 - Split railroad package into subpackages.
 - Use delayed id map sync.

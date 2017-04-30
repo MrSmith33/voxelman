@@ -65,7 +65,7 @@ void main() {
 string tex_col_pos_vert_shader_2d = `
 #version 330
 uniform mat4 projection_uniform;
-layout(location = 0) in vec2 position;
+layout(location = 0) in vec4 position;
 layout(location = 1) in vec2 uv;
 layout(location = 2) in vec4 color;
 out vec2 frag_uv;
@@ -74,7 +74,7 @@ smooth out vec4 frag_color;
 void main() {
 	frag_uv = uv;
 	frag_color = color;
-	gl_Position = projection_uniform * vec4(position.xy, 0, 1);
+	gl_Position = projection_uniform * position;
 }
 `;
 

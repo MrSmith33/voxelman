@@ -29,20 +29,18 @@ final class BufferRenderer
 		solidShader2d.compile(renderer);
 		colUvShader2d.compile(renderer);
 
-		ortho_projection.arrayof =
-		[
-			 2f/1, 0f,   0f, 0f,
-			 0f,  -2f/1, 0f, 0f,
-			 0f,   0f,  -1f, 0f,
-			-1f,   1f,   0f, 1f,
-		];
+		updateOrtoMatrix(renderer);
 	}
 
 	void updateOrtoMatrix(IRenderer renderer)
 	{
 		renderer.setViewport(ivec2(0, 0), renderer.framebufferSize);
-		ortho_projection.a11 =  2f/renderer.framebufferSize.x;
-		ortho_projection.a22 = -2f/renderer.framebufferSize.y;
+
+		enum far = 100_000;
+		enum near = -100_000;
+
+		// (T l, T r, T b, T t, T n, T f)
+		ortho_projection = orthoMatrix!float(0, renderer.framebufferSize.x, renderer.framebufferSize.y, 0, near, far);
 	}
 
 	void draw(Batch2d batch)
@@ -63,17 +61,22 @@ final class BufferRenderer
 		{
 			auto vertices = batch.buffer.data;
 			uploadBuffer(vertices);
+
 			colUvShader2d.bind;
-				colUvShader2d.setProjection(ortho_projection);
-				colUvShader2d.setTexture(0);
+
+			colUvShader2d.setProjection(ortho_projection);
+			colUvShader2d.setTexture(0);
+
 			size_t start = 0;
 			foreach (command; batch.commands.data)
 			{
-					command.texture.bind;
-					drawBuffer(PrimitiveType.TRIANGLES, start, command.numVertices);
-					start += command.numVertices;
+				command.texture.bind;
+				drawBuffer(PrimitiveType.TRIANGLES, start, command.numVertices);
+				start += command.numVertices;
 			}
+
 			colUvShader2d.unbind;
+
 			Texture.unbind(TextureTarget.target2d);
 		}
 	}

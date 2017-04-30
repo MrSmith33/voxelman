@@ -9,4 +9,4 @@ module voxelman.graphics.font;
 public import voxelman.graphics.font.bitmapfontloader;
 public import voxelman.graphics.font.font;
 public import voxelman.graphics.font.fontmanager;
-public import voxelman.graphics.font.textrenderer;
+public import voxelman.graphics.font.textmesher;

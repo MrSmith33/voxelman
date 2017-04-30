@@ -19,11 +19,6 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 	return result;
 }
 
-int sign(T)(T number)
-{
-	return number < 0 ? -1: 1;
-}
-
 T distance(T) (Vector!(T,2) a, Vector!(T,2) b)
 body
 {
@@ -91,4 +86,19 @@ unittest {
 	assert(nextPOT(1<<15+1) == 1<<16);
 	assert(nextPOT(1UL<<31+1) == 1UL<<32);
 	assert(nextPOT(1UL<<49+1) == 1UL<<50);
+}
+
+V lerpMovement(V)(V from, V to, double speed, double dt)
+{
+	auto curDist = distance(from, to);
+	auto distanceToMove = speed * dt;
+	if (curDist == 0 || distanceToMove == 0) return from;
+	double time = distanceToMove / curDist;
+	return lerpClamp(from, to, time);
+}
+
+V lerpClamp(V)(V currentPos, V targetPos, double time)
+{
+	time = clamp(time, 0.0, 1.0);
+	return lerp(currentPos, targetPos, time);
 }

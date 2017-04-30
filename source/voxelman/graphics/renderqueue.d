@@ -1,85 +1,129 @@
 /**
-Copyright: Copyright (c) 2016-2017 Andrey Penechko.
+Copyright: Copyright (c) 2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
-Authors: Andrey Penechko, Stephan Dilly (imgui_d_test).
+Authors: Andrey Penechko.
 */
 module voxelman.graphics.renderqueue;
 
-import voxelman.container.buffer;
 import voxelman.graphics;
 import voxelman.math;
 
-enum DrawMode
+final class RenderQueue
 {
-	fill,
-	line
-}
+	ResourceManager resourceManager;
 
-// vec3
-struct RenderQueue3d
-{
-	//void putCube(vec3 pos, vec3 size, Color4ub color, bool fill)
+	BufferRenderer bufferRenderer;
+	Batch2d batch;
+	TexturedBatch2d texBatch;
 
-}
-
-// ivec2
-struct RenderQueue2d
-{
-	Buffer!ColoredVertex triBuffer;
-	Buffer!ColoredVertex lineBuffer;
-	Buffer!ColoredVertex pointBuffer;
-
-	// rect
-	void rect(DrawMode mode, ivec2 pos, ivec2 size, Color4ub color)
+	this(ResourceManager resMan)
 	{
-		//if (mode == DrawMode.fill)
-		//	putFilledRect(triBuffer, pos, size, color);
-		//else
-		//	putLineRect(lineBuffer, pos, size, color);
+		resourceManager = resMan;
+		bufferRenderer = new BufferRenderer(resourceManager.renderer);
 	}
-	// rect rounded
-	// triangle
-	// arc
-	// point
-	// circle
-	// polygon
-	// point
-	// points
-	// line
-}
-/*
-void putFilledRect(V)(Buffer!V sink, ivec2 pos, ivec2 size, Color4ub color)
-{
-	sink.put(V(), V(), V(), V(), V(), V());
-}
-void putLineRect(V)(Buffer!V sink, ivec2 pos, ivec2 size, Color4ub color)
-{
-	(rect.x, rect.y + rect.height), (rect.x, rect.y),
-				(rect.x + rect.width, rect.y), (rect.x + rect.width, rect.y + rect.height)
-	sink.put(V(), V(), V(), V(), V(), V(), V(), V());
-}
-override void drawRect(Rect rect)
-{
-	bindShaderProgram(primShader);
-	primShader.setUniform2!float("gHalfTarget", window.size.x/2, window.size.y/2);
-	primShader.setUniform4!float("gColor", curColor.r, curColor.g, curColor.b, curColor.a);
-	rectVao.bind;
-	rectVbo.data = cast(short[])[rect.x, rect.y + rect.height, rect.x, rect.y,
-				rect.x + rect.width, rect.y, rect.x + rect.width, rect.y + rect.height];
-	glDrawArrays(GL_LINE_LOOP, 0, 4);
-	rectVao.unbind;
-}
 
-override void fillRect(Rect rect)
-{
-	bindShaderProgram(primShader);
-	primShader.setUniform2!float("gHalfTarget", window.size.x/2, window.size.y/2);
-	primShader.setUniform4!float("gColor", curColor.r, curColor.g, curColor.b, curColor.a);
-	rectVao.bind;
-	rectVbo.data = cast(short[])[rect.x, rect.y + rect.height, rect.x, rect.y,
-				rect.x + rect.width, rect.y, rect.x, rect.y + rect.height,
-				rect.x + rect.width, rect.y, rect.x + rect.width, rect.y + rect.height];
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	rectVao.unbind;
+	enum minDepth2d = -100_000;
+	enum maxDepth2d = 100_000;
+
+	void beginFrame()
+	{
+		batch.reset();
+		texBatch.reset();
+	}
+
+	void endFrame()
+	{}
+
+	void drawFrame()
+	{
+		resourceManager.renderer.alphaBlending(true);
+		resourceManager.renderer.depthTest = true;
+		bufferRenderer.updateOrtoMatrix(resourceManager.renderer);
+		bufferRenderer.draw(batch);
+		bufferRenderer.draw(texBatch);
+	}
+
+	void draw(AnimationInstance animation, vec2 target, float depth, Color4ub color = Colors.white)
+	{
+		auto frameRect = animation.currentFrameRect;
+		vec2 targetRectPos = target - vec2(animation.origin * animation.scale);
+		texBatch.putRect(
+			frect(targetRectPos, vec2(frameRect.size) * animation.scale),
+			frect(frameRect),
+			depth,
+			color,
+			resourceManager.atlasTexture);
+	}
+
+	void draw(Sprite sprite, vec2 target, float depth, Color4ub color = Colors.white)
+	{
+		texBatch.putRect(
+			frect(target, vec2(sprite.atlasRect.size)),
+			frect(sprite.atlasRect),
+			depth,
+			color,
+			resourceManager.atlasTexture);
+	}
+
+	void draw(SpriteInstance sprite, vec2 target, float depth, Color4ub color = Colors.white)
+	{
+		vec2 targetRectPos = target - vec2(sprite.origin * sprite.scale);
+		texBatch.putRect(
+			frect(targetRectPos, vec2(sprite.sprite.atlasRect.size) * sprite.scale),
+			frect(sprite.sprite.atlasRect),
+			depth,
+			color,
+			resourceManager.atlasTexture);
+	}
+
+	void drawTexRect(frect target, frect source, float depth, Color4ub color = Colors.white)
+	{
+		texBatch.putRect(target, source, depth, color, resourceManager.atlasTexture);
+	}
+
+	FontRef defaultFont()
+	{
+		return resourceManager.fontManager.defaultFont;
+	}
+
+	StatefullTextMesher textMesher()
+	{
+		auto mesher = StatefullTextMesher(&texBatch, resourceManager.atlasTexture);
+		mesher.params.depth = maxDepth2d;
+		mesher.params.font = defaultFont;
+		return mesher;
+	}
+
+	StatefullTextMesher startTextAt(vec2 origin)
+	{
+		auto mesher = textMesher();
+		mesher.params.origin = origin;
+		return mesher;
+	}
+
+	void print(vec2 pos, Color4ub color, int scale, const(char[]) str)
+	{
+		auto mesher = startTextAt(pos);
+		mesher.params.color = color;
+		mesher.params.scale = scale;
+		mesher.meshText(str);
+	}
+
+	void print(Args...)(vec2 pos, Color4ub color, int scale, const(char[]) fmt, Args args)
+	{
+		auto mesher = startTextAt(pos);
+		mesher.params.color = color;
+		mesher.params.scale = scale;
+		mesher.meshText(fmt, args);
+	}
+
+	void print(Args...)(vec2 pos, Color4ub color, const(char[]) fmt, Args args)
+	{
+		this.print(pos, color, 1, fmt, args);
+	}
+
+	void print(Args...)(vec2 pos, const(char[]) fmt, Args args)
+	{
+		this.print(pos, Colors.black, 1, fmt, args);
+	}
 }
-*/

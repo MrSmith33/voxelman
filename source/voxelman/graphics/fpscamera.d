@@ -7,12 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.graphics.fpscamera;
 
 import voxelman.log;
-
 import voxelman.math;
-import dlib.math.matrix;
-import dlib.math.affine;
-import dlib.math.quaternion;
-import dlib.math.utils;
 
 struct FpsCamera
 {

@@ -18,19 +18,22 @@ struct FpsHelper
 	Signal!(FpsHelper*) fpsUpdated;
 
 	/// fps will be updated each updateInterval seconds
-	float updateInterval = 0.5;
+	double updateInterval = 0.5;
 
 	/// Stores actual FPS value
-	float fps = 0;
+	double fps = 0;
+
+	/// Stores update time passed trough update every updateInterval
+	double updateTime = 0;
 
 	/// Stores last delta time passed into update()
-	float deltaTime;
+	double deltaTime = 0;
 
 	/// Stores amount of updates between
 	size_t fpsTicks;
 
 	/// Accumulates time before reaching update interval
-	float secondsAccumulator = 0;
+	double secondsAccumulator = 0;
 
 	bool limitFps = true;
 
@@ -38,9 +41,9 @@ struct FpsHelper
 
 	/// Delta time value will clamped to meet interval [0;timeLimit].
 	/// This can prevent from value lags when entering hibernation or resizing the window.
-	float timeLimit = 1;
+	double timeLimit = 1;
 
-	void update(float dt)
+	void update(double dt, double updateTime)
 	{
 		if (dt > timeLimit)
 		{
@@ -54,18 +57,20 @@ struct FpsHelper
 		if (secondsAccumulator >= updateInterval)
 		{
 			fps = fpsTicks/secondsAccumulator;
+			this.updateTime = updateTime;
 			secondsAccumulator -= updateInterval;
 			fpsTicks = 0;
 			fpsUpdated.emit(&this);
 		}
 	}
 
-	void sleepAfterFrame(float frameTime)
+	void sleepAfterFrame(double frameTime)
 	{
 		if (limitFps)
 		{
-			uint msecs = cast(uint)((1/cast(float)maxFps - frameTime)*1000);
-			Thread.sleep(dur!"msecs"(msecs>2? msecs - 1: msecs));
+			uint msecs = cast(uint)((1/cast(double)maxFps - frameTime)*1000);
+			if (msecs > 0)
+				Thread.sleep(dur!"msecs"(msecs));
 		}
 	}
 }
