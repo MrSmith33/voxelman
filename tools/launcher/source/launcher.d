@@ -19,7 +19,7 @@ import std.path;
 import std.conv : to;
 
 import voxelman.world.worlddb;
-import voxelman.utils.messagewindow;
+import voxelman.text.messagewindow;
 import voxelman.text.linebuffer;
 import gui;
 
@@ -715,7 +715,7 @@ PluginPack* readPluginPack(string fileData)
 
 string formatFileSize(ulong fileSize)
 {
-	import voxelman.utils.scale;
+	import voxelman.text.scale;
 	int scale = calcScale(fileSize);
 	double scaledSize = scaled(fileSize, scale);
 	auto prec = stepPrecision(scaledSize);

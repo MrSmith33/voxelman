@@ -33,8 +33,7 @@ mixin template NetCommon()
 	private EventDispatcherPlugin evDispatcher;
 
 	override void preInit() {
-		import voxelman.utils.libloader;
-		loadEnet(BUILD_TO_ROOT_PATH);
+		loadEnet();
 
 		sniffer.disallowedPakets.put("TelemetryPacket");
 		sniffer.disallowedPakets.put("ComponentSyncStartPacket");

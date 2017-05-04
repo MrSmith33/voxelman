@@ -31,8 +31,6 @@
  */
 module derelict.imgui.types;
 
-import derelict.util.system;
-
 enum
 {
     ImGuiKey_Tab,       // for tabbing through fields

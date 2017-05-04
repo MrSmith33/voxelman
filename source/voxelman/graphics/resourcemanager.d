@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.graphics.resourcemanager;
 
+import voxelman.math;
 import voxelman.graphics;
 
 final class ResourceManager
@@ -15,6 +16,10 @@ final class ResourceManager
 	FontManager fontManager;
 	IRenderer renderer;
 
+	// used for solid coloring
+	// allows rendering filled polygons together with textured polygons
+	ivec2 whitePixelPos;
+
 	this(IRenderer renderer)
 	{
 		this.renderer = renderer;
@@ -22,6 +27,7 @@ final class ResourceManager
 		bitmap = texAtlas.bitmap;
 		atlasTexture = renderer.createTexture(bitmap);
 		fontManager = new FontManager(texAtlas);
+		findOrAddWhitePixel();
 	}
 
 	void reuploadTexture()
@@ -37,5 +43,21 @@ final class ResourceManager
 	SpriteRef loadSprite(string name)
 	{
 		return .loadSprite(name, texAtlas);
+	}
+
+	void findOrAddWhitePixel()
+	{
+		import dlib.image.color : Color4f;
+		foreach (col, x, y; bitmap)
+		{
+			if (col == Color4f(1, 1, 1))
+			{
+				whitePixelPos = ivec2(x, y);
+				return;
+			}
+		}
+
+		whitePixelPos = texAtlas.insert(ivec2(1, 1));
+		bitmap[whitePixelPos.x, whitePixelPos.y] = Color4f(1, 1, 1);
 	}
 }

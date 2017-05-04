@@ -33,7 +33,7 @@ bool isAlmostZero(Vector2f v)
 			isConsiderZero(v.y));
 }
 
-Vector!(T, n) clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper) pure nothrow
+Vector!(T, n) vector_clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lower, Vector!(T, n) upper) pure nothrow
 {
 	Vector!(T, n) result;
 	foreach(i, ref elem; result.arrayof)

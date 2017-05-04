@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add rectangle intersection.
+- Add rectangular clipping to text mesher.
+- Add solid fill rect to render queue. 
 - Add monospaced text meshing.
 - Automatically calculate font line size and monospaced glyph width. 
 - Add previous frame duration storage to client.
@@ -28,6 +31,7 @@
 - Implement click-and-drag rail placement.
 
 ### Changed
+- Use static libs for glfw3, cimgui and enet.
 - Move text related things into voxelman.text.
 - Crop glyphs on font load.
 - Use TextMesherParams struct for passing parameters to text mesher.

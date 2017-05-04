@@ -8,15 +8,15 @@
 	"dependencies" : {
 		"cbor-d" : "==0.5.4",
 		"dlib" : {"path" : "./deps/dlib"},
-		"derelict-enet": "==2.0.0",
-		"derelict-glfw3" : "==2.0.0",
+		"derelict-glfw3" : "==3.1.2",
 		"derelict-gl3" : "==1.0.18",
 		"derelict-util": ">=1.0.3",
 		"sdlang-d" : "==0.9.6"
 	},
 
 	"subConfigurations": {
-		"sdlang-d": "library"
+		"sdlang-d": "library",
+		"derelict-glfw3": "derelict-glfw3-static"
 	},
 
 	"targetPath" : "builds/default",
@@ -32,14 +32,12 @@
 		}
 	},
 
-	"libs-posix": ["lmdb", "lz4"],
-	"sourceFiles-windows-x86": ["lib/32/lz4.lib", "lib/32/lmdb.lib"],
-	"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib"],
+	"libs-posix": ["lmdb", "lz4", "glfw3", "enet"],
+	"libs-windows-dmd": ["user32", "gdi32", "ws2_32", "winmm"],
+	"libs-windows-ldc2": ["winmm"],
+	"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib", "lib/32/cimgui.lib"],
+	"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib", "lib/64/cimgui.lib"],
 
-	"lflags-windows": [
-		"/nodefaultlib:msvcrt.lib",
-		"/nodefaultlib:vcruntime.lib"
-	],
 
 	"configurations": [
 		{

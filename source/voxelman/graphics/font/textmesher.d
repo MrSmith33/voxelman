@@ -36,8 +36,9 @@ struct TextMesherParams
 {
 	TextRectSink sink;
 	FontRef font;
-	vec2 origin = vec2(0,0);
-	vec2 cursor = vec2(0,0);
+	ivec2 origin = ivec2(0,0);
+	ivec2 cursor = ivec2(0,0);
+	irect scissors = irect(-int.max/2, -int.max/2, int.max, int.max);
 	float depth = 0;
 	Color4ub color = Colors.black;
 	int scale = 1;
@@ -69,16 +70,48 @@ void meshText(P, R)(ref P params, R textRange)
 			default: break;
 		}
 
-		float x  = params.origin.x + params.cursor.x + glyph.metrics.offsetX;
-		float y  = params.origin.y + params.cursor.y + params.font.metrics.verticalOffset - glyph.metrics.offsetY;
-		float w  = glyph.metrics.width;
-		float h  = glyph.metrics.height;
-		float tx = glyph.atlasPosition.x;
-		float ty = glyph.atlasPosition.y;
+		int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX;
+		int y = params.origin.y + params.cursor.y + params.font.metrics.verticalOffset - glyph.metrics.offsetY;
 
-		params.sink.putRect(frect(x, y, w*params.scale, h*params.scale), frect(tx, ty, w, h), params.depth, params.color);
+		int w = glyph.metrics.width;
+		int h = glyph.metrics.height;
+
+		auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
+		auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);
+
+		bool shouldDraw = clipTexturedRect(geometryRect, atlasRect, params.scissors);
+
+		if (shouldDraw)
+		{
+			params.sink.putRect(geometryRect, atlasRect, params.depth, params.color);
+		}
+
 		params.cursor.x += glyphAdvanceX * params.scale;
 	}
+}
+
+// returns true if rect is visible
+bool clipTexturedRect(ref frect geometryRect, ref frect atlasRect, irect scissors)
+{
+	frect intersection = rectIntersection(geometryRect, frect(scissors));
+	if (intersection.empty) return false;
+
+	if (intersection == geometryRect) return true;
+
+	vec2 newEnd = intersection.endPosition;
+	vec2 newSize = intersection.size;
+
+	vec2 sizeRescaleMult = newSize / geometryRect.size; // [0; 1]
+	vec2 absStartOffset = intersection.position - geometryRect.position;
+	vec2 relativeStartOffset = absStartOffset / geometryRect.size; // [0; 1]
+	vec2 atlasPosOffset = relativeStartOffset * atlasRect.size; // old atlas size
+
+	atlasRect.size *= sizeRescaleMult;
+	atlasRect.position += atlasPosOffset;
+
+	geometryRect = intersection;
+
+	return true;
 }
 
 void meshTextf(P, Args...)(ref P params, string fmt, Args args)

@@ -30,6 +30,8 @@ class FontManager
 	FontRef createFont(in string filename, in uint size, in dchar[] chars = GLYPHS)
 	{
 		FontRef newFont = loadFont(filename, size, chars, texAtlas);
+		newFont.sanitize();
+
 		fonts[filename] = newFont;
 		return newFont;
 	}

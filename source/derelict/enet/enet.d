@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Derelict Developers
+ * Copyright (c) 2013 Derelict Developers
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,10 +29,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-module derelict.imgui.imgui;
+module derelict.enet.enet;
 
 public
 {
-    import derelict.imgui.types;
-    import derelict.imgui.funcs;
+	import derelict.enet.statfun;
 }

@@ -79,14 +79,8 @@ public:
 
 	void initLibs()
 	{
-		import derelict.glfw3.glfw3;
 		import derelict.opengl3.gl3;
-		import derelict.imgui.imgui;
-		import voxelman.utils.libloader;
-
 		DerelictGL3.load();
-		loadLib(DerelictGLFW3, BUILD_TO_ROOT_PATH, "glfw3");
-		loadLib(DerelictImgui, BUILD_TO_ROOT_PATH, "cimgui");
 	}
 
 	override void init(IPluginManager pluginman)

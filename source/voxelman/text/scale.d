@@ -27,7 +27,7 @@ shared static this(){
 	 24 : "Y",];
 }
 
-int numDigitsInNumber(Num)(Num val)
+int numDigitsInNumber(Num)(const Num val)
 {
 	import std.math: abs;
 	ulong absVal = cast(ulong)abs(val);

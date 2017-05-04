@@ -39,8 +39,8 @@ final class RenderQueue
 		resourceManager.renderer.alphaBlending(true);
 		resourceManager.renderer.depthTest = true;
 		bufferRenderer.updateOrtoMatrix(resourceManager.renderer);
-		bufferRenderer.draw(batch);
 		bufferRenderer.draw(texBatch);
+		bufferRenderer.draw(batch);
 	}
 
 	void draw(AnimationInstance animation, vec2 target, float depth, Color4ub color = Colors.white)
@@ -81,6 +81,16 @@ final class RenderQueue
 		texBatch.putRect(target, source, depth, color, resourceManager.atlasTexture);
 	}
 
+	void drawRectFill(vec2 pos, vec2 size, float depth, Color4ub color)
+	{
+		texBatch.putRect(frect(pos, size), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
+	}
+
+	void drawRectLine(vec2 pos, vec2 size, Color4ub color)
+	{
+		batch.putRect(pos, size, color, false);
+	}
+
 	FontRef defaultFont()
 	{
 		return resourceManager.fontManager.defaultFont;
@@ -90,7 +100,7 @@ final class RenderQueue
 	{
 		TextMesherParams params;
 		params.sink = TextRectSink(&texBatch, resourceManager.atlasTexture);
-		params.depth = maxDepth2d;
+		params.depth = 0;
 		params.font = defaultFont;
 		return params;
 	}

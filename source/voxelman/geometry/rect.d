@@ -50,6 +50,49 @@ struct frect
 	}
 }
 
+frect rectIntersection(const frect a, const frect b)
+{
+	float[2] xIntersection = intersection(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
+	float[2] yIntersection = intersection(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
+	if (xIntersection[0] > xIntersection[1]) return frect();
+	if (yIntersection[0] > yIntersection[1]) return frect();
+
+	return frect(xIntersection[0], yIntersection[0], xIntersection[1] - xIntersection[0], yIntersection[1] - yIntersection[0]);
+}
+
+float[2] intersection(float aStart, float aEnd, float bStart, float bEnd)
+{
+	float[2] res;
+
+	if (aStart < bStart)
+	{
+		res[0] = bStart;
+	}
+	else if (aStart > bStart)
+	{
+		res[0] = aStart;
+	}
+	else
+	{
+		res[0] = aStart;
+	}
+
+	if (aEnd < bEnd)
+	{
+		res[1] = aEnd;
+	}
+	else if (aEnd > bEnd)
+	{
+		res[1] = bEnd;
+	}
+	else
+	{
+		res[1] = bEnd;
+	}
+
+	return res;
+}
+
 struct irect
 {
 	this (ivec2 position, ivec2 size) {

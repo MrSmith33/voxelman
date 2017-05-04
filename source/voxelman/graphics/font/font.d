@@ -54,6 +54,12 @@ struct Font
 			return '?' in glyphs;//TODO: Add loading for nonexisting glyphs
 	}
 
+	void sanitize()
+	{
+		metrics.monoAdvanceX = max(metrics.monoAdvanceX, 1);
+		metrics.lineGap = max(metrics.lineGap, 1);
+	}
+
 	string filename;
 	FontMetrics metrics;
 	Glyph[dchar] glyphs;

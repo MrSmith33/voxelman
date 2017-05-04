@@ -11,11 +11,8 @@ import voxelman.log;
 import derelict.enet.enet;
 import voxelman.container.hash.set;
 
-void loadEnet(string rootPath)
+void loadEnet()
 {
-	import voxelman.utils.libloader;
-	loadLib(DerelictENet, rootPath, "enet");
-
 	int err = enet_initialize();
 
 	if (err != 0)

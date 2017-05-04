@@ -36,7 +36,7 @@ struct Buffer(T)
 		buf[length] = item;
 	}
 
-	T[] data() {
+	inout(T[]) data() inout {
 		return buf[0..length];
 	}
 
@@ -44,7 +44,7 @@ struct Buffer(T)
 		length = 0;
 	}
 
-	size_t capacity() @property {
+	size_t capacity() const @property {
 		return buf.length - length;
 	}
 

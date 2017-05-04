@@ -100,9 +100,6 @@ struct LauncherGui
 	void run()
 	{
 		DerelictGL3.load();
-		loadLib(DerelictGLFW3, "", "glfw3");
-		loadLib(DerelictImgui, "", "cimgui");
-
 		init();
 
 		while(isRunning)
