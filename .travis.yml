@@ -14,4 +14,4 @@ before_install:
 # Add repo for 16.04. Fresh libraries needed
   - sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu xenial main universe'
   - sudo apt-get -qq update
-  - sudo apt-get install -y liblmdb-dev liblz4-dev libenet-dev
+  - sudo apt-get install -y liblmdb-dev liblz4-dev libenet-dev libglfw3-dev
