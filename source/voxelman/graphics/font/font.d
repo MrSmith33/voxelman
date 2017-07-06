@@ -18,21 +18,18 @@ struct GlyphMetrics
 {
 	uint width;
 	uint height;
-	int offsetX;
-	int offsetY;
+	int  offsetX; // bearingX
+	int  offsetY; // bearingY
 	uint advanceX;
 	uint advanceY;
 }
 
 struct FontMetrics
 {
-	uint height;
-	uint size;
-	uint lineGap;
-	uint ascender;
-	uint descender;
-	uint monoAdvanceX;
-	int  verticalOffset; // Can be used to manually adjust vertical position of text.
+	uint width; // monospaced width
+	uint height; // max glyph height
+	uint ascent; // vertical offset from baseline to highest point (positive)
+	uint descent; // vertical offset from baseline to lowest point (negative)
 }
 
 struct Font
@@ -46,18 +43,19 @@ struct Font
 
 	Glyph* getGlyph(in dchar chr)
 	{
+		import std.utf : replacementDchar;
 		if (auto glyph = chr in glyphs)
 		{
 			return glyph;
 		}
 		else
-			return '?' in glyphs;//TODO: Add loading for nonexisting glyphs
+			return replacementDchar in glyphs;
 	}
 
 	void sanitize()
 	{
-		metrics.monoAdvanceX = max(metrics.monoAdvanceX, 1);
-		metrics.lineGap = max(metrics.lineGap, 1);
+		metrics.width = max(metrics.width, 1);
+		metrics.height = max(metrics.height, 1);
 	}
 
 	string filename;
@@ -65,7 +63,7 @@ struct Font
 	Glyph[dchar] glyphs;
 
 	int[dchar][dchar] kerningTable;
-	bool kerningEnabled = true;
+	bool kerningEnabled = false;
 }
 
 alias FontRef = Font*;

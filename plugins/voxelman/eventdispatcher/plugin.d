@@ -3,7 +3,7 @@ module voxelman.eventdispatcher.plugin;
 import pluginlib;
 import voxelman.core.config;
 
-private alias EventHandler = void delegate(ref Object event);
+private alias EventHandler = void delegate(void* event);
 
 
 class EventDispatcherPlugin : IPlugin

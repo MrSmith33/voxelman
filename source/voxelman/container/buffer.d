@@ -58,4 +58,9 @@ struct Buffer(T)
 			buf = cast(T[])tmp;
 		}
 	}
+
+	void unput(size_t numItems)
+	{
+		length -= numItems;
+	}
 }

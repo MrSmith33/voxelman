@@ -38,3 +38,8 @@ Color4ub[] colorsArray = [
 	Colors.brown, Colors.purple, Colors.indigo,
 	Colors.violet,
 ];
+
+Color4ub rgb(ubyte r, ubyte g, ubyte b)
+{
+	return Color4ub(r, g, b, 255);
+}

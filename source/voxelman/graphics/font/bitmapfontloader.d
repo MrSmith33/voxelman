@@ -25,6 +25,7 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 	ivec2 cursor;
 
 	int nextCursorX;
+	// find a pixel past the end of current char
 	void checkNextChar()
 	{
 		nextCursorX = cursor.x+1;
@@ -49,7 +50,7 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 
 	void advanceCursor()
 	{
-		if (cursor.x >= image.width)
+		if (nextCursorX >= image.width)
 		{
 			cursor.x = 0;
 			cursor.y = nextLineY;
@@ -57,6 +58,16 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		else
 		{
 			cursor.x = nextCursorX;
+
+			// check if end of line
+			// either sentinel + end or two sentinels
+			int rightPixel = cursor.x + 1;
+			if (rightPixel == image.width || image[rightPixel, cursor.y] == sentinelPixel)
+			{
+				// newline
+				cursor.x = 0;
+				cursor.y = nextLineY;
+			}
 		}
 	}
 
@@ -68,16 +79,11 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 	int maxGlyphWidth = 0;
 	int maxGlyphHeight = 0;
 
-	foreach (dchar glyph; chars)
+	void loadGlyph(dchar glyph)
 	{
-		//writefln("glyph '%s'", glyph);
-		checkNextChar();
-		checkNextLine();
-
-		if (!isValidCursor()) break;
-
 		// load glyph
 		auto glyphStart = cursor + ivec2(1,0);
+		auto glyphStartCopy = glyphStart;
 
 		int glyphWidth = nextCursorX - cursor.x - 1;
 		int glyphHeight = nextLineY - cursor.y;
@@ -89,15 +95,14 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		// write to texture
 		ivec2 atlasPos = texAtlas.insert(image, irect(glyphStart, glyphSize));
 
-		int glyphOffsetX = 0;
-		int glyphOffsetY = 0;
+		ivec2 glyphOffset = glyphStart - glyphStartCopy;
 
 		int glyphAdvanceX = glyphWidth + 1;
 		int glyphAdvanceY = glyphHeight + 1;
 
 		auto metrics = GlyphMetrics(
-			glyphWidth, glyphHeight,
-			glyphOffsetX, glyphOffsetY,
+			glyphSize.x, glyphSize.y,
+			glyphOffset.x, glyphOffset.y,
 			glyphAdvanceX, glyphAdvanceY);
 
 		maxGlyphWidth = max(maxGlyphWidth, glyphSize.x);
@@ -105,13 +110,24 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		// that reach both top and bottom of line
 		maxGlyphHeight = max(maxGlyphHeight, glyphHeight);
 
-		//writefln("glyph '%s' %s %s", glyph, atlasPos, metrics);
+		//writefln("glyph '%s' img pos %s size %s", glyph, glyphStartCopy, glyphSize);
 
 		font.glyphs[glyph] = Glyph(atlasPos, metrics);
+	}
+
+	foreach (dchar glyph; chars)
+	{
+		checkNextChar();
+		checkNextLine();
+
+		if (!isValidCursor()) break;
+
+		loadGlyph(glyph);
 
 		advanceCursor();
 	}
 
-	font.metrics.monoAdvanceX = maxGlyphWidth + 1;
-	font.metrics.lineGap = maxGlyphHeight + 1;
+	font.metrics.width = maxGlyphWidth;
+	font.metrics.height = maxGlyphHeight;
+	//writefln("font %s", font.metrics);
 }

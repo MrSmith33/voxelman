@@ -14,12 +14,14 @@ public import dlib.image.image : SuperImage;
 interface IRenderer
 {
 	void alphaBlending(bool value);
+	void rectClipping(bool value);
 	void depthWrite(bool value);
 	void depthTest(bool value);
 	void faceCulling(bool value);
 	void faceCullMode(FaceCullMode mode);
 	void wireFrameMode(bool value);
 	void setViewport(ivec2 pos, ivec2 size);
+	void setClipRect(irect rect);
 	void setClearColor(ubyte r, ubyte g, ubyte b, ubyte a = 255);
 	SuperImage loadImage(string filename);
 	Texture createTexture(SuperImage image);

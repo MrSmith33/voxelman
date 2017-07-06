@@ -271,7 +271,7 @@ struct Launcher
 			workDir = buildFolder;
 		}
 
-		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.none, workDir);
+		ProcessPipes pipes = pipeProcess(command, Redirect.all, null, Config.suppressConsole, workDir);
 
 		job.command = command;
 		job.pipes = pipes;
@@ -579,11 +579,7 @@ string makeBuildOrTestCommand(JobParams params)
 
 string makeRunCommand(JobParams params)
 {
-	version(Windows)
-		enum exeSuffix = ".exe";
-	else version(Posix)
-		enum exeSuffix = "";
-	string command = format("voxelman%s --app=%s --console_log", exeSuffix, appTypeString[params.appType]);
+	string command = format("voxelman --app=%s --console_log", appTypeString[params.appType]);
 
 	foreach(paramName, paramValue; params.runParameters)
 	{

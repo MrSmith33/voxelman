@@ -62,10 +62,46 @@ struct Batch2d
 	}
 }
 
+enum CommandType {
+	batch,
+	clipRect
+}
+
 struct Command
+{
+	this(Texture texture, size_t numVertices) {
+		type = CommandType.batch;
+		this.texture = texture;
+		this.numVertices = numVertices;
+	}
+	this(irect clipRect) {
+		type = CommandType.clipRect;
+		this.clipRect = clipRect;
+	}
+	CommandType type;
+	union
+	{
+		struct // CommandType.batch
+		{
+			Texture texture;
+			size_t numVertices;
+		}
+		struct // CommandType.clipRect
+		{
+			irect clipRect;
+		}
+	}
+}
+
+struct BatchRenderCommand
 {
 	Texture texture;
 	size_t numVertices;
+}
+
+struct ClipRectCommand
+{
+	irect rect;
 }
 
 import voxelman.model.vertex;
@@ -74,6 +110,8 @@ struct TexturedBatch2d
 {
 	Buffer!UvColVertex2d buffer;
 	Buffer!Command commands;
+	Buffer!irect rectStack;
+	private bool isCurrentClipRectEmpty;
 
 	void putRect(frect target, frect source, float depth, Color4ub color, Texture tex)
 	{
@@ -96,12 +134,46 @@ struct TexturedBatch2d
 		putNVerticies(6, tex);
 	}
 
-	private void putNVerticies(size_t verticies, Texture tex)
+	void pushClipRect(irect rect)
 	{
+		rectStack.put(rect);
+		setClipRect(rect);
+	}
+
+	void popClipRect()
+	{
+		// there must be always rect in the stack since we pushed one after reset
+		rectStack.unput(1);
+		irect rect = rectStack.data[$-1];
+		setClipRect(rect);
+	}
+
+	void setClipRect(irect rect)
+	{
+		isCurrentClipRectEmpty = rect.empty;
 		if (commands.data.length)
 		{
 			Command* command = &commands.data[$-1];
-			if (command.texture == tex)
+
+			// replace clip rect of last command if it sets clip rect
+			if (command.type == CommandType.clipRect)
+			{
+				command.clipRect = rect;
+				return;
+			}
+		}
+		commands.put(Command(rect));
+	}
+
+	private void putNVerticies(size_t verticies, Texture tex)
+	{
+		if (isCurrentClipRectEmpty) return;
+		if (commands.data.length)
+		{
+			Command* command = &commands.data[$-1];
+
+			// append vertices to the last command if texture is teh same
+			if (command.type == CommandType.batch && command.texture == tex)
 			{
 				command.numVertices += verticies;
 				return;
@@ -110,9 +182,11 @@ struct TexturedBatch2d
 		commands.put(Command(tex, verticies));
 	}
 
-	void reset()
+	void reset(irect initialClipRect)
 	{
 		buffer.clear();
 		commands.clear();
+		rectStack.clear();
+		pushClipRect(initialClipRect);
 	}
 }

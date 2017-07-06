@@ -53,7 +53,7 @@ template ComponentStorage(C)
 
 struct EntityIdManager
 {
-	private EntityId lastEntityId;
+	private EntityId lastEntityId; // 0 is reserved
 	IoKey ioKey = IoKey("voxelman.entity.lastEntityId");
 
 	EntityId nextEntityId()

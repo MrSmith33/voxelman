@@ -50,19 +50,20 @@ struct frect
 	}
 }
 
-frect rectIntersection(const frect a, const frect b)
+RectT rectIntersection(RectT)(const RectT a, const RectT b)
 {
-	float[2] xIntersection = intersection(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
-	float[2] yIntersection = intersection(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
-	if (xIntersection[0] > xIntersection[1]) return frect();
-	if (yIntersection[0] > yIntersection[1]) return frect();
+	typeof(RectT.size.x)[2] xIntersection = intersection(a.position.x, a.position.x + a.size.x, b.position.x, b.position.x + b.size.x);
+	typeof(RectT.size.x)[2] yIntersection = intersection(a.position.y, a.position.y + a.size.y, b.position.y, b.position.y + b.size.y);
+	if (xIntersection[0] > xIntersection[1]) return RectT();
+	if (yIntersection[0] > yIntersection[1]) return RectT();
 
-	return frect(xIntersection[0], yIntersection[0], xIntersection[1] - xIntersection[0], yIntersection[1] - yIntersection[0]);
+	return RectT(xIntersection[0], yIntersection[0], xIntersection[1] - xIntersection[0], yIntersection[1] - yIntersection[0]);
 }
 
-float[2] intersection(float aStart, float aEnd, float bStart, float bEnd)
+T[2] intersection(T)(const T aStart, const T aEnd, const T bStart, const T bEnd)
+	if (is(T == int) || is(T == float))
 {
-	float[2] res;
+	T[2] res;
 
 	if (aStart < bStart)
 	{
@@ -170,6 +171,6 @@ struct irect
 	void toString()(scope void delegate(const(char)[]) sink) const
 	{
 		import std.format : formattedWrite;
-		sink.formattedWrite("irect(pos %s, %s size %s, %s)", x, y, width, height);
+		sink.formattedWrite("irect(x %s y %s w %s h %s)", x, y, width, height);
 	}
 }

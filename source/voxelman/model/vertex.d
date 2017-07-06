@@ -86,13 +86,8 @@ void setupAttribute(int index, int numComponents, AttrT, bool normalize, int tot
 	glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalSize, cast(void*)offset);
 }
 
-template glTypeOf(T) {
-	enum glTypeOf = glTypes[glTypeIndex!T];
-}
-
-template normalizeAttributeType(T) {
-	enum normalizeAttributeType = normalizeTypeTable[glTypeIndex!T];
-}
+enum glTypeOf(T) = glTypes[glTypeIndex!T];
+enum normalizeAttributeType(T) = normalizeTypeTable[glTypeIndex!T];
 
 alias glTypeIndex(T) = staticIndexOf!(T,
 	byte,  // GL_BYTE

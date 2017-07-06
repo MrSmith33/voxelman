@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- Add rect clipping to render queue and batch2d.
+- Allow two consequtive sentinel pixels to end line in font texture.
+- Support multiple text styles during text meshing.
+- Add optional text style range parameter to text mesher.
 - Add rectangle intersection.
 - Add rectangular clipping to text mesher.
 - Add solid fill rect to render queue. 
@@ -31,6 +35,9 @@
 - Implement click-and-drag rail placement.
 
 ### Changed
+- Use replacementDchar for unknown glyphs.
+- Use only width, height, ascent, descent in FontMetrics.
+- Use polygons for drawRectLine.
 - Use static libs for glfw3, cimgui and enet.
 - Move text related things into voxelman.text.
 - Crop glyphs on font load.
@@ -43,6 +50,8 @@
 - Use BitFlags for component replication annotation instead of bool flags.
 
 ### Fixed
+- Fix calcScale.
+- Prevent console appearance when starting game from launcher by using pipeProcess instead of pipeShell.
 - Fix entity/entityobservermanager.d not adding entity to chunk.
 - Fix enitity component id sync.
 

@@ -34,28 +34,82 @@ struct TextRectSink
 
 struct TextMesherParams
 {
-	TextRectSink sink;
+	TextRectSink sink; // ref
 	FontRef font;
-	ivec2 origin = ivec2(0,0);
-	ivec2 cursor = ivec2(0,0);
+	ivec2 origin = ivec2(0, 0);
+	ivec2 cursor = ivec2(0, 0); // ref
 	irect scissors = irect(-int.max/2, -int.max/2, int.max, int.max);
 	float depth = 0;
 	Color4ub color = Colors.black;
 	int scale = 1;
 	int tabSize = 4;
 	bool monospaced = false;
+	TextStyle[] styles;
+
+	// ref
+	vec2 size = vec2(0, 0); // size of text relative to origin
 }
 
-/// Modifies params.cursor and params.sink
-void meshText(P, R)(ref P params, R textRange)
+struct TextStyle
 {
-	foreach(ubyte chr; textRange)
+	Color4ub color = Colors.black;
+}
+
+alias StyleId = ubyte;
+
+/// Modifies params.cursor and params.sink
+void meshText(P, T)(ref P params, T textRange)
+{
+	import std.range : repeat;
+	TextStyle[1] styles = [TextStyle(params.color)];
+	auto prevStyles = params.styles;
+	params.styles = styles[];
+	meshText(params, textRange, repeat(StyleId(0)));
+	params.styles = prevStyles;
+}
+
+struct StyledCodePoint
+{
+	dchar codepoint;
+	TextStyle style;
+}
+
+struct TextStyleZip(T, S)
+{
+	T textRange;
+	S styleRange;
+
+	bool empty()
 	{
-		Glyph* glyph = params.font.getGlyph(chr);
+		return textRange.empty || styleRange.empty;
+	}
 
-		int glyphAdvanceX = params.monospaced ? params.font.metrics.monoAdvanceX : glyph.metrics.advanceX;
+	StyledCodePoint front()
+	{
+		return StyledCodePoint(textRange.front, styleRange.front);
+	}
 
-		switch(chr) // special chars
+	void popFront()
+	{
+		textRange.popFront;
+		styleRange.popFront;
+	}
+}
+
+/// ditto
+void meshText(P, T, S)(ref P params, T textRange, S styleRange)
+{
+	import std.uni;
+	import std.utf;
+
+	foreach(dchar codePoint; textRange.byDchar)
+	{
+		TextStyle style = params.styles[styleRange.front];
+		Glyph* glyph = params.font.getGlyph(codePoint);
+
+		int glyphAdvanceX = params.monospaced ? params.font.metrics.width+2 : glyph.metrics.advanceX;
+
+		switch(codePoint) // special chars
 		{
 			case ' ':
 				params.cursor.x += glyphAdvanceX * params.scale;
@@ -65,13 +119,15 @@ void meshText(P, R)(ref P params, R textRange)
 				continue;
 			case '\n':
 				params.cursor.x = 0;
-				params.cursor.y += params.font.metrics.lineGap * params.scale;
+				params.cursor.y += (params.font.metrics.height+1) * params.scale;
+				continue;
+			case '\r':
 				continue;
 			default: break;
 		}
 
-		int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX;
-		int y = params.origin.y + params.cursor.y + params.font.metrics.verticalOffset - glyph.metrics.offsetY;
+		int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX * params.scale;
+		int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
 
 		int w = glyph.metrics.width;
 		int h = glyph.metrics.height;
@@ -83,11 +139,15 @@ void meshText(P, R)(ref P params, R textRange)
 
 		if (shouldDraw)
 		{
-			params.sink.putRect(geometryRect, atlasRect, params.depth, params.color);
+			params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
 		}
 
 		params.cursor.x += glyphAdvanceX * params.scale;
+		params.size.x = max(params.size.x, params.cursor.x);
+		styleRange.popFront;
 	}
+
+	params.size.y = max(params.size.y, params.cursor.y);
 }
 
 // returns true if rect is visible

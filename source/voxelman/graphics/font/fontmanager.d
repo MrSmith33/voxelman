@@ -10,7 +10,7 @@ import voxelman.math;
 import voxelman.graphics.font.font;
 import voxelman.graphics.textureatlas;
 
-enum string ascii = `!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_` ~ "abcdefghijklmnopqrstuvwxyz{|}~`";
+enum string ascii = `�!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_` ~ "abcdefghijklmnopqrstuvwxyz{|}~`";
 enum string cyrillic = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐабвгдежзийклмнопрстуфхцчшщъыьэюяєіїґ";
 //string glyphs = q"[!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_abcdefghijklmnopqrstuvwxyz{|}~`АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐабвгдежзийклмнопрстуфхцчшщъыьэюяєіїґ]";
 enum string GLYPHS = ascii~cyrillic;
@@ -24,12 +24,15 @@ class FontManager
 	this(TextureAtlas texAtlas)
 	{
 		this.texAtlas = texAtlas;
-		defaultFont = createFont("font_hor.png", 10, GLYPHS);
+		//defaultFont = createFont("font_12_1.png", 12, GLYPHS);
+		//defaultFont = createFont("font_13.png", 13, GLYPHS);
+		//defaultFont = createFont("font_14.png", 13, GLYPHS);
+		defaultFont = createFont("font_12_2.png", 12, GLYPHS);
 	}
 
-	FontRef createFont(in string filename, in uint size, in dchar[] chars = GLYPHS)
+	FontRef createFont(in string filename, in uint height, in dchar[] chars = GLYPHS)
 	{
-		FontRef newFont = loadFont(filename, size, chars, texAtlas);
+		FontRef newFont = loadFont(filename, height, chars, texAtlas);
 		newFont.sanitize();
 
 		fonts[filename] = newFont;
@@ -40,7 +43,7 @@ class FontManager
 	FontRef[string] fonts;
 }
 
-FontRef loadFont(in string filename, in uint size, in dchar[] chars, TextureAtlas texAtlas)
+FontRef loadFont(in string filename, in uint height, in dchar[] chars, TextureAtlas texAtlas)
 {
 	import voxelman.graphics.font.bitmapfontloader;
 	FontRef result = new Font(filename);

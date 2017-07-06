@@ -144,7 +144,7 @@ public:
 	{
 		double x, y;
 		glfwGetCursorPos(glfwWindowPtr, &x, &y);
-		return ivec2(x, y);
+		return ivec2(x, y) * pixelSize;
 	}
 
 	override void swapBuffers()
@@ -169,6 +169,11 @@ public:
 		int width, height;
 		glfwGetFramebufferSize(glfwWindowPtr, &width, &height);
 		return ivec2(width, height);
+	}
+
+	ivec2 pixelSize()
+	{
+		return framebufferSize / size;
 	}
 
 	override string clipboardString() @property

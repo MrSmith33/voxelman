@@ -55,7 +55,7 @@ final class BufferRenderer
 		solidShader2d.unbind;
 	}
 
-	void draw(TexturedBatch2d batch)
+	void draw(IRenderer renderer, TexturedBatch2d batch)
 	{
 		if (batch.buffer.data.length)
 		{
@@ -70,9 +70,17 @@ final class BufferRenderer
 			size_t start = 0;
 			foreach (command; batch.commands.data)
 			{
-				command.texture.bind;
-				drawBuffer(PrimitiveType.TRIANGLES, start, command.numVertices);
-				start += command.numVertices;
+				final switch(command.type)
+				{
+					case CommandType.batch:
+						command.texture.bind;
+						drawBuffer(PrimitiveType.TRIANGLES, start, command.numVertices);
+						start += command.numVertices;
+						break;
+					case CommandType.clipRect:
+						renderer.setClipRect(command.clipRect);
+						break;
+				}
 			}
 
 			colUvShader2d.unbind;

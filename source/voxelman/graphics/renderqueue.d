@@ -15,11 +15,13 @@ final class RenderQueue
 	BufferRenderer bufferRenderer;
 	Batch2d batch;
 	TexturedBatch2d texBatch;
+	TextStyle[] defaultTextStyles;
 
 	this(ResourceManager resMan)
 	{
 		resourceManager = resMan;
 		bufferRenderer = new BufferRenderer(resourceManager.renderer);
+		defaultTextStyles = [TextStyle(Colors.black)];
 	}
 
 	enum minDepth2d = -100_000;
@@ -27,8 +29,9 @@ final class RenderQueue
 
 	void beginFrame()
 	{
+		irect clipRect = irect(ivec2(0,0), resourceManager.renderer.framebufferSize);
+		texBatch.reset(clipRect);
 		batch.reset();
-		texBatch.reset();
 	}
 
 	void endFrame()
@@ -36,11 +39,13 @@ final class RenderQueue
 
 	void drawFrame()
 	{
-		resourceManager.renderer.alphaBlending(true);
+		resourceManager.renderer.alphaBlending = true;
+		resourceManager.renderer.rectClipping = true;
 		resourceManager.renderer.depthTest = true;
 		bufferRenderer.updateOrtoMatrix(resourceManager.renderer);
-		bufferRenderer.draw(texBatch);
+		bufferRenderer.draw(resourceManager.renderer, texBatch);
 		bufferRenderer.draw(batch);
+		resourceManager.renderer.rectClipping = false;
 	}
 
 	void draw(AnimationInstance animation, vec2 target, float depth, Color4ub color = Colors.white)
@@ -86,9 +91,19 @@ final class RenderQueue
 		texBatch.putRect(frect(pos, size), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
 	}
 
-	void drawRectLine(vec2 pos, vec2 size, Color4ub color)
+	void drawRectLine(vec2 pos, vec2 size, float depth, Color4ub color)
 	{
-		batch.putRect(pos, size, color, false);
+		texBatch.putRect(frect(pos.x, pos.y, size.x, 1), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
+		texBatch.putRect(frect(pos.x, pos.y+1, 1, size.y-2), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
+		texBatch.putRect(frect(pos.x, pos.y+size.y-1, size.x, 1), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
+		texBatch.putRect(frect(pos.x+size.x-1, pos.y+1, 1, size.y-2), frect(resourceManager.whitePixelPos, vec2(1,1)), depth, color, resourceManager.atlasTexture);
+	}
+
+	void pushClipRect(irect rect) {
+		texBatch.pushClipRect(rect);
+	}
+	void popClipRect() {
+		texBatch.popClipRect();
 	}
 
 	FontRef defaultFont()
@@ -102,6 +117,7 @@ final class RenderQueue
 		params.sink = TextRectSink(&texBatch, resourceManager.atlasTexture);
 		params.depth = 0;
 		params.font = defaultFont;
+		params.styles = defaultTextStyles;
 		return params;
 	}
 

@@ -39,6 +39,12 @@ public:
 			checkgl!glDisable(GL_BLEND);
 	}
 
+	override void rectClipping(bool value)
+	{
+		if (value) checkgl!glEnable(GL_SCISSOR_TEST);
+		else checkgl!glDisable(GL_SCISSOR_TEST);
+	}
+
 	override void depthWrite(bool value) {
 		checkgl!glDepthMask(value);
 	}
@@ -70,6 +76,10 @@ public:
 
 	override void setViewport(ivec2 pos, ivec2 size) {
 		checkgl!glViewport(pos.x, pos.y, size.x, size.y);
+	}
+
+	override void setClipRect(irect rect) {
+		glScissor(rect.x, window.framebufferSize.y - rect.y - rect.height,  rect.width, rect.height);
 	}
 
 	override void setClearColor(ubyte r, ubyte g, ubyte b, ubyte a = 255)
