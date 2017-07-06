@@ -58,13 +58,13 @@ struct TextStyle
 alias StyleId = ubyte;
 
 /// Modifies params.cursor and params.sink
-void meshText(P, T)(ref P params, T textRange)
+void meshText(bool mesh = true, P, T)(ref P params, T textRange)
 {
 	import std.range : repeat;
 	TextStyle[1] styles = [TextStyle(params.color)];
 	auto prevStyles = params.styles;
 	params.styles = styles[];
-	meshText(params, textRange, repeat(StyleId(0)));
+	meshText!(mesh)(params, textRange, repeat(StyleId(0)));
 	params.styles = prevStyles;
 }
 
@@ -97,14 +97,14 @@ struct TextStyleZip(T, S)
 }
 
 /// ditto
-void meshText(P, T, S)(ref P params, T textRange, S styleRange)
+void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange)
 {
 	import std.uni;
 	import std.utf;
 
 	foreach(dchar codePoint; textRange.byDchar)
 	{
-		TextStyle style = params.styles[styleRange.front];
+		static if (mesh) TextStyle style = params.styles[styleRange.front];
 		Glyph* glyph = params.font.getGlyph(codePoint);
 
 		int glyphAdvanceX = params.monospaced ? params.font.metrics.width+2 : glyph.metrics.advanceX;
@@ -126,29 +126,38 @@ void meshText(P, T, S)(ref P params, T textRange, S styleRange)
 			default: break;
 		}
 
-		int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX * params.scale;
-		int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
-
-		int w = glyph.metrics.width;
-		int h = glyph.metrics.height;
-
-		auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
-		auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);
-
-		bool shouldDraw = clipTexturedRect(geometryRect, atlasRect, params.scissors);
-
-		if (shouldDraw)
+		static if (mesh)
 		{
-			params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
+			int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX * params.scale;
+			int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
+
+			int w = glyph.metrics.width;
+			int h = glyph.metrics.height;
+
+			auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
+			auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);
+
+			bool shouldDraw = clipTexturedRect(geometryRect, atlasRect, params.scissors);
+
+			if (shouldDraw)
+			{
+				params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
+			}
 		}
 
 		params.cursor.x += glyphAdvanceX * params.scale;
 		params.size.x = max(params.size.x, params.cursor.x);
-		styleRange.popFront;
+		static if (mesh) styleRange.popFront;
 	}
 
 	params.size.y = max(params.size.y, params.cursor.y);
 }
+
+void measureText(P, T)(ref P params, T textRange)
+{
+	meshText!(false)(params, textRange);
+}
+
 
 // returns true if rect is visible
 bool clipTexturedRect(ref frect geometryRect, ref frect atlasRect, irect scissors)
