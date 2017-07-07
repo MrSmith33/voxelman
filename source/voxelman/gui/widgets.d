@@ -88,7 +88,7 @@ struct TextButton
 		WidgetId button = ctx.createWidget(parent,
 			TextButtonData(text, handler),
 			WidgetEvents(&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased, &enterWidget, &leaveWidget, &clickWidget),
-			WidgetTransform(pos, ivec2(100, 22)),
+			WidgetTransform(pos, ivec2(50, 22)),
 			WidgetStyle(baseColor),
 			WidgetRespondsToPointer());
 		return button;
@@ -102,13 +102,14 @@ struct TextButton
 			auto transform = ctx.widgets.getOrCreate!WidgetTransform(wId);
 			auto style = ctx.widgets.get!WidgetStyle(wId);
 
-			auto mesherParams = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(5,5));
+			auto mesherParams = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
 			mesherParams.depth = event.depth+1;
 			mesherParams.color = color_wet_asphalt;
-			mesherParams.meshText(data.text);
+			mesherParams.meshTextAligned(data.text, Alignment.center, Alignment.center);
 
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
 			event.debugText.putfln("Draw button: %s %s", wId, *transform);
+			event.debugText.putfln("  origin %s sz %s", mesherParams.origin, mesherParams.size);
 			event.depth += 2;
 		}
 	}

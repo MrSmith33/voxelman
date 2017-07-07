@@ -64,6 +64,7 @@ enum KeyCode : uint
 	KEY_BACKSLASH             = 92,
 	KEY_RIGHT_BRACKET         = 93,
 	KEY_GRAVE_ACCENT          = 96,
+	KEY_TILDE                 = KEY_GRAVE_ACCENT,
 	KEY_WORLD_1               = 161,
 	KEY_WORLD_2               = 162,
 

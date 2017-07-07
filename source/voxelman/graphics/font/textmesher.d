@@ -102,30 +102,8 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 	import std.uni;
 	import std.utf;
 
-	foreach(dchar codePoint; textRange.byDchar)
+	void meshGlyph(Glyph* glyph)
 	{
-		static if (mesh) TextStyle style = params.styles[styleRange.front];
-		Glyph* glyph = params.font.getGlyph(codePoint);
-
-		int glyphAdvanceX = params.monospaced ? params.font.metrics.width+2 : glyph.metrics.advanceX;
-
-		switch(codePoint) // special chars
-		{
-			case ' ':
-				params.cursor.x += glyphAdvanceX * params.scale;
-				continue;
-			case '\t':
-				params.cursor.x += glyphAdvanceX * params.tabSize * params.scale;
-				continue;
-			case '\n':
-				params.cursor.x = 0;
-				params.cursor.y += (params.font.metrics.height+1) * params.scale;
-				continue;
-			case '\r':
-				continue;
-			default: break;
-		}
-
 		static if (mesh)
 		{
 			int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX * params.scale;
@@ -141,21 +119,98 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 
 			if (shouldDraw)
 			{
+				TextStyle style = params.styles[styleRange.front];
 				params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
 			}
 		}
+	}
 
-		params.cursor.x += glyphAdvanceX * params.scale;
+	void updateMaxWidth() {
 		params.size.x = max(params.size.x, params.cursor.x);
+	}
+
+	int singleGlyphWidth  = (params.font.metrics.width +1) * params.scale;
+	int singleGlyphHeight = (params.font.metrics.height+1) * params.scale;
+
+	foreach(dchar codePoint; textRange.byDchar)
+	{
+		switch(codePoint) // special chars
+		{
+			case ' ':
+				params.cursor.x += singleGlyphWidth;
+				continue;
+			case '\t':
+				params.cursor.x += singleGlyphWidth * params.tabSize;
+				continue;
+			case '\n':
+				updateMaxWidth();
+				params.cursor.x = 0;
+				params.cursor.y += singleGlyphHeight;
+				continue;
+			case '\r':
+				continue;
+			default: break;
+		}
+
+		Glyph* glyph = params.font.getGlyph(codePoint);
+		meshGlyph(glyph);
+
+		int glyphAdvanceX = params.monospaced ? singleGlyphWidth : glyph.metrics.advanceX;
+		params.cursor.x += glyphAdvanceX * params.scale;
 		static if (mesh) styleRange.popFront;
 	}
 
-	params.size.y = max(params.size.y, params.cursor.y);
+	params.size.y = max(params.size.y, params.cursor.y + singleGlyphHeight);
+	updateMaxWidth();
 }
 
+/// Changes params size and cursor
 void measureText(P, T)(ref P params, T textRange)
 {
 	meshText!(false)(params, textRange);
+}
+
+enum Alignment
+{
+	min,
+	center,
+	max
+}
+
+// modifies cursor to be aligned for passed text
+void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignment.min, Alignment valign = Alignment.min)
+{
+	if (halign == Alignment.min && valign == Alignment.min) {
+		meshText!(true)(params, textRange);
+		return;
+	}
+
+	auto origin = params.origin;
+	auto size = params.size;
+	auto cursor = params.cursor;
+	measureText(params, textRange);
+	auto alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign);
+	params.origin = origin + alignmentOffset;
+	params.cursor = cursor;
+	meshText!(true)(params, textRange);
+}
+
+ivec2 textAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign)
+{
+	ivec2 offset;
+	final switch (halign)
+	{
+		case Alignment.min: offset.x = 0; break;
+		case Alignment.center: offset.x = -textSize.x/2; break;
+		case Alignment.max: offset.x = -textSize.x; break;
+	}
+	final switch (valign)
+	{
+		case Alignment.min: offset.y = 0; break;
+		case Alignment.center: offset.y = -textSize.y/2; break;
+		case Alignment.max: offset.y = -textSize.y; break;
+	}
+	return offset;
 }
 
 
