@@ -16,11 +16,15 @@ import voxelman.graphics : Color4ub;
 @Component("gui.WidgetTransform", Replication.none)
 struct WidgetTransform
 {
-	ivec2 relPos;
-	ivec2 size;
-	ivec2 absPos;
+	ivec2 relPos; // set by user
+	ivec2 size;   // set by user
+	ivec2 absPos; // updated in layout phase
 
-	WidgetId parent;
+	WidgetId parent; // 0 in root widget
+
+	ivec2 minSize; // updated in measure phase
+	void delegate(WidgetId) measureHandler; // called in measure phase
+	void delegate(WidgetId) layoutHandler;  // called in  layout phase
 }
 
 @Component("gui.WidgetStyle", Replication.none)
@@ -42,6 +46,12 @@ struct WidgetContainer
 	void put(WidgetId wId) {
 		children ~= wId;
 	}
+}
+
+void bringToFront(GuiContext ctx, WidgetId widget)
+{
+	auto parentId = ctx.widgets.get!WidgetTransform(widget).parent;
+
 }
 
 @Component("gui.WidgetRespondsToPointer", Replication.none)
@@ -66,14 +76,23 @@ struct WidgetEvents
 		foreach(h; handlers) addEventHandler(h);
 	}
 
-	void addEventHandler(T)(T handler)
+	private enum void* FUNCTION_CONTEXT_VALUE = cast(void*)42;
+	private static struct DelegatePayload
 	{
-		import std.traits : ParameterTypeTuple, isDelegate;
-		static assert(isDelegate!T, "handler must be a delegate, not " ~ T.stringof);
-		alias Params = ParameterTypeTuple!T;
-		static assert(is(Params[0] == WidgetId), "handler must accept Widget as first parameter");
-		static assert(Params.length == 2, "handler must have only two parameters, Widget and Event");
-		eventHandlers[typeid(Params[1])] ~= cast(EventHandler)handler;
+		void* contextPtr;
+		void* funcPtr;
+	}
+
+	void addEventHandler(EventType)(void delegate(WidgetId, ref EventType) handler)
+	{
+		eventHandlers[typeid(EventType)] ~= cast(EventHandler)handler;
+	}
+
+	void addEventHandler(EventType)(void function(WidgetId, ref EventType) handler)
+	{
+		// We use non-null value because null if a valid context pointer in delegates
+		DelegatePayload fakeDelegate = {FUNCTION_CONTEXT_VALUE, handler};
+		eventHandlers[typeid(EventType)] ~= *cast(EventHandler*)&fakeDelegate;
 	}
 
 	void removeEventHandlers(T)()
@@ -84,13 +103,15 @@ struct WidgetEvents
 	/// Returns true if event was handled
 	/// This handler will be called by Gui twice, before and after visiting its children.
 	/// In first case sinking flag will be true;
-	bool postEvent(Event)(WidgetId widgetId, auto ref Event event)
+	void postEvent(Event)(WidgetId widgetId, auto ref Event event)
 	{
-		bool result = false;
 		foreach(handler; eventHandlers.get(typeid(Event), null))
 		{
-			result |= (cast(bool delegate(WidgetId, ref Event))handler)(widgetId, event);
+			auto payload = *cast(DelegatePayload*)&handler;
+			if (payload.contextPtr == FUNCTION_CONTEXT_VALUE)
+				(cast(void function(WidgetId, ref Event))payload.funcPtr)(widgetId, event);
+			else
+				(cast(void delegate(WidgetId, ref Event))handler)(widgetId, event);
 		}
-		return result;
 	}
 }

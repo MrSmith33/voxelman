@@ -24,6 +24,8 @@ private mixin template GuiEvent()
 	/// Useful for checking if any child has handled this event.
 	/// Set automatically by EventPropagator
 	bool handled;
+
+	GuiContext ctx;
 }
 
 struct GuiUpdateEvent
@@ -98,10 +100,6 @@ struct PointerLeaveEvent { mixin GuiEvent!(); }
 // Focus
 struct FocusGainEvent { mixin GuiEvent!(); }
 struct FocusLoseEvent { mixin GuiEvent!(); }
-
-// Layout
-struct MinimizeLayoutEvent { mixin GuiEvent!(); }
-struct ExpandLayoutEvent { mixin GuiEvent!(); }
 
 // Misc
 struct GroupSelectionEvent

@@ -41,14 +41,14 @@ WidgetId[] propagateEventSinkBubble(Event)(
 	GuiContext context,
 	return WidgetId[] widgets,
 	auto ref Event event,
-	OnHandle onHandle = OnHandle.StopTraversing)
+	OnHandle onHandle)
 {
 	// Phase 1: event sinking to target.
 	event.sinking = true;
 
 	foreach(index, widgetId; widgets)
 	{
-		event.handled = event.handled || context.postEvent(widgetId, event);
+		context.postEvent(widgetId, event);
 
 		if(onHandle == OnHandle.StopTraversing)
 		{
@@ -60,7 +60,7 @@ WidgetId[] propagateEventSinkBubble(Event)(
 	event.bubbling = true;
 	foreach_reverse(index, widgetId; widgets)
 	{
-		event.handled = event.handled || context.postEvent(widgetId, event);
+		context.postEvent(widgetId, event);
 
 		if(onHandle == OnHandle.StopTraversing)
 		{

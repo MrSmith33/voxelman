@@ -90,7 +90,6 @@ class GuiContext
 		}
 
 		widgets.set(wId, components[firstComponent..$]);
-		widgets.getOrCreate!WidgetEvents(wId).addEventHandlers(&defaultMinimizeLayoutHandler, &defaultExpandLayoutHandler);
 
 		return wId;
 	}
@@ -107,10 +106,44 @@ class GuiContext
 		return null;
 	}
 
-	bool postEvent(Event)(WidgetId wId, auto ref Event event)
+	static struct WidgetTreeVisitor(bool rootFirst)
 	{
-		if (auto events = widgets.get!WidgetEvents(wId)) return events.postEvent(wId, event);
-		return false;
+		WidgetId root;
+		GuiContext ctx;
+		int opApply(scope int delegate(WidgetId) del)
+		{
+			int visitSubtree(WidgetId root)
+			{
+				static if (rootFirst) {
+					if (auto ret = del(root)) return ret;
+				}
+				foreach(child; ctx.widgetChildren(root))
+					if (auto ret = visitSubtree(child))
+						return ret;
+				static if (!rootFirst) {
+					if (auto ret = del(root)) return ret;
+				}
+				return 0;
+			}
+
+			return visitSubtree(root);
+		}
+	}
+
+	auto visitWidgetTreeRootFirst(WidgetId root)
+	{
+		return WidgetTreeVisitor!true(root, this);
+	}
+
+	auto visitWidgetTreeChildrenFirst(WidgetId root)
+	{
+		return WidgetTreeVisitor!false(root, this);
+	}
+
+	void postEvent(Event)(WidgetId wId, auto ref Event event)
+	{
+		event.ctx = this;
+		if (auto events = widgets.get!WidgetEvents(wId)) events.postEvent(wId, event);
 	}
 
 	static bool containsPointer(WidgetId widget, GuiContext context, ivec2 pointerPos)
@@ -129,7 +162,7 @@ class GuiContext
 		foreach_reverse(root; roots)
 		{
 			WidgetId[] path = buildPathToLeaf!(containsPointer)(this, root, this, state.curPointerPos);
-			WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event);
+			WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event, OnHandle.StopTraversing);
 
 			if (eventConsumerChain.length > 0)
 			{
@@ -157,7 +190,7 @@ class GuiContext
 			{
 				if (item == pressedWidget)
 				{
-					WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event);
+					WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event, OnHandle.StopTraversing);
 
 					if (eventConsumerChain.length > 0)
 					{
@@ -198,8 +231,8 @@ class GuiContext
 		{
 			if (containsPointer(pressedWidget, this, state.curPointerPos))
 			{
-				bool handled = postEvent(pressedWidget, event);
-				if (handled)
+				postEvent(pressedWidget, event);
+				if (event.handled)
 				{
 					hoveredWidget = pressedWidget;
 					return;
@@ -235,7 +268,7 @@ class GuiContext
 
 	void update(double deltaTime, RenderQueue renderQueue, ref LineBuffer debugText)
 	{
-		doLayout();
+		updateLayout();
 		foreach(root; roots)
 		{
 			propagateEventSinkBubbleTree(this, root, GuiUpdateEvent(deltaTime, &debugText));
@@ -243,18 +276,28 @@ class GuiContext
 		}
 	}
 
-	private void doLayout()
+	private void updateLayout()
 	{
 		foreach(root; roots)
 		{
 			widgets.getOrCreate!WidgetTransform(root).size = state.canvasSize;
-			propagateEventChildrenFirst(this, root, MinimizeLayoutEvent());
-			propagateEventParentFirst(this, root, ExpandLayoutEvent());
-			//propagateEventParentFirst(this, root, UpdatePositionEvent());
+
+			foreach(widgetId; visitWidgetTreeChildrenFirst(root))
+			{
+				auto measureHandler = widgets.getOrCreate!WidgetTransform(root).measureHandler;
+				if (measureHandler) measureHandler(widgetId);
+			}
+
+			foreach(widgetId; visitWidgetTreeRootFirst(root))
+			{
+				auto layoutHandler = widgets.getOrCreate!WidgetTransform(root).layoutHandler;
+				if (layoutHandler) layoutHandler(widgetId);
+				else defaultLayoutHandler(widgetId);
+			}
 		}
 	}
 
-	bool defaultMinimizeLayoutHandler(WidgetId parentId, ref MinimizeLayoutEvent event)
+	void defaultLayoutHandler(WidgetId parentId)
 	{
 		auto parentTransform = widgets.getOrCreate!WidgetTransform(parentId);
 		foreach (WidgetId childId; widgetChildren(parentId))
@@ -262,12 +305,6 @@ class GuiContext
 			auto childTransform = widgets.getOrCreate!WidgetTransform(childId);
 			childTransform.absPos = parentTransform.absPos + childTransform.relPos;
 		}
-		return true;
-	}
-
-	bool defaultExpandLayoutHandler(WidgetId wId, ref MinimizeLayoutEvent event)
-	{
-		return true;
 	}
 
 	// STATE
