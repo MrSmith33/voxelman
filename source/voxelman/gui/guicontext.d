@@ -38,8 +38,9 @@ class GuiContext
 	WidgetId[] roots;
 
 	GuiState state;
+	LineBuffer* debugText;
 
-	this()
+	this(LineBuffer* debugText)
 	{
 		widgets.eidMan = &widgetIds;
 		widgets.registerComponent!WidgetContainer;
@@ -51,7 +52,14 @@ class GuiContext
 		widgets.registerComponent!WidgetStyle;
 
 		roots ~= createWidget("root");
+		this.debugText = debugText;
 	}
+
+	// SET, GET, HAS proxies
+	void set(Components...)(WidgetId wid, Components components) { widgets.set(wid, components); }
+	C* get(C)(WidgetId wid) { return widgets.get!C(wid); }
+	C* getOrCreate(C)(WidgetId wid, C defVal = C.init) { return widgets.getOrCreate!C(wid, defVal); }
+	bool has(C)(WidgetId wid) { return widgets.has!C(wid); }
 
 	// WIDGET METHODS
 
@@ -140,10 +148,11 @@ class GuiContext
 		return WidgetTreeVisitor!false(root, this);
 	}
 
-	void postEvent(Event)(WidgetId wId, auto ref Event event)
+	bool postEvent(Event)(WidgetId wId, auto ref Event event)
 	{
 		event.ctx = this;
-		if (auto events = widgets.get!WidgetEvents(wId)) events.postEvent(wId, event);
+		if (auto events = widgets.get!WidgetEvents(wId)) return events.postEvent(wId, event);
+		return false;
 	}
 
 	static bool containsPointer(WidgetId widget, GuiContext context, ivec2 pointerPos)
@@ -266,13 +275,13 @@ class GuiContext
 		return false;
 	}
 
-	void update(double deltaTime, RenderQueue renderQueue, ref LineBuffer debugText)
+	void update(double deltaTime, RenderQueue renderQueue)
 	{
 		updateLayout();
 		foreach(root; roots)
 		{
-			propagateEventSinkBubbleTree(this, root, GuiUpdateEvent(deltaTime, &debugText));
-			propagateEventSinkBubbleTree(this, root, DrawEvent(renderQueue, &debugText));
+			propagateEventSinkBubbleTree(this, root, GuiUpdateEvent(deltaTime));
+			propagateEventSinkBubbleTree(this, root, DrawEvent(renderQueue));
 		}
 	}
 
@@ -282,28 +291,40 @@ class GuiContext
 		{
 			widgets.getOrCreate!WidgetTransform(root).size = state.canvasSize;
 
-			foreach(widgetId; visitWidgetTreeChildrenFirst(root))
+			MeasureEvent measureEvent;
+			foreach(wid; visitWidgetTreeChildrenFirst(root))
 			{
-				auto measureHandler = widgets.getOrCreate!WidgetTransform(root).measureHandler;
-				if (measureHandler) measureHandler(widgetId);
+				bool hasHandlers = postEvent(wid, measureEvent);
+				if (!hasHandlers) absoluteMeasureHandler(wid);
 			}
 
-			foreach(widgetId; visitWidgetTreeRootFirst(root))
+			LayoutEvent layoutEvent;
+			foreach(wid; visitWidgetTreeRootFirst(root))
 			{
-				auto layoutHandler = widgets.getOrCreate!WidgetTransform(root).layoutHandler;
-				if (layoutHandler) layoutHandler(widgetId);
-				else defaultLayoutHandler(widgetId);
+				bool hasHandlers = postEvent(wid, layoutEvent);
+				if (!hasHandlers) absoluteLayoutHandler(wid);
 			}
 		}
 	}
 
-	void defaultLayoutHandler(WidgetId parentId)
+	void absoluteMeasureHandler(WidgetId wid)
 	{
-		auto parentTransform = widgets.getOrCreate!WidgetTransform(parentId);
-		foreach (WidgetId childId; widgetChildren(parentId))
+		auto transform = widgets.getOrCreate!WidgetTransform(wid);
+		foreach (WidgetId childId; widgetChildren(wid))
+		{
+			auto childTransform = widgets.getOrCreate!WidgetTransform(childId);
+			childTransform.applyConstraints();
+		}
+	}
+
+	void absoluteLayoutHandler(WidgetId wid)
+	{
+		auto parentTransform = widgets.getOrCreate!WidgetTransform(wid);
+		foreach (WidgetId childId; widgetChildren(wid))
 		{
 			auto childTransform = widgets.getOrCreate!WidgetTransform(childId);
 			childTransform.absPos = parentTransform.absPos + childTransform.relPos;
+			childTransform.size = childTransform.measuredSize;
 		}
 	}
 

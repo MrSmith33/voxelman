@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 ### Added
+- Add Font metrics advanceX and advanceY.
+- Add minimal size constraint to widget transform.
+- Add hexpand, vexpand flag components to indicate that widget is free to expand in given axis.
+- Implement linear layout.
 - Add rect clipping to render queue and batch2d.
 - Allow two consequtive sentinel pixels to end line in font texture.
 - Support multiple text styles during text meshing.

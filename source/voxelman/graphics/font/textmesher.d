@@ -129,23 +129,25 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 		params.size.x = max(params.size.x, params.cursor.x);
 	}
 
-	int singleGlyphWidth  = (params.font.metrics.width +1) * params.scale;
-	int singleGlyphHeight = (params.font.metrics.height+1) * params.scale;
+	int singleGlyphWidth  = params.font.metrics.width  * params.scale;
+	int singleGlyphHeight = params.font.metrics.height * params.scale;
+	int advanceX = params.font.metrics.advanceX * params.scale;
+	int advanceY = params.font.metrics.advanceY * params.scale;
 
 	foreach(dchar codePoint; textRange.byDchar)
 	{
 		switch(codePoint) // special chars
 		{
 			case ' ':
-				params.cursor.x += singleGlyphWidth;
+				params.cursor.x += advanceX;
 				continue;
 			case '\t':
-				params.cursor.x += singleGlyphWidth * params.tabSize;
+				params.cursor.x += advanceX * params.tabSize;
 				continue;
 			case '\n':
 				updateMaxWidth();
 				params.cursor.x = 0;
-				params.cursor.y += singleGlyphHeight;
+				params.cursor.y += advanceY;
 				continue;
 			case '\r':
 				continue;
@@ -155,7 +157,7 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 		Glyph* glyph = params.font.getGlyph(codePoint);
 		meshGlyph(glyph);
 
-		int glyphAdvanceX = params.monospaced ? singleGlyphWidth : glyph.metrics.advanceX;
+		int glyphAdvanceX = params.monospaced ? advanceX : glyph.metrics.advanceX;
 		params.cursor.x += glyphAdvanceX * params.scale;
 		static if (mesh) styleRange.popFront;
 	}

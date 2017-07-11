@@ -129,5 +129,7 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 
 	font.metrics.width = maxGlyphWidth;
 	font.metrics.height = maxGlyphHeight;
+	font.metrics.advanceX = maxGlyphWidth + 1;
+	font.metrics.advanceY = maxGlyphHeight + 1;
 	//writefln("font %s", font.metrics);
 }

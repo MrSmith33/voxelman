@@ -9,7 +9,6 @@ module voxelman.gui.events;
 import voxelman.graphics : RenderQueue;
 import voxelman.gui;
 import voxelman.math;
-import voxelman.text.linebuffer : LineBuffer;
 
 
 private mixin template GuiEvent()
@@ -31,14 +30,12 @@ private mixin template GuiEvent()
 struct GuiUpdateEvent
 {
 	double deltaTime;
-	LineBuffer* debugText;
 	mixin GuiEvent!();
 }
 
 struct DrawEvent
 {
 	RenderQueue renderQueue;
-	LineBuffer* debugText;
 	int depth;
 	mixin GuiEvent!();
 }
@@ -100,6 +97,10 @@ struct PointerLeaveEvent { mixin GuiEvent!(); }
 // Focus
 struct FocusGainEvent { mixin GuiEvent!(); }
 struct FocusLoseEvent { mixin GuiEvent!(); }
+
+// Layout
+struct MeasureEvent { GuiContext ctx; }
+struct  LayoutEvent { GuiContext ctx; }
 
 // Misc
 struct GroupSelectionEvent

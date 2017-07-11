@@ -14,6 +14,9 @@ import voxelman.graphics;
 void registerComponents(GuiContext ctx)
 {
 	ctx.widgets.registerComponent!TextButtonData;
+	ctx.widgets.registerComponent!LinearLayoutSettings;
+	ctx.widgets.registerComponent!hexpand;
+	ctx.widgets.registerComponent!vexpand;
 }
 
 
@@ -39,12 +42,12 @@ struct PanelLogic
 		return panel;
 	}
 
-	void drawWidget(WidgetId wId, ref DrawEvent event)
+	void drawWidget(WidgetId wid, ref DrawEvent event)
 	{
 		if (event.sinking)
 		{
-			auto transform = event.ctx.widgets.getOrCreate!WidgetTransform(wId);
-			auto style = event.ctx.widgets.get!WidgetStyle(wId);
+			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+			auto style = event.ctx.get!WidgetStyle(wid);
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
 			vec2 linePos = vec2(transform.absPos.x+transform.size.x, 0);
 			event.renderQueue.drawRectFill(linePos, vec2(1, transform.size.y), event.depth, color_concrete);
@@ -65,6 +68,7 @@ alias ClickHandler = void delegate();
 struct TextButtonData
 {
 	string text;
+	FontRef font;
 	ClickHandler handler;
 	uint data;
 }
@@ -81,74 +85,190 @@ Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredC
 struct TextButtonLogic
 {
 	static:
-	WidgetId createButton(GuiContext ctx, WidgetId parent, ivec2 pos, string text, ClickHandler handler)
+	WidgetId createButton(GuiContext ctx, WidgetId parent, string text, FontRef font, ClickHandler handler)
 	{
 		WidgetId button = ctx.createWidget(parent,
-			TextButtonData(text, handler),
-			WidgetEvents(&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased, &enterWidget, &leaveWidget, &clickWidget),
-			WidgetTransform(pos, ivec2(50, 22)),
+			TextButtonData(text, font, handler),
+			hexpand(),
+			WidgetEvents(
+				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
+				&enterWidget, &leaveWidget, &clickWidget, &measure),
+			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
 			WidgetStyle(baseColor),
 			WidgetRespondsToPointer());
 		return button;
 	}
 
-	void drawWidget(WidgetId wId, ref DrawEvent event)
+	void drawWidget(WidgetId wid, ref DrawEvent event)
 	{
 		if (event.sinking)
 		{
-			auto data = event.ctx.widgets.get!TextButtonData(wId);
-			auto transform = event.ctx.widgets.getOrCreate!WidgetTransform(wId);
-			auto style = event.ctx.widgets.get!WidgetStyle(wId);
+			auto data = event.ctx.get!TextButtonData(wid);
+			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+			auto style = event.ctx.get!WidgetStyle(wid);
 
 			auto mesherParams = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
+			mesherParams.font = data.font;
 			mesherParams.depth = event.depth+1;
 			mesherParams.color = color_wet_asphalt;
 			mesherParams.meshTextAligned(data.text, Alignment.center, Alignment.center);
 
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
-			event.debugText.putfln("Draw button: %s %s", wId, *transform);
-			event.debugText.putfln("  origin %s sz %s", mesherParams.origin, mesherParams.size);
 			event.depth += 2;
 		}
 	}
 
-	void pointerMoved(WidgetId wId, ref PointerMoveEvent event) { event.handled = true; }
+	void pointerMoved(WidgetId wid, ref PointerMoveEvent event) { event.handled = true; }
 
-	void pointerPressed(WidgetId wId, ref PointerPressEvent event)
+	void pointerPressed(WidgetId wid, ref PointerPressEvent event)
 	{
-		//writefln("press %s", wId);
-		event.ctx.widgets.get!TextButtonData(wId).data |= BUTTON_PRESSED;
+		//writefln("press %s", wid);
+		event.ctx.get!TextButtonData(wid).data |= BUTTON_PRESSED;
 		event.handled = true;
 	}
 
-	void pointerReleased(WidgetId wId, ref PointerReleaseEvent event)
+	void pointerReleased(WidgetId wid, ref PointerReleaseEvent event)
 	{
-		//writefln("release %s", wId);
-		event.ctx.widgets.get!TextButtonData(wId).data &= ~BUTTON_PRESSED;
+		//writefln("release %s", wid);
+		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_PRESSED;
 		event.handled = true;
 	}
 
-	void enterWidget(WidgetId wId, ref PointerEnterEvent event)
+	void enterWidget(WidgetId wid, ref PointerEnterEvent event)
 	{
-		//writefln("enter %s", wId);
-		event.ctx.widgets.get!TextButtonData(wId).data |= BUTTON_HOVERED;
+		//writefln("enter %s", wid);
+		event.ctx.get!TextButtonData(wid).data |= BUTTON_HOVERED;
 	}
 
-	void leaveWidget(WidgetId wId, ref PointerLeaveEvent event)
+	void leaveWidget(WidgetId wid, ref PointerLeaveEvent event)
 	{
-		//writefln("leave %s", wId);
-		event.ctx.widgets.get!TextButtonData(wId).data &= ~BUTTON_HOVERED;
+		//writefln("leave %s", wid);
+		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_HOVERED;
 	}
 
-	void clickWidget(WidgetId wId, ref PointerClickEvent event)
+	void clickWidget(WidgetId wid, ref PointerClickEvent event)
 	{
-		//writefln("click %s", wId);
-		auto data = event.ctx.widgets.get!TextButtonData(wId);
+		//writefln("click %s", wid);
+		auto data = event.ctx.get!TextButtonData(wid);
 		if (data.handler) data.handler();
+	}
+
+	void measure(WidgetId wid, ref MeasureEvent event)
+	{
+		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+		auto data = event.ctx.get!TextButtonData(wid);
+		TextMesherParams params;
+		params.font = data.font;
+		measureText(params, data.text);
+		transform.measuredSize = ivec2(params.size)+ivec2(2,2);
 	}
 }
 
-struct HLayout
-{
 
+@Component("gui.vexpand", Replication.none)
+struct vexpand{}
+
+@Component("gui.hexpand", Replication.none)
+struct hexpand{}
+
+@Component("gui.LinearLayoutSettings", Replication.none)
+struct LinearLayoutSettings
+{
+	int spacing; /// distance between items
+	int padding; /// borders around items
+
+	// internal state
+	int numExpandableChildren;
+}
+
+alias HLayout = LinearLayout!true;
+alias VLayout = LinearLayout!false;
+
+struct LinearLayout(bool horizontal)
+{
+	static:
+	void attachTo(GuiContext ctx, WidgetId wid, int spacing, int padding)
+	{
+		ctx.set(wid, LinearLayoutSettings(spacing, padding));
+		ctx.getOrCreate!WidgetEvents(wid).addEventHandlers(&measure, &layout);
+	}
+
+	void measure(WidgetId wid, ref MeasureEvent event)
+	{
+		auto settings = event.ctx.get!LinearLayoutSettings(wid);
+
+		int maxChildWidth = int.min;
+		int childrenLength;
+
+		WidgetId[] children = event.ctx.widgetChildren(wid);
+		foreach(child; children)
+		{
+			auto childTransform = event.ctx.get!WidgetTransform(child);
+			childTransform.applyConstraints();
+			childrenLength += length(childTransform.measuredSize);
+			maxChildWidth = max(width(childTransform.measuredSize), maxChildWidth);
+			if (hasExpandableLength(event.ctx, child)) ++settings.numExpandableChildren;
+		}
+
+		int minRootWidth = maxChildWidth + settings.padding*2;
+		int minRootLength = childrenLength + cast(int)(children.length-1)*settings.spacing + settings.padding*2;
+		auto transform = event.ctx.get!WidgetTransform(wid);
+		transform.measuredSize = sizeFromWidthLength(minRootWidth, minRootLength);
+	}
+
+	void layout(WidgetId wid, ref LayoutEvent event)
+	{
+		auto settings = event.ctx.get!LinearLayoutSettings(wid);
+		auto rootTransform = event.ctx.get!WidgetTransform(wid);
+
+		int maxChildWidth = width(rootTransform.size) - settings.padding * 2;
+
+		int extraLength = length(rootTransform.size) - length(rootTransform.measuredSize);
+		int extraPerWidget = settings.numExpandableChildren > 0 ? extraLength/settings.numExpandableChildren : 0;
+
+		int topOffset = settings.padding;
+		topOffset -= settings.spacing; // compensate extra spacing before first child
+
+		foreach(child; event.ctx.widgetChildren(wid))
+		{
+			topOffset += settings.spacing;
+			auto childTransform = event.ctx.get!WidgetTransform(child);
+			childTransform.relPos = sizeFromWidthLength(settings.padding, topOffset);
+			childTransform.absPos = rootTransform.absPos + childTransform.relPos;
+
+			ivec2 childSize = childTransform.measuredSize;
+			if (hasExpandableLength(event.ctx, child)) length(childSize) += extraPerWidget;
+			if (hasExpandableWidth(event.ctx, child)) width(childSize) = maxChildWidth;
+			childTransform.size = childSize;
+
+			topOffset += length(childSize);
+		}
+	}
+
+private:
+
+	bool hasExpandableWidth(GuiContext ctx, WidgetId wid) {
+		static if (horizontal) return ctx.has!vexpand(wid);
+		else return ctx.has!hexpand(wid);
+	}
+
+	bool hasExpandableLength(GuiContext ctx, WidgetId wid) {
+		static if (horizontal) return ctx.has!hexpand(wid);
+		else return ctx.has!vexpand(wid);
+	}
+
+	ivec2 sizeFromWidthLength(int width, int length) {
+		static if (horizontal) return ivec2(length, width);
+		else return ivec2(width, length);
+	}
+
+	ref int length(return ref ivec2 vector) {
+		static if (horizontal) return vector.x;
+		else return vector.y;
+	}
+
+	ref int width(ref ivec2 vector) {
+		static if (horizontal) return vector.y;
+		else return vector.x;
+	}
 }

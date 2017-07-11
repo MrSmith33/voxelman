@@ -30,6 +30,8 @@ struct FontMetrics
 	uint height; // max glyph height
 	uint ascent; // vertical offset from baseline to highest point (positive)
 	uint descent; // vertical offset from baseline to lowest point (negative)
+	uint advanceX; // mono width + glyph spacing
+	uint advanceY; // max glyph height + line spacing
 }
 
 struct Font

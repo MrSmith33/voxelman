@@ -41,6 +41,14 @@ Vector!(T, n) vector_clamp(T, size_t n)(Vector!(T, n) vector, Vector!(T, n) lowe
 	return result;
 }
 
+Vector!(T, n) vector_max(T, size_t n)(Vector!(T, n) a, Vector!(T, n) b) pure nothrow
+{
+	Vector!(T, n) result;
+	foreach(i, ref elem; result.arrayof)
+		elem = max(a.arrayof[i], b.arrayof[i]);
+	return result;
+}
+
 void nansToZero(T, int size)(ref Vector!(T, size) vector) pure nothrow
 	if (isFloatingPoint!T)
 {
