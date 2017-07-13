@@ -136,6 +136,15 @@ final class RenderQueue
 		params.meshText(str);
 	}
 
+	void print(vec2 pos, Color4ub color, int scale, int depth, const(char[]) str)
+	{
+		auto params = startTextAt(pos);
+		params.color = color;
+		params.scale = scale;
+		params.depth = depth;
+		params.meshText(str);
+	}
+
 	void print(Args...)(vec2 pos, Color4ub color, int scale, const(char[]) fmt, Args args)
 	{
 		auto params = startTextAt(pos);

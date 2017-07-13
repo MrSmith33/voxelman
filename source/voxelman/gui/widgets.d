@@ -17,6 +17,7 @@ void registerComponents(GuiContext ctx)
 	ctx.widgets.registerComponent!LinearLayoutSettings;
 	ctx.widgets.registerComponent!hexpand;
 	ctx.widgets.registerComponent!vexpand;
+	ctx.widgets.registerComponent!ListData;
 }
 
 
@@ -32,7 +33,7 @@ enum color_wet_asphalt = rgb(52, 73, 94);
 struct PanelLogic
 {
 	static:
-	WidgetId createPanel(GuiContext ctx, WidgetId parent, ivec2 pos, ivec2 size, Color4ub color)
+	WidgetId create(GuiContext ctx, WidgetId parent, ivec2 pos, ivec2 size, Color4ub color)
 	{
 		WidgetId panel = ctx.createWidget(
 			parent,
@@ -49,7 +50,7 @@ struct PanelLogic
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
 			auto style = event.ctx.get!WidgetStyle(wid);
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
-			vec2 linePos = vec2(transform.absPos.x+transform.size.x, 0);
+			vec2 linePos = vec2(transform.absPos.x+transform.size.x-1, 0);
 			event.renderQueue.drawRectFill(linePos, vec2(1, transform.size.y), event.depth, color_concrete);
 			event.depth += 1;
 			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
@@ -85,7 +86,7 @@ Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredC
 struct TextButtonLogic
 {
 	static:
-	WidgetId createButton(GuiContext ctx, WidgetId parent, string text, FontRef font, ClickHandler handler)
+	WidgetId create(GuiContext ctx, WidgetId parent, string text, FontRef font, ClickHandler handler)
 	{
 		WidgetId button = ctx.createWidget(parent,
 			TextButtonData(text, font, handler),
@@ -107,11 +108,12 @@ struct TextButtonLogic
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
 			auto style = event.ctx.get!WidgetStyle(wid);
 
-			auto mesherParams = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
-			mesherParams.font = data.font;
-			mesherParams.depth = event.depth+1;
-			mesherParams.color = color_wet_asphalt;
-			mesherParams.meshTextAligned(data.text, Alignment.center, Alignment.center);
+			auto params = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
+			params.font = data.font;
+			params.monospaced = true;
+			params.depth = event.depth+1;
+			params.color = color_wet_asphalt;
+			params.meshTextAligned(data.text, Alignment.center, Alignment.center);
 
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
 			event.depth += 2;
@@ -122,33 +124,28 @@ struct TextButtonLogic
 
 	void pointerPressed(WidgetId wid, ref PointerPressEvent event)
 	{
-		//writefln("press %s", wid);
 		event.ctx.get!TextButtonData(wid).data |= BUTTON_PRESSED;
 		event.handled = true;
 	}
 
 	void pointerReleased(WidgetId wid, ref PointerReleaseEvent event)
 	{
-		//writefln("release %s", wid);
 		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_PRESSED;
 		event.handled = true;
 	}
 
 	void enterWidget(WidgetId wid, ref PointerEnterEvent event)
 	{
-		//writefln("enter %s", wid);
 		event.ctx.get!TextButtonData(wid).data |= BUTTON_HOVERED;
 	}
 
 	void leaveWidget(WidgetId wid, ref PointerLeaveEvent event)
 	{
-		//writefln("leave %s", wid);
 		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_HOVERED;
 	}
 
 	void clickWidget(WidgetId wid, ref PointerClickEvent event)
 	{
-		//writefln("click %s", wid);
 		auto data = event.ctx.get!TextButtonData(wid);
 		if (data.handler) data.handler();
 	}
@@ -159,6 +156,7 @@ struct TextButtonLogic
 		auto data = event.ctx.get!TextButtonData(wid);
 		TextMesherParams params;
 		params.font = data.font;
+		params.monospaced = true;
 		measureText(params, data.text);
 		transform.measuredSize = ivec2(params.size)+ivec2(2,2);
 	}
@@ -187,6 +185,13 @@ alias VLayout = LinearLayout!false;
 struct LinearLayout(bool horizontal)
 {
 	static:
+	WidgetId create(GuiContext ctx, WidgetId parent, int spacing, int padding)
+	{
+		WidgetId layout = ctx.createWidget(parent);
+		attachTo(ctx, layout, spacing, padding);
+		return layout;
+	}
+
 	void attachTo(GuiContext ctx, WidgetId wid, int spacing, int padding)
 	{
 		ctx.set(wid, LinearLayoutSettings(spacing, padding));
@@ -196,6 +201,7 @@ struct LinearLayout(bool horizontal)
 	void measure(WidgetId wid, ref MeasureEvent event)
 	{
 		auto settings = event.ctx.get!LinearLayoutSettings(wid);
+		settings.numExpandableChildren = 0;
 
 		int maxChildWidth = int.min;
 		int childrenLength;
@@ -245,7 +251,7 @@ struct LinearLayout(bool horizontal)
 		}
 	}
 
-private:
+	private:
 
 	bool hasExpandableWidth(GuiContext ctx, WidgetId wid) {
 		static if (horizontal) return ctx.has!vexpand(wid);
@@ -270,5 +276,147 @@ private:
 	ref int width(ref ivec2 vector) {
 		static if (horizontal) return vector.y;
 		else return vector.x;
+	}
+}
+
+struct ColumnInfo
+{
+	string name;
+	int width = 100;
+	Alignment alignment;
+	enum int minWidth = 80;
+}
+
+interface ListModel
+{
+	int numLines();
+	int numColumns();
+	ref ColumnInfo columnInfo(int column);
+	void getColumnText(int column, scope void delegate(const(char)[]) sink);
+	void getCellText(int column, int row, scope void delegate(const(char)[]) sink);
+	bool isLineSelected(int row);
+}
+
+@Component("gui.ListData", Replication.none)
+struct ListData
+{
+	ListModel model;
+	enum headerHeight = 25;
+	int contentPadding = 5;
+	ivec2 viewportPos;
+}
+
+struct ColumnListLogic
+{
+	static:
+	WidgetId create(GuiContext ctx, WidgetId parent, ListModel model)
+	{
+		WidgetId list = ctx.createWidget(parent,
+			ListData(model),
+			hexpand(), vexpand(),
+			WidgetEvents(
+				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
+				&enterWidget, &leaveWidget, &clickWidget),
+			WidgetTransform(ivec2(), ivec2(), ivec2()),
+			WidgetStyle(baseColor),
+			WidgetRespondsToPointer());
+		return list;
+	}
+
+	void drawWidget(WidgetId wid, ref DrawEvent event)
+	{
+		if (event.sinking)
+		{
+			auto data = event.ctx.get!ListData(wid);
+			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+			auto style = event.ctx.get!WidgetStyle(wid);
+
+			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, color_clouds);
+			//irect canvas;
+			irect viewport = irect(transform.absPos, transform.size);
+			event.renderQueue.pushClipRect(viewport);
+
+			void drawCell(ivec2 pos, ivec2 size, int column, int line)
+			{
+				auto params = event.renderQueue.startTextAt(vec2(pos));
+				//params.monospaced = true;
+				params.depth = event.depth+2;
+				params.color = color_wet_asphalt;
+
+				void sinkHandler(const(char)[] str) {
+					params.meshText(str);
+				}
+
+				data.model.getCellText(column, line, &sinkHandler);
+				params.alignMeshedText(data.model.columnInfo(column).alignment, Alignment.min, size);
+			}
+
+			int lineHeight = 14;
+			int contentHeight = data.headerHeight + lineHeight * data.model.numLines;
+			int colX = transform.absPos.x;
+
+			foreach(column; 0..data.model.numColumns)
+			{
+				int cellX = colX + data.contentPadding;
+				int cellY = transform.absPos.y;
+
+				int colW = data.model.columnInfo(column).width;
+				int cellW = colW - data.contentPadding*2;
+
+				// separator
+				ivec2 lineStart = colX + colW-1;
+				event.renderQueue.drawRectFill(vec2(lineStart), vec2(1, contentHeight), event.depth+3, color_wet_asphalt);
+				colX += colW;
+
+				event.renderQueue.pushClipRect(irect(cellX, cellY, cellW, transform.size.y));
+
+				// header
+				event.renderQueue.print(
+					vec2(cellX, cellY),
+					color_wet_asphalt,
+					1,
+					event.depth+2,
+					data.model.columnInfo(column).name);
+
+				cellY += data.headerHeight;
+
+				// cells
+				foreach(line; 0..data.model.numLines)
+				{
+					ivec2 cellPos = ivec2(cellX, cellY);
+					drawCell(cellPos, ivec2(cellW, lineHeight), column, line);
+					cellY += lineHeight;
+				}
+
+				event.renderQueue.popClipRect();
+			}
+
+			event.depth += 3;
+			event.renderQueue.popClipRect();
+		}
+	}
+
+	void pointerMoved(WidgetId wid, ref PointerMoveEvent event) { event.handled = true; }
+
+	void pointerPressed(WidgetId wid, ref PointerPressEvent event)
+	{
+		event.handled = true;
+	}
+
+	void pointerReleased(WidgetId wid, ref PointerReleaseEvent event)
+	{
+		event.handled = true;
+	}
+
+	void enterWidget(WidgetId wid, ref PointerEnterEvent event)
+	{
+	}
+
+	void leaveWidget(WidgetId wid, ref PointerLeaveEvent event)
+	{
+	}
+
+	void clickWidget(WidgetId wid, ref PointerClickEvent event)
+	{
 	}
 }

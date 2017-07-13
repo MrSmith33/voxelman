@@ -25,10 +25,17 @@ struct TextRectSink
 {
 	TexturedBatch2d* sink;
 	Texture texture;
+	size_t numRectsPutted;
 
 	void putRect(frect target, frect source, float depth, Color4ub color)
 	{
+		++numRectsPutted;
 		sink.putRect(target, source, depth, color, texture);
+	}
+
+	void applyOffset(vec2 offset)
+	{
+		sink.addOffsetToLastRects(offset, numRectsPutted);
 	}
 }
 
@@ -179,6 +186,17 @@ enum Alignment
 	max
 }
 
+/// Applies offset to all previously meshed glyphs
+/// Number of meshed glyphs is taken from TextRectSink
+void alignMeshedText(P)(ref P params, Alignment halign = Alignment.min, Alignment valign = Alignment.min, ivec2 area = ivec2(0,0))
+{
+	if (halign == Alignment.min && valign == Alignment.min) return;
+
+	ivec2 alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign, area);
+	params.sink.applyOffset(vec2(alignmentOffset));
+	params.origin += alignmentOffset;
+}
+
 // modifies cursor to be aligned for passed text
 void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignment.min, Alignment valign = Alignment.min)
 {
@@ -197,20 +215,20 @@ void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignme
 	meshText!(true)(params, textRange);
 }
 
-ivec2 textAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign)
+ivec2 textAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign, ivec2 area = ivec2(0,0))
 {
 	ivec2 offset;
 	final switch (halign)
 	{
 		case Alignment.min: offset.x = 0; break;
-		case Alignment.center: offset.x = -textSize.x/2; break;
-		case Alignment.max: offset.x = -textSize.x; break;
+		case Alignment.center: offset.x = area.x/2 - textSize.x/2; break;
+		case Alignment.max: offset.x = area.x - textSize.x; break;
 	}
 	final switch (valign)
 	{
 		case Alignment.min: offset.y = 0; break;
-		case Alignment.center: offset.y = -textSize.y/2; break;
-		case Alignment.max: offset.y = -textSize.y; break;
+		case Alignment.center: offset.y = area.y/2 - textSize.y/2; break;
+		case Alignment.max: offset.y = area.y - textSize.y; break;
 	}
 	return offset;
 }

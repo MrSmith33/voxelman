@@ -134,6 +134,20 @@ struct TexturedBatch2d
 		putNVerticies(6, tex);
 	}
 
+	void addOffsetToLastRects(vec2 offset, size_t numLastRects)
+	{
+		addOffsetToLastVerticies(offset, numLastRects * 6);
+	}
+
+	void addOffsetToLastVerticies(vec2 offset, size_t numLastVerticies)
+	{
+		vec3 effectiveOffset = vec3(offset.x, offset.y, 0);
+		foreach (ref vert; buffer.data[$-numLastVerticies..$])
+		{
+			vert.position += effectiveOffset;
+		}
+	}
+
 	void pushClipRect(irect rect)
 	{
 		rectStack.put(rect);
