@@ -164,6 +164,17 @@ class GuiContext
 
 	// EVENT HANDLERS
 
+	void onScroll(dvec2 delta)
+	{
+		auto event = ScrollEvent(vec2(-delta));
+
+		foreach_reverse(root; roots)
+		{
+			WidgetId[] path = buildPathToLeaf!(containsPointer)(this, root, this, state.curPointerPos);
+			WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event, OnHandle.StopTraversing);
+		}
+	}
+
 	void pointerPressed(uint button)
 	{
 		auto event = PointerPressEvent(state.curPointerPos, cast(PointerButton)button);
@@ -250,7 +261,11 @@ class GuiContext
 		}
 		else
 		{
-			if (updateHovered(newPointerPos)) return;
+			if (updateHovered(newPointerPos))
+			{
+				postEvent(hoveredWidget, event);
+				return;
+			}
 		}
 
 		hoveredWidget = WidgetId(0);

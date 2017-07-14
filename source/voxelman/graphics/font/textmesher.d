@@ -113,11 +113,12 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 	{
 		static if (mesh)
 		{
-			int x = params.origin.x + params.cursor.x + glyph.metrics.offsetX * params.scale;
-			int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
-
 			int w = glyph.metrics.width;
 			int h = glyph.metrics.height;
+
+			int offsetX = params.monospaced ? glyph.metrics.offsetX : 0;
+			int x = params.origin.x + params.cursor.x + offsetX * params.scale;
+			int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
 
 			auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
 			auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);

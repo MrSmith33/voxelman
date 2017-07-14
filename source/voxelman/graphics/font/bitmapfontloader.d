@@ -97,12 +97,12 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 
 		ivec2 glyphOffset = glyphStart - glyphStartCopy;
 
-		int glyphAdvanceX = glyphWidth + 1;
-		int glyphAdvanceY = glyphHeight + 1;
+		int glyphAdvanceX = glyphSize.x + 1;
+		int glyphAdvanceY = glyphSize.y + 1;
 
 		auto metrics = GlyphMetrics(
 			glyphSize.x, glyphSize.y,
-			glyphOffset.x, glyphOffset.y,
+			glyphOffset.x, -glyphOffset.y,
 			glyphAdvanceX, glyphAdvanceY);
 
 		maxGlyphWidth = max(maxGlyphWidth, glyphSize.x);
@@ -110,7 +110,7 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		// that reach both top and bottom of line
 		maxGlyphHeight = max(maxGlyphHeight, glyphHeight);
 
-		//writefln("glyph '%s' img pos %s size %s", glyph, glyphStartCopy, glyphSize);
+		//writefln("glyph '%s' img pos %s size %s", glyph, glyphStart, glyphSize);
 
 		font.glyphs[glyph] = Glyph(atlasPos, metrics);
 	}

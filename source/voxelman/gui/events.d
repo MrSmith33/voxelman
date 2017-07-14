@@ -58,7 +58,7 @@ struct PointerMoveEvent {
 	mixin GuiEvent!();
 }
 struct ScrollEvent {
-	ivec2 delta;
+	vec2 delta;
 	mixin GuiEvent!();
 }
 
