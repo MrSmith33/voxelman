@@ -20,6 +20,21 @@ void registerComponents(GuiContext ctx)
 	ctx.widgets.registerComponent!ListData;
 }
 
+struct WidgetProxy
+{
+	WidgetId wid;
+	GuiContext ctx;
+
+	alias wid this;
+
+	WidgetProxy set(Components...)(Components components) { ctx.widgets.set(wid, components); return this; }
+	C* get(C)() { return ctx.widgets.get!C(wid); }
+	C* getOrCreate(C)(C defVal = C.init) { return ctx.widgets.getOrCreate!C(wid, defVal); }
+	bool has(C)() { return ctx.widgets.has!C(wid); }
+	WidgetProxy remove(C)() { ctx.widgets.remove!C(wid); return this; }
+	void addChild(WidgetId child) { ctx.addChild(wid, child); }
+}
+
 
 enum baseColor = rgb(26, 188, 156);
 enum hoverColor = rgb(22, 160, 133);
@@ -34,9 +49,9 @@ enum color_wet_asphalt = rgb(52, 73, 94);
 struct PanelLogic
 {
 	static:
-	WidgetId create(GuiContext ctx, WidgetId parent, ivec2 pos, ivec2 size, Color4ub color)
+	WidgetProxy create(WidgetProxy parent, ivec2 pos, ivec2 size, Color4ub color)
 	{
-		WidgetId panel = ctx.createWidget(
+		WidgetProxy panel = parent.ctx.createWidget(
 			parent,
 			WidgetEvents(&drawWidget),
 			WidgetTransform(pos, size),
@@ -87,18 +102,17 @@ Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredC
 struct TextButtonLogic
 {
 	static:
-	WidgetId create(GuiContext ctx, WidgetId parent, string text, FontRef font, ClickHandler handler)
+	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler)
 	{
-		WidgetId button = ctx.createWidget(parent,
+		WidgetId button = parent.ctx.createWidget(parent,
 			TextButtonData(text, font, handler),
-			hexpand(),
 			WidgetEvents(
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &measure),
 			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
 			WidgetStyle(baseColor),
 			WidgetRespondsToPointer());
-		return button;
+		return WidgetProxy(button, parent.ctx);
 	}
 
 	void drawWidget(WidgetId wid, ref DrawEvent event)
@@ -187,16 +201,16 @@ struct Line(bool horizontal)
 {
 	static:
 	static if (horizontal) {
-		WidgetId create(GuiContext ctx, WidgetId parent) {
-			return ctx.createWidget(parent, hexpand(), WidgetEvents(&drawWidget, &measure));
+		WidgetProxy create(WidgetProxy parent) {
+			return parent.ctx.createWidget(parent, hexpand(), WidgetEvents(&drawWidget, &measure));
 		}
 		void measure(WidgetId wid, ref MeasureEvent event) {
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
 			transform.measuredSize = ivec2(0,1);
 		}
 	} else {
-		WidgetId create(GuiContext ctx, WidgetId parent) {
-			return ctx.createWidget(parent, vexpand(), WidgetEvents(&drawWidget, &measure));
+		WidgetProxy create(WidgetProxy parent) {
+			return parent.ctx.createWidget(parent, vexpand(), WidgetEvents(&drawWidget, &measure));
 		}
 		void measure(WidgetId wid, ref MeasureEvent event) {
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
@@ -216,13 +230,12 @@ alias VFill = Fill!false;
 struct Fill(bool horizontal)
 {
 	static:
-	WidgetId create(GuiContext ctx, WidgetId parent)
+	WidgetProxy create(WidgetProxy parent)
 	{
 		static if (horizontal)
-			WidgetId fill = ctx.createWidget(parent, hexpand());
+			return parent.ctx.createWidget(parent, hexpand());
 		else
-			WidgetId fill = ctx.createWidget(parent, vexpand());
-		return fill;
+			return parent.ctx.createWidget(parent, vexpand());
 	}
 }
 
@@ -232,17 +245,17 @@ alias VLayout = LinearLayout!false;
 struct LinearLayout(bool horizontal)
 {
 	static:
-	WidgetId create(GuiContext ctx, WidgetId parent, int spacing, int padding)
+	WidgetProxy create(WidgetProxy parent, int spacing, int padding)
 	{
-		WidgetId layout = ctx.createWidget(parent);
-		attachTo(ctx, layout, spacing, padding);
+		WidgetProxy layout = parent.ctx.createWidget(parent);
+		attachTo(layout, spacing, padding);
 		return layout;
 	}
 
-	void attachTo(GuiContext ctx, WidgetId wid, int spacing, int padding)
+	void attachTo(WidgetProxy wid, int spacing, int padding)
 	{
-		ctx.set(wid, LinearLayoutSettings(spacing, padding));
-		ctx.getOrCreate!WidgetEvents(wid).addEventHandlers(&measure, &layout);
+		wid.set(LinearLayoutSettings(spacing, padding));
+		wid.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
 	}
 
 	void measure(WidgetId wid, ref MeasureEvent event)
@@ -366,9 +379,9 @@ struct ListData
 struct ColumnListLogic
 {
 	static:
-	WidgetId create(GuiContext ctx, WidgetId parent, ListModel model, FontRef font)
+	WidgetProxy create(WidgetProxy parent, ListModel model, FontRef font)
 	{
-		WidgetId list = ctx.createWidget(parent,
+		WidgetProxy list = parent.ctx.createWidget(parent,
 			ListData(model, font),
 			hexpand(), vexpand(),
 			WidgetEvents(
@@ -387,7 +400,6 @@ struct ColumnListLogic
 		auto data = event.ctx.get!ListData(wid);
 		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
 		auto style = event.ctx.get!WidgetStyle(wid);
-		event.ctx.debugText.putfln("%s", *transform);
 
 		int numLines = data.model.numLines;
 		int numColumns = data.model.numColumns;

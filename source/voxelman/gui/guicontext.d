@@ -21,7 +21,7 @@ struct GuiState
 	WidgetId focusedWidget;     /// Will receive all key events if input is not grabbed by other widget
 	WidgetId hoveredWidget;     /// Widget over which pointer is located
 	WidgetId inputOwnerWidget;  /// If set, this widget will receive all pointer movement events
-	WidgetId lastClickedWidget; /// Used for double-click checking
+	WidgetId lastClickedWidget; /// Used for double-click checking. Is set before click event distribution
 	WidgetId pressedWidget;
 
 	ivec2 canvasSize;
@@ -60,6 +60,7 @@ class GuiContext
 	C* get(C)(WidgetId wid) { return widgets.get!C(wid); }
 	C* getOrCreate(C)(WidgetId wid, C defVal = C.init) { return widgets.getOrCreate!C(wid, defVal); }
 	bool has(C)(WidgetId wid) { return widgets.has!C(wid); }
+	void remove(C)(WidgetId wid) { widgets.remove!C(wid); }
 
 	// WIDGET METHODS
 
@@ -72,7 +73,7 @@ class GuiContext
 	/// Pass string as first parameter to set name
 	/// Pass WidgetId as first parameter, or after string to set parent
 	/// createWidget([string name,] [WidgetId parent,] Component... components)
-	WidgetId createWidget(Components...)(Components components)
+	WidgetProxy createWidget(Components...)(Components components)
 	{
 		auto wId = widgetIds.nextEntityId();
 
@@ -86,6 +87,11 @@ class GuiContext
 				addChild(components[1], wId);
 				enum firstComponent = 2;
 			}
+			else static if (is(Components[1] == WidgetProxy))
+			{
+				addChild(components[1].wid, wId);
+				enum firstComponent = 2;
+			}
 			else
 			{
 				enum firstComponent = 1;
@@ -96,10 +102,19 @@ class GuiContext
 			addChild(components[0], wId);
 			enum firstComponent = 1;
 		}
+		else static if (is(Components[0] == WidgetProxy))
+		{
+			addChild(components[0].wid, wId);
+			enum firstComponent = 1;
+		}
+		else
+		{
+			enum firstComponent = 0;
+		}
 
 		widgets.set(wId, components[firstComponent..$]);
 
-		return wId;
+		return WidgetProxy(wId, this);
 	}
 
 	void addChild(WidgetId parent, WidgetId child)
@@ -217,8 +232,8 @@ class GuiContext
 						if (pressedWidget == eventConsumerChain[$-1])
 						{
 							auto clickEvent = PointerClickEvent(state.curPointerPos, cast(PointerButton)button);
-							postEvent(pressedWidget, clickEvent);
 							lastClickedWidget = pressedWidget;
+							postEvent(pressedWidget, clickEvent);
 						}
 					}
 
