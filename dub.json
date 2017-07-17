@@ -5,56 +5,71 @@
 	"authors" : [ "Andrey Penechko" ],
 	"license" : "BSL-1.0",
 
-	"dependencies" : {
-		"cbor-d" : "==0.5.4",
-		"dlib" : {"path" : "./deps/dlib"},
-		"derelict-glfw3" : "==3.1.2",
-		"derelict-gl3" : "==1.0.18",
-		"derelict-util": ">=1.0.3",
-		"sdlang-d" : "==0.9.6"
+	"dependencies": {
+		"voxelman:engine": "*",
+		"voxelman:plugins": "*"
 	},
 
-	"subConfigurations": {
-		"sdlang-d": "library",
-		"derelict-glfw3": "derelict-glfw3-static"
-	},
+	"subPackages": [
+		{
+			"name": "engine",
 
-	"targetPath" : "builds/default",
-	"workingDirectory" : "builds/default",
+			"dependencies" : {
+				"cbor-d" : "==0.5.4",
+				"dlib" : {"path" : "./deps/dlib"},
+				"derelict-glfw3" : "==3.1.2",
+				"derelict-gl3" : "==1.0.18",
+				"derelict-util": ">=1.0.3",
+				"sdlang-d" : "==0.9.6"
+			},
+			"subConfigurations": {
+				"sdlang-d": "library",
+				"derelict-glfw3": "derelict-glfw3-static"
+			},
+			"buildTypes": {
+				"debug": {
+					"buildOptions": ["debugMode", "debugInfoC", "alwaysStackFrame"]
+				},
+				"unittest": {
+					"buildOptions": ["unittests", "debugMode", "debugInfo"],
+					"versions": ["DEBUG_INVARIANT"]
+				}
+			},
 
-	"buildTypes": {
-		"debug": {
-			"buildOptions": ["debugMode", "debugInfoC", "alwaysStackFrame"]
+			"libs-posix": ["lmdb", "lz4", "glfw3", "enet"],
+			"libs-windows-dmd": ["user32", "gdi32", "ws2_32", "winmm"],
+
+			"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib", "lib/32/cimgui.lib"],
+			"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib", "lib/64/cimgui.lib"],
+			"targetType": "library",
+			"excludedSourceFiles" : ["source/main.d"],
+			"sourcePaths" : ["source"],
+			"importPaths" : ["source"]
 		},
-		"unittest": {
-			"buildOptions": ["unittests", "debugMode", "debugInfo"],
-			"versions": ["DEBUG_INVARIANT"]
+		{
+			"name": "plugins",
+			"targetType": "library",
+			"sourcePaths": ["plugins"],
+			"importPaths": ["plugins"],
+			"lflags-windows": ["/ignore:4255"],
+			"dependencies" : {
+				"voxelman:engine": "*"
+			}
 		}
-	},
-
-	"libs-posix": ["lmdb", "lz4", "glfw3", "enet"],
-	"libs-windows-dmd": ["user32", "gdi32", "ws2_32", "winmm"],
-	"libs-windows-ldc2": ["winmm"],
-	"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib", "lib/32/cimgui.lib"],
-	"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib", "lib/64/cimgui.lib"],
-
-
+	],
 	"configurations": [
 		{
 			"name" : "exe",
-			"targetName" : "voxelman",
-			"targetType" : "executable",
+			"targetType": "executable",
 			"mainSourceFile" : "source/main.d",
-			"sourcePaths" : [ "source", "plugins" ],
-			"importPaths" : [ "source", "plugins" ]
+			"targetName" : "voxelman",
+			"targetPath" : "builds/default",
+			"workingDirectory" : "builds/default",
 		},
 		{
 			"name": "lib",
-			"targetType": "library",
-			"excludedSourceFiles" : ["source/main.d"],
 			"targetPath" : "./",
-			"sourcePaths" : [ "source", "plugins" ],
-			"importPaths" : [ "source", "plugins" ]
+			"targetType": "none"
 		}
 	]
 }

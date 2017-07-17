@@ -11,7 +11,7 @@ Launcher will allow for any plugin combination, while master-server will host al
 
 [Twitter](https://twitter.com/MrSmith33)
 
-[Imgur album](http://imgur.com/a/L5g1B)
+[Imgur album](https://imgur.com/a/CLTCZ)
 
 See [releases](https://github.com/MrSmith33/voxelman/releases) for binaries.
 

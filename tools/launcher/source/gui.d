@@ -108,8 +108,14 @@ struct LauncherGui
 				isRunning = false;
 			else
 				glfwSetWindowShouldClose(window.handle, false);
+			MonoTime time0 = MonoTime.currTime;
 			update();
+			MonoTime time1 = MonoTime.currTime;
 			render();
+			MonoTime time2 = MonoTime.currTime;
+
+			import core.thread;
+			Thread.sleep(15.msecs);
 		}
 
 		close();
@@ -130,9 +136,6 @@ struct LauncherGui
 		window.processEvents();
 		igState.newFrame();
 		doGui();
-
-		import core.thread;
-		Thread.sleep(15.msecs);
 	}
 
 	void render()

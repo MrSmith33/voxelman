@@ -13,3 +13,4 @@ public import voxelman.world.storage.iomanager;
 public import voxelman.world.storage.utils;
 public import voxelman.world.storage.worldaccess;
 public import voxelman.world.storage.worldbox;
+public import voxelman.serialization;

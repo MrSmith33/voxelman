@@ -3,11 +3,6 @@ module exampleplugin.server;
 import voxelman.log;
 import pluginlib;
 
-shared static this()
-{
-	pluginRegistry.regServerPlugin(new ExamplePluginServer);
-}
-
 class ExamplePluginServer : IPlugin
 {
 	mixin IdAndSemverFrom!"exampleplugin.plugininfo";

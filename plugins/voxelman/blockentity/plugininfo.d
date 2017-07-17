@@ -5,9 +5,9 @@ enum deps = [];
 enum clientdeps = [];
 enum serverdeps = [];
 
-shared static this()
+import pluginlib.pluginregistry;
+void register(ref PluginRegistry registry)
 {
-	import pluginlib;
 	import voxelman.blockentity.plugin;
 	pluginRegistry.regClientPlugin(new BlockEntityClient);
 	pluginRegistry.regServerPlugin(new BlockEntityServer);

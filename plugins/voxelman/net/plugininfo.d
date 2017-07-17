@@ -5,9 +5,9 @@ enum deps = [];
 enum clientdeps = [];
 enum serverdeps = [];
 
-shared static this()
+import pluginlib.pluginregistry;
+void register(ref PluginRegistry registry)
 {
-	import pluginlib;
 	import voxelman.net.plugin;
 	pluginRegistry.regClientPlugin(new NetClientPlugin);
 	pluginRegistry.regServerPlugin(new NetServerPlugin);

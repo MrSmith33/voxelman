@@ -68,7 +68,7 @@ public:
 
 		// Main loop
 		isRunning = true;
-		import voxelman.client.servercontrol : isServerRunning;
+		import voxelman.thread.servercontrol : isServerRunning;
 		while (isRunning && isServerRunning())
 		{
 			MonoTime newTime = MonoTime.currTime;

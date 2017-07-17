@@ -12,7 +12,7 @@ import datadriven.storage;
 import datadriven.query;
 import voxelman.container.buffer;
 import voxelman.container.hash.set;
-import voxelman.world.storage.iomanager;
+import voxelman.serialization;
 
 private struct ComponentInfo
 {

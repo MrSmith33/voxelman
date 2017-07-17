@@ -38,7 +38,7 @@ import voxelman.world.gen.generators;
 import voxelman.world.storage;
 import voxelman.world.storage.dimensionobservermanager;
 
-public import voxelman.world.worlddb : WorldDb;
+public import voxelman.world.worlddb : WorldDb, formWorldKey;
 
 enum START_NEW_WORLD = false;
 
@@ -128,6 +128,7 @@ public:
 	override void preInit()
 	{
 		pluginDataSaver.stringMap = &ioManager.stringMap;
+		pluginDataSaver.getKey = (uint key) => formWorldKey(key);
 		idMapManager.regIdMapHandler("string_map", () => ioManager.stringMap.strings);
 
 		buf = new ubyte[](1024*64*4);
@@ -243,7 +244,12 @@ public:
 		worldDb.beginTxn();
 		scope(exit) worldDb.abortTxn();
 
-		auto dataLoader = PluginDataLoader(&ioManager.stringMap, worldDb);
+		ubyte[] dataGetter(ref IoKey key)
+		{
+			return worldDb.get(formWorldKey(ioManager.stringMap.get(key)));
+		}
+
+		auto dataLoader = PluginDataLoader(&ioManager.stringMap, &dataGetter);
 		foreach(loadHandler; ioManager.worldLoadHandlers) {
 			loadHandler(dataLoader);
 		}

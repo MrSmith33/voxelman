@@ -13,6 +13,8 @@ import voxelman.graphics;
 
 void registerComponents(GuiContext ctx)
 {
+	ctx.widgets.registerComponent!WidgetIndex;
+	ctx.widgets.registerComponent!PagedWidgetData;
 	ctx.widgets.registerComponent!TextButtonData;
 	ctx.widgets.registerComponent!LinearLayoutSettings;
 	ctx.widgets.registerComponent!hexpand;
@@ -32,6 +34,7 @@ struct WidgetProxy
 	C* getOrCreate(C)(C defVal = C.init) { return ctx.widgets.getOrCreate!C(wid, defVal); }
 	bool has(C)() { return ctx.widgets.has!C(wid); }
 	WidgetProxy remove(C)() { ctx.widgets.remove!C(wid); return this; }
+	WidgetProxy createChild(Components...)(Components components) { return ctx.createWidget(wid, components); }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
 }
 
@@ -51,8 +54,7 @@ struct PanelLogic
 	static:
 	WidgetProxy create(WidgetProxy parent, ivec2 pos, ivec2 size, Color4ub color)
 	{
-		WidgetProxy panel = parent.ctx.createWidget(
-			parent,
+		WidgetProxy panel = parent.createChild(
 			WidgetEvents(&drawWidget),
 			WidgetTransform(pos, size),
 			WidgetStyle(color));
@@ -66,8 +68,6 @@ struct PanelLogic
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
 			auto style = event.ctx.get!WidgetStyle(wid);
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
-			vec2 linePos = vec2(transform.absPos.x+transform.size.x-1, 0);
-			event.renderQueue.drawRectFill(linePos, vec2(1, transform.size.y), event.depth, color_concrete);
 			event.depth += 1;
 			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
 		}
@@ -78,6 +78,78 @@ struct PanelLogic
 	}
 }
 
+@Component("gui.WidgetIndex", Replication.none)
+struct WidgetIndex
+{
+	size_t index;
+	WidgetId master;
+}
+
+@Component("gui.PagedWidgetData", Replication.none)
+struct PagedWidgetData
+{
+	WidgetId[] children;
+}
+
+struct PagedWidget
+{
+	static:
+	// Move all children to
+	void convert(WidgetProxy widget, size_t initialIndex)
+	{
+		if (auto cont = widget.get!WidgetContainer)
+		{
+			auto options = cont.children;
+			widget.set(PagedWidgetData(options), WidgetEvents(&measure, &layout));
+			cont.children = null;
+			if (options)
+			{
+				cont.put(options[initialIndex]);
+			}
+		}
+	}
+
+	void switchPage(WidgetProxy widget, size_t newPage)
+	{
+		if (auto cont = widget.get!WidgetContainer)
+			cont.children[0] = widget.get!PagedWidgetData.children[newPage];
+	}
+
+	void attachToButton(WidgetProxy selectorButton, size_t index)
+	{
+		selectorButton.set(WidgetIndex(index, ));
+		selectorButton.getOrCreate!WidgetEvents.addEventHandler(&onButtonClick);
+	}
+
+	void onButtonClick(WidgetId wid, ref PointerClickEvent event)
+	{
+		auto data = event.ctx.get!TextButtonData(wid);
+		if (data.handler) data.handler();
+	}
+
+	void measure(WidgetId wid, ref MeasureEvent event)
+	{
+		auto transform = event.ctx.get!WidgetTransform(wid);
+		foreach(child; event.ctx.widgetChildren(wid))
+		{
+			auto childTransform = event.ctx.get!WidgetTransform(child);
+			childTransform.applyConstraints();
+			transform.measuredSize = childTransform.measuredSize;
+		}
+	}
+
+	void layout(WidgetId wid, ref LayoutEvent event)
+	{
+		auto transform = event.ctx.get!WidgetTransform(wid);
+		foreach(child; event.ctx.widgetChildren(wid))
+		{
+			auto childTransform = event.ctx.get!WidgetTransform(child);
+			childTransform.relPos = ivec2(0,0);
+			childTransform.absPos = transform.absPos;
+			childTransform.size = transform.size;
+		}
+	}
+}
 
 alias ClickHandler = void delegate();
 
@@ -102,17 +174,29 @@ Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredC
 struct TextButtonLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler)
+	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler = null)
 	{
-		WidgetId button = parent.ctx.createWidget(parent,
-			TextButtonData(text, font, handler),
+		WidgetProxy button = parent.createChild(
+			TextButtonData(text, font),
 			WidgetEvents(
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
-				&enterWidget, &leaveWidget, &clickWidget, &measure),
+				&enterWidget, &leaveWidget, &measure),
 			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
 			WidgetStyle(baseColor),
 			WidgetRespondsToPointer());
-		return WidgetProxy(button, parent.ctx);
+		setHandler(button, handler);
+		return button;
+	}
+
+	void setHandler(WidgetProxy button, ClickHandler handler)
+	{
+		auto data = button.get!TextButtonData;
+		auto events = button.get!WidgetEvents;
+		if (!data.handler)
+		{
+			events.addEventHandler(&clickWidget);
+		}
+		data.handler = handler;
 	}
 
 	void drawWidget(WidgetId wid, ref DrawEvent event)
@@ -202,7 +286,7 @@ struct Line(bool horizontal)
 	static:
 	static if (horizontal) {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.ctx.createWidget(parent, hexpand(), WidgetEvents(&drawWidget, &measure));
+			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure));
 		}
 		void measure(WidgetId wid, ref MeasureEvent event) {
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
@@ -210,7 +294,7 @@ struct Line(bool horizontal)
 		}
 	} else {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.ctx.createWidget(parent, vexpand(), WidgetEvents(&drawWidget, &measure));
+			return parent.createChild(vexpand(), WidgetEvents(&drawWidget, &measure));
 		}
 		void measure(WidgetId wid, ref MeasureEvent event) {
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
@@ -233,9 +317,9 @@ struct Fill(bool horizontal)
 	WidgetProxy create(WidgetProxy parent)
 	{
 		static if (horizontal)
-			return parent.ctx.createWidget(parent, hexpand());
+			return parent.createChild(hexpand());
 		else
-			return parent.ctx.createWidget(parent, vexpand());
+			return parent.createChild(vexpand());
 	}
 }
 
@@ -247,7 +331,7 @@ struct LinearLayout(bool horizontal)
 	static:
 	WidgetProxy create(WidgetProxy parent, int spacing, int padding)
 	{
-		WidgetProxy layout = parent.ctx.createWidget(parent);
+		WidgetProxy layout = parent.createChild();
 		attachTo(layout, spacing, padding);
 		return layout;
 	}
@@ -381,13 +465,12 @@ struct ColumnListLogic
 	static:
 	WidgetProxy create(WidgetProxy parent, ListModel model, FontRef font)
 	{
-		WidgetProxy list = parent.ctx.createWidget(parent,
+		WidgetProxy list = parent.createChild(
 			ListData(model, font),
 			hexpand(), vexpand(),
 			WidgetEvents(
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
-			WidgetTransform(ivec2(), ivec2(), ivec2()),
 			WidgetStyle(baseColor),
 			WidgetRespondsToPointer());
 		return list;
@@ -484,7 +567,7 @@ struct ColumnListLogic
 			event.renderQueue.drawRectFill(vec2(separatorStart), vec2(1, headerHeight), event.depth+3, color_wet_asphalt);
 
 			// clip
-			//event.renderQueue.pushClipRect(irect(cellX, cellY, cellW, transform.size.y));
+			event.renderQueue.pushClipRect(irect(colX+data.contentPadding.x, transform.absPos.y, cellW, transform.size.y));
 
 			// header
 			ivec2 headerPos  = ivec2(colX, transform.absPos.y) + data.headerPadding;
@@ -505,7 +588,7 @@ struct ColumnListLogic
 				lineY += lineHeight;
 			}
 
-			//event.renderQueue.popClipRect();
+			event.renderQueue.popClipRect();
 			colX += colW;
 		}
 

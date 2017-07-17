@@ -7,6 +7,7 @@ module voxelman.world.worlddb;
 
 import std.experimental.allocator.mallocator;
 import voxelman.world.db.lmdbworlddb;
+import lmdb;
 
 private enum Table : ulong
 {

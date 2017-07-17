@@ -5,14 +5,17 @@ Authors: Andrey Penechko.
 */
 module main;
 
-import enginestarter;
-
 void main(string[] args)
 {
+	import voxelman.cons;
+	import pluginlib.pluginregistry : register;
+	cons.register(pluginRegistry);
+
 	version(unittest)
 	{}
 	else
 	{
+		import enginestarter : EngineStarter;
 		EngineStarter engineStarter;
 		engineStarter.start(args);
 	}

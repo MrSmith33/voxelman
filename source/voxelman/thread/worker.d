@@ -13,9 +13,10 @@ import core.sync.condition;
 import core.sync.mutex;
 import core.thread : Thread;
 
-import voxelman.core.config : QUEUE_LENGTH;
 public import voxelman.thread.sharedqueue;
 
+enum QUEUE_LENGTH = 1024*1024*1;
+enum MAX_LOAD_QUEUE_LENGTH = QUEUE_LENGTH / 2;
 
 shared struct Worker
 {

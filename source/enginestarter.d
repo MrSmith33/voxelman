@@ -15,9 +15,6 @@ import pluginlib;
 import pluginlib.plugininforeader : filterEnabledPlugins;
 import pluginlib.pluginmanager;
 
-import voxelman.cons;
-import test.cons;
-
 
 struct EngineStarter
 {
@@ -87,7 +84,7 @@ struct EngineStarter
 
 	void startCombined(string[] args)
 	{
-		import voxelman.client.servercontrol : stopServer;
+		import voxelman.thread.servercontrol : stopServer;
 
 		void exec()
 		{

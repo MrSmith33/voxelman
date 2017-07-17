@@ -7,3 +7,16 @@ Authors: Andrey Penechko.
 module voxelman.serialization;
 
 public import cbor;
+public import voxelman.serialization.dataloader;
+public import voxelman.serialization.datasaver;
+public import voxelman.serialization.stringmap;
+
+enum IoStorageType {
+	database,
+	network
+}
+
+struct IoKey {
+	string str;
+	uint id = uint.max;
+}
