@@ -15,3 +15,7 @@ before_install:
   - sudo add-apt-repository 'deb http://archive.ubuntu.com/ubuntu xenial main universe'
   - sudo apt-get -qq update
   - sudo apt-get install -y liblmdb-dev liblz4-dev libenet-dev libglfw3-dev
+
+script:
+  - dub test voxelman:engine
+  - dub test voxelman:plugins

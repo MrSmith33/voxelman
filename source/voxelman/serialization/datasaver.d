@@ -74,10 +74,11 @@ struct PluginDataSaver
 
 unittest
 {
-	ubyte[16] keyProducer(ref IoKey key) {
-		return 0;
+	ubyte[16] keyProducer(uint key) {
+		return (ubyte[16]).init;
 	}
-	auto saver = PluginDataSaver(&keyProducer);
+	StringMap stringMap;
+	auto saver = PluginDataSaver(&stringMap, &keyProducer);
 	//StringMap stringMap;
 	//saver.stringMap = &stringMap;
 

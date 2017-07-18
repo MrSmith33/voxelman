@@ -61,6 +61,7 @@
 		{
 			"name" : "exe",
 			"targetType": "executable",
+			"sourceFiles":["source/main.d"],
 			"mainSourceFile" : "source/main.d",
 			"targetName" : "voxelman",
 			"targetPath" : "builds/default",

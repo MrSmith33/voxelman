@@ -7,9 +7,9 @@ module main;
 
 void main(string[] args)
 {
-	import voxelman.cons;
-	import pluginlib.pluginregistry : register;
-	cons.register(pluginRegistry);
+	import cons : register;
+	import pluginlib.pluginregistry : pluginRegistry;
+	register(pluginRegistry);
 
 	version(unittest)
 	{}
