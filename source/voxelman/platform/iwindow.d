@@ -9,6 +9,7 @@ module voxelman.platform.iwindow;
 import voxelman.math;
 import voxelman.platform.isharedcontext;
 import voxelman.utils.signal;
+public import voxelman.platform.cursoricon : CursorIcon;
 
 abstract class IWindow
 {
@@ -35,6 +36,8 @@ abstract class IWindow
 
 	void isCursorLocked(bool value);
 	bool isCursorLocked();
+
+	void setCursorIcon(CursorIcon icon);
 
 	Signal!uint keyPressed;
 	Signal!uint keyReleased;

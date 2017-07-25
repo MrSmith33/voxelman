@@ -13,7 +13,7 @@ import derelict.glfw3.glfw3;
 import derelict.opengl3.gl3;
 import voxelman.log;
 import voxelman.math;
-import voxelman.platform.iwindow : IWindow;
+import voxelman.platform.iwindow : IWindow, CursorIcon;
 import voxelman.platform.isharedcontext;
 
 class GlfwSharedContext : ISharedContext
@@ -37,6 +37,7 @@ private:
 	GLFWwindow*	glfwWindowPtr;
 	static bool	glfwInited = false;
 	bool isProcessingEvents = false;
+	GLFWcursor*[6] cursors;
 
 public:
 	override void init(ivec2 size, in string caption, bool center = false)
@@ -85,6 +86,14 @@ public:
 		glfwSetCharCallback(glfwWindowPtr, &charfun);
 		//glfwSetCursorEnterCallback(window, GLFWcursorenterfun cbfun);
 		glfwSetWindowRefreshCallback(glfwWindowPtr, &refreshfun);
+
+		// create standard cursors
+		cursors[0] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+		cursors[1] = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+		cursors[2] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+		cursors[3] = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+		cursors[4] = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+		cursors[5] = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
 	}
 
 	override ISharedContext createSharedContext()
@@ -201,6 +210,11 @@ public:
 	override bool isCursorLocked()
 	{
 		return glfwGetInputMode(glfwWindowPtr, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+	}
+
+	override void setCursorIcon(CursorIcon icon)
+	{
+		glfwSetCursor(glfwWindowPtr, cursors[icon]);
 	}
 
 	GLFWwindow* handle() @property

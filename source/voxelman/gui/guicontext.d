@@ -13,7 +13,7 @@ import voxelman.gui;
 import voxelman.platform.input;
 import voxelman.math;
 import voxelman.text.linebuffer;
-
+public import voxelman.platform.cursoricon : CursorIcon;
 
 struct GuiState
 {
@@ -27,6 +27,9 @@ struct GuiState
 	ivec2 canvasSize;
 	ivec2 prevPointerPos = ivec2(int.max, int.max);
 	ivec2 curPointerPos;
+	/// Icon is reset after widget leave event and before widget enter event.
+	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
+	CursorIcon cursorIcon;
 }
 
 class GuiContext
@@ -380,6 +383,7 @@ class GuiContext
 		if (state.hoveredWidget != wId)
 		{
 			if (state.hoveredWidget) postEvent(state.hoveredWidget, PointerLeaveEvent());
+			state.cursorIcon = CursorIcon.arrow;
 			if (wId) postEvent(wId, PointerEnterEvent());
 			state.hoveredWidget = wId;
 		}

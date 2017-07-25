@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Added
+- Add cursor icon API for IWindow and GlfwWindow.
 - Add Font metrics advanceX and advanceY.
 - Add minimal size constraint to widget transform.
 - Add hexpand, vexpand flag components to indicate that widget is free to expand in given axis.
