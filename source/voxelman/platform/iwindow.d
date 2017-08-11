@@ -10,6 +10,7 @@ import voxelman.math;
 import voxelman.platform.isharedcontext;
 import voxelman.utils.signal;
 public import voxelman.platform.cursoricon : CursorIcon;
+public import voxelman.platform.input : KeyCode, PointerButton;
 
 abstract class IWindow
 {
@@ -39,11 +40,11 @@ abstract class IWindow
 
 	void setCursorIcon(CursorIcon icon);
 
-	Signal!uint keyPressed;
-	Signal!uint keyReleased;
+	Signal!(KeyCode, uint) keyPressed;
+	Signal!(KeyCode, uint) keyReleased;
 	Signal!dchar charEntered;
-	Signal!uint mousePressed;
-	Signal!uint mouseReleased;
+	Signal!(PointerButton, uint) mousePressed;
+	Signal!(PointerButton, uint) mouseReleased;
 	Signal!ivec2 mouseMoved;
 	Signal!bool focusChanged;
 	Signal!ivec2 windowResized;

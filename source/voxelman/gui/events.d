@@ -9,6 +9,7 @@ module voxelman.gui.events;
 import voxelman.graphics : RenderQueue;
 import voxelman.gui;
 import voxelman.math;
+public import voxelman.platform.input : KeyCode, PointerButton, KeyModifiers;
 
 
 private mixin template GuiEvent()
@@ -45,6 +46,7 @@ private mixin template PointerButtonEvent()
 	import voxelman.platform.input : PointerButton;
 	ivec2 pointerPosition;
 	PointerButton button;
+	uint modifiers; // flags from KeyModifiers
 	mixin GuiEvent!();
 }
 
@@ -86,8 +88,11 @@ struct CharEnterEvent
 
 private mixin template KeyEvent()
 {
-	uint keyCode;
-	uint modifiers;
+	KeyCode keyCode;
+	uint modifiers; // flags from KeyModifiers
+	bool shift() { return cast(bool)(modifiers & KeyModifiers.SHIFT); }
+	bool control() { return cast(bool)(modifiers & KeyModifiers.CONTROL); }
+	bool alt() { return cast(bool)(modifiers & KeyModifiers.ALT); }
 	mixin GuiEvent!();
 }
 

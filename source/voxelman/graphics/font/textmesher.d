@@ -52,6 +52,7 @@ struct TextMesherParams
 	int tabSize = 4;
 	bool monospaced = false;
 	TextStyle[] styles;
+	int column; // ref
 
 	// ref
 	vec2 size = vec2(0, 0); // size of text relative to origin
@@ -111,25 +112,22 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 
 	void meshGlyph(Glyph* glyph)
 	{
-		static if (mesh)
+		int w = glyph.metrics.width;
+		int h = glyph.metrics.height;
+
+		int offsetX = params.monospaced ? glyph.metrics.offsetX : 0;
+		int x = params.origin.x + params.cursor.x + offsetX * params.scale;
+		int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
+
+		auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
+		auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);
+
+		bool shouldDraw = clipTexturedRect(geometryRect, atlasRect, params.scissors);
+
+		if (shouldDraw)
 		{
-			int w = glyph.metrics.width;
-			int h = glyph.metrics.height;
-
-			int offsetX = params.monospaced ? glyph.metrics.offsetX : 0;
-			int x = params.origin.x + params.cursor.x + offsetX * params.scale;
-			int y = params.origin.y + params.cursor.y + (params.font.metrics.ascent - glyph.metrics.offsetY) * params.scale;
-
-			auto geometryRect = frect(x, y, w * params.scale, h * params.scale);
-			auto atlasRect = frect(glyph.atlasPosition.x, glyph.atlasPosition.y, w, h);
-
-			bool shouldDraw = clipTexturedRect(geometryRect, atlasRect, params.scissors);
-
-			if (shouldDraw)
-			{
-				TextStyle style = params.styles[styleRange.front];
-				params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
-			}
+			TextStyle style = params.styles[styleRange.front];
+			params.sink.putRect(geometryRect, atlasRect, params.depth, style.color);//params.color);
 		}
 	}
 
@@ -148,22 +146,28 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 		{
 			case ' ':
 				params.cursor.x += advanceX;
+				++params.column;
 				continue;
 			case '\t':
-				params.cursor.x += advanceX * params.tabSize;
+				int tabGlyphs = tabWidth(params.tabSize, params.column);
+				params.cursor.x += advanceX * tabGlyphs;
+				params.column += tabGlyphs;
 				continue;
 			case '\n':
 				updateMaxWidth();
 				params.cursor.x = 0;
 				params.cursor.y += advanceY;
+				params.column = 0;
 				continue;
 			case '\r':
 				continue;
-			default: break;
+			default:
+				++params.column;
+				break;
 		}
 
 		Glyph* glyph = params.font.getGlyph(codePoint);
-		meshGlyph(glyph);
+		static if (mesh) meshGlyph(glyph);
 
 		int glyphAdvanceX = params.monospaced ? advanceX : glyph.metrics.advanceX;
 		params.cursor.x += glyphAdvanceX * params.scale;
@@ -178,6 +182,11 @@ void meshText(bool mesh = true, P, T, S)(ref P params, T textRange, S styleRange
 void measureText(P, T)(ref P params, T textRange)
 {
 	meshText!(false)(params, textRange);
+}
+
+int tabWidth(int tabSize, int column)
+{
+	return tabSize - column % tabSize;
 }
 
 enum Alignment

@@ -36,22 +36,22 @@ struct FontMetrics
 
 struct Font
 {
-	int getKerning(in dchar leftGlyph, in dchar rightGlyph)
+	int getKerning(in dchar leftGlyph, in dchar rightGlyph) const
 	{
-		int[dchar] rightGlyps = *(leftGlyph in kerningTable);
+		const(int[dchar]) rightGlyps = *(leftGlyph in kerningTable);
 		int kerning = *(rightGlyph in rightGlyps);
 		return kerning;
 	}
 
-	Glyph* getGlyph(in dchar chr)
+	Glyph* getGlyph(in dchar chr) const
 	{
 		import std.utf : replacementDchar;
 		if (auto glyph = chr in glyphs)
 		{
-			return glyph;
+			return cast(Glyph*)glyph;
 		}
 		else
-			return replacementDchar in glyphs;
+			return cast(Glyph*)(replacementDchar in glyphs);
 	}
 
 	void sanitize()

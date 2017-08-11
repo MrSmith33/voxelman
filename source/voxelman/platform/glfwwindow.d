@@ -15,6 +15,7 @@ import voxelman.log;
 import voxelman.math;
 import voxelman.platform.iwindow : IWindow, CursorIcon;
 import voxelman.platform.isharedcontext;
+import voxelman.platform.input : KeyCode, PointerButton;
 
 class GlfwSharedContext : ISharedContext
 {
@@ -277,17 +278,17 @@ extern(C) nothrow
 		try getWinFromUP(w).windowIconified.emit(cast(bool)iconified);
 		catch(Exception e) throw new Error(to!string(e));
 	}
-	void mousebuttonfun(GLFWwindow* w, int mouseButton, int action, int)
+	void mousebuttonfun(GLFWwindow* w, int mouseButton, int action, int mods)
 	{
 		try
 		{
 			if(action == GLFW_RELEASE)
 			{
-				getWinFromUP(w).mouseReleased.emit(mouseButton);
+				getWinFromUP(w).mouseReleased.emit(cast(PointerButton)mouseButton, mods);
 			}
 			else
 			{
-				getWinFromUP(w).mousePressed.emit(mouseButton);
+				getWinFromUP(w).mousePressed.emit(cast(PointerButton)mouseButton, mods);
 			}
 		}
 		catch(Exception e) throw new Error(to!string(e));
@@ -306,18 +307,18 @@ extern(C) nothrow
 	{
 
 	}
-	void keyfun(GLFWwindow* w, int key, int, int action, int)
+	void keyfun(GLFWwindow* w, int key, int, int action, int mods)
 	{
 		if (key < 0) return;
 		try
 		{
 			if (action == GLFW_RELEASE)
 			{
-				getWinFromUP(w).keyReleased.emit(key);
+				getWinFromUP(w).keyReleased.emit(cast(KeyCode)key, mods);
 			}
 			else
 			{
-				getWinFromUP(w).keyPressed.emit(key);
+				getWinFromUP(w).keyPressed.emit(cast(KeyCode)key, mods);
 			}
 		}
 		catch(Exception e) throw new Error(to!string(e));

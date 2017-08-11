@@ -30,6 +30,9 @@ struct GuiState
 	/// Icon is reset after widget leave event and before widget enter event.
 	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
 	CursorIcon cursorIcon;
+
+	string delegate() getClipboard;
+	void delegate(string) setClipboard;
 }
 
 class GuiContext
@@ -193,9 +196,36 @@ class GuiContext
 		}
 	}
 
-	void pointerPressed(uint button)
+	void onKeyPress(KeyCode key, uint modifiers)
 	{
-		auto event = PointerPressEvent(state.curPointerPos, cast(PointerButton)button);
+		if (focusedWidget)
+		{
+			auto event = KeyPressEvent(key, modifiers);
+			postEvent(focusedWidget, event);
+		}
+	}
+
+	void onKeyRelease(KeyCode key, uint modifiers)
+	{
+		if (focusedWidget)
+		{
+			auto event = KeyReleaseEvent(key, modifiers);
+			postEvent(focusedWidget, event);
+		}
+	}
+
+	void onCharEnter(dchar character)
+	{
+		if (focusedWidget)
+		{
+			auto event = CharEnterEvent(character);
+			postEvent(focusedWidget, event);
+		}
+	}
+
+	void pointerPressed(PointerButton button, uint modifiers)
+	{
+		auto event = PointerPressEvent(state.curPointerPos, button, modifiers);
 
 		foreach_reverse(root; roots)
 		{
@@ -216,9 +246,9 @@ class GuiContext
 		focusedWidget = WidgetId(0);
 	}
 
-	void pointerReleased(uint button)
+	void pointerReleased(PointerButton button, uint modifiers)
 	{
-		auto event = PointerReleaseEvent(state.curPointerPos, cast(PointerButton)button);
+		auto event = PointerReleaseEvent(state.curPointerPos, button, modifiers);
 
 		foreach_reverse(root; roots)
 		{
@@ -234,7 +264,7 @@ class GuiContext
 					{
 						if (pressedWidget == eventConsumerChain[$-1])
 						{
-							auto clickEvent = PointerClickEvent(state.curPointerPos, cast(PointerButton)button);
+							auto clickEvent = PointerClickEvent(state.curPointerPos, button);
 							lastClickedWidget = pressedWidget;
 							postEvent(pressedWidget, clickEvent);
 						}
@@ -289,7 +319,7 @@ class GuiContext
 		hoveredWidget = WidgetId(0);
 	}
 
-	bool updateHovered(ivec2 pointerPos)
+	private bool updateHovered(ivec2 pointerPos)
 	{
 		foreach_reverse(root; roots)
 		{
@@ -363,6 +393,19 @@ class GuiContext
 
 	// STATE
 
+	string clipboard()
+	{
+		return state.getClipboard();
+	}
+
+	void clipboard(S)(S str)
+	{
+		import std.array : array;
+		state.setClipboard(str.byChar.array);
+	}
+
+	void cursorIcon(CursorIcon icon) { state.cursorIcon = icon; }
+
 	WidgetId draggingWidget() { return state.draggingWidget; }
 	void draggingWidget(WidgetId wId) { state.draggingWidget = wId; }
 
@@ -378,12 +421,12 @@ class GuiContext
 	}
 
 	WidgetId hoveredWidget() { return state.hoveredWidget; }
-	void hoveredWidget(WidgetId wId) @trusted /// setter
+	void hoveredWidget(WidgetId wId) @trusted
 	{
 		if (state.hoveredWidget != wId)
 		{
 			if (state.hoveredWidget) postEvent(state.hoveredWidget, PointerLeaveEvent());
-			state.cursorIcon = CursorIcon.arrow;
+			cursorIcon = CursorIcon.arrow;
 			if (wId) postEvent(wId, PointerEnterEvent());
 			state.hoveredWidget = wId;
 		}
