@@ -5,23 +5,28 @@ Authors: Andrey Penechko.
 */
 module voxelman.container.chunkedbuffer;
 
-import voxelman.container.buffer;
 import std.experimental.allocator.gc_allocator;
 alias allocator = GCAllocator.instance;
 import std.stdio;
 import std.algorithm : min, equal, swap;
+import std.range;
+
+import voxelman.container.buffer;
 import voxelman.math : nextPOT, divCeil;
 
 struct ChunkedBuffer(T, size_t pageSize = 4096)
 {
 	enum pageBytes = pageSize*T.sizeof;
 
-	Buffer!(T*) chunkBuffer; // array of pages
+	Buffer!(T*) chunkBuffer; // array of chunks
+
 	// Must be kept private since it can be used to check for avaliable space
 	// when used as output range
 	private size_t length;
 	// can be non-zero after removeFront
 	private size_t firstChunkDataPos;
+
+	alias opDollar = length;
 
 	void put(T[] items ...)
 	{
@@ -109,6 +114,18 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 		}
 	}
 
+	bool empty() { return length == 0; }
+
+	ref T front() { return this[0]; }
+	ref T back() { return this[$-1]; }
+
+	ref T opIndex(size_t at)
+	{
+		size_t chunkIndex = (firstChunkDataPos + at) / pageSize;
+		size_t chunkPos = (firstChunkDataPos + at) % pageSize;
+		return chunkBuffer.data[chunkIndex][chunkPos];
+	}
+
 	alias ChunkRange = ChunkedBufferChunks!(T, pageSize);
 	alias ItemRange = ChunkedBufferItemRange!(T, pageSize);
 
@@ -120,12 +137,12 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 
 	auto opSlice()
 	{
-		return ItemRange(chunkBuffer.data, length, firstChunkDataPos);
+		return ItemRange(&this, 0, length);
 	}
 
 	auto opSlice(size_t from, size_t to)
 	{
-		return ItemRange(chunkBuffer.data, length, firstChunkDataPos)[from..to];
+		return this[][from..to];
 	}
 }
 
@@ -139,6 +156,7 @@ struct ChunkedBufferChunks(T, size_t pageSize)
 	alias opDollar = length;
 
 	bool empty() { return totalItems == 0; }
+	auto save() { return this; }
 
 	this(T*[] chunks, size_t length, size_t firstChunkOffset)
 	{
@@ -164,42 +182,37 @@ struct ChunkedBufferChunks(T, size_t pageSize)
 
 struct ChunkedBufferItemRange(T, size_t pageSize)
 {
-	private T*[] chunks;
+	private ChunkedBuffer!(T, pageSize)* buf;
+	size_t start;
 	size_t length;
-	private size_t firstChunkPos;
 
 	alias opDollar = length;
-
 	bool empty() { return length == 0; }
-
-	T front() { return chunks[0][firstChunkPos]; }
-
-	void popFront()
-	{
-		++firstChunkPos;
-		if (firstChunkPos == pageSize)
-		{
-			chunks = chunks[1..$];
-			firstChunkPos = 0;
-		}
-		--length;
-	}
+	ref T front() { return (*buf)[start]; }
+	ref T back() { return (*buf)[start+length-1]; }
+	void popFront() { ++start; --length; }
+	void popBack() { --length; }
+	auto save() { return this; }
+	ref T opIndex(size_t at) { return (*buf)[start + at]; }
 
 	auto opSlice(size_t from, size_t to)
 	{
 		assert(from < length);
 		assert(to <= length);
-		size_t startOffset = from + firstChunkPos;
-		size_t firstChunk = startOffset / pageSize;
 		size_t len = to - from;
-		size_t endOffset = startOffset + len;
-		size_t lastChunk = divCeil(endOffset, pageSize);
-		return ChunkedBufferItemRange(
-			chunks[firstChunk..lastChunk],
-			len,
-			startOffset % pageSize);
+		return ChunkedBufferItemRange(buf, start+from, len);
 	}
 }
+
+private alias ItemRangeT = ChunkedBufferItemRange!(int, 32);
+static assert(isInputRange!ItemRangeT);
+static assert(hasLength!ItemRangeT);
+static assert(hasSlicing!ItemRangeT);
+static assert(hasAssignableElements!ItemRangeT);
+static assert(isRandomAccessRange!ItemRangeT);
+static assert(isBidirectionalRange!ItemRangeT);
+static assert(isForwardRange!ItemRangeT);
+static assert(isOutputRange!(ChunkedBuffer!int, int));
 
 unittest
 {
@@ -234,6 +247,7 @@ unittest
 	assert(buf.reserved == 1);
 }
 
+// test removeBack
 unittest
 {
 	ChunkedBuffer!(int, 2) buf;
@@ -249,6 +263,7 @@ unittest
 	assert(buf.reserved == 3);
 }
 
+// test removeFront
 unittest
 {
 	ChunkedBuffer!(int, 2) buf;
@@ -264,6 +279,28 @@ unittest
 	assert(buf.reserved == 3);
 }
 
+// test assignable front, back and [i]
+unittest
+{
+	ChunkedBuffer!(int, 2) buf;
+	buf.put(1, 2, 3, 4);
+
+	assert(buf.front == 1);
+	assert(buf.back == 4);
+
+	buf.front = 0;
+	assert(buf.front == 0);
+
+	buf.back = 0;
+	assert(buf.back == 0);
+
+	buf[1] = 0;
+	assert(buf[1] == 0);
+
+	assert(buf[].equal([0, 0, 3, 0]));
+}
+
+// test removeFront, removeBack
 unittest
 {
 	import std.range;
@@ -278,4 +315,12 @@ unittest
 	assert(buf.length == 80);
 	assert(buf.capacity == 100);
 	assert(buf.reserved == 20);
+}
+
+// test bidirectionality
+unittest
+{
+	ChunkedBuffer!(int, 32) buf;
+	buf.put(100.iota);
+
 }
