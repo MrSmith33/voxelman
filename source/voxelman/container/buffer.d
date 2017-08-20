@@ -45,7 +45,7 @@ struct Buffer(T)
 	}
 
 	size_t capacity() const @property {
-		return buf.length - length;
+		return buf.length;
 	}
 
 	void reserve(size_t items)

@@ -88,7 +88,7 @@ struct WidgetIndex
 @Component("gui.PagedWidgetData", Replication.none)
 struct PagedWidgetData
 {
-	WidgetId[] children;
+	WidgetId[] pages;
 }
 
 struct PagedWidget
@@ -112,7 +112,11 @@ struct PagedWidget
 	void switchPage(WidgetProxy widget, size_t newPage)
 	{
 		if (auto cont = widget.get!WidgetContainer)
-			cont.children[0] = widget.get!PagedWidgetData.children[newPage];
+		{
+			auto pages = widget.get!PagedWidgetData.pages;
+			if (newPage < pages.length)
+				cont.children[0] = pages[newPage];
+		}
 	}
 
 	void attachToButton(WidgetProxy selectorButton, size_t index)
@@ -201,22 +205,22 @@ struct TextButtonLogic
 
 	void drawWidget(WidgetId wid, ref DrawEvent event)
 	{
-		if (event.sinking)
-		{
-			auto data = event.ctx.get!TextButtonData(wid);
-			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
-			auto style = event.ctx.get!WidgetStyle(wid);
+		if (event.bubbling) return;
 
-			auto params = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
-			params.font = data.font;
-			params.monospaced = true;
-			params.depth = event.depth+1;
-			params.color = color_wet_asphalt;
-			params.meshTextAligned(data.text, Alignment.center, Alignment.center);
+		auto data = event.ctx.get!TextButtonData(wid);
+		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+		auto style = event.ctx.get!WidgetStyle(wid);
 
-			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
-			event.depth += 2;
-		}
+		auto params = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
+		params.font = data.font;
+		params.monospaced = true;
+		params.depth = event.depth+1;
+		params.color = color_wet_asphalt;
+		params.meshTextAligned(data.text, Alignment.center, Alignment.center);
+
+		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
+		event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
+		event.depth += 2;
 	}
 
 	void pointerMoved(WidgetId wid, ref PointerMoveEvent event) { event.handled = true; }
@@ -513,10 +517,11 @@ struct ColumnListLogic
 			foreach(line; firstVisibleLine..lastVisibleLine+1)
 			{
 				auto color_selected = rgb(217, 235, 249);
+				auto color_hovered = rgb(207, 225, 239);
 
 				Color4ub color;
-				if (data.model.isLineSelected(line)) color = color_selected;
-				else if (isLineHovered(line)) color = color_selected;
+				if (isLineHovered(line)) color = color_hovered;
+				else if (data.model.isLineSelected(line)) color = color_selected;
 				else color = color_white;//line % 2 ? color_clouds : color_silver;
 
 				event.renderQueue.drawRectFill(

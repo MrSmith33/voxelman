@@ -139,7 +139,7 @@ auto scaledNumberFmt(Duration value)
 	double seconds = value.total!"hnsecs" / 10_000_000.0;
 	return ScaledNumberFmt!double(seconds);
 }
-
+/*
 unittest
 {
 	import std.stdio;
@@ -187,7 +187,7 @@ unittest
 	10_000_000_000.0.scaledNumberFmt.writeln;
 	100_000_000_000.0.scaledNumberFmt.writeln;
 }
-
+*/
 double scaled(Num)(Num num, int scale)
 {
 	import std.math: pow;

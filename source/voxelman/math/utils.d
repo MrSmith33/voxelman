@@ -19,6 +19,11 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 	return result;
 }
 
+T divCeil(T)(T a, T b)
+{
+	return a / b + (a % b > 0);
+}
+
 T distance(T) (Vector!(T,2) a, Vector!(T,2) b)
 body
 {

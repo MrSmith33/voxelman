@@ -8,6 +8,8 @@ module voxelman.imgui_glfw;
 import derelict.imgui.imgui;
 import derelict.opengl3.gl3;
 import derelict.glfw3.glfw3;
+import voxelman.platform.input;
+import voxelman.math;
 
 struct ImguiState
 {
@@ -284,33 +286,33 @@ struct ImguiState
 		ImFontAtlas_SetTexID(io.Fonts, cast(void*)fontTexture);
 	}
 
-	void onMousePressed(uint button)
+	void onMousePressed(PointerButton button, uint modifiers)
 	{
 		mousePressed[button] = true;
 	}
 
-	void onMouseReleased(uint button)
+	void onMouseReleased(PointerButton button, uint modifiers)
 	{
 		mousePressed[button] = false;
 	}
 
-	void scrollCallback(float scroll)
+	void scrollCallback(dvec2 delta)
 	{
-		mouseWheel += scroll;
+		mouseWheel += delta.y;
 	}
 
-	void onKeyPressed(uint key)
+	void onKeyPressed(KeyCode key, uint modifiers)
 	{
 		igGetIO().KeysDown[key] = true;
-		if (key == GLFW_KEY_KP_ENTER)
-			igGetIO().KeysDown[GLFW_KEY_ENTER] = true;
+		if (key == KeyCode.KEY_KP_ENTER)
+			igGetIO().KeysDown[KeyCode.KEY_ENTER] = true;
 	}
 
-	void onKeyReleased(uint key)
+	void onKeyReleased(KeyCode key, uint modifiers)
 	{
 		igGetIO().KeysDown[key] = false;
-		if (key == GLFW_KEY_KP_ENTER)
-			igGetIO().KeysDown[GLFW_KEY_ENTER] = false;
+		if (key == KeyCode.KEY_KP_ENTER)
+			igGetIO().KeysDown[KeyCode.KEY_ENTER] = false;
 	}
 
 	void charCallback(dchar c)

@@ -57,7 +57,6 @@ unittest {
 	}
 
 	import std.stdio;
-	writeln("test");
 
 	test!(HashSet!(ushort, ushort.max, ushort.max-1));
 	test!(HashSet!(ushort));

@@ -74,7 +74,7 @@ public:
 		window.charEntered.connect(&igState.charCallback);
 		window.mousePressed.connect(&igState.onMousePressed);
 		window.mouseReleased.connect(&igState.onMouseReleased);
-		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
+		window.wheelScrolled.connect(&igState.scrollCallback);
 	}
 
 	void initLibs()
