@@ -70,6 +70,8 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 		firstChunkDataPos = numFrontRemovedItems % pageSize;
 		size_t lastUsedChunk = (firstChunkDataPos + newLength) / pageSize + 1;
 		T*[] chunks = chunkBuffer.data;
+
+		// move chunks to front
 		size_t i;
 		foreach (chunkIndex; firstUsedChunk..lastUsedChunk)
 		{
@@ -322,5 +324,5 @@ unittest
 {
 	ChunkedBuffer!(int, 32) buf;
 	buf.put(100.iota);
-
+	assert(buf[].retro.equal(100.iota.retro));
 }
