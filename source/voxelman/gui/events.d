@@ -46,7 +46,7 @@ private mixin template PointerButtonEvent()
 	import voxelman.platform.input : PointerButton;
 	ivec2 pointerPosition;
 	PointerButton button;
-	uint modifiers; // flags from KeyModifiers
+	mixin ModifiersMixin!();
 	mixin GuiEvent!();
 }
 
@@ -86,13 +86,18 @@ struct CharEnterEvent
 	mixin GuiEvent!();
 }
 
-private mixin template KeyEvent()
+private mixin template ModifiersMixin()
 {
-	KeyCode keyCode;
 	uint modifiers; // flags from KeyModifiers
 	bool shift() { return cast(bool)(modifiers & KeyModifiers.SHIFT); }
 	bool control() { return cast(bool)(modifiers & KeyModifiers.CONTROL); }
 	bool alt() { return cast(bool)(modifiers & KeyModifiers.ALT); }
+}
+
+private mixin template KeyEvent()
+{
+	KeyCode keyCode;
+	mixin ModifiersMixin!();
 	mixin GuiEvent!();
 }
 

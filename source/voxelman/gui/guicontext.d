@@ -54,6 +54,7 @@ class GuiContext
 		widgets.registerComponent!WidgetTransform;
 		widgets.registerComponent!WidgetIsFocusable;
 		widgets.registerComponent!WidgetName;
+		widgets.registerComponent!WidgetType;
 		widgets.registerComponent!WidgetRespondsToPointer;
 		widgets.registerComponent!WidgetStyle;
 
@@ -401,7 +402,8 @@ class GuiContext
 	void clipboard(S)(S str)
 	{
 		import std.array : array;
-		state.setClipboard(str.byChar.array);
+		import std.utf : byChar;
+		state.setClipboard(cast(string)str.byChar.array);
 	}
 
 	void cursorIcon(CursorIcon icon) { state.cursorIcon = icon; }

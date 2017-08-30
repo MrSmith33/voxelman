@@ -40,6 +40,17 @@ struct WidgetName
 	string name;
 }
 
+@Component("gui.WidgetType", Replication.none)
+struct WidgetType
+{
+	string name;
+}
+
+string getWidgetType(GuiContext ctx, WidgetId wid) {
+	if (auto type = ctx.get!WidgetType(wid)) return type.name;
+	return "Widget";
+}
+
 @Component("gui.WidgetContainer", Replication.none)
 struct WidgetContainer
 {
@@ -91,6 +102,12 @@ unittest
 	test(2, [3,2,1], [3,2,1]);
 }
 
+size_t numberOfChildren(GuiContext ctx, WidgetId wid)
+{
+	if (auto container = ctx.get!WidgetContainer(wid)) return container.children.length;
+	return 0;
+}
+
 void bringToFront(GuiContext ctx, WidgetId wid)
 {
 	auto parentId = ctx.get!WidgetTransform(wid).parent;
@@ -138,6 +155,18 @@ struct WidgetEvents
 		// We use non-null value because null if a valid context pointer in delegates
 		DelegatePayload fakeDelegate = {FUNCTION_CONTEXT_VALUE, handler};
 		eventHandlers[typeid(EventType)] ~= *cast(EventHandler*)&fakeDelegate;
+	}
+
+	void replaceEventHandler(EventType)(void delegate(WidgetId, ref EventType) handler)
+	{
+		eventHandlers[typeid(EventType)] = [cast(EventHandler)handler];
+	}
+
+	void replaceEventHandler(EventType)(void function(WidgetId, ref EventType) handler)
+	{
+		// We use non-null value because null if a valid context pointer in delegates
+		DelegatePayload fakeDelegate = {FUNCTION_CONTEXT_VALUE, handler};
+		eventHandlers[typeid(EventType)] = [*cast(EventHandler*)&fakeDelegate];
 	}
 
 	void removeEventHandlers(T)()

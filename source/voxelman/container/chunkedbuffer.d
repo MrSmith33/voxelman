@@ -22,7 +22,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 
 	// Must be kept private since it can be used to check for avaliable space
 	// when used as output range
-	private size_t length;
+	size_t length;
 	// can be non-zero after removeFront
 	private size_t firstChunkDataPos;
 

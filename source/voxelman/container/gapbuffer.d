@@ -16,6 +16,7 @@ struct GapBuffer(T)
 {
 	private T* buffer;
 	size_t length;
+	alias opDollar = length;
 	private size_t gapLength;
 	private size_t gapStart;
 
@@ -74,6 +75,7 @@ struct GapBuffer(T)
 
 	ref T opIndex(size_t at)
 	{
+		assert(at < length);
 		immutable size_t index = at < gapStart ? at : at + gapLength;
 		return buffer[index];
 	}

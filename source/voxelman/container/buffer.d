@@ -36,6 +36,11 @@ struct Buffer(T)
 		buf[length] = item;
 	}
 
+	ref T opIndex(size_t at)
+	{
+		return buf[at];
+	}
+
 	inout(T[]) data() inout {
 		return buf[0..length];
 	}

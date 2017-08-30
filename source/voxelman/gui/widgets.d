@@ -57,7 +57,7 @@ struct PanelLogic
 		WidgetProxy panel = parent.createChild(
 			WidgetEvents(&drawWidget),
 			WidgetTransform(pos, size),
-			WidgetStyle(color));
+			WidgetStyle(color)).set(WidgetType("Panel"));
 		return panel;
 	}
 
@@ -187,7 +187,7 @@ struct TextButtonLogic
 				&enterWidget, &leaveWidget, &measure),
 			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer());
+			WidgetRespondsToPointer()).set(WidgetType("TextButton"));
 		setHandler(button, handler);
 		return button;
 	}
@@ -290,7 +290,7 @@ struct Line(bool horizontal)
 	static:
 	static if (horizontal) {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure));
+			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure)).set(WidgetType("Line"));
 		}
 		void measure(WidgetId wid, ref MeasureEvent event) {
 			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
@@ -321,9 +321,9 @@ struct Fill(bool horizontal)
 	WidgetProxy create(WidgetProxy parent)
 	{
 		static if (horizontal)
-			return parent.createChild(hexpand());
+			return parent.createChild(hexpand()).set(WidgetType("Fill"));
 		else
-			return parent.createChild(vexpand());
+			return parent.createChild(vexpand()).set(WidgetType("Fill"));
 	}
 }
 
@@ -335,7 +335,7 @@ struct LinearLayout(bool horizontal)
 	static:
 	WidgetProxy create(WidgetProxy parent, int spacing, int padding)
 	{
-		WidgetProxy layout = parent.createChild();
+		WidgetProxy layout = parent.createChild().set(WidgetType("LinearLayout"));
 		attachTo(layout, spacing, padding);
 		return layout;
 	}
@@ -435,15 +435,25 @@ struct ColumnInfo
 	enum int minWidth = 80;
 }
 
-interface ListModel
+enum TreeLineType
+{
+	leaf,
+	collapsedNode,
+	expandedNode
+}
+
+abstract class ListModel
 {
 	int numLines();
 	int numColumns();
 	ref ColumnInfo columnInfo(int column);
 	void getColumnText(int column, scope void delegate(const(char)[]) sink);
-	void getCellText(int column, int row, scope void delegate(const(char)[]) sink);
-	bool isLineSelected(int row);
-	void onLineClick(int row);
+	void getCellText(int column, int line, scope void delegate(const(char)[]) sink);
+	bool isLineSelected(int line);
+	void onLineClick(int line);
+	TreeLineType getLineType(int line) { return TreeLineType.leaf; }
+	int getLineIndent(int line) { return 0; }
+	void toggleLineFolding(int line) { }
 }
 
 @Component("gui.ListData", Replication.none)
@@ -476,7 +486,7 @@ struct ColumnListLogic
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer());
+			WidgetRespondsToPointer()).set(WidgetType("List"));
 		return list;
 	}
 
@@ -509,6 +519,9 @@ struct ColumnListLogic
 		int viewEndPos = data.viewOffset.y + canvasSize.y;
 		int lastVisibleLine = clamp(viewEndPos / lineHeight, 0, lastLine);
 
+		// for folding arrow positioning
+		int charW = data.font.metrics.advanceX;
+
 		bool isLineHovered(int line) { return data.hoveredLine == line; }
 
 		void drawBackground()
@@ -535,6 +548,7 @@ struct ColumnListLogic
 		void drawColumnHeader(int column, ivec2 pos, ivec2 size)
 		{
 			auto params = event.renderQueue.startTextAt(vec2(pos));
+			params.font = data.font;
 			params.color = color_wet_asphalt;
 			params.depth = event.depth+2;
 			params.monospaced = true;
@@ -542,20 +556,32 @@ struct ColumnListLogic
 			params.meshText(data.model.columnInfo(column).name);
 		}
 
-		void drawCell(int column, int line, ivec2 pos, ivec2 size)
+		void drawCell(int column, int line, irect rect)
 		{
-			auto params = event.renderQueue.startTextAt(vec2(pos));
+			auto params = event.renderQueue.startTextAt(vec2(rect.position));
+			params.font = data.font;
 			params.color = color_wet_asphalt;
 			params.depth = event.depth+2;
 			params.monospaced = true;
-			params.scissors = irect(pos, size);
+			params.scissors = rect;
 
 			void sinkHandler(const(char)[] str) {
 				params.meshText(str);
 			}
 
+			if (column == 0)
+			{
+				params.origin.x += charW * data.model.getLineIndent(line);
+				final switch(data.model.getLineType(line))
+				{
+					case TreeLineType.leaf: params.meshText("   "); break;
+					case TreeLineType.collapsedNode: params.meshText(" ► "); break;
+					case TreeLineType.expandedNode: params.meshText(" ▼ "); break;
+				}
+			}
+
 			data.model.getCellText(column, line, &sinkHandler);
-			params.alignMeshedText(data.model.columnInfo(column).alignment, Alignment.min, size);
+			params.alignMeshedText(data.model.columnInfo(column).alignment, Alignment.min, rect.size);
 		}
 
 		drawBackground();
@@ -589,7 +615,7 @@ struct ColumnListLogic
 				ivec2 cellContentPos = cellPos + data.contentPadding;
 				ivec2 cellContentSize = cellSize - data.contentPadding*2;
 
-				drawCell(column, line, cellContentPos, cellContentSize);
+				drawCell(column, line, irect(cellContentPos, cellContentSize));
 				lineY += lineHeight;
 			}
 
@@ -647,6 +673,33 @@ struct ColumnListLogic
 	void clickWidget(WidgetId wid, ref PointerClickEvent event)
 	{
 		auto data = event.ctx.get!ListData(wid);
-		if (data.hasHoveredLine) data.model.onLineClick(data.hoveredLine);
+		if (data.hasHoveredLine)
+		{
+			auto line = data.hoveredLine;
+			if (data.model.numColumns < 1) return;
+
+			auto lineType = data.model.getLineType(line);
+			if (lineType == TreeLineType.leaf)
+			{
+				data.model.onLineClick(line);
+				return;
+			}
+
+			int firstColW = data.model.columnInfo(0).width;
+			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+			auto leftBorder = transform.absPos.x + data.contentPadding.x;
+			auto indentW = data.font.metrics.advanceX;
+			auto buttonStart = leftBorder + indentW * data.model.getLineIndent(line);
+			auto buttonW = indentW*3;
+			auto buttonEnd = buttonStart + buttonW;
+			auto clickX = event.pointerPosition.x;
+
+			if (clickX >= buttonStart && clickX < buttonEnd)
+			{
+				data.model.toggleLineFolding(line);
+			}
+			else
+				data.model.onLineClick(line);
+		}
 	}
 }
