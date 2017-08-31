@@ -108,7 +108,7 @@ mixin template HashTablePart(KeyBucketT, bool store_values)
 	{
 		size_t index = getHash(key) & (capacity - 1);
 		version(DEBUG_TRACE) tracef("[%s] insert %s at %s cap %s", debugId, key, index, capacity);
-		while (keyBuckets[index].used && keyBuckets[index].key != key)
+		while (!keyBuckets[index].canInsert(key))
 		{
 			version(DEBUG_TRACE) {
 				if (keyBuckets[index].used)
@@ -248,6 +248,8 @@ mixin template HashMapImpl()
 			++length;
 		}
 		else if (keyBuckets[index].deleted) {
+			assert(keyBuckets[index].key == key,
+				"trying to insert item into deleted bucket when keys aren't equal");
 			++length;
 		}
 		else {
@@ -369,7 +371,7 @@ mixin template HashMapImpl()
 			else if (bucket.deleted)
 				writefln("D %s %s", bucket.key, values[index]);
 		}
-		writefln("totalUsed %s length %s", totalUsed, length);
+		writefln("totalUsed %s length %s capacity %s", totalUsed, length, capacity);
 	}
 
 	void toString()(scope void delegate(const(char)[]) sink)

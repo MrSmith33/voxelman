@@ -37,7 +37,7 @@
 			},
 
 			"libs-posix": ["lmdb", "lz4", "glfw3", "enet"],
-			"libs-windows": ["user32", "gdi32", "winmm"],
+			"libs-windows": ["user32", "gdi32", "winmm", "ws2_32"],
 
 			"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib", "lib/32/cimgui.lib"],
 			"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib", "lib/64/cimgui.lib"],

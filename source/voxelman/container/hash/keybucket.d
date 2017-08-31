@@ -20,6 +20,10 @@ struct MetaKeyBucket(Key)
 	bool used() const { return type == BucketType.used; }
 	bool deleted() const { return type == BucketType.deleted; }
 
+	bool canInsert(Key key) const {
+		return type == BucketType.empty || this.key == key;
+	}
+
 	void markAsDeleted() {
 		type = BucketType.deleted;
 	}
@@ -43,6 +47,10 @@ struct KeyBucket(Key, Key emptyKey, Key deletedKey)
 	bool empty() const { return key == emptyKey; }
 	bool used() const { return key != emptyKey && key != deletedKey; }
 	bool deleted() const { return key == deletedKey; }
+
+	bool canInsert(Key key) const {
+		return this.key == emptyKey || this.key == key;
+	}
 
 	void markAsDeleted() {
 		key = deletedKey;

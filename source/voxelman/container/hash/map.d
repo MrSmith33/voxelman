@@ -80,3 +80,29 @@ unittest {
 	test!(HashMap!(ushort, ulong, ushort.max, ushort.max-1));
 	test!(HashMap!(ushort, ulong));
 }
+
+unittest {
+	void test(M)()
+	{
+		M map;
+		map.reserve(4);
+
+		ushort item0 = 0;
+		ushort item1 = cast(ushort)map.capacity;
+
+		// put 2 colliding items
+		map[item0] = item0; // is put in slot 0
+		map[item1] = item1; // is put in slot 1, since 0 is occupied
+		assert(map.length == 2);
+
+		map.remove(item0); // free slot 0
+		assert(map.length == 1);
+
+		map[item1] = item1; // this should be put in slot 1, not in 0 <-- bug
+		assert(map.length == 1);
+	}
+
+	test!(HashMap!(ushort, ulong, ushort.max, ushort.max-1));
+	test!(HashMap!(ushort, ulong));
+}
+
