@@ -12,6 +12,7 @@ import std.algorithm : min, equal, swap;
 import std.range;
 
 import voxelman.container.buffer;
+import voxelman.container.chunkedrange;
 import voxelman.math : nextPOT, divCeil;
 
 struct ChunkedBuffer(T, size_t pageSize = 4096)
@@ -150,35 +151,48 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 
 struct ChunkedBufferChunks(T, size_t pageSize)
 {
-	private T*[] chunks;
-	size_t totalItems;
+	private T** chunks;
+	size_t chunksLeft; // includes front chunk
+	size_t itemsLeft; // does not include items inside front
 	T[] front;
 
-	size_t length() { return chunks.length; }
+	size_t length() { return chunksLeft; }
 	alias opDollar = length;
 
-	bool empty() { return totalItems == 0; }
+	bool empty() { return front.length == 0; }
 	auto save() { return this; }
 
 	this(T*[] chunks, size_t length, size_t firstChunkOffset)
 	{
-		totalItems = length;
-		this.chunks = chunks;
+		itemsLeft = length;
+		chunksLeft = chunks.length;
+		this.chunks = chunks.ptr;
 		if (length)
 		{
-			size_t pageItems = min(totalItems, pageSize-firstChunkOffset);
+			size_t pageItems = min(itemsLeft, pageSize-firstChunkOffset);
 			size_t end = firstChunkOffset + pageItems;
-			front = chunks[0][firstChunkOffset..end];
+			front = (*this.chunks++)[firstChunkOffset..end];
+			itemsLeft -= front.length; // may cause itemsLeft to become 0
 		}
 	}
 
 	void popFront()
 	{
-		totalItems -= front.length;
-		chunks = chunks[1..$];
+		size_t pageItems = min(itemsLeft, pageSize);
+		if (pageItems == 0)
+		{
+			front = null;
+			return;
+		}
 
-		size_t pageItems = min(totalItems, pageSize);
-		if (pageItems) front = chunks[0][0..pageItems];
+		front = (*chunks++)[0..pageItems];
+		--chunksLeft;
+		itemsLeft -= front.length; // may cause itemsLeft to become 0
+	}
+
+	ChunkedRange!T toChunkedRange()
+	{
+		return ChunkedRange!T(front, itemsLeft, chunks, null, &ChunkedRange_popFront!(T, pageSize));
 	}
 }
 
@@ -199,11 +213,50 @@ struct ChunkedBufferItemRange(T, size_t pageSize)
 
 	auto opSlice(size_t from, size_t to)
 	{
-		assert(from < length);
-		assert(to <= length);
+		if (from != to)
+		{
+			assert(from < length);
+			assert(to <= length);
+		}
 		size_t len = to - from;
 		return ChunkedBufferItemRange(buf, start+from, len);
 	}
+
+	ChunkedRange!T toChunkedRange()
+	{
+		size_t firstItem = start + buf.firstChunkDataPos;
+		size_t firstChunk = firstItem / pageSize;
+		size_t chunkPos = firstItem % pageSize;
+		size_t itemsLeft = length;
+
+		size_t chunkLength = min(itemsLeft, pageSize-chunkPos);
+		if (chunkLength == 0) return ChunkedRange!T(null, 0, null, null, &ChunkedRange_popFront!(T, pageSize));
+		T** firstChunkPtr = buf.chunkBuffer.data.ptr + firstChunk;
+		auto front = firstChunkPtr[0][chunkPos..chunkPos+chunkLength];
+		itemsLeft -= front.length;
+
+		return ChunkedRange!T(front, itemsLeft, firstChunkPtr+1, null, &ChunkedRange_popFront!(T, pageSize));
+	}
+}
+
+private static void ChunkedRange_popFront(T, size_t pageSize)(
+	ref T[] front,
+	ref size_t itemsLeft,
+	ref void* chunks,
+	ref void* unused)
+{
+	if (itemsLeft == 0)
+	{
+		front = null;
+		return;
+	}
+
+	size_t chunkLength = min(itemsLeft, pageSize);
+	T** nextChunkStart = cast(T**)chunks;
+	front = nextChunkStart[0][0..chunkLength];
+	chunks = nextChunkStart+1;
+
+	itemsLeft -= chunkLength;
 }
 
 private alias ItemRangeT = ChunkedBufferItemRange!(int, 32);
@@ -325,4 +378,38 @@ unittest
 	ChunkedBuffer!(int, 32) buf;
 	buf.put(100.iota);
 	assert(buf[].retro.equal(100.iota.retro));
+}
+
+// test chunked range
+unittest
+{
+	ChunkedBuffer!(int, 4) buf;
+	buf.put(1, 2, 3, 4, 5, 6, 7, 8);
+	assert(buf[].equal([1, 2, 3, 4, 5, 6, 7, 8]));
+	assert(buf.byChunk.equal([[1, 2, 3, 4], [5, 6, 7, 8]]));
+	assert(buf.byChunk.toChunkedRange.equal([[1, 2, 3, 4], [5, 6, 7, 8]]));
+	assert(buf.byChunk.toChunkedRange.byItem.equal([1, 2, 3, 4, 5, 6, 7, 8]));
+	int[8] sink;
+	buf.byChunk.toChunkedRange.copyInto(sink[]);
+	assert(sink[].equal([1, 2, 3, 4, 5, 6, 7, 8]));
+	assert(buf[2..6].equal([3, 4, 5, 6]));
+	assert(buf[2..6].toChunkedRange.equal([[3, 4], [5, 6]]));
+	assert(buf[2..6].toChunkedRange.byItem.equal([3, 4, 5, 6]));
+	assert(buf[4..8].equal([5, 6, 7, 8]));
+	buf.put(9, 10, 11, 12);
+	assert(buf[6..10].equal([7, 8, 9, 10]));
+}
+
+unittest
+{
+	import std.algorithm : equal;
+	import std.stdio;
+	ChunkedBuffer!(char, 2) buf;
+	buf.put("test1\n");
+	buf.put("test2\n");
+	buf.put("test3\n");
+
+	auto text = buf[6..17].toChunkedRange.byItem;
+
+	assert(text.equal("test2\ntest3"));
 }

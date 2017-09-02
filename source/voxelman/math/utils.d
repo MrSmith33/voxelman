@@ -19,6 +19,11 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 	return result;
 }
 
+bool toggle_bool(ref bool value)
+{
+	return value = !value;
+}
+
 T divCeil(T)(T a, T b)
 {
 	return a / b + (a % b > 0);
