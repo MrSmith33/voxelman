@@ -5,8 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.graphics.vbo;
 
-import derelict.opengl3.gl3;
-import voxelman.graphics.glerrors;
+import voxelman.graphics.gl;
 
 
 struct Vbo

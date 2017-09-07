@@ -19,7 +19,7 @@ import std.typecons : Flag, Yes, No;
 import voxelman.math;
 import derelict.glfw3.glfw3;
 import derelict.imgui.imgui;
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 import voxelman.platform.glfwwindow;
 import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
@@ -81,8 +81,13 @@ struct LauncherGui
 		codeMenu.init(&launcher);
 		refresh();
 
+		loadOpenGL();
+
 		window = new GlfwWindow();
 		window.init(ivec2(820, 600), "Voxelman launcher");
+
+		reloadOpenGL();
+
 		igState.init(window.handle);
 		window.keyPressed.connect(&igState.onKeyPressed);
 		window.keyReleased.connect(&igState.onKeyReleased);
@@ -99,7 +104,6 @@ struct LauncherGui
 
 	void run()
 	{
-		DerelictGL3.load();
 		init();
 
 		while(isRunning)

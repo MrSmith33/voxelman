@@ -31,7 +31,7 @@ interface IRenderer
 	void close();
 }
 
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 enum FaceCullMode
 {
 	front = GL_FRONT,

@@ -1,16 +1,38 @@
 /**
-Copyright: Copyright (c) 2013-2017 Andrey Penechko.
+Copyright: Copyright (c) 2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
 
-module voxelman.graphics.glerrors;
+module voxelman.graphics.gl;
 
+public import derelict.opengl;
 import std.conv: to;
-import derelict.opengl3.gl3;
 
-/// Errors checking template; should work in debug build.
-/// Using: checkgl!glFunction(funcParams);
+void loadOpenGL()
+{
+	DerelictGL3.load();
+}
+
+void reloadOpenGL()
+{
+	// Load maximum avaliable OpenGL version
+	DerelictGL3.reload();
+	loadExtensions();
+}
+
+
+enum EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD = 0x9160;
+__gshared bool AMD_pinned_memory;
+
+void loadExtensions()
+{
+	AMD_pinned_memory = DerelictGL3.isExtensionSupported("GL_AMD_pinned_memory");
+}
+
+
+/// Error checking template; should work in debug build.
+/// Usage: checkgl!glFunction(funcParams);
 template checkgl(alias func)
 {
 	import std.traits : Parameters;

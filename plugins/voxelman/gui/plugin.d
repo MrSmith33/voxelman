@@ -58,10 +58,15 @@ public:
 
 	override void preInit()
 	{
-		initLibs();
+		import voxelman.graphics.gl;
+
+		loadOpenGL();
 
 		window = new GlfwWindow();
 		window.init(ivec2(resolution.get!(int[])), "Voxelman client");
+
+		reloadOpenGL();
+
 		renderer = new OglRenderer(window);
 		igState.init((cast(GlfwWindow)window).handle);
 
@@ -75,12 +80,6 @@ public:
 		window.mousePressed.connect(&igState.onMousePressed);
 		window.mouseReleased.connect(&igState.onMouseReleased);
 		window.wheelScrolled.connect(&igState.scrollCallback);
-	}
-
-	void initLibs()
-	{
-		import derelict.opengl3.gl3;
-		DerelictGL3.load();
 	}
 
 	override void init(IPluginManager pluginman)

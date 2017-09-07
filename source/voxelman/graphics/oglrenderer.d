@@ -6,14 +6,12 @@ Authors: Andrey Penechko.
 
 module voxelman.graphics.oglrenderer;
 
-import derelict.opengl3.gl3;
-
-import voxelman.math;
+import voxelman.graphics.gl;
 import voxelman.graphics.irenderer;
-import voxelman.platform.iwindow;
 import voxelman.graphics.shaderprogram;
 import voxelman.graphics.texture;
-import voxelman.graphics.glerrors;
+import voxelman.math;
+import voxelman.platform.iwindow;
 
 
 class OglRenderer : IRenderer

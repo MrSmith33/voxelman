@@ -10,8 +10,7 @@ import std.exception;
 import std.stdio;
 import std.string;
 import std.variant;
-import derelict.opengl3.gl3;
-import voxelman.graphics.glerrors;
+import voxelman.graphics.gl;
 
 final class ShaderProgram
 {

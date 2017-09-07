@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.model.vertex;
 
 import std.meta;
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 import voxelman.math;
 
 align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)

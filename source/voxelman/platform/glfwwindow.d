@@ -10,7 +10,7 @@ import std.conv : to;
 import std.string : toStringz, fromStringz, format;
 
 import derelict.glfw3.glfw3;
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 import voxelman.log;
 import voxelman.math;
 import voxelman.platform.iwindow : IWindow, CursorIcon;
@@ -48,8 +48,6 @@ public:
 
 		scope(failure) glfwTerminate();
 
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_VISIBLE, false);
 
@@ -70,8 +68,6 @@ public:
 
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		glViewport(0, 0, size.x, size.y);
-
-		DerelictGL3.reload();
 
 		glfwSetWindowUserPointer(glfwWindowPtr, cast(void*)this);
 		glfwSetWindowPosCallback(glfwWindowPtr, &windowposfun);

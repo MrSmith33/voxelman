@@ -6,7 +6,7 @@ Authors: Andrey Penechko, Stephan Dilly (imgui_d_test).
 module voxelman.imgui_glfw;
 
 import derelict.imgui.imgui;
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 import derelict.glfw3.glfw3;
 import voxelman.platform.input;
 import voxelman.math;

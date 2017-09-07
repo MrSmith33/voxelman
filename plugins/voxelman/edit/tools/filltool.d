@@ -62,7 +62,7 @@ final class FillTool : ITool
 	}
 
 	override void onRender(GraphicsPlugin graphics) {
-		import derelict.opengl3.gl3;
+		import voxelman.graphics.gl;
 		drawSelection(graphics);
 		if (showCursor && !worldInteraction.cameraInSolidBlock)
 		{

@@ -11,11 +11,10 @@ import voxelman.log;
 import voxelman.math;
 import dlib.math.matrix : Matrix4f;
 import derelict.enet.enet;
-import derelict.opengl3.gl3;
 import derelict.imgui.imgui;
 
 import voxelman.utils.fpshelper;
-import voxelman.graphics.glerrors;
+import voxelman.graphics.gl;
 
 import netlib;
 import pluginlib;

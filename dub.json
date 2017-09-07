@@ -17,9 +17,9 @@
 			"dependencies" : {
 				"cbor-d" : "==0.5.4",
 				"dlib" : {"path" : "./deps/dlib"},
-				"derelict-glfw3" : "==3.1.2",
-				"derelict-gl3" : "==1.0.18",
-				"derelict-util": ">=1.0.3",
+				"derelict-glfw3" : ">=4.0.0-beta.1 <4.1.0",
+				"derelict-gl3" : ">=2.0.0-beta.4 <2.1.0",
+				"derelict-util": ">=3.0.0-beta.1 <3.1.0",
 				"sdlang-d" : "==0.9.6"
 			},
 			"subConfigurations": {

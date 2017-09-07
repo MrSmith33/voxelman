@@ -5,8 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.graphics.vao;
 
-import derelict.opengl3.gl3;
-import voxelman.graphics.glerrors;
+import voxelman.graphics.gl;
 import voxelman.graphics.vbo;
 
 enum PrimitiveType : GLenum

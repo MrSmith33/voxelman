@@ -10,9 +10,8 @@ import std.conv, std.file;
 import std.stdio;
 import std.string;
 
-import derelict.opengl3.gl3;
+import voxelman.graphics.gl;
 import dlib.image.image : SuperImage;
-import voxelman.graphics.glerrors;
 
 //version = debugTexture;
 

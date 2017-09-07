@@ -5,7 +5,6 @@ Authors: Andrey Penechko.
 */
 module voxelman.graphics;
 
-public import derelict.opengl3.gl3;
 
 public import voxelman.graphics.animation;
 public import voxelman.graphics.batch2d;
@@ -15,7 +14,7 @@ public import voxelman.graphics.bufferrenderer;
 public import voxelman.graphics.color;
 public import voxelman.graphics.font;
 public import voxelman.graphics.fpscamera;
-public import voxelman.graphics.glerrors;
+public import voxelman.graphics.gl;
 public import voxelman.graphics.irenderer;
 public import voxelman.graphics.oglrenderer;
 public import voxelman.graphics.renderqueue;

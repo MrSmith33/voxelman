@@ -7,15 +7,14 @@ Authors: Andrey Penechko.
 module voxelman.graphics.plugin;
 
 import voxelman.log;
-import derelict.opengl3.gl3;
 import voxelman.container.buffer;
 import voxelman.math;
 
 import pluginlib;
 import voxelman.platform.iwindow;
+import voxelman.graphics.gl;
 import voxelman.graphics.irenderer;
 import voxelman.graphics.shaderprogram;
-import voxelman.graphics.glerrors;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
