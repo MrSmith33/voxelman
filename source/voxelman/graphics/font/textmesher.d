@@ -189,13 +189,6 @@ int tabWidth(int tabSize, int column)
 	return tabSize - column % tabSize;
 }
 
-enum Alignment
-{
-	min,
-	center,
-	max
-}
-
 /// Applies offset to all previously meshed glyphs
 /// Number of meshed glyphs is taken from TextRectSink
 void alignMeshedText(P)(ref P params, Alignment halign = Alignment.min, Alignment valign = Alignment.min, ivec2 area = ivec2(0,0))
@@ -208,7 +201,7 @@ void alignMeshedText(P)(ref P params, Alignment halign = Alignment.min, Alignmen
 }
 
 // modifies cursor to be aligned for passed text
-void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignment.min, Alignment valign = Alignment.min)
+void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignment.min, Alignment valign = Alignment.min, ivec2 area = ivec2(0,0))
 {
 	if (halign == Alignment.min && valign == Alignment.min) {
 		meshText!(true)(params, textRange);
@@ -219,7 +212,7 @@ void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignme
 	auto size = params.size;
 	auto cursor = params.cursor;
 	measureText(params, textRange);
-	auto alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign);
+	auto alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign, area);
 	params.origin = origin + alignmentOffset;
 	params.cursor = cursor;
 	meshText!(true)(params, textRange);
@@ -227,22 +220,9 @@ void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignme
 
 ivec2 textAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign, ivec2 area = ivec2(0,0))
 {
-	ivec2 offset;
-	final switch (halign)
-	{
-		case Alignment.min: offset.x = 0; break;
-		case Alignment.center: offset.x = area.x/2 - textSize.x/2; break;
-		case Alignment.max: offset.x = area.x - textSize.x; break;
-	}
-	final switch (valign)
-	{
-		case Alignment.min: offset.y = 0; break;
-		case Alignment.center: offset.y = area.y/2 - textSize.y/2; break;
-		case Alignment.max: offset.y = area.y - textSize.y; break;
-	}
+	ivec2 offset = ivec2(alignOnAxis(textSize.x, halign, area.x), alignOnAxis(textSize.y, valign, area.y));
 	return offset;
 }
-
 
 // returns true if rect is visible
 bool clipTexturedRect(ref frect geometryRect, ref frect atlasRect, irect scissors)

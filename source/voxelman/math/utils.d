@@ -19,6 +19,23 @@ Vector!(T, n) abs(T, size_t n)(Vector!(T, n) vector) pure nothrow
 	return result;
 }
 
+enum Alignment
+{
+	min,
+	center,
+	max
+}
+
+T alignOnAxis(T)(T objSize, Alignment alignment, T areaSize)
+{
+	final switch (alignment)
+	{
+		case Alignment.min: return 0;
+		case Alignment.center: return areaSize/2 - objSize/2;
+		case Alignment.max: return areaSize - objSize;
+	}
+}
+
 bool toggle_bool(ref bool value)
 {
 	return value = !value;

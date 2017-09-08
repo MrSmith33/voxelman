@@ -10,7 +10,19 @@ import voxelman.math;
 import voxelman.gui;
 import cbor : ignore;
 import voxelman.graphics : Color4ub;
+import datadriven.entityman : EntityManager;
 
+void registerComponents(ref EntityManager widgets)
+{
+	widgets.registerComponent!WidgetTransform;
+	widgets.registerComponent!WidgetStyle;
+	widgets.registerComponent!WidgetName;
+	widgets.registerComponent!WidgetType;
+	widgets.registerComponent!WidgetContainer;
+	widgets.registerComponent!WidgetRespondsToPointer;
+	widgets.registerComponent!WidgetIsFocusable;
+	widgets.registerComponent!WidgetEvents;
+}
 
 /// Mandatory component
 @Component("gui.WidgetTransform", Replication.none)
@@ -46,8 +58,13 @@ struct WidgetType
 	string name;
 }
 
+string getWidgetType(WidgetProxy widget) {
+	if (auto type = widget.get!WidgetType) return type.name;
+	return "Widget";
+}
+
 string getWidgetType(GuiContext ctx, WidgetId wid) {
-	if (auto type = ctx.get!WidgetType(wid)) return type.name;
+	if (auto type = ctx.widgets.get!WidgetType(wid)) return type.name;
 	return "Widget";
 }
 
@@ -102,17 +119,23 @@ unittest
 	test(2, [3,2,1], [3,2,1]);
 }
 
-size_t numberOfChildren(GuiContext ctx, WidgetId wid)
+size_t numberOfChildren(WidgetProxy widget)
 {
-	if (auto container = ctx.get!WidgetContainer(wid)) return container.children.length;
+	if (auto container = widget.get!WidgetContainer) return container.children.length;
 	return 0;
 }
 
-void bringToFront(GuiContext ctx, WidgetId wid)
+size_t numberOfChildren(GuiContext ctx, WidgetId wid)
 {
-	auto parentId = ctx.get!WidgetTransform(wid).parent;
-	if (auto container = ctx.get!WidgetContainer(parentId))
-		container.bringToFront(wid);
+	if (auto container = ctx.widgets.get!WidgetContainer(wid)) return container.children.length;
+	return 0;
+}
+
+void bringToFront(WidgetProxy widget)
+{
+	auto parentId = widget.get!WidgetTransform.parent;
+	if (auto container = widget.ctx.get!WidgetContainer(parentId))
+		container.bringToFront(widget.wid);
 }
 
 @Component("gui.WidgetRespondsToPointer", Replication.none)
@@ -129,7 +152,7 @@ struct WidgetEvents
 	{
 		addEventHandlers(handlers);
 	}
-	private alias EventHandler = void delegate(WidgetId wid, ref void* event);
+	private alias EventHandler = void delegate(WidgetProxy widget, ref void* event);
 
 	@ignore EventHandler[][TypeInfo] eventHandlers;
 
@@ -145,24 +168,24 @@ struct WidgetEvents
 		void* funcPtr;
 	}
 
-	void addEventHandler(EventType)(void delegate(WidgetId, ref EventType) handler)
+	void addEventHandler(EventType)(void delegate(WidgetProxy, ref EventType) handler)
 	{
 		eventHandlers[typeid(EventType)] ~= cast(EventHandler)handler;
 	}
 
-	void addEventHandler(EventType)(void function(WidgetId, ref EventType) handler)
+	void addEventHandler(EventType)(void function(WidgetProxy, ref EventType) handler)
 	{
 		// We use non-null value because null if a valid context pointer in delegates
 		DelegatePayload fakeDelegate = {FUNCTION_CONTEXT_VALUE, handler};
 		eventHandlers[typeid(EventType)] ~= *cast(EventHandler*)&fakeDelegate;
 	}
 
-	void replaceEventHandler(EventType)(void delegate(WidgetId, ref EventType) handler)
+	void replaceEventHandler(EventType)(void delegate(WidgetProxy, ref EventType) handler)
 	{
 		eventHandlers[typeid(EventType)] = [cast(EventHandler)handler];
 	}
 
-	void replaceEventHandler(EventType)(void function(WidgetId, ref EventType) handler)
+	void replaceEventHandler(EventType)(void function(WidgetProxy, ref EventType) handler)
 	{
 		// We use non-null value because null if a valid context pointer in delegates
 		DelegatePayload fakeDelegate = {FUNCTION_CONTEXT_VALUE, handler};
@@ -177,7 +200,7 @@ struct WidgetEvents
 	/// Returns true if any handlers were called
 	/// This handler will be called by Gui twice, before and after visiting its children.
 	/// In first case sinking flag will be true;
-	bool postEvent(Event)(WidgetId wid, auto ref Event event)
+	bool postEvent(Event)(WidgetProxy widget, auto ref Event event)
 	{
 		if (auto handlers = typeid(Event) in eventHandlers)
 		{
@@ -185,9 +208,9 @@ struct WidgetEvents
 			{
 				auto payload = *cast(DelegatePayload*)&handler;
 				if (payload.contextPtr == FUNCTION_CONTEXT_VALUE)
-					(cast(void function(WidgetId, ref Event))payload.funcPtr)(wid, event);
+					(cast(void function(WidgetProxy, ref Event))payload.funcPtr)(widget, event);
 				else
-					(cast(void delegate(WidgetId, ref Event))handler)(wid, event);
+					(cast(void delegate(WidgetProxy, ref Event))handler)(widget, event);
 			}
 			return true;
 		}

@@ -10,16 +10,20 @@ import std.stdio;
 import voxelman.gui;
 import voxelman.math;
 import voxelman.graphics;
+import datadriven.entityman : EntityManager;
 
-void registerComponents(GuiContext ctx)
+void registerComponents(ref EntityManager widgets)
 {
-	ctx.widgets.registerComponent!WidgetIndex;
-	ctx.widgets.registerComponent!PagedWidgetData;
-	ctx.widgets.registerComponent!TextButtonData;
-	ctx.widgets.registerComponent!LinearLayoutSettings;
-	ctx.widgets.registerComponent!hexpand;
-	ctx.widgets.registerComponent!vexpand;
-	ctx.widgets.registerComponent!ListData;
+	widgets.registerComponent!CheckboxData;
+	widgets.registerComponent!LinearLayoutSettings;
+	widgets.registerComponent!ListData;
+	widgets.registerComponent!PagedWidgetData;
+	widgets.registerComponent!SingleLayoutSettings;
+	widgets.registerComponent!TextButtonData;
+	widgets.registerComponent!TextData;
+	widgets.registerComponent!WidgetIndex;
+	widgets.registerComponent!hexpand;
+	widgets.registerComponent!vexpand;
 }
 
 struct WidgetProxy
@@ -36,6 +40,29 @@ struct WidgetProxy
 	WidgetProxy remove(C)() { ctx.widgets.remove!C(wid); return this; }
 	WidgetProxy createChild(Components...)(Components components) { return ctx.createWidget(wid, components); }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
+	ChildrenRange children() {
+		if (auto container = ctx.widgets.get!WidgetContainer(wid)) return ChildrenRange(ctx, container.children);
+		return ChildrenRange(ctx, null);
+	}
+	WidgetId[] childrenIds() {
+		if (auto container = ctx.widgets.get!WidgetContainer(wid)) return container.children;
+		return null;
+	}
+}
+
+static struct ChildrenRange
+{
+	GuiContext ctx;
+	WidgetId[] children;
+	size_t length(){ return children.length; }
+	WidgetProxy opIndex(size_t i) { return WidgetProxy(children[i], ctx); }
+	int opApply(scope int delegate(WidgetProxy) del)
+	{
+		foreach(childId; children)
+			if (auto ret = del(WidgetProxy(childId, ctx)))
+				return ret;
+		return 0;
+	}
 }
 
 
@@ -61,12 +88,12 @@ struct PanelLogic
 		return panel;
 	}
 
-	void drawWidget(WidgetId wid, ref DrawEvent event)
+	void drawWidget(WidgetProxy widget, ref DrawEvent event)
 	{
 		if (event.sinking)
 		{
-			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
-			auto style = event.ctx.get!WidgetStyle(wid);
+			auto transform = widget.getOrCreate!WidgetTransform;
+			auto style = widget.get!WidgetStyle;
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
 			event.depth += 1;
 			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
@@ -99,12 +126,12 @@ struct PagedWidget
 	{
 		if (auto cont = widget.get!WidgetContainer)
 		{
-			auto options = cont.children;
-			widget.set(PagedWidgetData(options), WidgetEvents(&measure, &layout));
+			WidgetId[] pages = cont.children;
+			widget.set(PagedWidgetData(pages), WidgetEvents(&measure, &layout));
 			cont.children = null;
-			if (options)
+			if (pages)
 			{
-				cont.put(options[initialIndex]);
+				cont.put(pages[initialIndex]);
 			}
 		}
 	}
@@ -125,29 +152,29 @@ struct PagedWidget
 		selectorButton.getOrCreate!WidgetEvents.addEventHandler(&onButtonClick);
 	}
 
-	void onButtonClick(WidgetId wid, ref PointerClickEvent event)
+	void onButtonClick(WidgetProxy widget, ref PointerClickEvent event)
 	{
-		auto data = event.ctx.get!TextButtonData(wid);
-		if (data.handler) data.handler();
+		auto data = widget.get!TextButtonData;
+		data.onClick();
 	}
 
-	void measure(WidgetId wid, ref MeasureEvent event)
+	void measure(WidgetProxy widget, ref MeasureEvent event)
 	{
-		auto transform = event.ctx.get!WidgetTransform(wid);
-		foreach(child; event.ctx.widgetChildren(wid))
+		auto transform = widget.get!WidgetTransform;
+		foreach(child; widget.children)
 		{
-			auto childTransform = event.ctx.get!WidgetTransform(child);
+			auto childTransform = child.get!WidgetTransform;
 			childTransform.applyConstraints();
 			transform.measuredSize = childTransform.measuredSize;
 		}
 	}
 
-	void layout(WidgetId wid, ref LayoutEvent event)
+	void layout(WidgetProxy widget, ref LayoutEvent event)
 	{
-		auto transform = event.ctx.get!WidgetTransform(wid);
-		foreach(child; event.ctx.widgetChildren(wid))
+		auto transform = widget.get!WidgetTransform;
+		foreach(child; widget.children)
 		{
-			auto childTransform = event.ctx.get!WidgetTransform(child);
+			auto childTransform = child.get!WidgetTransform;
 			childTransform.relPos = ivec2(0,0);
 			childTransform.absPos = transform.absPos;
 			childTransform.size = transform.size;
@@ -155,15 +182,53 @@ struct PagedWidget
 	}
 }
 
-alias ClickHandler = void delegate();
-
-@Component("gui.TextButtonData", Replication.none)
-struct TextButtonData
+@Component("gui.TextData", Replication.none)
+struct TextData
 {
 	string text;
-	FontRef font;
-	ClickHandler handler;
-	uint data;
+	Alignment halign;
+	Alignment valign;
+}
+
+WidgetProxy createText(
+	WidgetProxy parent,
+	string text,
+	FontRef font,
+	Alignment halign = Alignment.center,
+	Alignment valign = Alignment.center)
+{
+	TextMesherParams params;
+	params.font = font;
+	params.monospaced = true;
+	measureText(params, text);
+
+	WidgetTransform transform = WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height));
+	transform.measuredSize = ivec2(params.size);
+
+	WidgetProxy textWidget = parent.createChild(
+		TextData(text, halign, valign),
+		WidgetEvents(&drawText),
+		WidgetType("Text"),
+		transform);
+	return textWidget;
+}
+
+void drawText(WidgetProxy widget, ref DrawEvent event)
+{
+	if (event.bubbling) return;
+
+	auto data = widget.get!TextData;
+	auto transform = widget.getOrCreate!WidgetTransform;
+	auto alignmentOffset = textAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
+
+	auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
+	params.monospaced = true;
+	params.depth = event.depth;
+	params.color = color_wet_asphalt;
+	params.origin += alignmentOffset;
+	params.meshText(data.text);
+
+	event.depth += 1;
 }
 
 enum BUTTON_PRESSED = 0b0001;
@@ -175,26 +240,67 @@ enum buttonHoveredColor = rgb(241, 241, 241);
 enum buttonPressedColor = rgb(229, 229, 229);
 Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredColor, buttonPressedColor];
 
+
+alias ClickHandler = void delegate();
+
+@Component("gui.TextButtonData", Replication.none)
+struct TextButtonData
+{
+	ButtonCommonData common;
+	alias common this;
+}
+
+struct ButtonCommonData
+{
+	void onClick() {
+		if (handler) handler();
+	}
+	ClickHandler handler;
+	uint data;
+}
+
 struct TextButtonLogic
 {
 	static:
 	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler = null)
 	{
-		WidgetProxy button = parent.createChild(
-			TextButtonData(text, font),
-			WidgetEvents(
-				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
-				&enterWidget, &leaveWidget, &measure),
-			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
-			WidgetStyle(baseColor),
-			WidgetRespondsToPointer()).set(WidgetType("TextButton"));
-		setHandler(button, handler);
-		return button;
+		with(ButtonLogic!TextButtonData)
+		{
+			WidgetProxy button = parent.createChild(
+				TextButtonData(),
+				WidgetEvents(
+					&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
+					&enterWidget, &leaveWidget),
+				WidgetStyle(baseColor),
+				WidgetRespondsToPointer(),
+				WidgetType("TextButton"));
+
+			button.createText(text, font);
+			setHandler(button, handler);
+			SingleLayout.attachTo(button, 2);
+
+			return button;
+		}
 	}
 
-	void setHandler(WidgetProxy button, ClickHandler handler)
+	void drawWidget(WidgetProxy widget, ref DrawEvent event)
 	{
-		auto data = button.get!TextButtonData;
+		if (event.bubbling) return;
+
+		auto data = widget.get!TextButtonData;
+		auto transform = widget.getOrCreate!WidgetTransform;
+
+		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data & 0b11]);
+		event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
+		event.depth += 2;
+	}
+}
+
+struct ButtonLogic(Data)
+{
+	static:
+	void setHandler(WidgetProxy button, ClickHandler handler) {
+		auto data = button.get!Data;
 		auto events = button.get!WidgetEvents;
 		if (!data.handler)
 		{
@@ -203,68 +309,84 @@ struct TextButtonLogic
 		data.handler = handler;
 	}
 
-	void drawWidget(WidgetId wid, ref DrawEvent event)
+	void pointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
+
+	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
 	{
-		if (event.bubbling) return;
-
-		auto data = event.ctx.get!TextButtonData(wid);
-		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
-		auto style = event.ctx.get!WidgetStyle(wid);
-
-		auto params = event.renderQueue.startTextAt(vec2(transform.absPos) + vec2(transform.size/2));
-		params.font = data.font;
-		params.monospaced = true;
-		params.depth = event.depth+1;
-		params.color = color_wet_asphalt;
-		params.meshTextAligned(data.text, Alignment.center, Alignment.center);
-
-		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data]);
-		event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
-		event.depth += 2;
-	}
-
-	void pointerMoved(WidgetId wid, ref PointerMoveEvent event) { event.handled = true; }
-
-	void pointerPressed(WidgetId wid, ref PointerPressEvent event)
-	{
-		event.ctx.get!TextButtonData(wid).data |= BUTTON_PRESSED;
+		widget.get!Data.data |= BUTTON_PRESSED;
 		event.handled = true;
 	}
 
-	void pointerReleased(WidgetId wid, ref PointerReleaseEvent event)
+	void pointerReleased(WidgetProxy widget, ref PointerReleaseEvent event)
 	{
-		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_PRESSED;
+		widget.get!Data.data &= ~BUTTON_PRESSED;
 		event.handled = true;
 	}
 
-	void enterWidget(WidgetId wid, ref PointerEnterEvent event)
+	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)
 	{
-		event.ctx.get!TextButtonData(wid).data |= BUTTON_HOVERED;
+		widget.get!Data.data |= BUTTON_HOVERED;
 	}
 
-	void leaveWidget(WidgetId wid, ref PointerLeaveEvent event)
+	void leaveWidget(WidgetProxy widget, ref PointerLeaveEvent event)
 	{
-		event.ctx.get!TextButtonData(wid).data &= ~BUTTON_HOVERED;
+		widget.get!Data.data &= ~BUTTON_HOVERED;
 	}
 
-	void clickWidget(WidgetId wid, ref PointerClickEvent event)
+	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
 	{
-		auto data = event.ctx.get!TextButtonData(wid);
+		auto data = widget.get!Data;
 		if (data.handler) data.handler();
-	}
-
-	void measure(WidgetId wid, ref MeasureEvent event)
-	{
-		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
-		auto data = event.ctx.get!TextButtonData(wid);
-		TextMesherParams params;
-		params.font = data.font;
-		params.monospaced = true;
-		measureText(params, data.text);
-		transform.measuredSize = ivec2(params.size)+ivec2(2,2);
 	}
 }
 
+alias CheckHandler = ref bool delegate();
+
+@Component("gui.CheckboxData", Replication.none)
+struct CheckboxData
+{
+	FontRef font;
+	CheckHandler handler;
+	void toggle() { if (handler) handler().toggle_bool; }
+	bool isChecked() {
+		return handler ? handler() : false;
+	}
+	uint data;
+}
+/*
+struct CheckboxLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, string text, FontRef font, CheckHandler handler = null)
+	{
+		WidgetProxy check = parent.createChild(
+			CheckboxData(text, font),
+			WidgetEvents(
+				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
+				&enterWidget, &leaveWidget, &measure),
+			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
+			WidgetStyle(baseColor), WidgetRespondsToPointer())
+				.set(WidgetType("CheckBox"));
+		setHandler(check, handler);
+		return check;
+	}
+
+	void setHandler(WidgetProxy check, CheckHandler handler)
+	{
+		assert(handler);
+		auto data = check.get!CheckboxData;
+		auto events = check.get!WidgetEvents;
+		if (!data.handler) events.addEventHandler(&clickWidget);
+		data.handler = handler;
+	}
+
+	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
+	{
+		auto data = widget.get!TextButtonData;
+		if (data.handler) toggle_bool(data.handler());
+	}
+}
+*/
 
 @Component("gui.vexpand", Replication.none)
 struct vexpand{}
@@ -292,22 +414,22 @@ struct Line(bool horizontal)
 		WidgetProxy create(WidgetProxy parent) {
 			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure)).set(WidgetType("Line"));
 		}
-		void measure(WidgetId wid, ref MeasureEvent event) {
-			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+		void measure(WidgetProxy widget, ref MeasureEvent event) {
+			auto transform = widget.getOrCreate!WidgetTransform;
 			transform.measuredSize = ivec2(0,1);
 		}
 	} else {
 		WidgetProxy create(WidgetProxy parent) {
 			return parent.createChild(vexpand(), WidgetEvents(&drawWidget, &measure));
 		}
-		void measure(WidgetId wid, ref MeasureEvent event) {
-			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+		void measure(WidgetProxy widget, ref MeasureEvent event) {
+			auto transform = widget.getOrCreate!WidgetTransform;
 			transform.measuredSize = ivec2(1,0);
 		}
 	}
-	void drawWidget(WidgetId wid, ref DrawEvent event) {
+	void drawWidget(WidgetProxy widget, ref DrawEvent event) {
 		if (event.bubbling) return;
-		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+		auto transform = widget.getOrCreate!WidgetTransform;
 		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, color_wet_asphalt);
 	}
 }
@@ -327,6 +449,84 @@ struct Fill(bool horizontal)
 	}
 }
 
+@Component("gui.SingleLayoutSettings", Replication.none)
+struct SingleLayoutSettings
+{
+	int padding; /// borders around items
+	Alignment halign;
+	Alignment valign;
+}
+
+/// For layouting single child with alignment and padding.
+struct SingleLayout
+{
+	static:
+	void attachTo(
+		WidgetProxy wid,
+		int padding,
+		Alignment halign = Alignment.center,
+		Alignment valign = Alignment.center)
+	{
+		wid.set(SingleLayoutSettings(padding, halign, valign));
+		wid.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
+	}
+
+	void measure(WidgetProxy widget, ref MeasureEvent event)
+	{
+		auto settings = widget.get!SingleLayoutSettings;
+		ivec2 childSize;
+
+		ChildrenRange children = widget.children;
+		if (children.length > 0)
+		{
+			auto childTransform = children[0].get!WidgetTransform;
+			childTransform.applyConstraints();
+			childSize = childTransform.measuredSize;
+		}
+
+		widget.get!WidgetTransform.measuredSize = childSize + settings.padding*2;
+		widget.ctx.debugText.putfln("SingleLayout.measure %s", widget.get!WidgetTransform.measuredSize);
+	}
+
+	void layout(WidgetProxy widget, ref LayoutEvent event)
+	{
+		auto settings = widget.get!SingleLayoutSettings;
+		auto rootTransform = widget.get!WidgetTransform;
+
+		ivec2 childArea = rootTransform.size - settings.padding * 2;
+
+		ChildrenRange children = widget.children;
+		if (children.length > 0)
+		{
+			WidgetProxy child = children[0];
+			auto childTransform = child.get!WidgetTransform;
+
+			ivec2 childSize;
+			ivec2 relPos;
+
+			if (child.has!vexpand) {
+				childSize.x = childArea.x;
+				relPos.x = settings.padding;
+			} else {
+				childSize.x = childTransform.measuredSize.x;
+				relPos.x = settings.padding + alignOnAxis(childSize.x, settings.halign, childArea.x);
+			}
+
+			if (child.has!hexpand) {
+				childSize.y = childArea.y;
+				relPos.y = settings.padding;
+			} else {
+				childSize.y = childTransform.measuredSize.y;
+				relPos.y = settings.padding + alignOnAxis(childSize.y, settings.valign, childArea.y);
+			}
+
+			childTransform.relPos = relPos;
+			childTransform.absPos = rootTransform.absPos + childTransform.relPos;
+			childTransform.size = childSize;
+		}
+	}
+}
+
 alias HLayout = LinearLayout!true;
 alias VLayout = LinearLayout!false;
 
@@ -340,40 +540,40 @@ struct LinearLayout(bool horizontal)
 		return layout;
 	}
 
-	void attachTo(WidgetProxy wid, int spacing, int padding)
+	void attachTo(WidgetProxy widget, int spacing, int padding)
 	{
-		wid.set(LinearLayoutSettings(spacing, padding));
-		wid.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
+		widget.set(LinearLayoutSettings(spacing, padding));
+		widget.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
 	}
 
-	void measure(WidgetId wid, ref MeasureEvent event)
+	void measure(WidgetProxy widget, ref MeasureEvent event)
 	{
-		auto settings = event.ctx.get!LinearLayoutSettings(wid);
+		auto settings = widget.get!LinearLayoutSettings;
 		settings.numExpandableChildren = 0;
 
 		int maxChildWidth = int.min;
 		int childrenLength;
 
-		WidgetId[] children = event.ctx.widgetChildren(wid);
+		ChildrenRange children = widget.children;
 		foreach(child; children)
 		{
-			auto childTransform = event.ctx.get!WidgetTransform(child);
+			auto childTransform = child.get!WidgetTransform;
 			childTransform.applyConstraints();
 			childrenLength += length(childTransform.measuredSize);
 			maxChildWidth = max(width(childTransform.measuredSize), maxChildWidth);
-			if (hasExpandableLength(event.ctx, child)) ++settings.numExpandableChildren;
+			if (hasExpandableLength(child)) ++settings.numExpandableChildren;
 		}
 
 		int minRootWidth = maxChildWidth + settings.padding*2;
 		int minRootLength = childrenLength + cast(int)(children.length-1)*settings.spacing + settings.padding*2;
-		auto transform = event.ctx.get!WidgetTransform(wid);
+		auto transform = widget.get!WidgetTransform;
 		transform.measuredSize = sizeFromWidthLength(minRootWidth, minRootLength);
 	}
 
-	void layout(WidgetId wid, ref LayoutEvent event)
+	void layout(WidgetProxy widget, ref LayoutEvent event)
 	{
-		auto settings = event.ctx.get!LinearLayoutSettings(wid);
-		auto rootTransform = event.ctx.get!WidgetTransform(wid);
+		auto settings = widget.get!LinearLayoutSettings;
+		auto rootTransform = widget.get!WidgetTransform;
 
 		int maxChildWidth = width(rootTransform.size) - settings.padding * 2;
 
@@ -383,16 +583,16 @@ struct LinearLayout(bool horizontal)
 		int topOffset = settings.padding;
 		topOffset -= settings.spacing; // compensate extra spacing before first child
 
-		foreach(child; event.ctx.widgetChildren(wid))
+		foreach(child; widget.children)
 		{
 			topOffset += settings.spacing;
-			auto childTransform = event.ctx.get!WidgetTransform(child);
+			auto childTransform = child.get!WidgetTransform;
 			childTransform.relPos = sizeFromWidthLength(settings.padding, topOffset);
 			childTransform.absPos = rootTransform.absPos + childTransform.relPos;
 
 			ivec2 childSize = childTransform.measuredSize;
-			if (hasExpandableLength(event.ctx, child)) length(childSize) += extraPerWidget;
-			if (hasExpandableWidth(event.ctx, child)) width(childSize) = maxChildWidth;
+			if (hasExpandableLength(child)) length(childSize) += extraPerWidget;
+			if (hasExpandableWidth(child)) width(childSize) = maxChildWidth;
 			childTransform.size = childSize;
 
 			topOffset += length(childSize);
@@ -401,14 +601,14 @@ struct LinearLayout(bool horizontal)
 
 	private:
 
-	bool hasExpandableWidth(GuiContext ctx, WidgetId wid) {
-		static if (horizontal) return ctx.has!vexpand(wid);
-		else return ctx.has!hexpand(wid);
+	bool hasExpandableWidth(WidgetProxy widget) {
+		static if (horizontal) return widget.has!vexpand;
+		else return widget.has!hexpand;
 	}
 
-	bool hasExpandableLength(GuiContext ctx, WidgetId wid) {
-		static if (horizontal) return ctx.has!hexpand(wid);
-		else return ctx.has!vexpand(wid);
+	bool hasExpandableLength(WidgetProxy widget) {
+		static if (horizontal) return widget.has!hexpand;
+		else return widget.has!vexpand;
 	}
 
 	ivec2 sizeFromWidthLength(int width, int length) {
@@ -490,13 +690,13 @@ struct ColumnListLogic
 		return list;
 	}
 
-	void drawWidget(WidgetId wid, ref DrawEvent event)
+	void drawWidget(WidgetProxy widget, ref DrawEvent event)
 	{
 		if (event.bubbling) return;
 
-		auto data = event.ctx.get!ListData(wid);
-		auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
-		auto style = event.ctx.get!WidgetStyle(wid);
+		auto data = widget.get!ListData;
+		auto transform = widget.getOrCreate!WidgetTransform;
+		auto style = widget.get!WidgetStyle;
 
 		int numLines = data.model.numLines;
 		int numColumns = data.model.numColumns;
@@ -626,10 +826,10 @@ struct ColumnListLogic
 		event.depth += 3;
 	}
 
-	void updateHoveredLine(GuiContext ctx, WidgetId wid, ivec2 pointerPos)
+	void updateHoveredLine(WidgetProxy widget, ivec2 pointerPos)
 	{
-		auto transform = ctx.getOrCreate!WidgetTransform(wid);
-		auto data = ctx.get!ListData(wid);
+		auto transform = widget.getOrCreate!WidgetTransform;
+		auto data = widget.get!ListData;
 		int localPointerY = pointerPos.y - transform.absPos.y;
 		int viewY = localPointerY - data.headerHeight;
 		double canvasY = viewY + data.viewOffset.y;
@@ -638,41 +838,41 @@ struct ColumnListLogic
 			data.hoveredLine = -1;
 	}
 
-	void onScroll(WidgetId wid, ref ScrollEvent event)
+	void onScroll(WidgetProxy widget, ref ScrollEvent event)
 	{
-		auto data = event.ctx.get!ListData(wid);
+		auto data = widget.get!ListData;
 		data.viewOffset += ivec2(event.delta * data.scrollSpeedLines * data.lineHeight);
 	}
 
-	void pointerMoved(WidgetId wid, ref PointerMoveEvent event)
+	void pointerMoved(WidgetProxy widget, ref PointerMoveEvent event)
 	{
-		updateHoveredLine(event.ctx, wid, event.newPointerPos);
+		updateHoveredLine(widget, event.newPointerPos);
 		event.handled = true;
 	}
 
-	void pointerPressed(WidgetId wid, ref PointerPressEvent event)
-	{
-		event.handled = true;
-	}
-
-	void pointerReleased(WidgetId wid, ref PointerReleaseEvent event)
+	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
 	{
 		event.handled = true;
 	}
 
-	void enterWidget(WidgetId wid, ref PointerEnterEvent event)
+	void pointerReleased(WidgetProxy widget, ref PointerReleaseEvent event)
 	{
-		//updateHoveredLine(event.ctx, wid, event.pointerPosition);
+		event.handled = true;
 	}
 
-	void leaveWidget(WidgetId wid, ref PointerLeaveEvent event)
+	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)
 	{
-		//updateHoveredLine(event.ctx, wid, event.pointerPosition);
+		//updateHoveredLine(widget, event.pointerPosition);
 	}
 
-	void clickWidget(WidgetId wid, ref PointerClickEvent event)
+	void leaveWidget(WidgetProxy widget, ref PointerLeaveEvent event)
 	{
-		auto data = event.ctx.get!ListData(wid);
+		//updateHoveredLine(widget, event.pointerPosition);
+	}
+
+	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
+	{
+		auto data = widget.get!ListData;
 		if (data.hasHoveredLine)
 		{
 			auto line = data.hoveredLine;
@@ -686,7 +886,7 @@ struct ColumnListLogic
 			}
 
 			int firstColW = data.model.columnInfo(0).width;
-			auto transform = event.ctx.getOrCreate!WidgetTransform(wid);
+			auto transform = widget.getOrCreate!WidgetTransform;
 			auto leftBorder = transform.absPos.x + data.contentPadding.x;
 			auto indentW = data.font.metrics.advanceX;
 			auto buttonStart = leftBorder + indentW * data.model.getLineIndent(line);
