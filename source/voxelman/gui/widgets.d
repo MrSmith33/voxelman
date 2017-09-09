@@ -14,13 +14,13 @@ import datadriven.entityman : EntityManager;
 
 void registerComponents(ref EntityManager widgets)
 {
-	widgets.registerComponent!CheckboxData;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
 	widgets.registerComponent!PagedWidgetData;
 	widgets.registerComponent!SingleLayoutSettings;
 	widgets.registerComponent!TextButtonData;
 	widgets.registerComponent!TextData;
+	widgets.registerComponent!ToggleButtonData;
 	widgets.registerComponent!WidgetIndex;
 	widgets.registerComponent!hexpand;
 	widgets.registerComponent!vexpand;
@@ -84,7 +84,7 @@ struct PanelLogic
 		WidgetProxy panel = parent.createChild(
 			WidgetEvents(&drawWidget),
 			WidgetTransform(pos, size),
-			WidgetStyle(color)).set(WidgetType("Panel"));
+			WidgetStyle(color), WidgetType("Panel"));
 		return panel;
 	}
 
@@ -246,12 +246,6 @@ alias ClickHandler = void delegate();
 @Component("gui.TextButtonData", Replication.none)
 struct TextButtonData
 {
-	ButtonCommonData common;
-	alias common this;
-}
-
-struct ButtonCommonData
-{
 	void onClick() {
 		if (handler) handler();
 	}
@@ -259,28 +253,39 @@ struct ButtonCommonData
 	uint data;
 }
 
+alias CheckHandler = ref bool delegate();
+
+@Component("gui.ToggleButtonData", Replication.none)
+struct ToggleButtonData
+{
+	void onClick() {
+		if (handler) toggle_bool(handler());
+	}
+	CheckHandler handler;
+	uint data;
+	bool isChecked() {
+		return handler ? handler() : false;
+	}
+}
+
 struct TextButtonLogic
 {
 	static:
 	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler = null)
 	{
-		with(ButtonLogic!TextButtonData)
-		{
-			WidgetProxy button = parent.createChild(
-				TextButtonData(),
-				WidgetEvents(
-					&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
-					&enterWidget, &leaveWidget),
-				WidgetStyle(baseColor),
-				WidgetRespondsToPointer(),
-				WidgetType("TextButton"));
+		WidgetProxy button = parent.createChild(
+			TextButtonData(),
+			WidgetEvents(
+				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
+				&enterWidget, &leaveWidget),
+			WidgetRespondsToPointer(),
+			WidgetType("TextButton"));
 
-			button.createText(text, font);
-			setHandler(button, handler);
-			SingleLayout.attachTo(button, 2);
+		button.createText(text, font);
+		setHandler(button, handler);
+		SingleLayout.attachTo(button, 2);
 
-			return button;
-		}
+		return button;
 	}
 
 	void drawWidget(WidgetProxy widget, ref DrawEvent event)
@@ -291,24 +296,69 @@ struct TextButtonLogic
 		auto transform = widget.getOrCreate!WidgetTransform;
 
 		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data & 0b11]);
-		event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
+		//event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
+		event.depth += 2;
+	}
+
+	mixin CommonButtonLogic!TextButtonData;
+}
+
+/// Assumes that parent has ToggleButtonData data and uses its data and isChecked fields
+struct CheckIconLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, ivec2 size)
+	{
+		WidgetTransform t;
+		t.measuredSize = size;
+		return parent.createChild(t, WidgetEvents(&drawWidget), WidgetType("CheckIcon"));
+	}
+
+	void drawWidget(WidgetProxy widget, ref DrawEvent event)
+	{
+		if (event.bubbling) return;
+
+		auto tran = widget.getOrCreate!WidgetTransform;
+		auto parentData = widget.ctx.get!ToggleButtonData(tran.parent);
+
+		event.renderQueue.drawRectFill(vec2(tran.absPos), vec2(tran.size), event.depth, buttonColors[parentData.data & 0b11]);
+		if (parentData.isChecked)
+			event.renderQueue.drawRectFill(vec2(tran.absPos + 2), vec2(tran.size - 4), event.depth+1, color_wet_asphalt);
+		event.renderQueue.drawRectLine(vec2(tran.absPos), vec2(tran.size), event.depth+1, color_wet_asphalt);
 		event.depth += 2;
 	}
 }
 
-struct ButtonLogic(Data)
+struct CheckButtonLogic
 {
 	static:
-	void setHandler(WidgetProxy button, ClickHandler handler) {
-		auto data = button.get!Data;
-		auto events = button.get!WidgetEvents;
-		if (!data.handler)
-		{
-			events.addEventHandler(&clickWidget);
-		}
-		data.handler = handler;
+	WidgetProxy create(WidgetProxy parent, string text, FontRef font, CheckHandler handler = null)
+	{
+		WidgetProxy check = parent.createChild(
+			ToggleButtonData(),
+			WidgetEvents(
+				&pointerMoved, &pointerPressed, &pointerReleased,
+				&enterWidget, &leaveWidget),
+			WidgetRespondsToPointer(),
+			WidgetType("CheckButton"));
+
+		auto iconSize = font.metrics.height;
+		auto icon = CheckIconLogic.create(check, ivec2(iconSize, iconSize));
+
+		check.createText(text, font);
+
+		setHandler(check, handler);
+		HLayout.attachTo(check, 2, 2);
+
+		return check;
 	}
 
+	mixin CommonButtonLogic!ToggleButtonData;
+}
+
+mixin template CommonButtonLogic(Data)
+{
+	static:
 	void pointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
 
 	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
@@ -336,57 +386,17 @@ struct ButtonLogic(Data)
 	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
 	{
 		auto data = widget.get!Data;
-		if (data.handler) data.handler();
-	}
-}
-
-alias CheckHandler = ref bool delegate();
-
-@Component("gui.CheckboxData", Replication.none)
-struct CheckboxData
-{
-	FontRef font;
-	CheckHandler handler;
-	void toggle() { if (handler) handler().toggle_bool; }
-	bool isChecked() {
-		return handler ? handler() : false;
-	}
-	uint data;
-}
-/*
-struct CheckboxLogic
-{
-	static:
-	WidgetProxy create(WidgetProxy parent, string text, FontRef font, CheckHandler handler = null)
-	{
-		WidgetProxy check = parent.createChild(
-			CheckboxData(text, font),
-			WidgetEvents(
-				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
-				&enterWidget, &leaveWidget, &measure),
-			WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height)),
-			WidgetStyle(baseColor), WidgetRespondsToPointer())
-				.set(WidgetType("CheckBox"));
-		setHandler(check, handler);
-		return check;
+		data.onClick();
 	}
 
-	void setHandler(WidgetProxy check, CheckHandler handler)
-	{
-		assert(handler);
-		auto data = check.get!CheckboxData;
-		auto events = check.get!WidgetEvents;
+	void setHandler(WidgetProxy button, typeof(Data.handler) handler) {
+		auto data = button.get!Data;
+		auto events = button.get!WidgetEvents;
 		if (!data.handler) events.addEventHandler(&clickWidget);
 		data.handler = handler;
 	}
-
-	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
-	{
-		auto data = widget.get!TextButtonData;
-		if (data.handler) toggle_bool(data.handler());
-	}
 }
-*/
+
 
 @Component("gui.vexpand", Replication.none)
 struct vexpand{}
@@ -412,7 +422,7 @@ struct Line(bool horizontal)
 	static:
 	static if (horizontal) {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure)).set(WidgetType("Line"));
+			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure), WidgetType("HLine"));
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -420,7 +430,7 @@ struct Line(bool horizontal)
 		}
 	} else {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(vexpand(), WidgetEvents(&drawWidget, &measure));
+			return parent.createChild(vexpand(), WidgetEvents(&drawWidget, &measure), WidgetType("VLine"));
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -443,9 +453,9 @@ struct Fill(bool horizontal)
 	WidgetProxy create(WidgetProxy parent)
 	{
 		static if (horizontal)
-			return parent.createChild(hexpand()).set(WidgetType("Fill"));
+			return parent.createChild(hexpand(), WidgetType("Fill"));
 		else
-			return parent.createChild(vexpand()).set(WidgetType("Fill"));
+			return parent.createChild(vexpand(), WidgetType("Fill"));
 	}
 }
 
@@ -535,7 +545,7 @@ struct LinearLayout(bool horizontal)
 	static:
 	WidgetProxy create(WidgetProxy parent, int spacing, int padding)
 	{
-		WidgetProxy layout = parent.createChild().set(WidgetType("LinearLayout"));
+		WidgetProxy layout = parent.createChild(WidgetType("LinearLayout"));
 		attachTo(layout, spacing, padding);
 		return layout;
 	}
@@ -686,7 +696,7 @@ struct ColumnListLogic
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer()).set(WidgetType("List"));
+			WidgetRespondsToPointer(), WidgetType("List"));
 		return list;
 	}
 

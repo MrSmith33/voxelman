@@ -74,50 +74,37 @@ class GuiContext
 	/// Pass string as first parameter to set name
 	/// Pass WidgetId as first parameter, or after string to set parent
 	/// createWidget([string name,] [WidgetId parent,] Component... components)
-	WidgetProxy createWidget(Components...)(Components components)
+	WidgetProxy createWidget(Components...)(string name, Components components)
 	{
 		auto wId = widgetIds.nextEntityId();
-
-		static if (is(Components[0] == string))
-		{
-			nameToId[components[0]] = wId;
-			widgets.set(wId, WidgetName(components[0]));
-
-			static if (is(Components[1] == WidgetId))
-			{
-				addChild(components[1], wId);
-				enum firstComponent = 2;
-			}
-			else static if (is(Components[1] == WidgetProxy))
-			{
-				addChild(components[1].wid, wId);
-				enum firstComponent = 2;
-			}
-			else
-			{
-				enum firstComponent = 1;
-			}
-		}
-		else static if (is(Components[0] == WidgetId))
-		{
-			addChild(components[0], wId);
-			enum firstComponent = 1;
-		}
-		else static if (is(Components[0] == WidgetProxy))
-		{
-			addChild(components[0].wid, wId);
-			enum firstComponent = 1;
-		}
-		else
-		{
-			enum firstComponent = 0;
-		}
-
-		widgets.set(wId, components[firstComponent..$]);
-
+		nameToId[name] = wId;
+		widgets.set(wId, WidgetName(name), components);
 		return WidgetProxy(wId, this);
 	}
 
+	/// ditto
+	WidgetProxy createWidget(Components...)(WidgetId parent, Components components)
+	{
+		auto wId = widgetIds.nextEntityId();
+		widgets.set(wId, components);
+		addChild(parent, wId);
+		return WidgetProxy(wId, this);
+	}
+
+	/// ditto
+	WidgetProxy createWidget(Components...)(string name, WidgetId parent, Components components)
+	{
+		auto wId = widgetIds.nextEntityId();
+		nameToId[name] = wId;
+		widgets.set(wId, WidgetName(name), components);
+		addChild(parent, wId);
+		return WidgetProxy(wId, this);
+	}
+
+	/// Call to set parent after components are set
+	/// because it will create WidgetTransform component for child
+	/// which will be overwritten by set call if Components list
+	/// contains WidgetTransform components too.
 	void addChild(WidgetId parent, WidgetId child)
 	{
 		widgets.getOrCreate!WidgetContainer(parent).put(child);
