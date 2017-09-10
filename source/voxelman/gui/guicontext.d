@@ -53,7 +53,14 @@ class GuiContext
 		voxelman.gui.components.registerComponents(widgets);
 
 		roots ~= createWidget("root");
+		roots ~= createWidget("windows");
+		roots ~= createWidget("overlay");
 		this.debugText = debugText;
+	}
+
+	WidgetProxy getRoot(size_t rootIndex)
+	{
+		return WidgetProxy(roots[rootIndex], this);
 	}
 
 	// SET, GET, HAS proxies
@@ -333,11 +340,13 @@ class GuiContext
 	void update(double deltaTime, RenderQueue renderQueue)
 	{
 		updateLayout();
+
 		foreach(root; roots)
-		{
 			propagateEventSinkBubbleTree(this, root, GuiUpdateEvent(deltaTime));
-			propagateEventSinkBubbleTree(this, root, DrawEvent(renderQueue));
-		}
+
+		auto drawEvent = DrawEvent(renderQueue);
+		foreach(root; roots)
+			propagateEventSinkBubbleTree(this, root, drawEvent);
 	}
 
 	private void updateLayout()

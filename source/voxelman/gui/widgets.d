@@ -14,13 +14,15 @@ import datadriven.entityman : EntityManager;
 
 void registerComponents(ref EntityManager widgets)
 {
+	widgets.registerComponent!CollapsableWidgetData;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
 	widgets.registerComponent!PagedWidgetData;
 	widgets.registerComponent!SingleLayoutSettings;
-	widgets.registerComponent!TextButtonData;
+	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!TextData;
-	widgets.registerComponent!ToggleButtonData;
+	widgets.registerComponent!UserClickHandler;
+	widgets.registerComponent!UserCheckHandler;
 	widgets.registerComponent!WidgetIndex;
 	widgets.registerComponent!hexpand;
 	widgets.registerComponent!vexpand;
@@ -48,6 +50,9 @@ struct WidgetProxy
 		if (auto container = ctx.widgets.get!WidgetContainer(wid)) return container.children;
 		return null;
 	}
+	WidgetProxy minSize(ivec2 minSize) { ctx.widgets.getOrCreate!WidgetTransform(wid).minSize = minSize; return this; }
+	WidgetProxy minSize(int w, int h) { ctx.widgets.getOrCreate!WidgetTransform(wid).minSize = ivec2(w, h); return this; }
+	WidgetProxy pos(int x, int y) { ctx.widgets.getOrCreate!WidgetTransform(wid).relPos = ivec2(x, y); return this; }
 }
 
 static struct ChildrenRange
@@ -73,17 +78,17 @@ enum color_silver = rgb(189, 195, 199);
 enum color_concrete = rgb(149, 165, 166);
 enum color_asbestos = rgb(127, 140, 141);
 enum color_white = rgb(250, 250, 250);
+enum color_gray = rgb(241, 241, 241);
 
 enum color_wet_asphalt = rgb(52, 73, 94);
 
 struct PanelLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, ivec2 pos, ivec2 size, Color4ub color)
+	WidgetProxy create(WidgetProxy parent, Color4ub color)
 	{
 		WidgetProxy panel = parent.createChild(
 			WidgetEvents(&drawWidget),
-			WidgetTransform(pos, size),
 			WidgetStyle(color), WidgetType("Panel"));
 		return panel;
 	}
@@ -148,13 +153,13 @@ struct PagedWidget
 
 	void attachToButton(WidgetProxy selectorButton, size_t index)
 	{
-		selectorButton.set(WidgetIndex(index, ));
+		selectorButton.set(WidgetIndex(index));
 		selectorButton.getOrCreate!WidgetEvents.addEventHandler(&onButtonClick);
 	}
 
 	void onButtonClick(WidgetProxy widget, ref PointerClickEvent event)
 	{
-		auto data = widget.get!TextButtonData;
+		auto data = widget.get!UserClickHandler;
 		data.onClick();
 	}
 
@@ -180,6 +185,64 @@ struct PagedWidget
 			childTransform.size = transform.size;
 		}
 	}
+}
+
+@Component("gui.CollapsableWidgetData", Replication.none)
+struct CollapsableWidgetData
+{
+	WidgetId[] childrenStash;
+}
+
+struct CollapsableParts
+{
+	WidgetProxy header;
+	WidgetProxy container;
+}
+
+struct CollapsableWidget
+{
+	static:
+	CollapsableParts create(WidgetProxy parent, bool expanded = false)
+	{
+		auto collapsable = parent.createChild(
+			WidgetType("Collapsable")).set(hexpand());
+		VLayout.attachTo(collapsable, 2, 0);
+
+		auto header = collapsable.createChild(
+			WidgetType("Header"),
+			hexpand(),
+			WidgetRespondsToPointer(),
+			ButtonState(),
+			WidgetEvents(&onHeaderClick, &drawButtonStateBack, &pointerMoved, &pointerPressed,
+					&pointerReleased, &enterWidget, &leaveWidget));
+
+		auto container = collapsable.createChild().set(hexpand());
+
+		auto cont = collapsable.get!WidgetContainer;
+		collapsable.set(CollapsableWidgetData(cont.children));
+
+		if (!expanded) toggle(collapsable);
+		return CollapsableParts(header, container);
+	}
+
+	void onHeaderClick(WidgetProxy header, ref PointerClickEvent event)
+	{
+		auto tran = header.get!WidgetTransform;
+		toggle(WidgetProxy(tran.parent, header.ctx));
+	}
+
+	void toggle(WidgetProxy collapsable)
+	{
+		auto cont = collapsable.get!WidgetContainer;
+		if (cont.children.length == 2) {
+			cont.children = cont.children[0..1];
+		} else {
+			auto data = collapsable.get!CollapsableWidgetData;
+			cont.children = data.childrenStash;
+		}
+	}
+
+	mixin ButtonPointerLogic!ButtonState;
 }
 
 @Component("gui.TextData", Replication.none)
@@ -240,32 +303,10 @@ enum buttonHoveredColor = rgb(241, 241, 241);
 enum buttonPressedColor = rgb(229, 229, 229);
 Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredColor, buttonPressedColor];
 
-
-alias ClickHandler = void delegate();
-
-@Component("gui.TextButtonData", Replication.none)
-struct TextButtonData
+@Component("gui.ButtonState", Replication.none)
+struct ButtonState
 {
-	void onClick() {
-		if (handler) handler();
-	}
-	ClickHandler handler;
 	uint data;
-}
-
-alias CheckHandler = ref bool delegate();
-
-@Component("gui.ToggleButtonData", Replication.none)
-struct ToggleButtonData
-{
-	void onClick() {
-		if (handler) toggle_bool(handler());
-	}
-	CheckHandler handler;
-	uint data;
-	bool isChecked() {
-		return handler ? handler() : false;
-	}
 }
 
 struct TextButtonLogic
@@ -274,10 +315,10 @@ struct TextButtonLogic
 	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler = null)
 	{
 		WidgetProxy button = parent.createChild(
-			TextButtonData(),
+			UserClickHandler(), ButtonState(),
 			WidgetEvents(
-				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
-				&enterWidget, &leaveWidget),
+				&drawButtonStateBack, &pointerMoved, &pointerPressed,
+				&pointerReleased, &enterWidget, &leaveWidget),
 			WidgetRespondsToPointer(),
 			WidgetType("TextButton"));
 
@@ -288,19 +329,21 @@ struct TextButtonLogic
 		return button;
 	}
 
-	void drawWidget(WidgetProxy widget, ref DrawEvent event)
-	{
-		if (event.bubbling) return;
 
-		auto data = widget.get!TextButtonData;
-		auto transform = widget.getOrCreate!WidgetTransform;
+	mixin ButtonPointerLogic!ButtonState;
+	mixin ButtonClickLogic!UserClickHandler;
+}
 
-		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[data.data & 0b11]);
-		//event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
-		event.depth += 2;
-	}
+void drawButtonStateBack(WidgetProxy widget, ref DrawEvent event)
+{
+	if (event.bubbling) return;
 
-	mixin CommonButtonLogic!TextButtonData;
+	auto state = widget.get!ButtonState;
+	auto transform = widget.getOrCreate!WidgetTransform;
+
+	event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[state.data & 0b11]);
+	//event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
+	event.depth += 1;
 }
 
 /// Assumes that parent has ToggleButtonData data and uses its data and isChecked fields
@@ -319,9 +362,10 @@ struct CheckIconLogic
 		if (event.bubbling) return;
 
 		auto tran = widget.getOrCreate!WidgetTransform;
-		auto parentData = widget.ctx.get!ToggleButtonData(tran.parent);
+		auto parentData = widget.ctx.get!UserCheckHandler(tran.parent);
+		auto parentState = widget.ctx.get!ButtonState(tran.parent);
 
-		event.renderQueue.drawRectFill(vec2(tran.absPos), vec2(tran.size), event.depth, buttonColors[parentData.data & 0b11]);
+		event.renderQueue.drawRectFill(vec2(tran.absPos), vec2(tran.size), event.depth, buttonColors[parentState.data & 0b11]);
 		if (parentData.isChecked)
 			event.renderQueue.drawRectFill(vec2(tran.absPos + 2), vec2(tran.size - 4), event.depth+1, color_wet_asphalt);
 		event.renderQueue.drawRectLine(vec2(tran.absPos), vec2(tran.size), event.depth+1, color_wet_asphalt);
@@ -335,10 +379,8 @@ struct CheckButtonLogic
 	WidgetProxy create(WidgetProxy parent, string text, FontRef font, CheckHandler handler = null)
 	{
 		WidgetProxy check = parent.createChild(
-			ToggleButtonData(),
-			WidgetEvents(
-				&pointerMoved, &pointerPressed, &pointerReleased,
-				&enterWidget, &leaveWidget),
+			UserCheckHandler(), ButtonState(),
+			WidgetEvents(&pointerMoved, &pointerPressed, &pointerReleased, &enterWidget, &leaveWidget),
 			WidgetRespondsToPointer(),
 			WidgetType("CheckButton"));
 
@@ -353,36 +395,59 @@ struct CheckButtonLogic
 		return check;
 	}
 
-	mixin CommonButtonLogic!ToggleButtonData;
+	mixin ButtonPointerLogic!ButtonState;
+	mixin ButtonClickLogic!UserCheckHandler;
 }
 
-mixin template CommonButtonLogic(Data)
+mixin template ButtonPointerLogic(State)
 {
 	static:
 	void pointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
 
 	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
 	{
-		widget.get!Data.data |= BUTTON_PRESSED;
+		widget.get!State.data |= BUTTON_PRESSED;
 		event.handled = true;
 	}
 
 	void pointerReleased(WidgetProxy widget, ref PointerReleaseEvent event)
 	{
-		widget.get!Data.data &= ~BUTTON_PRESSED;
+		widget.get!State.data &= ~BUTTON_PRESSED;
 		event.handled = true;
 	}
 
 	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)
 	{
-		widget.get!Data.data |= BUTTON_HOVERED;
+		widget.get!State.data |= BUTTON_HOVERED;
 	}
 
 	void leaveWidget(WidgetProxy widget, ref PointerLeaveEvent event)
 	{
-		widget.get!Data.data &= ~BUTTON_HOVERED;
+		widget.get!State.data &= ~BUTTON_HOVERED;
 	}
+}
 
+alias CheckHandler = ref bool delegate();
+
+@Component("gui.UserCheckHandler", Replication.none)
+struct UserCheckHandler
+{
+	CheckHandler handler;
+	void onClick() { if (handler) toggle_bool(handler()); }
+	bool isChecked() { return handler ? handler() : false; }
+}
+
+alias ClickHandler = void delegate();
+
+@Component("gui.UserClickHandler", Replication.none)
+struct UserClickHandler
+{
+	void onClick() { if (handler) handler(); }
+	ClickHandler handler;
+}
+
+mixin template ButtonClickLogic(Data)
+{
 	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)
 	{
 		auto data = widget.get!Data;
@@ -467,18 +532,24 @@ struct SingleLayoutSettings
 	Alignment valign;
 }
 
+WidgetProxy setSingleLayout(WidgetProxy widget, int padding, Alignment halign = Alignment.center, Alignment valign = Alignment.center)
+{
+	SingleLayout.attachTo(widget, padding, halign, valign);
+	return widget;
+}
+
 /// For layouting single child with alignment and padding.
 struct SingleLayout
 {
 	static:
 	void attachTo(
-		WidgetProxy wid,
+		WidgetProxy widget,
 		int padding,
 		Alignment halign = Alignment.center,
 		Alignment valign = Alignment.center)
 	{
-		wid.set(SingleLayoutSettings(padding, halign, valign));
-		wid.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
+		widget.set(SingleLayoutSettings(padding, halign, valign));
+		widget.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
 	}
 
 	void measure(WidgetProxy widget, ref MeasureEvent event)
@@ -539,6 +610,15 @@ struct SingleLayout
 
 alias HLayout = LinearLayout!true;
 alias VLayout = LinearLayout!false;
+
+alias setHLayout = setLinearLayout!true;
+alias setVLayout = setLinearLayout!false;
+
+WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, int padding)
+{
+	LinearLayout!hori.attachTo(widget, spacing, padding);
+	return widget;
+}
 
 struct LinearLayout(bool horizontal)
 {
