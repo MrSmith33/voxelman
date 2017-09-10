@@ -24,8 +24,6 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!UserClickHandler;
 	widgets.registerComponent!UserCheckHandler;
 	widgets.registerComponent!WidgetIndex;
-	widgets.registerComponent!hexpand;
-	widgets.registerComponent!vexpand;
 }
 
 struct WidgetProxy
@@ -42,17 +40,6 @@ struct WidgetProxy
 	WidgetProxy remove(C)() { ctx.widgets.remove!C(wid); return this; }
 	WidgetProxy createChild(Components...)(Components components) { return ctx.createWidget(wid, components); }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
-	ChildrenRange children() {
-		if (auto container = ctx.widgets.get!WidgetContainer(wid)) return ChildrenRange(ctx, container.children);
-		return ChildrenRange(ctx, null);
-	}
-	WidgetId[] childrenIds() {
-		if (auto container = ctx.widgets.get!WidgetContainer(wid)) return container.children;
-		return null;
-	}
-	WidgetProxy minSize(ivec2 minSize) { ctx.widgets.getOrCreate!WidgetTransform(wid).minSize = minSize; return this; }
-	WidgetProxy minSize(int w, int h) { ctx.widgets.getOrCreate!WidgetTransform(wid).minSize = ivec2(w, h); return this; }
-	WidgetProxy pos(int x, int y) { ctx.widgets.getOrCreate!WidgetTransform(wid).relPos = ivec2(x, y); return this; }
 }
 
 static struct ChildrenRange
@@ -199,24 +186,24 @@ struct CollapsableParts
 	WidgetProxy container;
 }
 
+/// On user click toggles
 struct CollapsableWidget
 {
 	static:
 	CollapsableParts create(WidgetProxy parent, bool expanded = false)
 	{
 		auto collapsable = parent.createChild(
-			WidgetType("Collapsable")).set(hexpand());
+			WidgetType("Collapsable")).hexpand;
 		VLayout.attachTo(collapsable, 2, 0);
 
 		auto header = collapsable.createChild(
 			WidgetType("Header"),
-			hexpand(),
 			WidgetRespondsToPointer(),
 			ButtonState(),
 			WidgetEvents(&onHeaderClick, &drawButtonStateBack, &pointerMoved, &pointerPressed,
-					&pointerReleased, &enterWidget, &leaveWidget));
+					&pointerReleased, &enterWidget, &leaveWidget)).hexpand;
 
-		auto container = collapsable.createChild().set(hexpand());
+		auto container = collapsable.createChild().hexpand;
 
 		auto cont = collapsable.get!WidgetContainer;
 		collapsable.set(CollapsableWidgetData(cont.children));
@@ -462,13 +449,6 @@ mixin template ButtonClickLogic(Data)
 	}
 }
 
-
-@Component("gui.vexpand", Replication.none)
-struct vexpand{}
-
-@Component("gui.hexpand", Replication.none)
-struct hexpand{}
-
 @Component("gui.LinearLayoutSettings", Replication.none)
 struct LinearLayoutSettings
 {
@@ -487,7 +467,7 @@ struct Line(bool horizontal)
 	static:
 	static if (horizontal) {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(hexpand(), WidgetEvents(&drawWidget, &measure), WidgetType("HLine"));
+			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("HLine")).hexpand;
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -495,7 +475,7 @@ struct Line(bool horizontal)
 		}
 	} else {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(vexpand(), WidgetEvents(&drawWidget, &measure), WidgetType("VLine"));
+			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("VLine")).vexpand;
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -518,9 +498,9 @@ struct Fill(bool horizontal)
 	WidgetProxy create(WidgetProxy parent)
 	{
 		static if (horizontal)
-			return parent.createChild(hexpand(), WidgetType("Fill"));
+			return parent.createChild(WidgetType("Fill")).hexpand;
 		else
-			return parent.createChild(vexpand(), WidgetType("Fill"));
+			return parent.createChild(WidgetType("Fill")).vexpand;
 	}
 }
 
@@ -566,7 +546,6 @@ struct SingleLayout
 		}
 
 		widget.get!WidgetTransform.measuredSize = childSize + settings.padding*2;
-		widget.ctx.debugText.putfln("SingleLayout.measure %s", widget.get!WidgetTransform.measuredSize);
 	}
 
 	void layout(WidgetProxy widget, ref LayoutEvent event)
@@ -585,7 +564,10 @@ struct SingleLayout
 			ivec2 childSize;
 			ivec2 relPos;
 
-			if (child.has!vexpand) {
+			//widget.ctx.debugText.putfln("SLayout.layout %s tr %s",
+			//	widget.wid, *childTransform);
+
+			if (childTransform.hasVexpand) {
 				childSize.x = childArea.x;
 				relPos.x = settings.padding;
 			} else {
@@ -593,7 +575,7 @@ struct SingleLayout
 				relPos.x = settings.padding + alignOnAxis(childSize.x, settings.halign, childArea.x);
 			}
 
-			if (child.has!hexpand) {
+			if (childTransform.hasHexpand) {
 				childSize.y = childArea.y;
 				relPos.y = settings.padding;
 			} else {
@@ -685,6 +667,9 @@ struct LinearLayout(bool horizontal)
 			if (hasExpandableWidth(child)) width(childSize) = maxChildWidth;
 			childTransform.size = childSize;
 
+			//widget.ctx.debugText.putfln("LLayout.layout %s tr %s",
+			//	child.wid, *childTransform);
+
 			topOffset += length(childSize);
 		}
 	}
@@ -692,13 +677,13 @@ struct LinearLayout(bool horizontal)
 	private:
 
 	bool hasExpandableWidth(WidgetProxy widget) {
-		static if (horizontal) return widget.has!vexpand;
-		else return widget.has!hexpand;
+		static if (horizontal) return widget.hasVexpand;
+		else return widget.hasHexpand;
 	}
 
 	bool hasExpandableLength(WidgetProxy widget) {
-		static if (horizontal) return widget.has!hexpand;
-		else return widget.has!vexpand;
+		static if (horizontal) return widget.hasHexpand;
+		else return widget.hasVexpand;
 	}
 
 	ivec2 sizeFromWidthLength(int width, int length) {
@@ -771,12 +756,11 @@ struct ColumnListLogic
 	{
 		WidgetProxy list = parent.createChild(
 			ListData(model, font),
-			hexpand(), vexpand(),
 			WidgetEvents(
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer(), WidgetType("List"));
+			WidgetRespondsToPointer(), WidgetType("List")).hexpand.vexpand;
 		return list;
 	}
 

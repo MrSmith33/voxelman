@@ -24,6 +24,12 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!WidgetEvents;
 }
 
+enum WidgetFlags
+{
+	hexpand = 0b0000_0001,
+	vexpand = 0b0000_0010,
+}
+
 /// Mandatory component
 @Component("gui.WidgetTransform", Replication.none)
 struct WidgetTransform
@@ -33,12 +39,29 @@ struct WidgetTransform
 	ivec2 minSize;// set by user
 	WidgetId parent; // 0 in root widget
 
+	uint flags; // flags from WidgetFlags
 	ivec2 absPos; // updated in layout phase from root to leaves by parent layout
 	ivec2 measuredSize; // updated in measure phase from leaves to root by widget's layout
 	void applyConstraints() { // applied by parent layout in measure phase
 		measuredSize = vector_max(measuredSize, minSize);
 	}
+	bool hasHexpand() { return !!(flags & WidgetFlags.hexpand); }
+	bool hasVexpand() { return !!(flags & WidgetFlags.vexpand); }
+	void hexpand(bool val) { flags = set_flag(flags, val, WidgetFlags.hexpand); }
+	void vexpand(bool val) { flags = set_flag(flags, val, WidgetFlags.vexpand); }
+	void hvexpand(bool val) { hexpand(val); vexpand(val); }
 }
+
+/// Convenience setters
+WidgetProxy minSize(WidgetProxy widget, ivec2 minSize) { widget.getOrCreate!WidgetTransform.minSize = minSize; return widget; } /// ditto
+WidgetProxy minSize(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.minSize = ivec2(w, h); return widget; } /// ditto
+WidgetProxy pos(WidgetProxy widget, int x, int y) { widget.getOrCreate!WidgetTransform.relPos = ivec2(x, y); return widget; } /// ditto
+WidgetProxy hexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hexpand = true; return widget; } /// ditto
+WidgetProxy vexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.vexpand = true; return widget; } /// ditto
+WidgetProxy hvexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hvexpand = true; return widget; } /// ditto
+
+bool hasHexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasHexpand; } /// ditto
+bool hasVexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasVexpand; } /// ditto
 
 @Component("gui.WidgetStyle", Replication.none)
 struct WidgetStyle
@@ -58,12 +81,12 @@ struct WidgetType
 	string name;
 }
 
-string getWidgetType(WidgetProxy widget) {
+string widgetType(WidgetProxy widget) {
 	if (auto type = widget.get!WidgetType) return type.name;
 	return "Widget";
 }
 
-string getWidgetType(GuiContext ctx, WidgetId wid) {
+string widgetType(GuiContext ctx, WidgetId wid) {
 	if (auto type = ctx.widgets.get!WidgetType(wid)) return type.name;
 	return "Widget";
 }
@@ -85,6 +108,12 @@ struct WidgetContainer
 			}
 		}
 	}
+}
+
+///
+ChildrenRange children(WidgetProxy w) {
+	if (auto container = w.ctx.widgets.get!WidgetContainer(w.wid)) return ChildrenRange(w.ctx, container.children);
+	return ChildrenRange(w.ctx, null);
 }
 
 void moveItemToEnd(T)(size_t index, T[] array)

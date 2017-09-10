@@ -48,7 +48,11 @@ private mixin template PointerButtonEvent()
 	mixin GuiEvent!();
 }
 
-struct PointerPressEvent { mixin PointerButtonEvent!(); }
+struct PointerPressEvent {
+	mixin PointerButtonEvent!();
+	/// If event consumer sets this to true, then context will begin dragging
+	bool beginDrag;
+}
 struct PointerReleaseEvent { mixin PointerButtonEvent!(); }
 struct PointerClickEvent { mixin PointerButtonEvent!(); }
 struct PointerDoubleClickEvent { mixin PointerButtonEvent!(); }
@@ -69,6 +73,12 @@ struct DragEvent
 	WidgetId target;
 	ivec2 totalDragOffset;
 	mixin GuiEvent!();
+}
+
+struct DragBeginEvent
+{
+	DragEvent base;
+	alias base this;
 }
 
 struct DragEndEvent

@@ -41,6 +41,14 @@ bool toggle_bool(ref bool value)
 	return value = !value;
 }
 
+T set_flag(T)(T bits, bool flagValue, T flagBit)
+{
+	if (flagValue)
+		return bits | flagBit;
+	else
+		return bits & (~flagBit);
+}
+
 T divCeil(T)(T a, T b)
 {
 	return a / b + (a % b > 0);

@@ -17,7 +17,7 @@ public import voxelman.platform.cursoricon : CursorIcon;
 
 struct GuiState
 {
-	WidgetId draggingWidget;    /// Will receive onDrag events
+	WidgetId draggedWidget;    /// Will receive onDrag events
 	WidgetId focusedWidget;     /// Will receive all key events if input is not grabbed by other widget
 	WidgetId hoveredWidget;     /// Widget over which pointer is located
 	WidgetId inputOwnerWidget;  /// If set, this widget will receive all pointer movement events
@@ -26,7 +26,12 @@ struct GuiState
 
 	ivec2 canvasSize;
 	ivec2 prevPointerPos = ivec2(int.max, int.max);
+	ivec2 pointerPressPos = ivec2(int.max, int.max);
 	ivec2 curPointerPos;
+
+	/// filled with curPointerPos - draggedWidget.absPos at the moment of press
+	ivec2 draggedWidgetOffset;
+
 	/// Icon is reset after widget leave event and before widget enter event.
 	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
 	CursorIcon cursorIcon;
@@ -41,6 +46,7 @@ class GuiContext
 	EntityManager widgets;
 	WidgetId[string] nameToId;
 
+	/// Roots are auto-expanded on hvexpand to state.canvasSize
 	WidgetId[] roots;
 
 	GuiState state;
@@ -63,6 +69,10 @@ class GuiContext
 		return WidgetProxy(roots[rootIndex], this);
 	}
 
+	ChildrenRange getRoots() { return ChildrenRange(this, roots); }
+
+	// layer for dropdown items, context menus and hints
+
 	// SET, GET, HAS proxies
 	void set(Components...)(WidgetId wid, Components components) { widgets.set(wid, components); }
 	C* get(C)(WidgetId wid) { return widgets.get!C(wid); }
@@ -83,29 +93,29 @@ class GuiContext
 	/// createWidget([string name,] [WidgetId parent,] Component... components)
 	WidgetProxy createWidget(Components...)(string name, Components components)
 	{
-		auto wId = widgetIds.nextEntityId();
-		nameToId[name] = wId;
-		widgets.set(wId, WidgetName(name), components);
-		return WidgetProxy(wId, this);
+		auto wid = widgetIds.nextEntityId();
+		nameToId[name] = wid;
+		widgets.set(wid, WidgetName(name), components);
+		return WidgetProxy(wid, this);
 	}
 
 	/// ditto
 	WidgetProxy createWidget(Components...)(WidgetId parent, Components components)
 	{
-		auto wId = widgetIds.nextEntityId();
-		widgets.set(wId, components);
-		addChild(parent, wId);
-		return WidgetProxy(wId, this);
+		auto wid = widgetIds.nextEntityId();
+		widgets.set(wid, components);
+		addChild(parent, wid);
+		return WidgetProxy(wid, this);
 	}
 
 	/// ditto
 	WidgetProxy createWidget(Components...)(string name, WidgetId parent, Components components)
 	{
-		auto wId = widgetIds.nextEntityId();
-		nameToId[name] = wId;
-		widgets.set(wId, WidgetName(name), components);
-		addChild(parent, wId);
-		return WidgetProxy(wId, this);
+		auto wid = widgetIds.nextEntityId();
+		nameToId[name] = wid;
+		widgets.set(wid, WidgetName(name), components);
+		addChild(parent, wid);
+		return WidgetProxy(wid, this);
 	}
 
 	/// Call to set parent after components are set
@@ -118,9 +128,9 @@ class GuiContext
 		widgets.getOrCreate!WidgetTransform(child).parent = parent;
 	}
 
-	WidgetId[] widgetChildren(WidgetId wId)
+	WidgetId[] widgetChildren(WidgetId wid)
 	{
-		if (auto container = widgets.get!WidgetContainer(wId)) return container.children;
+		if (auto container = widgets.get!WidgetContainer(wid)) return container.children;
 		return null;
 	}
 
@@ -225,6 +235,7 @@ class GuiContext
 	void pointerPressed(PointerButton button, uint modifiers)
 	{
 		auto event = PointerPressEvent(state.curPointerPos, button, modifiers);
+		state.pointerPressPos = state.curPointerPos;
 
 		foreach_reverse(root; roots)
 		{
@@ -236,6 +247,8 @@ class GuiContext
 				WidgetId consumer = eventConsumerChain[$-1];
 				if (widgets.has!WidgetIsFocusable(consumer))
 					focusedWidget = consumer;
+
+				if (event.beginDrag) beginDrag(consumer);
 
 				pressedWidget = consumer;
 				return;
@@ -353,7 +366,9 @@ class GuiContext
 	{
 		foreach(root; roots)
 		{
-			widgets.getOrCreate!WidgetTransform(root).size = state.canvasSize;
+			auto trans = widgets.getOrCreate!WidgetTransform(root);
+			if (trans.hasHexpand) trans.size.x = state.canvasSize.x;
+			if (trans.hasVexpand) trans.size.y = state.canvasSize.y;
 
 			MeasureEvent measureEvent;
 			foreach(widget; visitWidgetTreeChildrenFirst(root))
@@ -409,43 +424,43 @@ class GuiContext
 
 	void cursorIcon(CursorIcon icon) { state.cursorIcon = icon; }
 
-	WidgetId draggingWidget() { return state.draggingWidget; }
-	void draggingWidget(WidgetId wId) { state.draggingWidget = wId; }
+	WidgetId draggedWidget() { return state.draggedWidget; }
+	void draggedWidget(WidgetId wid) { state.draggedWidget = wid; }
 
 	WidgetId focusedWidget() { return state.focusedWidget; }
-	void focusedWidget(WidgetId wId)
+	void focusedWidget(WidgetId wid)
 	{
-		if (state.focusedWidget != wId)
+		if (state.focusedWidget != wid)
 		{
 			if (state.focusedWidget) postEvent(state.focusedWidget, FocusLoseEvent());
-			if (wId) postEvent(wId, FocusGainEvent());
-			state.focusedWidget = wId;
+			if (wid) postEvent(wid, FocusGainEvent());
+			state.focusedWidget = wid;
 		}
 	}
 
 	WidgetId hoveredWidget() { return state.hoveredWidget; }
-	void hoveredWidget(WidgetId wId) @trusted
+	void hoveredWidget(WidgetId wid) @trusted
 	{
-		if (state.hoveredWidget != wId)
+		if (state.hoveredWidget != wid)
 		{
 			if (state.hoveredWidget) postEvent(state.hoveredWidget, PointerLeaveEvent());
 			cursorIcon = CursorIcon.arrow;
-			if (wId) postEvent(wId, PointerEnterEvent());
-			state.hoveredWidget = wId;
+			if (wid) postEvent(wid, PointerEnterEvent());
+			state.hoveredWidget = wid;
 		}
 	}
 
 	WidgetId inputOwnerWidget() { return state.inputOwnerWidget; }
-	void inputOwnerWidget(WidgetId wId) { state.inputOwnerWidget = wId; }
+	void inputOwnerWidget(WidgetId wid) { state.inputOwnerWidget = wid; }
 
 	WidgetId lastClickedWidget() { return state.lastClickedWidget; }
-	void lastClickedWidget(WidgetId wId) { state.lastClickedWidget = wId; }
+	void lastClickedWidget(WidgetId wid) { state.lastClickedWidget = wid; }
 
 	WidgetId pressedWidget() { return state.pressedWidget; }
-	void pressedWidget(WidgetId wId) { state.pressedWidget = wId; }
+	void pressedWidget(WidgetId wid) { state.pressedWidget = wid; }
 
 	// HANDLERS
-	bool handleWidgetUpdate(WidgetId wId, ref GuiUpdateEvent event)
+	bool handleWidgetUpdate(WidgetId wid, ref GuiUpdateEvent event)
 	{
 		return true;
 	}
