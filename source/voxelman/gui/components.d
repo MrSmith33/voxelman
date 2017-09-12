@@ -42,9 +42,7 @@ struct WidgetTransform
 	uint flags; // flags from WidgetFlags
 	ivec2 absPos; // updated in layout phase from root to leaves by parent layout
 	ivec2 measuredSize; // updated in measure phase from leaves to root by widget's layout
-	void applyConstraints() { // applied by parent layout in measure phase
-		measuredSize = vector_max(measuredSize, minSize);
-	}
+	ivec2 constrainedSize() { return vector_max(measuredSize, minSize); }
 	bool hasHexpand() { return !!(flags & WidgetFlags.hexpand); }
 	bool hasVexpand() { return !!(flags & WidgetFlags.vexpand); }
 	void hexpand(bool val) { flags = set_flag(flags, val, WidgetFlags.hexpand); }
@@ -55,10 +53,12 @@ struct WidgetTransform
 /// Convenience setters
 WidgetProxy minSize(WidgetProxy widget, ivec2 minSize) { widget.getOrCreate!WidgetTransform.minSize = minSize; return widget; } /// ditto
 WidgetProxy minSize(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.minSize = ivec2(w, h); return widget; } /// ditto
+WidgetProxy size(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.size = ivec2(w, h); return widget; } /// ditto
 WidgetProxy pos(WidgetProxy widget, int x, int y) { widget.getOrCreate!WidgetTransform.relPos = ivec2(x, y); return widget; } /// ditto
 WidgetProxy hexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hexpand = true; return widget; } /// ditto
 WidgetProxy vexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.vexpand = true; return widget; } /// ditto
 WidgetProxy hvexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hvexpand = true; return widget; } /// ditto
+WidgetProxy measuredSize(WidgetProxy widget, ivec2 ms) { widget.getOrCreate!WidgetTransform.measuredSize = ms; return widget; } /// ditto
 
 bool hasHexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasHexpand; } /// ditto
 bool hasVexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasVexpand; } /// ditto

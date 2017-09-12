@@ -58,9 +58,9 @@ class GuiContext
 		voxelman.gui.widgets.registerComponents(widgets);
 		voxelman.gui.components.registerComponents(widgets);
 
-		roots ~= createWidget("root");
-		roots ~= createWidget("windows");
-		roots ~= createWidget("overlay");
+		roots ~= createWidget(WidgetType("root")).hvexpand;
+		roots ~= createWidget(WidgetType("windows")).hvexpand;
+		roots ~= createWidget(WidgetType("overlay")).hvexpand;
 		this.debugText = debugText;
 	}
 
@@ -91,6 +91,18 @@ class GuiContext
 	/// Pass string as first parameter to set name
 	/// Pass WidgetId as first parameter, or after string to set parent
 	/// createWidget([string name,] [WidgetId parent,] Component... components)
+	WidgetProxy createWidget(Components...)(Components components)
+		if (components.length > 0 &&
+			!is(Components[0] == string) &&
+			!is(Components[0] == WidgetProxy) &&
+			!is(Components[0] == WidgetId))
+	{
+		auto wid = widgetIds.nextEntityId();
+		widgets.set(wid, components);
+		return WidgetProxy(wid, this);
+	}
+
+	/// ditto
 	WidgetProxy createWidget(Components...)(string name, Components components)
 	{
 		auto wid = widgetIds.nextEntityId();
@@ -261,6 +273,13 @@ class GuiContext
 	void pointerReleased(PointerButton button, uint modifiers)
 	{
 		auto event = PointerReleaseEvent(state.curPointerPos, button, modifiers);
+		scope(exit) pressedWidget = WidgetId(0);
+
+		if (draggedWidget)
+		{
+			endDrag();
+			return;
+		}
 
 		foreach_reverse(root; roots)
 		{
@@ -282,7 +301,6 @@ class GuiContext
 						}
 					}
 
-					pressedWidget = WidgetId(0);
 					return;
 				}
 			}
@@ -293,21 +311,23 @@ class GuiContext
 			postEvent(pressedWidget, event); // pressed widget will know if pointer was unpressed somewhere else.
 			updateHovered(state.curPointerPos); // So widget knows if pointer released not over it.
 		}
-
-		pressedWidget = WidgetId(0);
 	}
 
 	void pointerMoved(ivec2 newPointerPos)
 	{
 		if (newPointerPos == state.curPointerPos) return;
 
-		ivec2 delta = newPointerPos - state.prevPointerPos;
 		state.prevPointerPos = state.curPointerPos;
 		state.curPointerPos = newPointerPos;
+		ivec2 delta = state.curPointerPos - state.prevPointerPos;
 
 		auto event = PointerMoveEvent(newPointerPos, delta);
 
-		if (pressedWidget)
+		if (draggedWidget)
+		{
+			doDrag(delta);
+		}
+		else if (pressedWidget)
 		{
 			if (containsPointer(pressedWidget, this, state.curPointerPos))
 			{
@@ -366,45 +386,31 @@ class GuiContext
 	{
 		foreach(root; roots)
 		{
-			auto trans = widgets.getOrCreate!WidgetTransform(root);
-			if (trans.hasHexpand) trans.size.x = state.canvasSize.x;
-			if (trans.hasVexpand) trans.size.y = state.canvasSize.y;
-
 			MeasureEvent measureEvent;
 			foreach(widget; visitWidgetTreeChildrenFirst(root))
 			{
-				bool hasHandlers = postEvent(widget, measureEvent);
-				if (!hasHandlers) absoluteMeasureHandler(widget);
+				postEvent(widget, measureEvent);
+				auto childTransform = widgets.getOrCreate!WidgetTransform(widget);
+				childTransform.size = childTransform.constrainedSize;
 			}
+
+			auto trans = widgets.getOrCreate!WidgetTransform(root);
+			trans.size = trans.constrainedSize;
+			if (trans.hasHexpand) trans.size.x = state.canvasSize.x;
+			if (trans.hasVexpand) trans.size.y = state.canvasSize.y;
+			trans.absPos = trans.relPos;
 
 			LayoutEvent layoutEvent;
 			foreach(widget; visitWidgetTreeRootFirst(root))
 			{
-				bool hasHandlers = postEvent(widget, layoutEvent);
-				if (!hasHandlers) absoluteLayoutHandler(widget);
+				postEvent(widget, layoutEvent);
+				auto parentTransform = widget.getOrCreate!WidgetTransform;
+				foreach(child; widget.children)
+				{
+					auto childTransform = child.getOrCreate!WidgetTransform;
+					childTransform.absPos = parentTransform.absPos + childTransform.relPos;
+				}
 			}
-		}
-	}
-
-	// default measure handler
-	void absoluteMeasureHandler(WidgetProxy widget)
-	{
-		foreach (WidgetId childId; widgetChildren(widget.wid))
-		{
-			auto childTransform = widgets.getOrCreate!WidgetTransform(childId);
-			childTransform.applyConstraints();
-		}
-	}
-
-	// default layout handler
-	void absoluteLayoutHandler(WidgetProxy widget)
-	{
-		auto parentTransform = widget.getOrCreate!WidgetTransform;
-		foreach (WidgetId childId; widgetChildren(widget.wid))
-		{
-			auto childTransform = widgets.getOrCreate!WidgetTransform(childId);
-			childTransform.absPos = parentTransform.absPos + childTransform.relPos;
-			childTransform.size = childTransform.measuredSize;
 		}
 	}
 
@@ -423,6 +429,26 @@ class GuiContext
 	}
 
 	void cursorIcon(CursorIcon icon) { state.cursorIcon = icon; }
+
+	void beginDrag(WidgetId wid)
+	{
+		draggedWidget = wid;
+		state.draggedWidgetOffset = state.curPointerPos - get!WidgetTransform(wid).absPos;
+		postEvent(wid, DragBeginEvent());
+	}
+
+	void doDrag(ivec2 delta)
+	{
+		assert(draggedWidget);
+		postEvent(draggedWidget, DragEvent(delta));
+	}
+
+	void endDrag()
+	{
+		assert(draggedWidget);
+		postEvent(draggedWidget, DragEndEvent());
+		draggedWidget = WidgetId(0);
+	}
 
 	WidgetId draggedWidget() { return state.draggedWidget; }
 	void draggedWidget(WidgetId wid) { state.draggedWidget = wid; }

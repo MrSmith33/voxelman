@@ -39,6 +39,7 @@ struct WidgetProxy
 	bool has(C)() { return ctx.widgets.has!C(wid); }
 	WidgetProxy remove(C)() { ctx.widgets.remove!C(wid); return this; }
 	WidgetProxy createChild(Components...)(Components components) { return ctx.createWidget(wid, components); }
+	WidgetProxy handlers(Handlers...)(Handlers h) { ctx.widgets.getOrCreate!WidgetEvents(wid).addEventHandlers(h); return this; }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
 }
 
@@ -69,9 +70,39 @@ enum color_gray = rgb(241, 241, 241);
 
 enum color_wet_asphalt = rgb(52, 73, 94);
 
+struct FrameParts
+{
+	WidgetProxy frame;
+	alias frame this;
+	WidgetProxy header;
+	WidgetProxy container;
+}
+
+struct Frame
+{
+	static:
+	FrameParts create(WidgetProxy parent)
+	{
+		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, 0);
+		PanelLogic.attachTo(frame, color_clouds);
+
+		auto header = frame.createChild(WidgetType("Header")).hexpand;
+		PanelLogic.attachTo(header, color_white);
+
+		auto container = frame.createChild(WidgetType("Container")).hvexpand;
+
+		return FrameParts(frame, header, container);
+	}
+}
+
 struct PanelLogic
 {
 	static:
+	void attachTo(WidgetProxy widget, Color4ub color)
+	{
+		widget.set(WidgetStyle(color)).handlers(&drawWidget);
+	}
+
 	WidgetProxy create(WidgetProxy parent, Color4ub color)
 	{
 		WidgetProxy panel = parent.createChild(
@@ -82,17 +113,14 @@ struct PanelLogic
 
 	void drawWidget(WidgetProxy widget, ref DrawEvent event)
 	{
-		if (event.sinking)
-		{
+		if (event.sinking) {
 			auto transform = widget.getOrCreate!WidgetTransform;
 			auto style = widget.get!WidgetStyle;
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
 			event.depth += 1;
-			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
-		}
-		else
-		{
-			event.renderQueue.popClipRect();
+			//event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
+		} else {
+			//event.renderQueue.popClipRect();
 		}
 	}
 }
@@ -156,8 +184,7 @@ struct PagedWidget
 		foreach(child; widget.children)
 		{
 			auto childTransform = child.get!WidgetTransform;
-			childTransform.applyConstraints();
-			transform.measuredSize = childTransform.measuredSize;
+			transform.measuredSize = childTransform.size;
 		}
 	}
 
@@ -168,7 +195,6 @@ struct PagedWidget
 		{
 			auto childTransform = child.get!WidgetTransform;
 			childTransform.relPos = ivec2(0,0);
-			childTransform.absPos = transform.absPos;
 			childTransform.size = transform.size;
 		}
 	}
@@ -182,6 +208,8 @@ struct CollapsableWidgetData
 
 struct CollapsableParts
 {
+	WidgetProxy collapsable;
+	alias collapsable this;
 	WidgetProxy header;
 	WidgetProxy container;
 }
@@ -209,7 +237,7 @@ struct CollapsableWidget
 		collapsable.set(CollapsableWidgetData(cont.children));
 
 		if (!expanded) toggle(collapsable);
-		return CollapsableParts(header, container);
+		return CollapsableParts(collapsable, header, container);
 	}
 
 	void onHeaderClick(WidgetProxy header, ref PointerClickEvent event)
@@ -252,14 +280,12 @@ WidgetProxy createText(
 	params.monospaced = true;
 	measureText(params, text);
 
-	WidgetTransform transform = WidgetTransform(ivec2(), ivec2(), ivec2(0, font.metrics.height));
-	transform.measuredSize = ivec2(params.size);
-
 	WidgetProxy textWidget = parent.createChild(
 		TextData(text, halign, valign),
 		WidgetEvents(&drawText),
-		WidgetType("Text"),
-		transform);
+		WidgetType("Text"))
+			.minSize(0, font.metrics.height)
+			.measuredSize(ivec2(params.size));
 	return textWidget;
 }
 
@@ -504,6 +530,30 @@ struct Fill(bool horizontal)
 	}
 }
 
+WidgetProxy makeDraggable(WidgetProxy widget) { DraggableLogic.attachTo(widget); return widget; }
+
+struct DraggableLogic
+{
+	static:
+	void attachTo(WidgetProxy widget)
+	{
+		widget.handlers(&onPress, &onDrag);
+	}
+
+	void onPress(WidgetProxy widget, ref PointerPressEvent event)
+	{
+		if (event.sinking) return;
+
+		event.handled = true;
+		event.beginDrag = true;
+	}
+
+	void onDrag(WidgetProxy widget, ref DragEvent event)
+	{
+		widget.get!WidgetTransform.relPos += event.delta;
+	}
+}
+
 @Component("gui.SingleLayoutSettings", Replication.none)
 struct SingleLayoutSettings
 {
@@ -529,7 +579,7 @@ struct SingleLayout
 		Alignment valign = Alignment.center)
 	{
 		widget.set(SingleLayoutSettings(padding, halign, valign));
-		widget.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
+		widget.handlers(&measure, &layout);
 	}
 
 	void measure(WidgetProxy widget, ref MeasureEvent event)
@@ -541,8 +591,7 @@ struct SingleLayout
 		if (children.length > 0)
 		{
 			auto childTransform = children[0].get!WidgetTransform;
-			childTransform.applyConstraints();
-			childSize = childTransform.measuredSize;
+			childSize = childTransform.size;
 		}
 
 		widget.get!WidgetTransform.measuredSize = childSize + settings.padding*2;
@@ -584,7 +633,6 @@ struct SingleLayout
 			}
 
 			childTransform.relPos = relPos;
-			childTransform.absPos = rootTransform.absPos + childTransform.relPos;
 			childTransform.size = childSize;
 		}
 	}
@@ -614,6 +662,7 @@ struct LinearLayout(bool horizontal)
 
 	void attachTo(WidgetProxy widget, int spacing, int padding)
 	{
+		//writefln("attachTo %s %s", widget.widgetType, widget.wid);
 		widget.set(LinearLayoutSettings(spacing, padding));
 		widget.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
 	}
@@ -623,16 +672,15 @@ struct LinearLayout(bool horizontal)
 		auto settings = widget.get!LinearLayoutSettings;
 		settings.numExpandableChildren = 0;
 
-		int maxChildWidth = int.min;
+		int maxChildWidth = 0;
 		int childrenLength;
 
 		ChildrenRange children = widget.children;
 		foreach(child; children)
 		{
 			auto childTransform = child.get!WidgetTransform;
-			childTransform.applyConstraints();
-			childrenLength += length(childTransform.measuredSize);
-			maxChildWidth = max(width(childTransform.measuredSize), maxChildWidth);
+			childrenLength += length(childTransform.size);
+			maxChildWidth = max(width(childTransform.size), maxChildWidth);
 			if (hasExpandableLength(child)) ++settings.numExpandableChildren;
 		}
 
@@ -660,15 +708,14 @@ struct LinearLayout(bool horizontal)
 			topOffset += settings.spacing;
 			auto childTransform = child.get!WidgetTransform;
 			childTransform.relPos = sizeFromWidthLength(settings.padding, topOffset);
-			childTransform.absPos = rootTransform.absPos + childTransform.relPos;
 
-			ivec2 childSize = childTransform.measuredSize;
+			ivec2 childSize = childTransform.constrainedSize;
 			if (hasExpandableLength(child)) length(childSize) += extraPerWidget;
 			if (hasExpandableWidth(child)) width(childSize) = maxChildWidth;
 			childTransform.size = childSize;
 
-			//widget.ctx.debugText.putfln("LLayout.layout %s tr %s",
-			//	child.wid, *childTransform);
+			//widget.ctx.debugText.putfln("LLayout.layout %s tr %s extra %s",
+			//	child.wid, *childTransform, extraPerWidget);
 
 			topOffset += length(childSize);
 		}
@@ -760,7 +807,7 @@ struct ColumnListLogic
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer(), WidgetType("List")).hexpand.vexpand;
+			WidgetRespondsToPointer(), WidgetType("List"));
 		return list;
 	}
 

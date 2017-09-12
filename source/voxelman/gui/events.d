@@ -66,26 +66,9 @@ struct ScrollEvent {
 	mixin GuiEvent!();
 }
 
-struct DragEvent
-{
-	ivec2 newPointerPos;
-	ivec2 delta;
-	WidgetId target;
-	ivec2 totalDragOffset;
-	mixin GuiEvent!();
-}
-
-struct DragBeginEvent
-{
-	DragEvent base;
-	alias base this;
-}
-
-struct DragEndEvent
-{
-	DragEvent base;
-	alias base this;
-}
+struct DragEvent { ivec2 delta; mixin GuiEvent!(); }
+struct DragBeginEvent { mixin GuiEvent!(); }
+struct DragEndEvent { mixin GuiEvent!(); }
 
 // Keyboard
 struct CharEnterEvent
