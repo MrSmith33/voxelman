@@ -530,6 +530,29 @@ struct Fill(bool horizontal)
 	}
 }
 
+WidgetProxy moveToTop(WidgetProxy widget) {
+	AutoMoveToTop.attachTo(widget);
+	return widget;
+}
+struct AutoMoveToTop
+{
+	static void attachTo(WidgetProxy widget)
+	{
+		widget.handlers(&onPress);
+	}
+	static void onPress(WidgetProxy widget, ref PointerPressEvent event)
+	{
+		auto parentId = widget.get!WidgetTransform.parent;
+		if (parentId)
+		{
+			if (auto children = widget.ctx.get!WidgetContainer(parentId))
+			{
+				children.bringToFront(widget.wid);
+			}
+		}
+	}
+}
+
 WidgetProxy makeDraggable(WidgetProxy widget) { DraggableLogic.attachTo(widget); return widget; }
 
 struct DraggableLogic
