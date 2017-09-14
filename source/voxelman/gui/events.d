@@ -12,7 +12,7 @@ import voxelman.math;
 public import voxelman.platform.input : KeyCode, PointerButton, KeyModifiers;
 
 
-private mixin template GuiEvent()
+mixin template GuiEvent()
 {
 	/// If this flag is set - event propagates from root widget to target widget
 	/// otherwise it is bubbling from target to root

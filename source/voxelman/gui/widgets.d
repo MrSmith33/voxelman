@@ -14,15 +14,14 @@ import datadriven.entityman : EntityManager;
 
 void registerComponents(ref EntityManager widgets)
 {
-	widgets.registerComponent!CollapsableWidgetData;
+	widgets.registerComponent!ButtonState;
+	widgets.registerComponent!ChildrenStash;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
-	widgets.registerComponent!PagedWidgetData;
 	widgets.registerComponent!SingleLayoutSettings;
-	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!TextData;
-	widgets.registerComponent!UserClickHandler;
 	widgets.registerComponent!UserCheckHandler;
+	widgets.registerComponent!UserClickHandler;
 	widgets.registerComponent!WidgetIndex;
 }
 
@@ -41,6 +40,7 @@ struct WidgetProxy
 	WidgetProxy createChild(Components...)(Components components) { return ctx.createWidget(wid, components); }
 	WidgetProxy handlers(Handlers...)(Handlers h) { ctx.widgets.getOrCreate!WidgetEvents(wid).addEventHandlers(h); return this; }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
+	bool postEvent(Event)(auto ref Event event) { return ctx.postEvent(this, event); }
 }
 
 static struct ChildrenRange
@@ -132,10 +132,11 @@ struct WidgetIndex
 	WidgetId master;
 }
 
-@Component("gui.PagedWidgetData", Replication.none)
-struct PagedWidgetData
+/// Used for widgets that hide some of the children, to store original list of children
+@Component("gui.ChildrenStash", Replication.none)
+struct ChildrenStash
 {
-	WidgetId[] pages;
+	WidgetId[] widgets;
 }
 
 struct PagedWidget
@@ -147,7 +148,7 @@ struct PagedWidget
 		if (auto cont = widget.get!WidgetContainer)
 		{
 			WidgetId[] pages = cont.children;
-			widget.set(PagedWidgetData(pages), WidgetEvents(&measure, &layout));
+			widget.set(ChildrenStash(pages), WidgetEvents(&measure, &layout));
 			cont.children = null;
 			if (pages)
 			{
@@ -160,7 +161,7 @@ struct PagedWidget
 	{
 		if (auto cont = widget.get!WidgetContainer)
 		{
-			auto pages = widget.get!PagedWidgetData.pages;
+			auto pages = widget.get!ChildrenStash.widgets;
 			if (newPage < pages.length)
 				cont.children[0] = pages[newPage];
 		}
@@ -200,12 +201,6 @@ struct PagedWidget
 	}
 }
 
-@Component("gui.CollapsableWidgetData", Replication.none)
-struct CollapsableWidgetData
-{
-	WidgetId[] childrenStash;
-}
-
 struct CollapsableParts
 {
 	WidgetProxy collapsable;
@@ -234,7 +229,7 @@ struct CollapsableWidget
 		auto container = collapsable.createChild().hexpand;
 
 		auto cont = collapsable.get!WidgetContainer;
-		collapsable.set(CollapsableWidgetData(cont.children));
+		collapsable.set(ChildrenStash(cont.children));
 
 		if (!expanded) toggle(collapsable);
 		return CollapsableParts(collapsable, header, container);
@@ -252,8 +247,8 @@ struct CollapsableWidget
 		if (cont.children.length == 2) {
 			cont.children = cont.children[0..1];
 		} else {
-			auto data = collapsable.get!CollapsableWidgetData;
-			cont.children = data.childrenStash;
+			auto data = collapsable.get!ChildrenStash;
+			cont.children = data.widgets;
 		}
 	}
 
@@ -419,6 +414,7 @@ mixin template ButtonPointerLogic(State)
 
 	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
 	{
+		if (event.sinking) return;
 		widget.get!State.data |= BUTTON_PRESSED;
 		event.handled = true;
 	}
@@ -575,6 +571,48 @@ struct DraggableLogic
 	{
 		widget.get!WidgetTransform.relPos += event.delta;
 	}
+}
+
+struct ScrollBarEvent
+{
+	int pos;
+	int maxPos;
+	mixin GuiEvent!();
+}
+
+struct ScrollBarLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent) {
+		auto scroll = parent.createChild(WidgetType("ScrollBar"))
+			.vexpand.minSize(10, 20);
+		PanelLogic.attachTo(scroll, color_gray);
+		auto handle = scroll.createChild(WidgetType("ScrollHandle"))
+			.minSize(10, 10)
+			.measuredSize(0, 100)
+			.pos(0, 30)
+			.handlers(&onHandleDrag, &DraggableLogic.onPress);
+		PanelLogic.attachTo(handle, color_asbestos);
+		return scroll;
+	}
+
+	void onHandleDrag(WidgetProxy widget, ref DragEvent event)
+	{
+		auto tr = widget.get!WidgetTransform;
+		auto parent_tr = widget.ctx.get!WidgetTransform(tr.parent);
+		int pos = widget.ctx.state.curPointerPos.y - widget.ctx.state.draggedWidgetOffset.y - parent_tr.absPos.y;
+		int maxPos = parent_tr.size.y - tr.size.y;
+		pos = clamp(pos, 0, maxPos);
+		tr.relPos.y = pos;
+		widget.postEvent(ScrollBarEvent(pos, maxPos));
+	}
+
+	void setPos(WidgetProxy widget, float pos)
+	{
+		auto tr = widget.get!WidgetTransform;
+	}
+
+	mixin ButtonPointerLogic!ButtonState;
 }
 
 @Component("gui.SingleLayoutSettings", Replication.none)

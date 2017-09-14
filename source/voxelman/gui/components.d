@@ -59,6 +59,7 @@ WidgetProxy hexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hex
 WidgetProxy vexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.vexpand = true; return widget; } /// ditto
 WidgetProxy hvexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hvexpand = true; return widget; } /// ditto
 WidgetProxy measuredSize(WidgetProxy widget, ivec2 ms) { widget.getOrCreate!WidgetTransform.measuredSize = ms; return widget; } /// ditto
+WidgetProxy measuredSize(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.measuredSize = ivec2(w, h); return widget; } /// ditto
 
 bool hasHexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasHexpand; } /// ditto
 bool hasVexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasVexpand; } /// ditto
