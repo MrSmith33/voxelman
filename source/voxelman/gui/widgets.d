@@ -18,11 +18,19 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!ChildrenStash;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
+	widgets.registerComponent!ScrollableData;
 	widgets.registerComponent!SingleLayoutSettings;
 	widgets.registerComponent!TextData;
 	widgets.registerComponent!UserCheckHandler;
 	widgets.registerComponent!UserClickHandler;
 	widgets.registerComponent!WidgetIndex;
+	widgets.registerComponent!WidgetReference;
+}
+
+@Component("gui.WidgetReference", Replication.none)
+struct WidgetReference
+{
+	WidgetId widgetId;
 }
 
 struct WidgetProxy
@@ -118,9 +126,9 @@ struct PanelLogic
 			auto style = widget.get!WidgetStyle;
 			event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, style.color);
 			event.depth += 1;
-			//event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
+			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
 		} else {
-			//event.renderQueue.popClipRect();
+			event.renderQueue.popClipRect();
 		}
 	}
 }
@@ -573,6 +581,115 @@ struct DraggableLogic
 	}
 }
 
+struct ScrollableAreaParts
+{
+	WidgetProxy scrollable;
+	alias scrollable this;
+	WidgetProxy canvas;
+}
+
+@Component("ScrollableData", Replication.none)
+struct ScrollableData
+{
+	ivec2 contentOffset;
+	ivec2 contentSize;
+	ivec2 windowSize;
+	bool isScrollbarNeeded() { return contentSize.y > windowSize.y; }
+	ivec2 maxPos() { return vector_max(ivec2(0,0), contentSize - windowSize); }
+	void clampPos() {
+		contentOffset = vector_clamp(contentOffset, ivec2(0,0), maxPos);
+	}
+}
+
+struct ScrollableArea
+{
+	static:
+	ScrollableAreaParts create(WidgetProxy parent) {
+		auto scrollable = parent.createChild(WidgetType("Scrollable"),
+			ScrollableData(),
+			WidgetEvents(&onScroll, &measure, &layout, &onSliderDrag)).setHLayout(0,0).measuredSize(10, 10);
+		auto container = scrollable.createChild(WidgetType("Container"), WidgetEvents(&clipDraw)).hvexpand;
+		auto canvas = container.createChild(WidgetType("Canvas"));
+		auto scrollbar = ScrollBarLogic.create(scrollable, scrollable/*receive drag event*/);
+		scrollbar.vexpand;
+		auto cont = scrollable.get!WidgetContainer;
+		scrollable.set(ChildrenStash(cont.children));
+
+		return ScrollableAreaParts(scrollable, canvas);
+	}
+
+	void onSliderDrag(WidgetProxy scrollable, ref ScrollBarEvent event)
+	{
+		auto data = scrollable.get!ScrollableData;
+		if (event.maxPos)
+			data.contentOffset.y = (event.pos * data.maxPos.y) / event.maxPos;
+		else
+			data.contentOffset.y = 0;
+		//data.clampPos; unnesessary
+	}
+
+	void onScroll(WidgetProxy scrollable, ref ScrollEvent event)
+	{
+		if (event.sinking) return;
+		auto data = scrollable.get!ScrollableData;
+		data.contentOffset += ivec2(event.delta) * 50; // TODO settings
+		data.clampPos;
+		event.handled = true; // TODO do not handle if not scrolled, so higher scrolls will work
+	}
+
+	void clipDraw(WidgetProxy scrollable, ref DrawEvent event)
+	{
+		if (event.sinking) {
+			auto transform = scrollable.getOrCreate!WidgetTransform;
+			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
+		} else {
+			event.renderQueue.popClipRect();
+		}
+	}
+
+	void measure(WidgetProxy scrollable, ref MeasureEvent event)
+	{
+		// scrollable -> container -> canvas
+		auto canvasTransform = scrollable.children[0].children[0].get!WidgetTransform;
+		scrollable.get!ScrollableData.contentSize = canvasTransform.measuredSize;
+	}
+
+	void layout(WidgetProxy scrollable, ref LayoutEvent event)
+	{
+		auto data = scrollable.get!ScrollableData;
+		auto rootTransform = scrollable.get!WidgetTransform;
+		data.windowSize = rootTransform.size;
+		data.clampPos;
+
+		WidgetProxy cont = scrollable.children[0];
+		auto contTran = cont.get!WidgetTransform;
+
+		auto containerTransform = cont.get!WidgetTransform;
+		containerTransform.minSize = ivec2(0, 0);
+		containerTransform.measuredSize = ivec2(0, 0);
+
+		auto canvasTransform = cont.children[0].get!WidgetTransform;
+
+		if (data.isScrollbarNeeded)
+		{
+			// set scrollbar
+			auto stash = scrollable.get!ChildrenStash;
+			auto widgets = scrollable.get!WidgetContainer;
+			widgets.children = stash.widgets;
+
+			ScrollBarLogic.setPosSize(scrollable.children[1], data.contentOffset.y, data.contentSize.y, data.windowSize.y);
+			canvasTransform.relPos.y = -data.contentOffset.y;
+		}
+		else
+		{
+			// no scrollbar
+			auto widgets = scrollable.get!WidgetContainer;
+			widgets.children = widgets.children[0..1];
+			canvasTransform.relPos.y = 0;
+		}
+	}
+}
+
 struct ScrollBarEvent
 {
 	int pos;
@@ -580,39 +697,54 @@ struct ScrollBarEvent
 	mixin GuiEvent!();
 }
 
+struct ScrollBarParts
+{
+	WidgetProxy scrollbar;
+	alias scrollbar this;
+	WidgetProxy slider;
+}
+
 struct ScrollBarLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent) {
+	WidgetProxy create(WidgetProxy parent, WidgetId eventReceiver = WidgetId(0)) {
 		auto scroll = parent.createChild(WidgetType("ScrollBar"))
 			.vexpand.minSize(10, 20);
 		PanelLogic.attachTo(scroll, color_gray);
-		auto handle = scroll.createChild(WidgetType("ScrollHandle"))
+		auto slider = scroll.createChild(WidgetType("ScrollHandle"), WidgetReference(eventReceiver))
 			.minSize(10, 10)
 			.measuredSize(0, 100)
-			.pos(0, 30)
-			.handlers(&onHandleDrag, &DraggableLogic.onPress);
-		PanelLogic.attachTo(handle, color_asbestos);
-		return scroll;
+			.handlers(&onSliderDrag, &DraggableLogic.onPress);
+		PanelLogic.attachTo(slider, color_asbestos);
+		return ScrollBarParts(scroll, slider);
 	}
 
-	void onHandleDrag(WidgetProxy widget, ref DragEvent event)
+	void onSliderDrag(WidgetProxy slider, ref DragEvent event)
 	{
-		auto tr = widget.get!WidgetTransform;
-		auto parent_tr = widget.ctx.get!WidgetTransform(tr.parent);
-		int pos = widget.ctx.state.curPointerPos.y - widget.ctx.state.draggedWidgetOffset.y - parent_tr.absPos.y;
+		auto tr = slider.get!WidgetTransform;
+		auto parent_tr = slider.ctx.get!WidgetTransform(tr.parent);
+		int pos = slider.ctx.state.curPointerPos.y - slider.ctx.state.draggedWidgetOffset.y - parent_tr.absPos.y;
 		int maxPos = parent_tr.size.y - tr.size.y;
 		pos = clamp(pos, 0, maxPos);
 		tr.relPos.y = pos;
-		widget.postEvent(ScrollBarEvent(pos, maxPos));
+		auto reference = slider.get!WidgetReference;
+		if (reference.widgetId)
+			slider.ctx.postEvent(reference.widgetId, ScrollBarEvent(pos, maxPos));
 	}
 
-	void setPos(WidgetProxy widget, float pos)
+	// Assumes clamped canvasPos
+	void setPosSize(WidgetProxy scroll, int canvasPos, int canvasSize, int windowSize)
 	{
-		auto tr = widget.get!WidgetTransform;
-	}
+		assert(canvasSize > windowSize);
+		auto scrollTransform = scroll.get!WidgetTransform;
+		auto sliderTransform = scroll.children[0].get!WidgetTransform;
+		int scrollSize = windowSize;
+		int sliderSize = (windowSize * scrollSize) / canvasSize;
+		int sliderMaxPos = scrollSize - sliderSize;
 
-	mixin ButtonPointerLogic!ButtonState;
+		sliderTransform.relPos.y = canvasPos * sliderMaxPos / (canvasSize - windowSize);
+		sliderTransform.size.y = sliderSize;
+	}
 }
 
 @Component("gui.SingleLayoutSettings", Replication.none)
