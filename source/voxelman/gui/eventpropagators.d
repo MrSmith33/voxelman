@@ -134,7 +134,7 @@ WidgetId[] buildPathToLeaf(alias pred, T...)(GuiContext context, WidgetId root, 
 
 		path ~= root;
 
-		foreach(child; context.widgetChildren(root))
+		foreach_reverse(child; context.widgetChildren(root))
 		{
 			if (traverse(child))
 			{
