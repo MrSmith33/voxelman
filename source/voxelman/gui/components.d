@@ -22,6 +22,7 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!WidgetRespondsToPointer;
 	widgets.registerComponent!WidgetIsFocusable;
 	widgets.registerComponent!WidgetEvents;
+	widgets.registerComponent!hidden;
 }
 
 enum WidgetFlags
@@ -64,6 +65,9 @@ WidgetProxy measuredSize(WidgetProxy widget, int w, int h) { widget.getOrCreate!
 bool hasHexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasHexpand; } /// ditto
 bool hasVexpand(WidgetProxy widget) { return widget.getOrCreate!WidgetTransform.hasVexpand; } /// ditto
 
+@Component("gui.hidden", Replication.none)
+struct hidden {}
+
 @Component("gui.WidgetStyle", Replication.none)
 struct WidgetStyle
 {
@@ -96,8 +100,8 @@ string widgetType(GuiContext ctx, WidgetId wid) {
 struct WidgetContainer
 {
 	WidgetId[] children;
-	void put(WidgetId wId) {
-		children ~= wId;
+	void put(WidgetId wid) {
+		children ~= wid;
 	}
 	void bringToFront(WidgetId wid) {
 		foreach(index, child; children)

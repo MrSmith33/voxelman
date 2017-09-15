@@ -60,14 +60,13 @@ class GuiContext
 
 		roots ~= createWidget(WidgetType("root")).hvexpand;
 		roots ~= createWidget(WidgetType("windows")).hvexpand;
+		// context menus, drop-down lists, tooltips
 		roots ~= createWidget(WidgetType("overlay")).hvexpand;
 		this.debugText = debugText;
 	}
 
-	WidgetProxy getRoot(size_t rootIndex)
-	{
-		return WidgetProxy(roots[rootIndex], this);
-	}
+	WidgetProxy getRoot(size_t rootIndex) { return WidgetProxy(roots[rootIndex], this); }
+	WidgetProxy overlay() { return WidgetProxy(roots[2], this); }
 
 	ChildrenRange getRoots() { return ChildrenRange(this, roots); }
 
@@ -159,8 +158,11 @@ class GuiContext
 				}
 
 				foreach(child; ctx.widgetChildren(root))
+				{
+					if (ctx.widgets.has!hidden(child)) continue;
 					if (auto ret = visitSubtree(child))
 						return ret;
+				}
 
 				static if (!rootFirst) {
 					if (auto ret = del(WidgetProxy(root, ctx))) return ret;

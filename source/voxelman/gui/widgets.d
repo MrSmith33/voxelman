@@ -49,6 +49,7 @@ struct WidgetProxy
 	WidgetProxy handlers(Handlers...)(Handlers h) { ctx.widgets.getOrCreate!WidgetEvents(wid).addEventHandlers(h); return this; }
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
 	bool postEvent(Event)(auto ref Event event) { return ctx.postEvent(this, event); }
+	void toggleFlag(Component)() { if (ctx.widgets.has!Component(wid)) ctx.widgets.remove!Component(wid); else ctx.widgets.set(wid, Component()); }
 }
 
 static struct ChildrenRange
@@ -60,8 +61,11 @@ static struct ChildrenRange
 	int opApply(scope int delegate(WidgetProxy) del)
 	{
 		foreach(childId; children)
+		{
+			if (ctx.widgets.has!hidden(childId)) continue;
 			if (auto ret = del(WidgetProxy(childId, ctx)))
 				return ret;
+		}
 		return 0;
 	}
 }
@@ -236,9 +240,6 @@ struct CollapsableWidget
 
 		auto container = collapsable.createChild().hexpand;
 
-		auto cont = collapsable.get!WidgetContainer;
-		collapsable.set(ChildrenStash(cont.children));
-
 		if (!expanded) toggle(collapsable);
 		return CollapsableParts(collapsable, header, container);
 	}
@@ -251,13 +252,7 @@ struct CollapsableWidget
 
 	void toggle(WidgetProxy collapsable)
 	{
-		auto cont = collapsable.get!WidgetContainer;
-		if (cont.children.length == 2) {
-			cont.children = cont.children[0..1];
-		} else {
-			auto data = collapsable.get!ChildrenStash;
-			cont.children = data.widgets;
-		}
+		collapsable.children[1].toggleFlag!hidden;
 	}
 
 	mixin ButtonPointerLogic!ButtonState;
@@ -271,43 +266,61 @@ struct TextData
 	Alignment valign;
 }
 
-WidgetProxy createText(
-	WidgetProxy parent,
-	string text,
-	FontRef font,
-	Alignment halign = Alignment.center,
-	Alignment valign = Alignment.center)
+WidgetProxy createText(WidgetProxy parent, string text, FontRef font,
+	Alignment halign = Alignment.center, Alignment valign = Alignment.center)
 {
-	TextMesherParams params;
-	params.font = font;
-	params.monospaced = true;
-	measureText(params, text);
-
-	WidgetProxy textWidget = parent.createChild(
-		TextData(text, halign, valign),
-		WidgetEvents(&drawText),
-		WidgetType("Text"))
-			.minSize(0, font.metrics.height)
-			.measuredSize(ivec2(params.size));
-	return textWidget;
+	return TextLogic.create(parent, text, font, halign, valign);
 }
 
-void drawText(WidgetProxy widget, ref DrawEvent event)
+struct TextLogic
 {
-	if (event.bubbling) return;
+	static:
+	WidgetProxy create(
+		WidgetProxy parent,
+		string text,
+		FontRef font,
+		Alignment halign = Alignment.center,
+		Alignment valign = Alignment.center)
+	{
+		WidgetProxy textWidget = parent.createChild(
+			TextData(text, halign, valign),
+			WidgetEvents(&drawText),
+			WidgetType("Text"))
+				.minSize(0, font.metrics.height);
+		setText(textWidget, text, font);
+		return textWidget;
+	}
 
-	auto data = widget.get!TextData;
-	auto transform = widget.getOrCreate!WidgetTransform;
-	auto alignmentOffset = textAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
+	void setText(WidgetProxy widget, string text, FontRef font)
+	{
+		auto data = widget.get!TextData;
+		data.text = text;
 
-	auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
-	params.monospaced = true;
-	params.depth = event.depth;
-	params.color = color_wet_asphalt;
-	params.origin += alignmentOffset;
-	params.meshText(data.text);
+		TextMesherParams params;
+		params.font = font;
+		params.monospaced = true;
+		measureText(params, text);
 
-	event.depth += 1;
+		widget.measuredSize(ivec2(params.size));
+	}
+
+	void drawText(WidgetProxy widget, ref DrawEvent event)
+	{
+		if (event.bubbling) return;
+
+		auto data = widget.get!TextData;
+		auto transform = widget.getOrCreate!WidgetTransform;
+		auto alignmentOffset = textAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
+
+		auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
+		params.monospaced = true;
+		params.depth = event.depth;
+		params.color = color_wet_asphalt;
+		params.origin += alignmentOffset;
+		params.meshText(data.text);
+
+		event.depth += 1;
+	}
 }
 
 enum BUTTON_PRESSED = 0b0001;
@@ -612,8 +625,6 @@ struct ScrollableArea
 		auto canvas = container.createChild(WidgetType("Canvas"));
 		auto scrollbar = ScrollBarLogic.create(scrollable, scrollable/*receive drag event*/);
 		scrollbar.vexpand;
-		auto cont = scrollable.get!WidgetContainer;
-		scrollable.set(ChildrenStash(cont.children));
 
 		return ScrollableAreaParts(scrollable, canvas);
 	}
@@ -669,22 +680,19 @@ struct ScrollableArea
 		containerTransform.measuredSize = ivec2(0, 0);
 
 		auto canvasTransform = cont.children[0].get!WidgetTransform;
+		auto scrollbar = scrollable.children[1];
 
 		if (data.isScrollbarNeeded)
 		{
 			// set scrollbar
-			auto stash = scrollable.get!ChildrenStash;
-			auto widgets = scrollable.get!WidgetContainer;
-			widgets.children = stash.widgets;
-
+			scrollbar.remove!hidden;
 			ScrollBarLogic.setPosSize(scrollable.children[1], data.contentOffset.y, data.contentSize.y, data.windowSize.y);
 			canvasTransform.relPos.y = -data.contentOffset.y;
 		}
 		else
 		{
 			// no scrollbar
-			auto widgets = scrollable.get!WidgetContainer;
-			widgets.children = widgets.children[0..1];
+			scrollbar.set(hidden());
 			canvasTransform.relPos.y = 0;
 		}
 	}

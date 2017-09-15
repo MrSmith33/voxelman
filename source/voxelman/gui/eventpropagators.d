@@ -37,6 +37,7 @@ enum OnHandle
 }
 
 /// Returns sub-chain that handled event if onHandle is StopTraversing
+/// Doesn't check for hidden flag
 WidgetId[] propagateEventSinkBubble(Event)(
 	GuiContext context,
 	return WidgetId[] widgets,
@@ -77,6 +78,7 @@ void propagateEventParentFirst(Event)(GuiContext context, WidgetId root, auto re
 
 	void propagateEvent(WidgetId root)
 	{
+		if (context.has!hidden(root)) return;
 		context.postEvent(root, event);
 
 		foreach(WidgetId child; context.widgetChildren(root))
@@ -90,6 +92,8 @@ void propagateEventParentFirst(Event)(GuiContext context, WidgetId root, auto re
 
 void propagateEventSinkBubbleTree(Event)(GuiContext context, WidgetId root, auto ref Event event)
 {
+	if (context.has!hidden(root)) return;
+
 	event.sinking = true;
 	context.postEvent(root, event);
 
@@ -105,6 +109,8 @@ void propagateEventSinkBubbleTree(Event)(GuiContext context, WidgetId root, auto
 
 void propagateEventChildrenFirst(Event)(GuiContext context, WidgetId root, auto ref Event event)
 {
+	if (context.has!hidden(root)) return;
+
 	event.bubbling = true;
 
 	void propagateEvent(WidgetId root)
@@ -130,6 +136,8 @@ WidgetId[] buildPathToLeaf(alias pred, T...)(GuiContext context, WidgetId root, 
 
 	bool traverse(WidgetId root)
 	{
+		if (context.has!hidden(root)) return false;
+
 		if(!pred(root, data)) return false;
 
 		path ~= root;
