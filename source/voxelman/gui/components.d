@@ -19,7 +19,6 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!WidgetName;
 	widgets.registerComponent!WidgetType;
 	widgets.registerComponent!WidgetContainer;
-	widgets.registerComponent!WidgetRespondsToPointer;
 	widgets.registerComponent!WidgetIsFocusable;
 	widgets.registerComponent!WidgetEvents;
 	widgets.registerComponent!hidden;
@@ -49,12 +48,15 @@ struct WidgetTransform
 	void hexpand(bool val) { flags = set_flag(flags, val, WidgetFlags.hexpand); }
 	void vexpand(bool val) { flags = set_flag(flags, val, WidgetFlags.vexpand); }
 	void hvexpand(bool val) { hexpand(val); vexpand(val); }
+
+	bool contains(ivec2 pos) { return irect(absPos, size).contains(pos); }
 }
 
 /// Convenience setters
 WidgetProxy minSize(WidgetProxy widget, ivec2 minSize) { widget.getOrCreate!WidgetTransform.minSize = minSize; return widget; } /// ditto
 WidgetProxy minSize(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.minSize = ivec2(w, h); return widget; } /// ditto
 WidgetProxy size(WidgetProxy widget, int w, int h) { widget.getOrCreate!WidgetTransform.size = ivec2(w, h); return widget; } /// ditto
+WidgetProxy pos(WidgetProxy widget, ivec2 p) { widget.getOrCreate!WidgetTransform.relPos = p; return widget; } /// ditto
 WidgetProxy pos(WidgetProxy widget, int x, int y) { widget.getOrCreate!WidgetTransform.relPos = ivec2(x, y); return widget; } /// ditto
 WidgetProxy hexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.hexpand = true; return widget; } /// ditto
 WidgetProxy vexpand(WidgetProxy widget) { widget.getOrCreate!WidgetTransform.vexpand = true; return widget; } /// ditto
@@ -102,6 +104,12 @@ struct WidgetContainer
 	WidgetId[] children;
 	void put(WidgetId wid) {
 		children ~= wid;
+	}
+	void removeChild(WidgetId wid)
+	{
+		import std.algorithm : remove, countUntil;
+		auto index = countUntil(children, wid);
+		if (index != -1) children = remove(children, index);
 	}
 	void bringToFront(WidgetId wid) {
 		foreach(index, child; children)
@@ -171,9 +179,6 @@ void bringToFront(WidgetProxy widget)
 	if (auto container = widget.ctx.get!WidgetContainer(parentId))
 		container.bringToFront(widget.wid);
 }
-
-@Component("gui.WidgetRespondsToPointer", Replication.none)
-struct WidgetRespondsToPointer {}
 
 @Component("gui.WidgetIsFocusable", Replication.none)
 struct WidgetIsFocusable {}

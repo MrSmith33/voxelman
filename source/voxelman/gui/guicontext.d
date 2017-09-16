@@ -35,6 +35,7 @@ struct GuiState
 	/// Icon is reset after widget leave event and before widget enter event.
 	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
 	CursorIcon cursorIcon;
+	FontRef defaultFont;
 
 	string delegate() getClipboard;
 	void delegate(string) setClipboard;
@@ -52,6 +53,8 @@ class GuiContext
 	GuiState state;
 	LineBuffer* debugText;
 
+	FontRef defaultFont() {return state.defaultFont; }
+
 	this(LineBuffer* debugText)
 	{
 		widgets.eidMan = &widgetIds;
@@ -60,13 +63,15 @@ class GuiContext
 
 		roots ~= createWidget(WidgetType("root")).hvexpand;
 		roots ~= createWidget(WidgetType("windows")).hvexpand;
-		// context menus, drop-down lists, tooltips
-		roots ~= createWidget(WidgetType("overlay")).hvexpand;
 		this.debugText = debugText;
 	}
 
 	WidgetProxy getRoot(size_t rootIndex) { return WidgetProxy(roots[rootIndex], this); }
-	WidgetProxy overlay() { return WidgetProxy(roots[2], this); }
+	// context menus, drop-down lists, tooltips
+	WidgetProxy createOverlay() {
+		roots ~= createWidget(WidgetType("overlay")).hvexpand;
+		return WidgetProxy(roots[$-1], this);
+	}
 
 	ChildrenRange getRoots() { return ChildrenRange(this, roots); }
 
@@ -129,6 +134,26 @@ class GuiContext
 		return WidgetProxy(wid, this);
 	}
 
+	void removeWidget(WidgetId wid)
+	{
+		auto tr = widgets.getOrCreate!WidgetTransform(wid);
+
+		foreach(widget; visitTreeChildrenFirstAll(wid))
+			widgets.remove(wid);
+
+		if (tr.parent)
+		{
+			auto container = widgets.get!WidgetContainer(tr.parent);
+			if (container) container.removeChild(wid);
+		}
+		else // check if root
+		{
+			import std.algorithm : remove, countUntil;
+			auto index = countUntil(roots, wid);
+			if (index != -1) roots = remove(roots, index);
+		}
+	}
+
 	/// Call to set parent after components are set
 	/// because it will create WidgetTransform component for child
 	/// which will be overwritten by set call if Components list
@@ -145,7 +170,7 @@ class GuiContext
 		return null;
 	}
 
-	static struct WidgetTreeVisitor(bool rootFirst)
+	static struct WidgetTreeVisitor(bool rootFirst, bool onlyVisible)
 	{
 		WidgetId root;
 		GuiContext ctx;
@@ -159,7 +184,9 @@ class GuiContext
 
 				foreach(child; ctx.widgetChildren(root))
 				{
-					if (ctx.widgets.has!hidden(child)) continue;
+					static if (onlyVisible) {
+						if (ctx.widgets.has!hidden(child)) continue;
+					}
 					if (auto ret = visitSubtree(child))
 						return ret;
 				}
@@ -175,15 +202,10 @@ class GuiContext
 		}
 	}
 
-	auto visitWidgetTreeRootFirst(WidgetId root)
-	{
-		return WidgetTreeVisitor!true(root, this);
-	}
-
-	auto visitWidgetTreeChildrenFirst(WidgetId root)
-	{
-		return WidgetTreeVisitor!false(root, this);
-	}
+	auto visitTreeRootFirstVisible(WidgetId root) { return WidgetTreeVisitor!(true, true)(root, this); }
+	auto visitTreeChildrenFirstVisible(WidgetId root) { return WidgetTreeVisitor!(false, true)(root, this); }
+	auto visitTreeRootFirstAll(WidgetId root) { return WidgetTreeVisitor!(true, false)(root, this); }
+	auto visitTreeChildrenFirstAll(WidgetId root) { return WidgetTreeVisitor!(false, false)(root, this); }
 
 	bool postEvent(Event)(WidgetId wid, auto ref Event event)
 	{
@@ -202,7 +224,7 @@ class GuiContext
 	static bool containsPointer(WidgetId widget, GuiContext context, ivec2 pointerPos)
 	{
 		auto transform = context.widgets.getOrCreate!WidgetTransform(widget);
-		return irect(transform.absPos, transform.size).contains(pointerPos);
+		return transform.contains(pointerPos);
 	}
 
 
@@ -217,6 +239,7 @@ class GuiContext
 			WidgetId[] path = buildPathToLeaf!(containsPointer)(this, root, this, state.curPointerPos);
 			WidgetId[] eventConsumerChain = propagateEventSinkBubble(this, path, event, OnHandle.StopTraversing);
 		}
+		updateHovered(state.curPointerPos);
 	}
 
 	void onKeyPress(KeyCode key, uint modifiers)
@@ -343,24 +366,23 @@ class GuiContext
 		}
 		else
 		{
-			if (updateHovered(newPointerPos))
-			{
-				postEvent(hoveredWidget, event);
-				return;
-			}
+			if (updateHovered(newPointerPos, delta)) return;
 		}
 
 		hoveredWidget = WidgetId(0);
 	}
 
-	private bool updateHovered(ivec2 pointerPos)
+	private bool updateHovered(ivec2 pointerPos, ivec2 delta = ivec2(0,0))
 	{
 		foreach_reverse(root; roots)
 		{
 			WidgetId[] path = buildPathToLeaf!(containsPointer)(this, root, this, pointerPos);
+			auto event = PointerMoveEvent(pointerPos, delta);
+
 			foreach_reverse(widget; path)
 			{
-				if (widgets.has!WidgetRespondsToPointer(widget))
+				postEvent(widget, event);
+				if (event.handled)
 				{
 					hoveredWidget = widget;
 					return true;
@@ -389,7 +411,7 @@ class GuiContext
 		foreach(root; roots)
 		{
 			MeasureEvent measureEvent;
-			foreach(widget; visitWidgetTreeChildrenFirst(root))
+			foreach(widget; visitTreeChildrenFirstVisible(root))
 			{
 				postEvent(widget, measureEvent);
 				auto childTransform = widgets.getOrCreate!WidgetTransform(widget);
@@ -403,7 +425,7 @@ class GuiContext
 			trans.absPos = trans.relPos;
 
 			LayoutEvent layoutEvent;
-			foreach(widget; visitWidgetTreeRootFirst(root))
+			foreach(widget; visitTreeRootFirstVisible(root))
 			{
 				postEvent(widget, layoutEvent);
 				auto parentTransform = widget.getOrCreate!WidgetTransform;
@@ -450,10 +472,11 @@ class GuiContext
 		assert(draggedWidget);
 		postEvent(draggedWidget, DragEndEvent());
 		draggedWidget = WidgetId(0);
+		updateHovered(state.curPointerPos);
 	}
 
 	WidgetId draggedWidget() { return state.draggedWidget; }
-	void draggedWidget(WidgetId wid) { state.draggedWidget = wid; }
+	void draggedWidget(WidgetId wid) { state.draggedWidget = wid; updateHovered(state.curPointerPos); }
 
 	WidgetId focusedWidget() { return state.focusedWidget; }
 	void focusedWidget(WidgetId wid)
@@ -485,7 +508,7 @@ class GuiContext
 	void lastClickedWidget(WidgetId wid) { state.lastClickedWidget = wid; }
 
 	WidgetId pressedWidget() { return state.pressedWidget; }
-	void pressedWidget(WidgetId wid) { state.pressedWidget = wid; }
+	void pressedWidget(WidgetId wid) { state.pressedWidget = wid; updateHovered(state.curPointerPos); }
 
 	// HANDLERS
 	bool handleWidgetUpdate(WidgetId wid, ref GuiUpdateEvent event)

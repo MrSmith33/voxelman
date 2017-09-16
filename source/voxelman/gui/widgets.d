@@ -16,6 +16,7 @@ void registerComponents(ref EntityManager widgets)
 {
 	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!ChildrenStash;
+	widgets.registerComponent!DropDownData;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
 	widgets.registerComponent!ScrollableData;
@@ -95,7 +96,7 @@ struct Frame
 	static:
 	FrameParts create(WidgetProxy parent)
 	{
-		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, 0);
+		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, 0).consumeMouse;
 		PanelLogic.attachTo(frame, color_clouds);
 
 		auto header = frame.createChild(WidgetType("Header")).hexpand;
@@ -105,6 +106,11 @@ struct Frame
 
 		return FrameParts(frame, header, container);
 	}
+}
+
+WidgetProxy addBackground(WidgetProxy widget, Color4ub color)
+{
+	PanelLogic.attachTo(widget, color); return widget;
 }
 
 struct PanelLogic
@@ -233,7 +239,6 @@ struct CollapsableWidget
 
 		auto header = collapsable.createChild(
 			WidgetType("Header"),
-			WidgetRespondsToPointer(),
 			ButtonState(),
 			WidgetEvents(&onHeaderClick, &drawButtonStateBack, &pointerMoved, &pointerPressed,
 					&pointerReleased, &enterWidget, &leaveWidget)).hexpand;
@@ -330,12 +335,21 @@ enum BUTTON_SELECTED = 0b0100;
 enum buttonNormalColor = rgb(255, 255, 255);
 enum buttonHoveredColor = rgb(241, 241, 241);
 enum buttonPressedColor = rgb(229, 229, 229);
-Color4ub[4] buttonColors = [buttonNormalColor, buttonNormalColor, buttonHoveredColor, buttonPressedColor];
+enum buttonSelectedColor = rgb(229, 229, 255);
+Color4ub[8] buttonColors = [
+buttonNormalColor, buttonNormalColor,
+buttonHoveredColor, buttonPressedColor,
+buttonSelectedColor, buttonSelectedColor,
+buttonSelectedColor, buttonSelectedColor];
 
 @Component("gui.ButtonState", Replication.none)
 struct ButtonState
 {
 	uint data;
+	bool pressed() { return (data & BUTTON_PRESSED) != 0; }
+	bool hovered() { return (data & BUTTON_HOVERED) != 0; }
+	bool selected() { return (data & BUTTON_SELECTED) != 0; }
+	void toggleSelected() { data = data.toggle_flag(BUTTON_SELECTED); }
 }
 
 struct TextButtonLogic
@@ -348,7 +362,6 @@ struct TextButtonLogic
 			WidgetEvents(
 				&drawButtonStateBack, &pointerMoved, &pointerPressed,
 				&pointerReleased, &enterWidget, &leaveWidget),
-			WidgetRespondsToPointer(),
 			WidgetType("TextButton"));
 
 		button.createText(text, font);
@@ -370,7 +383,7 @@ void drawButtonStateBack(WidgetProxy widget, ref DrawEvent event)
 	auto state = widget.get!ButtonState;
 	auto transform = widget.getOrCreate!WidgetTransform;
 
-	event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[state.data & 0b11]);
+	event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, buttonColors[state.data & 0b111]);
 	//event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth+1, rgb(230,230,230));
 	event.depth += 1;
 }
@@ -410,7 +423,6 @@ struct CheckButtonLogic
 		WidgetProxy check = parent.createChild(
 			UserCheckHandler(), ButtonState(),
 			WidgetEvents(&pointerMoved, &pointerPressed, &pointerReleased, &enterWidget, &leaveWidget),
-			WidgetRespondsToPointer(),
 			WidgetType("CheckButton"));
 
 		auto iconSize = font.metrics.height;
@@ -426,6 +438,121 @@ struct CheckButtonLogic
 
 	mixin ButtonPointerLogic!ButtonState;
 	mixin ButtonClickLogic!UserCheckHandler;
+}
+
+alias OptionSelectHandler = void delegate(size_t);
+@Component("gui.DropDownData", Replication.none)
+struct DropDownData
+{
+	OptionSelectHandler handler;
+	void onClick(size_t index) {
+		if (selectedOption == index) return;
+		selectedOption = index;
+		if (handler) handler(selectedOption);
+	}
+	string[] options;
+	size_t selectedOption;
+	string optionText() { return options[selectedOption]; }
+}
+
+struct DropDown
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, string[] options, size_t selectedOption, OptionSelectHandler handler = null)
+	{
+		WidgetProxy dropdown = BaseButton.create(parent)
+			.handlers(&drawButtonStateBack, &onWidgetClick)
+			.set(
+				WidgetType("DropDown"),
+				DropDownData(handler, options, selectedOption))
+			.setHLayout(0,2);
+
+		dropdown.createText(options[selectedOption], parent.ctx.defaultFont);
+		dropdown.hfill;
+		dropdown.createText("▼", parent.ctx.defaultFont);
+
+		return dropdown;
+	}
+
+	void onWidgetClick(WidgetProxy widget, ref PointerClickEvent event)
+	{
+		toggleDropDown(widget);
+	}
+
+	void toggleDropDown(WidgetProxy widget)
+	{
+		auto tr = widget.get!WidgetTransform;
+		auto data = widget.get!DropDownData;
+		auto state = widget.get!ButtonState;
+		state.toggleSelected;
+
+		if (state.selected)
+		{
+			auto optionsOverlay = widget.ctx.createOverlay
+				.consumeMouse
+				.handlers(&onOverlayPress)
+				.set(WidgetReference(widget));
+
+			widget.set(WidgetReference(optionsOverlay));
+
+			auto options = optionsOverlay.createChild()
+				.pos(tr.absPos+ivec2(0, tr.size.y))
+				.addBackground(color_gray)
+				.minSize(tr.size.x, 0)
+				.setVLayout(2,2);
+
+			foreach(i, option; data.options)
+			{
+				auto button = BaseButton.create(options)
+					.set(WidgetIndex(i, widget), WidgetType("DropDownOption"))
+					.handlers(&onOptionClick, &drawButtonStateBack)
+					.hexpand
+					.setSingleLayout(2, Alignment.min);
+				button.createText(option, widget.ctx.defaultFont, Alignment.min);
+			}
+		}
+		else
+		{
+			auto overlayRef = widget.get!WidgetReference;
+			widget.ctx.removeWidget(overlayRef.widgetId);
+			widget.remove!WidgetReference;
+		}
+	}
+
+	void onOverlayPress(WidgetProxy overlay, ref PointerPressEvent event)
+	{
+		if (event.sinking) return;
+		auto dropdownRef = overlay.get!WidgetReference;
+		toggleDropDown(WidgetProxy(dropdownRef.widgetId, overlay.ctx));
+		event.handled = true;
+	}
+
+	void onOptionClick(WidgetProxy option, ref PointerClickEvent event)
+	{
+		auto index = option.get!WidgetIndex;
+		auto dropdown = WidgetProxy(index.master, option.ctx);
+
+		auto data = dropdown.get!DropDownData;
+		data.onClick(index.index);
+		toggleDropDown(dropdown);
+		TextLogic.setText(dropdown.children[0], data.optionText, option.ctx.defaultFont);
+	}
+
+	mixin ButtonPointerLogic!ButtonState;
+}
+
+struct BaseButton
+{
+	static:
+	WidgetProxy create(WidgetProxy parent)
+	{
+		return parent.createChild(ButtonState(),
+			WidgetEvents(
+				&pointerMoved, &pointerPressed,
+				&pointerReleased, &enterWidget, &leaveWidget),
+			WidgetType("BaseButton"));
+	}
+	mixin ButtonPointerLogic!ButtonState;
 }
 
 mixin template ButtonPointerLogic(State)
@@ -492,6 +619,11 @@ mixin template ButtonClickLogic(Data)
 	}
 }
 
+/// Widget will catch mouse events from bubbling
+WidgetProxy consumeMouse(WidgetProxy widget) { widget.handlers(&handlePointerMoved); return widget; }
+
+void handlePointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
+
 @Component("gui.LinearLayoutSettings", Replication.none)
 struct LinearLayoutSettings
 {
@@ -531,6 +663,9 @@ struct Line(bool horizontal)
 		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, color_wet_asphalt);
 	}
 }
+
+WidgetProxy hfill(WidgetProxy parent) { HFill.create(parent); return parent; }
+WidgetProxy vfill(WidgetProxy parent) { VFill.create(parent); return parent; }
 
 alias HFill = Fill!true;
 alias VFill = Fill!false;
@@ -1008,7 +1143,7 @@ struct ColumnListLogic
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
 			WidgetStyle(baseColor),
-			WidgetRespondsToPointer(), WidgetType("List"));
+			WidgetType("List"));
 		return list;
 	}
 
@@ -1184,12 +1319,12 @@ struct ColumnListLogic
 
 	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)
 	{
-		//updateHoveredLine(widget, event.pointerPosition);
+		widget.get!ListData.hoveredLine = -1;
 	}
 
 	void leaveWidget(WidgetProxy widget, ref PointerLeaveEvent event)
 	{
-		//updateHoveredLine(widget, event.pointerPosition);
+		widget.get!ListData.hoveredLine = -1;
 	}
 
 	void clickWidget(WidgetProxy widget, ref PointerClickEvent event)

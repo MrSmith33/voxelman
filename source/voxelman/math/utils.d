@@ -49,6 +49,11 @@ T set_flag(T)(T bits, bool flagValue, T flagBit)
 		return bits & (~flagBit);
 }
 
+T toggle_flag(T)(T bits, T flagBit)
+{
+	return bits ^ flagBit;
+}
+
 T divCeil(T)(T a, T b)
 {
 	return a / b + (a % b > 0);
