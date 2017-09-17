@@ -36,6 +36,8 @@ struct GuiState
 	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
 	CursorIcon cursorIcon;
 	FontRef defaultFont;
+	SpriteRef iconPlaceholder;
+	SpriteRef[string] iconMap;
 
 	string delegate() getClipboard;
 	void delegate(string) setClipboard;
@@ -54,6 +56,9 @@ class GuiContext
 	LineBuffer* debugText;
 
 	FontRef defaultFont() {return state.defaultFont; }
+	SpriteRef getIcon(string iconId) {
+		return state.iconMap.get(iconId, state.iconPlaceholder);
+	}
 
 	this(LineBuffer* debugText)
 	{

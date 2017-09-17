@@ -26,6 +26,7 @@ enum Alignment
 	max
 }
 
+/// Returns offset to add to object position
 T alignOnAxis(T)(T objSize, Alignment alignment, T areaSize)
 {
 	final switch (alignment)

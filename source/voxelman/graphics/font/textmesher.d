@@ -195,7 +195,7 @@ void alignMeshedText(P)(ref P params, Alignment halign = Alignment.min, Alignmen
 {
 	if (halign == Alignment.min && valign == Alignment.min) return;
 
-	ivec2 alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign, area);
+	ivec2 alignmentOffset = rectAlignmentOffset(ivec2(params.size), halign, valign, area);
 	params.sink.applyOffset(vec2(alignmentOffset));
 	params.origin += alignmentOffset;
 }
@@ -212,13 +212,13 @@ void meshTextAligned(P, T)(ref P params, T textRange, Alignment halign = Alignme
 	auto size = params.size;
 	auto cursor = params.cursor;
 	measureText(params, textRange);
-	auto alignmentOffset = textAlignmentOffset(ivec2(params.size), halign, valign, area);
+	auto alignmentOffset = rectAlignmentOffset(ivec2(params.size), halign, valign, area);
 	params.origin = origin + alignmentOffset;
 	params.cursor = cursor;
 	meshText!(true)(params, textRange);
 }
 
-ivec2 textAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign, ivec2 area = ivec2(0,0))
+ivec2 rectAlignmentOffset(ivec2 textSize, Alignment halign, Alignment valign, ivec2 area = ivec2(0,0))
 {
 	ivec2 offset = ivec2(alignOnAxis(textSize.x, halign, area.x), alignOnAxis(textSize.y, valign, area.y));
 	return offset;

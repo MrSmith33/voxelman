@@ -17,6 +17,7 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!ChildrenStash;
 	widgets.registerComponent!DropDownData;
+	widgets.registerComponent!IconData;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
 	widgets.registerComponent!ScrollableData;
@@ -139,6 +140,55 @@ struct PanelLogic
 			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
 		} else {
 			event.renderQueue.popClipRect();
+		}
+	}
+}
+
+@Component("gui.IconData", Replication.none)
+struct IconData
+{
+	SpriteRef sprite;
+	Color4ub color;
+	Alignment halign;
+	Alignment valign;
+}
+
+WidgetProxy createIcon(WidgetProxy parent, string iconId, ivec2 size, Color4ub color = Colors.white)
+{
+	return IconLogic.create(parent, parent.ctx.getIcon(iconId), color).minSize(size);
+}
+
+WidgetProxy createIcon(WidgetProxy parent, SpriteRef sprite, ivec2 size, Color4ub color = Colors.white)
+{
+	return IconLogic.create(parent, sprite, color).minSize(size);
+}
+
+WidgetProxy createIcon(WidgetProxy parent, SpriteRef sprite, Color4ub color = Colors.white,
+	Alignment halign = Alignment.center, Alignment valign = Alignment.center)
+{
+	return IconLogic.create(parent, sprite, color, halign, valign);
+}
+
+struct IconLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, SpriteRef sprite, Color4ub color = Colors.white,
+		Alignment halign = Alignment.center, Alignment valign = Alignment.center)
+	{
+		WidgetProxy icon = parent.createChild(
+			WidgetEvents(&drawWidget), IconData(sprite, color, halign, valign), WidgetType("Icon"))
+			.measuredSize(sprite.atlasRect.size);
+		return icon;
+	}
+
+	void drawWidget(WidgetProxy icon, ref DrawEvent event)
+	{
+		if (event.sinking) {
+			auto transform = icon.getOrCreate!WidgetTransform;
+			auto data = icon.get!IconData;
+			auto alignmentOffset = rectAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
+			event.renderQueue.draw(*data.sprite, vec2(transform.absPos+alignmentOffset), event.depth, data.color);
+			event.depth += 1;
 		}
 	}
 }
@@ -315,7 +365,7 @@ struct TextLogic
 
 		auto data = widget.get!TextData;
 		auto transform = widget.getOrCreate!WidgetTransform;
-		auto alignmentOffset = textAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
+		auto alignmentOffset = rectAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
 
 		auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
 		params.monospaced = true;
@@ -350,6 +400,38 @@ struct ButtonState
 	bool hovered() { return (data & BUTTON_HOVERED) != 0; }
 	bool selected() { return (data & BUTTON_SELECTED) != 0; }
 	void toggleSelected() { data = data.toggle_flag(BUTTON_SELECTED); }
+}
+
+WidgetProxy createIconTextButton(WidgetProxy parent, SpriteRef icon, string text, FontRef font, ClickHandler handler = null) {
+	return IconTextButtonLogic.create(parent, icon, text, font, handler);
+}
+WidgetProxy createIconTextButton(WidgetProxy parent, string iconId, string text, FontRef font, ClickHandler handler = null) {
+	return IconTextButtonLogic.create(parent, parent.ctx.getIcon(iconId), text, font, handler);
+}
+
+struct IconTextButtonLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, SpriteRef icon, string text, FontRef font, ClickHandler handler = null)
+	{
+		WidgetProxy button = parent.createChild(
+			UserClickHandler(), ButtonState(),
+			WidgetEvents(
+				&drawButtonStateBack, &pointerMoved, &pointerPressed,
+				&pointerReleased, &enterWidget, &leaveWidget),
+			WidgetType("IconTextButton"))
+			.setHLayout(2,2, Alignment.center);
+
+		button.createIcon(icon, ivec2(16, 16), Colors.black);
+		button.createText(text, font);
+		setHandler(button, handler);
+
+		return button;
+	}
+
+
+	mixin ButtonPointerLogic!ButtonState;
+	mixin ButtonClickLogic!UserClickHandler;
 }
 
 struct TextButtonLogic
@@ -469,7 +551,7 @@ struct DropDown
 
 		dropdown.createText(options[selectedOption], parent.ctx.defaultFont);
 		dropdown.hfill;
-		dropdown.createText("▼", parent.ctx.defaultFont);
+		dropdown.createIcon(parent.ctx.getIcon("arrow-up-down"), ivec2(16, 16), Colors.black);
 
 		return dropdown;
 	}
@@ -623,16 +705,6 @@ mixin template ButtonClickLogic(Data)
 WidgetProxy consumeMouse(WidgetProxy widget) { widget.handlers(&handlePointerMoved); return widget; }
 
 void handlePointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
-
-@Component("gui.LinearLayoutSettings", Replication.none)
-struct LinearLayoutSettings
-{
-	int spacing; /// distance between items
-	int padding; /// borders around items
-
-	// internal state
-	int numExpandableChildren;
-}
 
 alias HLine = Line!true;
 alias VLine = Line!false;
@@ -974,32 +1046,43 @@ struct SingleLayout
 	}
 }
 
+@Component("gui.LinearLayoutSettings", Replication.none)
+struct LinearLayoutSettings
+{
+	int spacing; /// distance between items
+	int padding; /// borders around items
+	Alignment alignment;
+
+	// internal state
+	int numExpandableChildren;
+}
+
 alias HLayout = LinearLayout!true;
 alias VLayout = LinearLayout!false;
 
 alias setHLayout = setLinearLayout!true;
 alias setVLayout = setLinearLayout!false;
 
-WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, int padding)
+WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, int padding, Alignment alignTo = Alignment.min)
 {
-	LinearLayout!hori.attachTo(widget, spacing, padding);
+	LinearLayout!hori.attachTo(widget, spacing, padding, alignTo);
 	return widget;
 }
 
 struct LinearLayout(bool horizontal)
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, int spacing, int padding)
+	WidgetProxy create(WidgetProxy parent, int spacing, int padding, Alignment alignTo = Alignment.min)
 	{
 		WidgetProxy layout = parent.createChild(WidgetType("LinearLayout"));
-		attachTo(layout, spacing, padding);
+		attachTo(layout, spacing, padding, alignTo);
 		return layout;
 	}
 
-	void attachTo(WidgetProxy widget, int spacing, int padding)
+	void attachTo(WidgetProxy widget, int spacing, int padding, Alignment alignTo = Alignment.min)
 	{
 		//writefln("attachTo %s %s", widget.widgetType, widget.wid);
-		widget.set(LinearLayoutSettings(spacing, padding));
+		widget.set(LinearLayoutSettings(spacing, padding, alignTo));
 		widget.getOrCreate!WidgetEvents.addEventHandlers(&measure, &layout);
 	}
 
@@ -1048,6 +1131,7 @@ struct LinearLayout(bool horizontal)
 			ivec2 childSize = childTransform.constrainedSize;
 			if (hasExpandableLength(child)) length(childSize) += extraPerWidget;
 			if (hasExpandableWidth(child)) width(childSize) = maxChildWidth;
+			else width(childTransform.relPos) += alignOnAxis(width(childSize), settings.alignment, maxChildWidth);
 			childTransform.size = childSize;
 
 			//widget.ctx.debugText.putfln("LLayout.layout %s tr %s extra %s",
