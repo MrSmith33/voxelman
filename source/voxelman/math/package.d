@@ -19,6 +19,7 @@ public import dlib.math.vector;
 
 public import voxelman.geometry.rect;
 public import voxelman.math.box;
+public import voxelman.math.offset4;
 public import voxelman.math.simplex;
 public import voxelman.math.utils;
 

@@ -98,7 +98,7 @@ struct EntityManager
 		componentInfoMap[typeid(C)] = info;
 		componentInfoArray ~= info;
 
-		tracef("Register component %s", *info);
+		//tracef("Register component %s", *info);
 	}
 
 	auto getIoKeys() {

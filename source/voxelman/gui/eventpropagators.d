@@ -7,6 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.gui.eventpropagators;
 
 import std.traits;
+import std.typecons : Flag, Yes, No;
 import voxelman.gui;
 
 ///
@@ -90,9 +91,14 @@ void propagateEventParentFirst(Event)(GuiContext context, WidgetId root, auto re
 	propagateEvent(root);
 }
 
-void propagateEventSinkBubbleTree(Event)(GuiContext context, WidgetId root, auto ref Event event)
+void propagateEventSinkBubbleTree
+	(Flag!"CheckHidden" checkHidden = Yes.CheckHidden, Event)
+	(GuiContext context, WidgetId root, auto ref Event event)
 {
-	if (context.has!hidden(root)) return;
+	static if(checkHidden)
+	{
+		if (context.has!hidden(root)) return;
+	}
 
 	event.sinking = true;
 	context.postEvent(root, event);
@@ -100,7 +106,7 @@ void propagateEventSinkBubbleTree(Event)(GuiContext context, WidgetId root, auto
 	foreach (WidgetId widgetId; context.widgetChildren(root))
 	{
 		event.sinking = true;
-		propagateEventSinkBubbleTree(context, widgetId, event);
+		propagateEventSinkBubbleTree!checkHidden(context, widgetId, event);
 	}
 
 	event.bubbling = true;

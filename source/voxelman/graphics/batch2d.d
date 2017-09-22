@@ -151,6 +151,10 @@ struct TexturedBatch2d
 	void pushClipRect(irect rect)
 	{
 		rectStack.put(rect);
+		if (!rectStack.empty)
+		{
+			rect = rectIntersection(rect, rectStack.back);
+		}
 		setClipRect(rect);
 	}
 
@@ -164,6 +168,8 @@ struct TexturedBatch2d
 
 	void setClipRect(irect rect)
 	{
+		assert(rect.width >= 0, "width is negative");
+		assert(rect.height >= 0, "height is negative");
 		isCurrentClipRectEmpty = rect.empty;
 		if (commands.data.length)
 		{

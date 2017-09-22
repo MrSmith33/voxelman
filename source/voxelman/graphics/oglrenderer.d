@@ -77,7 +77,7 @@ public:
 	}
 
 	override void setClipRect(irect rect) {
-		glScissor(rect.x, window.framebufferSize.y - rect.y - rect.height,  rect.width, rect.height);
+		checkgl!glScissor(rect.x, window.framebufferSize.y - rect.y - rect.height,  rect.width, rect.height);
 	}
 
 	override void setClearColor(ubyte r, ubyte g, ubyte b, ubyte a = 255)

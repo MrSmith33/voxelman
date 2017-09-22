@@ -7,6 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.gui.guicontext;
 
 import std.stdio;
+import std.typecons : Flag, Yes, No;
 import datadriven;
 import voxelman.graphics;
 import voxelman.gui;
@@ -35,12 +36,28 @@ struct GuiState
 	/// Icon is reset after widget leave event and before widget enter event.
 	/// If widget wants to change icon, it must set cursorIcon in PointerEnterEvent handler.
 	CursorIcon cursorIcon;
-	FontRef defaultFont;
-	SpriteRef iconPlaceholder;
-	SpriteRef[string] iconMap;
 
 	string delegate() getClipboard;
 	void delegate(string) setClipboard;
+}
+
+struct ImplicitGuiStyle
+{
+	import voxelman.container.chunkedbuffer;
+	FontRef defaultFont;
+	ChunkedBuffer!(FontRef, 16) fontStack;
+
+	FontRef font() {
+		if (fontStack.length) return fontStack.top;
+		return defaultFont;
+	}
+	void pushFont(FontRef font) { fontStack.push(font); }
+	void popFont() { fontStack.pop(); }
+
+	SpriteRef iconPlaceholder;
+	SpriteRef[string] iconMap;
+
+	SpriteRef icon(string iconId) { return iconMap.get(iconId, iconPlaceholder); }
 }
 
 class GuiContext
@@ -53,12 +70,8 @@ class GuiContext
 	WidgetId[] roots;
 
 	GuiState state;
+	ImplicitGuiStyle style;
 	LineBuffer* debugText;
-
-	FontRef defaultFont() {return state.defaultFont; }
-	SpriteRef getIcon(string iconId) {
-		return state.iconMap.get(iconId, state.iconPlaceholder);
-	}
 
 	this(LineBuffer* debugText)
 	{
@@ -401,10 +414,10 @@ class GuiContext
 
 	void update(double deltaTime, RenderQueue renderQueue)
 	{
-		updateLayout();
-
 		foreach(root; roots)
-			propagateEventSinkBubbleTree(this, root, GuiUpdateEvent(deltaTime));
+			propagateEventSinkBubbleTree!(No.CheckHidden)(this, root, GuiUpdateEvent(deltaTime));
+
+		updateLayout();
 
 		auto drawEvent = DrawEvent(renderQueue);
 		foreach(root; roots)
@@ -438,6 +451,8 @@ class GuiContext
 				{
 					auto childTransform = child.getOrCreate!WidgetTransform;
 					childTransform.absPos = parentTransform.absPos + childTransform.relPos;
+					childTransform.size.x = max(childTransform.size.x, 0);
+					childTransform.size.y = max(childTransform.size.y, 0);
 				}
 			}
 		}
@@ -514,10 +529,4 @@ class GuiContext
 
 	WidgetId pressedWidget() { return state.pressedWidget; }
 	void pressedWidget(WidgetId wid) { state.pressedWidget = wid; updateHovered(state.curPointerPos); }
-
-	// HANDLERS
-	bool handleWidgetUpdate(WidgetId wid, ref GuiUpdateEvent event)
-	{
-		return true;
-	}
 }

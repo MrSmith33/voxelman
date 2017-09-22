@@ -8,9 +8,10 @@ module voxelman.gui;
 
 public import datadriven : Component, Replication;
 public import voxelman.gui.components;
-public import voxelman.gui.events;
-public import voxelman.gui.guicontext;
 public import voxelman.gui.eventpropagators;
+public import voxelman.gui.events;
+public import voxelman.gui.guiapp;
+public import voxelman.gui.guicontext;
 public import voxelman.gui.widgets;
 
 import datadriven : EntityId;

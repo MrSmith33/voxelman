@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 
 module enginestarter;
 
-import std.file : mkdirRecurse;
+import std.file : mkdirRecurse, getcwd;
 import std.path : buildPath;
 import std.getopt;
 import core.thread : Thread, thread_joinAll;
@@ -31,6 +31,8 @@ struct EngineStarter
 
 		setupLogs(appType, logToConsole);
 		scope(exit) closeBinLog();
+
+		infof("Started from '%s'", getcwd);
 
 		final switch(appType) with(AppType)
 		{

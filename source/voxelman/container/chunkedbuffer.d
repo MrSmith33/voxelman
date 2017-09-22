@@ -61,6 +61,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 	}
 
 	alias putBack = put;
+	alias push = put;
 
 	void removeFront(size_t howMany = 1)
 	{
@@ -86,6 +87,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 		assert(howMany <= length);
 		length -= howMany;
 	}
+	alias pop = removeBack;
 
 	void clear() nothrow
 	{
@@ -121,6 +123,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 
 	ref T front() { return this[0]; }
 	ref T back() { return this[$-1]; }
+	alias top = back;
 
 	ref T opIndex(size_t at)
 	{

@@ -15,6 +15,8 @@ enum string cyrillic = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫ
 //string glyphs = q"[!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_abcdefghijklmnopqrstuvwxyz{|}~`АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐабвгдежзийклмнопрстуфхцчшщъыьэюяєіїґ]";
 enum string GLYPHS = ascii~cyrillic;
 
+ubyte[] fontData = cast(ubyte[])import("font/font_12_2.png");
+
 class FontManager
 {
 	public:

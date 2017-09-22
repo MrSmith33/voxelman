@@ -15,6 +15,7 @@ import std.range;
 import std.stdio;
 import std.string : format, fromStringz;
 import std.typecons : Flag, Yes, No;
+import std.datetime : MonoTime, Duration, usecs, dur;
 
 import voxelman.math;
 import derelict.glfw3.glfw3;
@@ -57,7 +58,7 @@ struct ItemList(T)
 	}
 }
 
-struct LauncherGui
+class LauncherGui
 {
 	bool show_test_window = true;
 	bool show_another_window = false;
@@ -73,7 +74,7 @@ struct LauncherGui
 	string toolFolder = `./tools`;
 	ItemList!(PluginInfo*) plugins;
 
-	void init()
+	this(string title, ivec2 windowSize)
 	{
 		launcher.init();
 
@@ -84,7 +85,7 @@ struct LauncherGui
 		loadOpenGL();
 
 		window = new GlfwWindow();
-		window.init(ivec2(820, 600), "Voxelman launcher");
+		window.init(windowSize, title);
 
 		reloadOpenGL();
 
@@ -94,7 +95,7 @@ struct LauncherGui
 		window.charEntered.connect(&igState.charCallback);
 		window.mousePressed.connect(&igState.onMousePressed);
 		window.mouseReleased.connect(&igState.onMouseReleased);
-		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s.y));
+		window.wheelScrolled.connect((dvec2 s) => igState.scrollCallback(s));
 
 		if (window is null)
 			isRunning = false;
@@ -102,10 +103,8 @@ struct LauncherGui
 		setStyle();
 	}
 
-	void run()
+	void run(string[] args)
 	{
-		init();
-
 		while(isRunning)
 		{
 			if (glfwWindowShouldClose(window.handle) && !launcher.anyProcessesRunning)

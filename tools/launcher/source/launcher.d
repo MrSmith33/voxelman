@@ -271,7 +271,7 @@ struct Launcher
 			workDir = buildFolder;
 		}
 
-		ProcessPipes pipes = pipeProcess(command, Redirect.all, null, Config.suppressConsole, workDir);
+		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.suppressConsole, workDir);
 
 		job.command = command;
 		job.pipes = pipes;

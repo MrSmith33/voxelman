@@ -6,7 +6,8 @@ Authors: Andrey Penechko.
 
 module main;
 
-import gui;
+import voxelman.math;
+import gui2;
 import launcher;
 import std.getopt;
 import std.algorithm : countUntil;
@@ -52,8 +53,8 @@ void main(string[] args)
 	else
 	{
 		setupLoggers(false);
-		LauncherGui app;
-		app.run();
+		auto app = new LauncherGui("Voxelman launcher", ivec2(700, 400));
+		app.run(args);
 	}
 }
 

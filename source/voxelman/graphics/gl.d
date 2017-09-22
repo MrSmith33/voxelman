@@ -8,6 +8,8 @@ module voxelman.graphics.gl;
 
 public import derelict.opengl;
 import std.conv: to;
+import std.string : format;
+import std.typecons : tuple;
 
 void loadOpenGL()
 {
@@ -38,26 +40,37 @@ template checkgl(alias func)
 	import std.traits : Parameters;
 	debug auto checkgl(string file = __FILE__, int line = __LINE__)(Parameters!func args)
 	{
-		scope(success) checkGlError(file, line, func.stringof);
+		scope(success) checkGlError(file, line, func.stringof, args);
 		return func(args);
 	} else
 		alias checkgl = func;
 }
 
-void checkGlError(string file = __FILE__, size_t line = __LINE__, string funcName = "")
+void checkGlError(string file = __FILE__, size_t line = __LINE__)
 {
 	uint error = glGetError();
 	if (error != GL_NO_ERROR)
 	{
-		throw new OpenglException(error, file, line, funcName);
+		auto msg = format("OpenGL error \"%s\" [%s]", glErrorStringTable[error], error);
+		throw new OpenglException(msg, file, line);
+	}
+}
+
+void checkGlError(Args...)(string file, size_t line, string funcName, Args args)
+{
+	uint error = glGetError();
+	if (error != GL_NO_ERROR)
+	{
+		auto msg = format("%s(%(%s%|, %)): \"%s\" [%s]", funcName, tuple(args), glErrorStringTable[error], error);
+		throw new OpenglException(msg, file, line);
 	}
 }
 
 class OpenglException : Exception
 {
-	this(uint errorCode, string file = __FILE__, size_t line = __LINE__, string funcName = "")
+	this(string msg, string file = __FILE__, size_t line = __LINE__)
 	{
-		super("OpenGL error [" ~ to!string(errorCode) ~ "] " ~ glErrorStringTable[errorCode] ~ " " ~ funcName, file, line);
+		super(msg, file, line);
 	}
 }
 

@@ -17,6 +17,8 @@ struct Buffer(T)
 	// when used as output range
 	private size_t length;
 
+	bool empty() { return length == 0; }
+
 	void put(T[] items ...)
 	{
 		reserve(items.length);
@@ -40,6 +42,8 @@ struct Buffer(T)
 	{
 		return buf[at];
 	}
+
+	ref T back() { return buf[length-1]; }
 
 	inout(T[]) data() inout {
 		return buf[0..length];

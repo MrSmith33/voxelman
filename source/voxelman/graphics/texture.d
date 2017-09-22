@@ -73,6 +73,7 @@ public:
 	void loadFromImage(SuperImage img)
 	{
 		bind();
+		checkgl!glTexImage2D(texTarget, 0, texFormat, img.width, img.height, 0, texFormat, GL_UNSIGNED_BYTE, null);
 		checkgl!glTexImage2D(texTarget, 0, texFormat, img.width, img.height, 0, texFormat, GL_UNSIGNED_BYTE, img.data.ptr);
 		checkgl!glTexParameteri(texTarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		checkgl!glTexParameteri(texTarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -81,6 +82,6 @@ public:
 
 	void unload()
 	{
-		glDeleteTextures(1, &glTextureHandle);
+		checkgl!glDeleteTextures(1, &glTextureHandle);
 	}
 }

@@ -16,6 +16,7 @@ void registerComponents(ref EntityManager widgets)
 {
 	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!ChildrenStash;
+	widgets.registerComponent!ConditionData;
 	widgets.registerComponent!DropDownData;
 	widgets.registerComponent!IconData;
 	widgets.registerComponent!LinearLayoutSettings;
@@ -97,7 +98,7 @@ struct Frame
 	static:
 	FrameParts create(WidgetProxy parent)
 	{
-		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, 0).consumeMouse;
+		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, padding4(0)).consumeMouse;
 		PanelLogic.attachTo(frame, color_clouds);
 
 		auto header = frame.createChild(WidgetType("Header")).hexpand;
@@ -107,6 +108,29 @@ struct Frame
 
 		return FrameParts(frame, header, container);
 	}
+}
+
+@Component("gui.ConditionData", Replication.none)
+struct ConditionData
+{
+	bool delegate() condition;
+}
+
+WidgetProxy visible_if(WidgetProxy widget, bool delegate() condition)
+{
+	widget.set(ConditionData(condition)).handlers(&updateVisibility); return widget;
+}
+
+void updateVisibility(WidgetProxy widget, ref GuiUpdateEvent event)
+{
+	if (event.bubbling) return;
+	auto data = widget.get!ConditionData;
+	if (data.condition is null) return;
+	bool isVisible = data.condition();
+	if (isVisible)
+		widget.remove!hidden;
+	else
+		widget.set(hidden());
 }
 
 WidgetProxy addBackground(WidgetProxy widget, Color4ub color)
@@ -155,7 +179,7 @@ struct IconData
 
 WidgetProxy createIcon(WidgetProxy parent, string iconId, ivec2 size, Color4ub color = Colors.white)
 {
-	return IconLogic.create(parent, parent.ctx.getIcon(iconId), color).minSize(size);
+	return IconLogic.create(parent, parent.ctx.style.icon(iconId), color).minSize(size);
 }
 
 WidgetProxy createIcon(WidgetProxy parent, SpriteRef sprite, ivec2 size, Color4ub color = Colors.white)
@@ -285,7 +309,7 @@ struct CollapsableWidget
 	{
 		auto collapsable = parent.createChild(
 			WidgetType("Collapsable")).hexpand;
-		VLayout.attachTo(collapsable, 2, 0);
+		VLayout.attachTo(collapsable, 2, padding4(0));
 
 		auto header = collapsable.createChild(
 			WidgetType("Header"),
@@ -321,10 +345,10 @@ struct TextData
 	Alignment valign;
 }
 
-WidgetProxy createText(WidgetProxy parent, string text, FontRef font,
+WidgetProxy createText(WidgetProxy parent, string text,
 	Alignment halign = Alignment.center, Alignment valign = Alignment.center)
 {
-	return TextLogic.create(parent, text, font, halign, valign);
+	return TextLogic.create(parent, text, halign, valign);
 }
 
 struct TextLogic
@@ -333,10 +357,10 @@ struct TextLogic
 	WidgetProxy create(
 		WidgetProxy parent,
 		string text,
-		FontRef font,
 		Alignment halign = Alignment.center,
 		Alignment valign = Alignment.center)
 	{
+		FontRef font = parent.ctx.style.font;
 		WidgetProxy textWidget = parent.createChild(
 			TextData(text, halign, valign),
 			WidgetEvents(&drawText),
@@ -353,7 +377,7 @@ struct TextLogic
 
 		TextMesherParams params;
 		params.font = font;
-		params.monospaced = true;
+		params.monospaced = false;
 		measureText(params, text);
 
 		widget.measuredSize(ivec2(params.size));
@@ -368,7 +392,7 @@ struct TextLogic
 		auto alignmentOffset = rectAlignmentOffset(transform.measuredSize, data.halign, data.valign, transform.size);
 
 		auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
-		params.monospaced = true;
+		params.monospaced = false;
 		params.depth = event.depth;
 		params.color = color_wet_asphalt;
 		params.origin += alignmentOffset;
@@ -402,17 +426,17 @@ struct ButtonState
 	void toggleSelected() { data = data.toggle_flag(BUTTON_SELECTED); }
 }
 
-WidgetProxy createIconTextButton(WidgetProxy parent, SpriteRef icon, string text, FontRef font, ClickHandler handler = null) {
-	return IconTextButtonLogic.create(parent, icon, text, font, handler);
+WidgetProxy createIconTextButton(WidgetProxy parent, SpriteRef icon, string text, ClickHandler handler = null) {
+	return IconTextButtonLogic.create(parent, icon, text, handler);
 }
-WidgetProxy createIconTextButton(WidgetProxy parent, string iconId, string text, FontRef font, ClickHandler handler = null) {
-	return IconTextButtonLogic.create(parent, parent.ctx.getIcon(iconId), text, font, handler);
+WidgetProxy createIconTextButton(WidgetProxy parent, string iconId, string text, ClickHandler handler = null) {
+	return IconTextButtonLogic.create(parent, parent.ctx.style.icon(iconId), text, handler);
 }
 
 struct IconTextButtonLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, SpriteRef icon, string text, FontRef font, ClickHandler handler = null)
+	WidgetProxy create(WidgetProxy parent, SpriteRef icon, string text, ClickHandler handler = null)
 	{
 		WidgetProxy button = parent.createChild(
 			UserClickHandler(), ButtonState(),
@@ -420,10 +444,10 @@ struct IconTextButtonLogic
 				&drawButtonStateBack, &pointerMoved, &pointerPressed,
 				&pointerReleased, &enterWidget, &leaveWidget),
 			WidgetType("IconTextButton"))
-			.setHLayout(2,2, Alignment.center);
+			.setHLayout(2, padding4(2), Alignment.center);
 
 		button.createIcon(icon, ivec2(16, 16), Colors.black);
-		button.createText(text, font);
+		button.createText(text);
 		setHandler(button, handler);
 
 		return button;
@@ -434,10 +458,14 @@ struct IconTextButtonLogic
 	mixin ButtonClickLogic!UserClickHandler;
 }
 
+WidgetProxy createTextButton(WidgetProxy parent, string text, ClickHandler handler = null) {
+	return TextButtonLogic.create(parent, text, handler);
+}
+
 struct TextButtonLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, string text, FontRef font, ClickHandler handler = null)
+	WidgetProxy create(WidgetProxy parent, string text, ClickHandler handler = null)
 	{
 		WidgetProxy button = parent.createChild(
 			UserClickHandler(), ButtonState(),
@@ -446,7 +474,7 @@ struct TextButtonLogic
 				&pointerReleased, &enterWidget, &leaveWidget),
 			WidgetType("TextButton"));
 
-		button.createText(text, font);
+		button.createText(text);
 		setHandler(button, handler);
 		SingleLayout.attachTo(button, 2);
 
@@ -500,20 +528,20 @@ struct CheckIconLogic
 struct CheckButtonLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, string text, FontRef font, CheckHandler handler = null)
+	WidgetProxy create(WidgetProxy parent, string text, CheckHandler handler = null)
 	{
 		WidgetProxy check = parent.createChild(
 			UserCheckHandler(), ButtonState(),
 			WidgetEvents(&pointerMoved, &pointerPressed, &pointerReleased, &enterWidget, &leaveWidget),
 			WidgetType("CheckButton"));
 
-		auto iconSize = font.metrics.height;
+		auto iconSize = parent.ctx.style.font.metrics.height;
 		auto icon = CheckIconLogic.create(check, ivec2(iconSize, iconSize));
 
-		check.createText(text, font);
+		check.createText(text);
 
 		setHandler(check, handler);
-		HLayout.attachTo(check, 2, 2);
+		HLayout.attachTo(check, 2, padding4(2));
 
 		return check;
 	}
@@ -547,11 +575,11 @@ struct DropDown
 			.set(
 				WidgetType("DropDown"),
 				DropDownData(handler, options, selectedOption))
-			.setHLayout(0,2);
+			.setHLayout(0, padding4(2));
 
-		dropdown.createText(options[selectedOption], parent.ctx.defaultFont);
+		dropdown.createText(options[selectedOption]);
 		dropdown.hfill;
-		dropdown.createIcon(parent.ctx.getIcon("arrow-up-down"), ivec2(16, 16), Colors.black);
+		dropdown.createIcon(parent.ctx.style.icon("arrow-up-down"), ivec2(16, 16), Colors.black);
 
 		return dropdown;
 	}
@@ -581,7 +609,7 @@ struct DropDown
 				.pos(tr.absPos+ivec2(0, tr.size.y))
 				.addBackground(color_gray)
 				.minSize(tr.size.x, 0)
-				.setVLayout(2,2);
+				.setVLayout(2, padding4(2));
 
 			foreach(i, option; data.options)
 			{
@@ -590,7 +618,7 @@ struct DropDown
 					.handlers(&onOptionClick, &drawButtonStateBack)
 					.hexpand
 					.setSingleLayout(2, Alignment.min);
-				button.createText(option, widget.ctx.defaultFont, Alignment.min);
+				button.createText(option);
 			}
 		}
 		else
@@ -617,7 +645,7 @@ struct DropDown
 		auto data = dropdown.get!DropDownData;
 		data.onClick(index.index);
 		toggleDropDown(dropdown);
-		TextLogic.setText(dropdown.children[0], data.optionText, option.ctx.defaultFont);
+		TextLogic.setText(dropdown.children[0], data.optionText, option.ctx.style.font);
 	}
 
 	mixin ButtonPointerLogic!ButtonState;
@@ -827,7 +855,7 @@ struct ScrollableArea
 	ScrollableAreaParts create(WidgetProxy parent) {
 		auto scrollable = parent.createChild(WidgetType("Scrollable"),
 			ScrollableData(),
-			WidgetEvents(&onScroll, &measure, &layout, &onSliderDrag)).setHLayout(0,0).measuredSize(10, 10);
+			WidgetEvents(&onScroll, &measure, &layout, &onSliderDrag)).setHLayout(0, padding4(0)).measuredSize(10, 10);
 		auto container = scrollable.createChild(WidgetType("Container"), WidgetEvents(&clipDraw)).hvexpand;
 		auto canvas = container.createChild(WidgetType("Canvas"));
 		auto scrollbar = ScrollBarLogic.create(scrollable, scrollable/*receive drag event*/);
@@ -1050,7 +1078,7 @@ struct SingleLayout
 struct LinearLayoutSettings
 {
 	int spacing; /// distance between items
-	int padding; /// borders around items
+	padding4 padding; /// borders around items
 	Alignment alignment;
 
 	// internal state
@@ -1063,7 +1091,7 @@ alias VLayout = LinearLayout!false;
 alias setHLayout = setLinearLayout!true;
 alias setVLayout = setLinearLayout!false;
 
-WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, int padding, Alignment alignTo = Alignment.min)
+WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, padding4 padding, Alignment alignTo = Alignment.min)
 {
 	LinearLayout!hori.attachTo(widget, spacing, padding, alignTo);
 	return widget;
@@ -1072,14 +1100,14 @@ WidgetProxy setLinearLayout(bool hori)(WidgetProxy widget, int spacing, int padd
 struct LinearLayout(bool horizontal)
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, int spacing, int padding, Alignment alignTo = Alignment.min)
+	WidgetProxy create(WidgetProxy parent, int spacing, padding4 padding, Alignment alignTo = Alignment.min)
 	{
 		WidgetProxy layout = parent.createChild(WidgetType("LinearLayout"));
 		attachTo(layout, spacing, padding, alignTo);
 		return layout;
 	}
 
-	void attachTo(WidgetProxy widget, int spacing, int padding, Alignment alignTo = Alignment.min)
+	void attachTo(WidgetProxy widget, int spacing, padding4 padding, Alignment alignTo = Alignment.min)
 	{
 		//writefln("attachTo %s %s", widget.widgetType, widget.wid);
 		widget.set(LinearLayoutSettings(spacing, padding, alignTo));
@@ -1103,8 +1131,14 @@ struct LinearLayout(bool horizontal)
 			if (hasExpandableLength(child)) ++settings.numExpandableChildren;
 		}
 
-		int minRootWidth = maxChildWidth + settings.padding*2;
-		int minRootLength = childrenLength + cast(int)(children.length-1)*settings.spacing + settings.padding*2;
+		static if (horizontal) int widthPad = settings.padding.vert;
+		else int widthPad = settings.padding.hori;
+
+		static if (horizontal) int lengthPad = settings.padding.hori;
+		else int lengthPad = settings.padding.vert;
+
+		int minRootWidth = maxChildWidth + widthPad;
+		int minRootLength = childrenLength + cast(int)(children.length-1)*settings.spacing + lengthPad;
 		auto transform = widget.get!WidgetTransform;
 		transform.measuredSize = sizeFromWidthLength(minRootWidth, minRootLength);
 	}
@@ -1114,19 +1148,26 @@ struct LinearLayout(bool horizontal)
 		auto settings = widget.get!LinearLayoutSettings;
 		auto rootTransform = widget.get!WidgetTransform;
 
-		int maxChildWidth = width(rootTransform.size) - settings.padding * 2;
+		static if (horizontal) int widthPad = settings.padding.vert;
+		else int widthPad = settings.padding.hori;
+
+		int maxChildWidth = width(rootTransform.size) - widthPad;
 
 		int extraLength = length(rootTransform.size) - length(rootTransform.measuredSize);
 		int extraPerWidget = settings.numExpandableChildren > 0 ? extraLength/settings.numExpandableChildren : 0;
 
-		int topOffset = settings.padding;
+		static if (horizontal) int topOffset = settings.padding.left;
+		else int topOffset = settings.padding.top;
+		static if (horizontal) int widthOffset = settings.padding.top;
+		else int widthOffset = settings.padding.left;
+
 		topOffset -= settings.spacing; // compensate extra spacing before first child
 
 		foreach(child; widget.children)
 		{
 			topOffset += settings.spacing;
 			auto childTransform = child.get!WidgetTransform;
-			childTransform.relPos = sizeFromWidthLength(settings.padding, topOffset);
+			childTransform.relPos = sizeFromWidthLength(widthOffset, topOffset);
 
 			ivec2 childSize = childTransform.constrainedSize;
 			if (hasExpandableLength(child)) length(childSize) += extraPerWidget;
@@ -1198,6 +1239,82 @@ abstract class ListModel
 	void toggleLineFolding(int line) { }
 }
 
+
+alias SinkT = void delegate(const(char)[]);
+alias Formatter(Row) = void function(Row row, scope SinkT sink);
+
+struct Column(Row)
+{
+	string name;
+	int width;
+	Formatter!Row formatter;
+}
+
+struct ListInfo(Row)
+{
+	ColumnInfo[] columnInfos;
+	void function(Row row, scope SinkT sink)[] formatters;
+}
+
+ListInfo!Row parseListInfo(Row)()
+{
+	import std.traits;
+	ListInfo!Row result;
+	Row r;
+	foreach(string memberName; __traits(allMembers, Row))
+	{
+		foreach(attr; __traits(getAttributes, __traits(getMember, r, memberName)))
+		{
+			static if (is(typeof(attr) == Column!Row))
+			{
+				result.columnInfos ~= ColumnInfo(attr.name, attr.width);
+				result.formatters ~= attr.formatter;
+			}
+		}
+	}
+	return result;
+}
+
+class AutoListModel(Model) : ListModel
+{
+	alias Row = typeof(Model.init[0]);
+	Model model;
+	ListInfo!Row info = parseListInfo!Row;
+	int selectedRow = -1;
+
+	this(Model)(Model model)
+	{
+		this.model = model;
+	}
+
+	override int numLines() { return cast(int)model.length; }
+	override int numColumns() { return cast(int)info.columnInfos.length; }
+	override ref ColumnInfo columnInfo(int column) {
+		return info.columnInfos[column];
+	}
+	override void getColumnText(int column, scope SinkT sink) {
+		sink(info.columnInfos[column].name);
+	}
+	override void getCellText(int column, int row, scope SinkT sink) {
+		info.formatters[column](model[row], sink);
+	}
+	override bool isLineSelected(int row) {
+		return row == selectedRow;
+	}
+	override void onLineClick(int row) {
+		selectedRow = row;
+	}
+
+	bool hasSelected() @property {
+		return selectedRow < model.length && selectedRow >= 0;
+	}
+}
+
+class ArrayListModel(Row) : AutoListModel!(Row[])
+{
+	this(Row[] rows) { super(rows); }
+}
+
 @Component("gui.ListData", Replication.none)
 struct ListData
 {
@@ -1219,10 +1336,10 @@ struct ListData
 struct ColumnListLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, ListModel model, FontRef font)
+	WidgetProxy create(WidgetProxy parent, ListModel model)
 	{
 		WidgetProxy list = parent.createChild(
-			ListData(model, font),
+			ListData(model, parent.ctx.style.font),
 			WidgetEvents(
 				&drawWidget, &pointerMoved, &pointerPressed, &pointerReleased,
 				&enterWidget, &leaveWidget, &clickWidget, &onScroll),
@@ -1238,6 +1355,8 @@ struct ColumnListLogic
 		auto data = widget.get!ListData;
 		auto transform = widget.getOrCreate!WidgetTransform;
 		auto style = widget.get!WidgetStyle;
+
+		irect transformRect = irect(transform.absPos, transform.size);
 
 		int numLines = data.model.numLines;
 		int numColumns = data.model.numColumns;
@@ -1260,6 +1379,8 @@ struct ColumnListLogic
 		int viewEndPos = data.viewOffset.y + canvasSize.y;
 		int lastVisibleLine = clamp(viewEndPos / lineHeight, 0, lastLine);
 
+		int numVisibleLines = clamp(lastVisibleLine - firstVisibleLine + 1, 0, numLines);
+
 		// for folding arrow positioning
 		int charW = data.font.metrics.advanceX;
 
@@ -1268,15 +1389,16 @@ struct ColumnListLogic
 		void drawBackground()
 		{
 			int lineY = transform.absPos.y + headerHeight;
-			foreach(line; firstVisibleLine..lastVisibleLine+1)
+			foreach(visibleLine; 0..numVisibleLines)
 			{
+				int line = firstVisibleLine + visibleLine;
 				auto color_selected = rgb(217, 235, 249);
 				auto color_hovered = rgb(207, 225, 239);
 
 				Color4ub color;
 				if (isLineHovered(line)) color = color_hovered;
 				else if (data.model.isLineSelected(line)) color = color_selected;
-				else color = color_white;//line % 2 ? color_clouds : color_silver;
+				else color = line % 2 ? rgb(255, 255, 255) : rgb(250, 250, 250); // color_white
 
 				event.renderQueue.drawRectFill(
 					vec2(transform.absPos.x, lineY),
@@ -1292,8 +1414,9 @@ struct ColumnListLogic
 			params.font = data.font;
 			params.color = color_wet_asphalt;
 			params.depth = event.depth+2;
-			params.monospaced = true;
-			params.scissors = irect(pos, size);
+			//params.monospaced = true;
+			params.scissors = rectIntersection(irect(pos, size), transformRect);
+			//params.scissors = irect(pos, size);
 			params.meshText(data.model.columnInfo(column).name);
 		}
 
@@ -1303,8 +1426,8 @@ struct ColumnListLogic
 			params.font = data.font;
 			params.color = color_wet_asphalt;
 			params.depth = event.depth+2;
-			params.monospaced = true;
-			params.scissors = rect;
+			//params.monospaced = true;
+			params.scissors = rectIntersection(rect, transformRect);
 
 			void sinkHandler(const(char)[] str) {
 				params.meshText(str);
@@ -1315,9 +1438,9 @@ struct ColumnListLogic
 				params.origin.x += charW * data.model.getLineIndent(line);
 				final switch(data.model.getLineType(line))
 				{
-					case TreeLineType.leaf: params.meshText("   "); break;
-					case TreeLineType.collapsedNode: params.meshText(" ► "); break;
-					case TreeLineType.expandedNode: params.meshText(" ▼ "); break;
+					case TreeLineType.leaf: params.meshText("  "); break;
+					case TreeLineType.collapsedNode: params.meshText("► "); break;
+					case TreeLineType.expandedNode: params.meshText("▼ "); break;
 				}
 			}
 
@@ -1325,6 +1448,7 @@ struct ColumnListLogic
 			params.alignMeshedText(data.model.columnInfo(column).alignment, Alignment.min, rect.size);
 		}
 
+		event.renderQueue.pushClipRect(transformRect);
 		drawBackground();
 
 		int colX = transform.absPos.x;
@@ -1336,7 +1460,7 @@ struct ColumnListLogic
 
 			// separator
 			ivec2 separatorStart = ivec2(colX + colW-1, transform.absPos.y);
-			event.renderQueue.drawRectFill(vec2(separatorStart), vec2(1, headerHeight), event.depth+3, color_wet_asphalt);
+			event.renderQueue.drawRectFill(vec2(separatorStart), vec2(1, transform.size.y), event.depth+3, color_silver);
 
 			// clip
 			event.renderQueue.pushClipRect(irect(colX+data.contentPadding.x, transform.absPos.y, cellW, transform.size.y));
@@ -1348,7 +1472,7 @@ struct ColumnListLogic
 			int lineY = transform.absPos.y + headerHeight;
 
 			// cells
-			foreach(line; firstVisibleLine..lastVisibleLine+1)
+			foreach(line; 0..numVisibleLines)
 			{
 				ivec2 cellPos = ivec2(colX, lineY);
 				ivec2 cellSize = ivec2(colW, lineHeight);
@@ -1356,13 +1480,14 @@ struct ColumnListLogic
 				ivec2 cellContentPos = cellPos + data.contentPadding;
 				ivec2 cellContentSize = cellSize - data.contentPadding*2;
 
-				drawCell(column, line, irect(cellContentPos, cellContentSize));
+				drawCell(column, firstVisibleLine+line, irect(cellContentPos, cellContentSize));
 				lineY += lineHeight;
 			}
 
 			event.renderQueue.popClipRect();
 			colX += colW;
 		}
+		event.renderQueue.popClipRect();
 
 		event.depth += 3;
 	}
@@ -1441,6 +1566,10 @@ struct ColumnListLogic
 			}
 			else
 				data.model.onLineClick(line);
+		}
+		else
+		{
+			data.model.onLineClick(-1);
 		}
 	}
 }
