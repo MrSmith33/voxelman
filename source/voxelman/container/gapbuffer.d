@@ -73,6 +73,9 @@ struct GapBuffer(T)
 		gapStart = 0;
 	}
 
+	ref T front() { return this[0]; }
+	ref T back() { return this[$-1]; }
+
 	ref T opIndex(size_t at)
 	{
 		assert(at < length);
@@ -139,6 +142,27 @@ struct GapBuffer(T)
 	{
 		writefln("  >%s|%s|%s", gapStart, gapLength, secondChunkLength);
 		writefln("  >%(%s, %) | %(%s, %) | %(%s, %)", buffer[0..gapStart], buffer[gapStart..gapEnd], buffer[gapEnd..capacity]);
+	}
+
+	int opApply(scope int delegate(ref T) dg)
+	{
+		int result = 0;
+		foreach(ref v; buffer[0..gapStart])
+			if (dg(v)) break;
+		foreach(ref v; buffer[gapEnd..capacity])
+			if (dg(v)) break;
+		return result;
+	}
+
+	int opApply(scope int delegate(size_t, ref T) dg)
+	{
+		int result = 0;
+		size_t index;
+		foreach(ref v; buffer[0..gapStart])
+			if (dg(index++, v)) break;
+		foreach(ref v; buffer[gapEnd..capacity])
+			if (dg(index++, v)) break;
+		return result;
 	}
 }
 

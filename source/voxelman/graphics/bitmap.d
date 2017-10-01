@@ -8,7 +8,9 @@ module voxelman.graphics.bitmap;
 
 import voxelman.algorithm.arraycopy2d;
 import voxelman.math;
+import voxelman.graphics.color;
 import dlib.image.image : ImageRGBA8, SuperImage;
+import dlib.image.color;
 
 class Bitmap : ImageRGBA8
 {
@@ -37,18 +39,39 @@ class Bitmap : ImageRGBA8
 			allocateData();
 			foreach(x; 0..image.width)
 			foreach(y; 0..image.height)
-				this[x, y] = image[x, y];
+				this[x, y] = Color4ub(image[x, y].convert(8));
 		}
 	}
 
-	void resize(in uint newWidth, in uint newHeight)
+	ivec2 size()
 	{
-		auto newData = new ubyte[newWidth * newHeight * _pixelSize];
+		return ivec2(width, height);
+	}
+
+	override Color4f opIndexAssign(Color4f c, int x, int y)
+	{
+		return super.opIndexAssign(c, x, y);
+	}
+
+	void opIndexAssign(Color4ub color, int x, int y)
+	{
+		auto offset = (this._width * y + x) * 4;
+		_data[offset+0] = color.r;
+		_data[offset+1] = color.g;
+		_data[offset+2] = color.b;
+		_data[offset+3] = color.a;
+	}
+
+	void resize(ivec2 newSize)
+	{
+		if (newSize == size) return;
+
+		auto newData = new ubyte[newSize.x * newSize.y * _pixelSize];
 
 		auto sourceSize = ivec2(_width * _pixelSize, _height);
 		auto sourceSubRect = irect(ivec2(0,0), sourceSize);
 
-		auto destSize = ivec2(newWidth * _pixelSize, newHeight);
+		auto destSize = ivec2(newSize.x * _pixelSize, newSize.y);
 		auto destSubRectPos = ivec2(0,0);
 
 		setSubArray2d(_data, sourceSize, sourceSubRect,
@@ -56,8 +79,8 @@ class Bitmap : ImageRGBA8
 
 		delete _data;
 		_data = newData;
-		_width = newWidth;
-		_height = newHeight;
+		_width = newSize.x;
+		_height = newSize.y;
 	}
 
 	void putSubRect(in Bitmap source, irect sourceSubRect, ivec2 destPos)

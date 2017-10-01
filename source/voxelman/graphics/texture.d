@@ -46,6 +46,13 @@ private:
 	TextureTarget texTarget;
 
 public:
+	this(TextureTarget target, TextureFormat format)
+	{
+		texTarget = target;
+		texFormat = format;
+		checkgl!glGenTextures(1, &glTextureHandle);
+	}
+
 	this(SuperImage image, TextureTarget target, TextureFormat format)
 	{
 		texTarget = target;

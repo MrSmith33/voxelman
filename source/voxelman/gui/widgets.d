@@ -17,8 +17,10 @@ void registerComponents(ref EntityManager widgets)
 	widgets.registerComponent!ButtonState;
 	widgets.registerComponent!ChildrenStash;
 	widgets.registerComponent!ConditionData;
+	widgets.registerComponent!DraggableSettings;
 	widgets.registerComponent!DropDownData;
 	widgets.registerComponent!IconData;
+	widgets.registerComponent!ImageData;
 	widgets.registerComponent!LinearLayoutSettings;
 	widgets.registerComponent!ListData;
 	widgets.registerComponent!ScrollableData;
@@ -138,6 +140,11 @@ WidgetProxy addBackground(WidgetProxy widget, Color4ub color)
 	PanelLogic.attachTo(widget, color); return widget;
 }
 
+WidgetProxy addBorder(WidgetProxy widget)
+{
+	widget.handlers(&PanelLogic.drawBorder); return widget;
+}
+
 struct PanelLogic
 {
 	static:
@@ -164,6 +171,57 @@ struct PanelLogic
 			event.renderQueue.pushClipRect(irect(transform.absPos, transform.size));
 		} else {
 			event.renderQueue.popClipRect();
+		}
+	}
+
+	void drawBorder(WidgetProxy widget, ref DrawEvent event)
+	{
+		if (event.sinking) {
+			auto transform = widget.getOrCreate!WidgetTransform;
+			event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth, color_wet_asphalt);
+			event.depth += 1;
+		}
+	}
+}
+
+WidgetProxy createImage(WidgetProxy parent, ImageData data)
+{
+	return ImageLogic.create(parent, data);
+}
+
+@Component("gui.ImageData", Replication.none)
+struct ImageData
+{
+	Texture texture;
+	irect subRect;
+	int scale;
+	Color4ub color = Colors.white;
+}
+
+struct ImageLogic
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, ImageData data)
+	{
+		WidgetProxy image = parent.createChild(
+			WidgetEvents(&measure, &drawWidget), data, WidgetType("Image"));
+		return image;
+	}
+
+	void measure(WidgetProxy widget, ref MeasureEvent event)
+	{
+		auto transform = widget.get!WidgetTransform;
+		auto data = widget.get!ImageData;
+		transform.measuredSize = data.subRect.size * data.scale;
+	}
+
+	void drawWidget(WidgetProxy image, ref DrawEvent event)
+	{
+		if (event.sinking) {
+			auto transform = image.getOrCreate!WidgetTransform;
+			auto data = image.get!ImageData;
+			event.renderQueue.texBatch.putRect(frect(transform.absPos, transform.size), frect(data.subRect), event.depth, data.color, data.texture);
+			event.depth += 1;
 		}
 	}
 }
@@ -734,6 +792,9 @@ WidgetProxy consumeMouse(WidgetProxy widget) { widget.handlers(&handlePointerMov
 
 void handlePointerMoved(WidgetProxy widget, ref PointerMoveEvent event) { event.handled = true; }
 
+WidgetProxy hline(WidgetProxy parent) { HLine.create(parent); return parent; }
+WidgetProxy vline(WidgetProxy parent) { VLine.create(parent); return parent; }
+
 alias HLine = Line!true;
 alias VLine = Line!false;
 
@@ -805,22 +866,31 @@ struct AutoMoveToTop
 	}
 }
 
-WidgetProxy makeDraggable(WidgetProxy widget) { DraggableLogic.attachTo(widget); return widget; }
+@Component("DraggableSettings", Replication.none)
+struct DraggableSettings
+{
+	PointerButton onButton;
+}
+
+WidgetProxy makeDraggable(WidgetProxy widget, PointerButton onButton = PointerButton.PB_1) {
+	DraggableLogic.attachTo(widget, onButton); return widget; }
 
 struct DraggableLogic
 {
 	static:
-	void attachTo(WidgetProxy widget)
+	void attachTo(WidgetProxy widget, PointerButton onButton)
 	{
-		widget.handlers(&onPress, &onDrag);
+		widget.handlers(&onPress, &onDrag).set(DraggableSettings(onButton));
 	}
 
 	void onPress(WidgetProxy widget, ref PointerPressEvent event)
 	{
 		if (event.sinking) return;
-
-		event.handled = true;
-		event.beginDrag = true;
+		if (event.button == widget.get!DraggableSettings.onButton)
+		{
+			event.handled = true;
+			event.beginDrag = true;
+		}
 	}
 
 	void onDrag(WidgetProxy widget, ref DragEvent event)

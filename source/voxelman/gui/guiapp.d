@@ -30,6 +30,7 @@ class GuiApp
 	bool limitFps = true;
 	int maxFps = 40;
 	double updateTime = 0;
+	bool showDebugInfo;
 
 	string title;
 	ivec2 windowSize;
@@ -128,11 +129,16 @@ class GuiApp
 		window.processEvents();
 		renderQueue.beginFrame();
 
-		userUpdate(delta);
+		userPreUpdate(delta);
 
 		guictx.state.canvasSize = renderer.framebufferSize;
 		guictx.update(delta, renderQueue);
 		window.setCursorIcon(guictx.state.cursorIcon);
+
+		userPostUpdate(delta);
+
+		if (showDebugInfo) drawDebugText();
+		debugText.clear();
 		renderQueue.endFrame();
 
 		// render
@@ -141,7 +147,23 @@ class GuiApp
 		renderer.flush();
 	}
 
-	void userUpdate(double delta) {}
+	int overlayDepth = 1000;
+	void drawDebugText()
+	{
+		auto pos = vec2(renderer.framebufferSize.x, 0);
+
+		auto mesherParams = renderQueue.startTextAt(pos + vec2(-5,5));
+		mesherParams.depth = overlayDepth;
+
+		mesherParams.meshText(debugText.lines.data);
+		mesherParams.alignMeshedText(Alignment.max);
+
+		renderQueue.drawRectFill(vec2(mesherParams.origin)-vec2(5,5), mesherParams.size + vec2(10,10), overlayDepth-1, Colors.white);
+		renderQueue.drawRectLine(vec2(mesherParams.origin)-vec2(6,6), mesherParams.size + vec2(12,12), overlayDepth-1, Colors.black);
+	}
+
+	void userPreUpdate(double delta) {}
+	void userPostUpdate(double delta) {}
 
 	void stop()
 	{

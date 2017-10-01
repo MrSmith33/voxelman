@@ -58,12 +58,12 @@ public:
 					binPacker = new RectBinPacker(bitmap.width, bitmap.height, 0, bitmap.height);
 					if (bitmap.height >= _maxAtlasSize)
 						throw new InsertException("Texture atlas is full. Max atlas size reached");
-					bitmap.resize(bitmap.width, bitmap.height*2);
+					bitmap.resize(ivec2(bitmap.width, bitmap.height*2));
 				}
 				else // Growing horizontally.
 				{
 					binPacker = new RectBinPacker(bitmap.width, bitmap.height, bitmap.width, 0);
-					bitmap.resize(bitmap.width*2, bitmap.height);
+					bitmap.resize(ivec2(bitmap.width*2, bitmap.height));
 				}
 
 				node = binPacker.insert(size);

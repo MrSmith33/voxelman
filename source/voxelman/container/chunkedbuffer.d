@@ -26,15 +26,16 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 	size_t length;
 	// can be non-zero after removeFront
 	private size_t firstChunkDataPos;
+	private size_t usedLength() const @property { return firstChunkDataPos + length; }
 
 	alias opDollar = length;
 
 	void put(T[] items ...)
 	{
-		reserve(items.length);
+		reserveBack(items.length);
 
-		size_t firstChunkIndex = length / pageSize;
-		size_t firstChunkPos = length % pageSize;
+		size_t firstChunkIndex = usedLength / pageSize;
+		size_t firstChunkPos = usedLength % pageSize;
 		size_t firstChunkSpace = pageSize - firstChunkPos;
 		T*[] chunks = chunkBuffer.data;
 
@@ -66,21 +67,34 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 	void removeFront(size_t howMany = 1)
 	{
 		assert(howMany <= length);
-		size_t newLength = length - howMany;
-		size_t numFrontRemovedItems = firstChunkDataPos + howMany;
-		size_t firstUsedChunk = numFrontRemovedItems / pageSize;
-		firstChunkDataPos = numFrontRemovedItems % pageSize;
-		size_t lastUsedChunk = (firstChunkDataPos + newLength) / pageSize + 1;
+		length = length - howMany;
+
+		if (length == 0)
+		{
+			firstChunkDataPos = 0;
+			return;
+		}
+
+		size_t firstUsedItem = firstChunkDataPos + howMany;
+		size_t lastUsedItem = firstUsedItem + length - 1;
+
+		size_t firstUsedChunk = firstUsedItem / pageSize;
+		size_t lastUsedChunk = lastUsedItem / pageSize;
+
+		firstChunkDataPos = firstUsedItem % pageSize;
+
+		if (firstUsedChunk == 0) return;
+
 		T*[] chunks = chunkBuffer.data;
 
 		// move chunks to front
 		size_t i;
-		foreach (chunkIndex; firstUsedChunk..lastUsedChunk)
+		foreach (chunkIndex; firstUsedChunk..lastUsedChunk+1)
 		{
 			swap(chunks[i++], chunks[chunkIndex]);
 		}
-		length = newLength;
 	}
+	alias popFront = removeFront;
 
 	void removeBack(size_t howMany = 1)
 	{
@@ -92,6 +106,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 	void clear() nothrow
 	{
 		length = 0;
+		firstChunkDataPos = 0;
 	}
 
 	size_t capacity() const @property
@@ -104,9 +119,14 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 		return capacity - length;
 	}
 
-	void reserve(size_t items)
+	size_t reservedBack() const @property
 	{
-		if (reserved < items)
+		return capacity - (firstChunkDataPos + length);
+	}
+
+	void reserveBack(size_t items)
+	{
+		if (reservedBack < items)
 		{
 			// alloc chunks
 			size_t numExtraChunks = divCeil(items, pageSize);
@@ -118,6 +138,7 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 			}
 		}
 	}
+	alias reserve = reserveBack;
 
 	bool empty() { return length == 0; }
 
@@ -271,6 +292,48 @@ static assert(isRandomAccessRange!ItemRangeT);
 static assert(isBidirectionalRange!ItemRangeT);
 static assert(isForwardRange!ItemRangeT);
 static assert(isOutputRange!(ChunkedBuffer!int, int));
+
+unittest
+{
+	ChunkedBuffer!(int, 16) queue;
+	foreach(i; 0..16)
+		queue.push(0);
+	foreach(i; 0..100)
+	{
+		queue.popFront;
+		queue.push(i);
+	}
+}
+
+unittest
+{
+	ChunkedBuffer!(int, 16) queue;
+		queue.push(0);
+		queue.popFront;
+	foreach(i; 0..100)
+	{
+		queue.push(i);
+	}
+}
+
+unittest
+{
+	ChunkedBuffer!int queue;
+	queue.push(39);
+	assert(queue.front == 39);
+	assert(queue.length == 1);
+	assert(queue[].equal([39]));
+	queue.popFront;
+	assert(queue.length == 0);
+	queue.push(44);
+	assert(queue.front == 44);
+	assert(queue.length == 1);
+	assert(queue[].equal([44]));
+	queue.push(45);
+	assert(queue.front == 44);
+	assert(queue.length == 2);
+	assert(queue[].equal([44, 45]));
+}
 
 unittest
 {
