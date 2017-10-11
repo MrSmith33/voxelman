@@ -123,7 +123,7 @@ struct Job
 	JobState jobState = JobState.build;
 	string title;
 	bool autoClose;
-	void delegate() onClose;
+	void delegate()[] onClose;
 
 	bool isRunning;
 	bool needsClose;
@@ -350,7 +350,8 @@ struct Launcher
 		{
 			if (job.needsClose && !job.isRunning)
 			{
-				if (job.onClose) job.onClose();
+				foreach(handler; job.onClose)
+					handler();
 			}
 			else
 			{
@@ -523,7 +524,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			clientProcess = createJob(params);
 			clientProcess.autoClose = true;
-			clientProcess.onClose = &onClientClose;
+			clientProcess.onClose ~= &onClientClose;
 			startJob(clientProcess);
 		}
 		sendCommand(clientProcess, format("connect --ip=%s --port=%s", server.ip, server.port));
@@ -540,7 +541,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			clientProcess = createJob(params);
 			clientProcess.autoClose = true;
-			clientProcess.onClose = &onClientClose;
+			clientProcess.onClose ~= &onClientClose;
 			startJob(clientProcess);
 			infof("%s", clientProcess.command);
 			return clientProcess;
@@ -559,7 +560,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			serverProcess = createJob(params);
 			serverProcess.autoClose = true;
-			serverProcess.onClose = &onServerClose;
+			serverProcess.onClose ~= &onServerClose;
 			startJob(serverProcess);
 			infof("$> %s", serverProcess.command);
 			return serverProcess;

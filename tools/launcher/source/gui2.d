@@ -136,49 +136,71 @@ class LauncherGui : GuiApp
 	}
 	void startServer() {
 		auto job = launcher.startServer(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
-		if (job) onJobCreate(job);
+		if (job) JobItemWidget.create(job_stack, job, &textSettings);
 	}
 	void startClient() {
 		auto job = launcher.startCombined(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
-		if (job) onJobCreate(job);
+		if (job) JobItemWidget.create(job_stack, job, &textSettings);
 	}
 
 	void newServer() {}
 	void removeServer() {}
 	void connetToServer() {}
 
-	void startClient_debug() { startJob(AppType.client); }
-	void startServer_debug() { startJob(AppType.server); }
-	void startCombined_debug() { startJob(AppType.combined); }
+	void startClient_debug() { createJob(AppType.client); }
+	void startServer_debug() { createJob(AppType.server); }
+	void startCombined_debug() { createJob(AppType.combined); }
 
-	void startJob(AppType appType)
+	void createJob(AppType appType)
 	{
 		JobParams params;
 		params.appType = appType;
 		Job* job = launcher.createJob(params);
-		onJobCreate(job);
+		JobItemWidget.create(job_stack, job, &textSettings);
 	}
+}
 
-	void onJobCreate(Job* job)
+struct JobItemWidget
+{
+	static:
+	WidgetProxy create(WidgetProxy parent, Job* job, TextViewSettingsRef textSettings)
 	{
-		auto job_item = VLayout.create(job_stack, 0, padding4(0)).hvexpand;
-		auto top_buttons = HLayout.create(job_item, 2, padding4(1)).hexpand;
+		auto job_item = VLayout.create(parent, 0, padding4(0)).hvexpand;
+		auto top_buttons = HLayout.create(job_item, 2, padding4(3,3,1,1), Alignment.center).hexpand.addBorder;
+		bool job_running() { return !job.isRunning && !job.needsRestart; }
+
+		void updateStatusText(WidgetProxy widget, ref GuiUpdateEvent event)
+		{
+			if (event.bubbling) return;
+			TextLogic.setText(widget, jobStateString(job));
+		}
+		createText(top_buttons, jobStateString(job)).handlers(&updateStatusText);
+
 		createCheckButton(top_buttons, "nodeps", cast(bool*)&job.params.nodeps);
 		createCheckButton(top_buttons, "force", cast(bool*)&job.params.force);
 		createCheckButton(top_buttons, "x64", cast(bool*)&job.params.arch64);
 		DropDown.create(top_buttons, buildTypeUiOptions, 0);
 		DropDown.create(top_buttons, compilerUiOptions, 0);
-		createTextButton(top_buttons, "Clear", {});
-		createTextButton(top_buttons, "Close", {});
-		createTextButton(top_buttons, " Run ", {});
-		createTextButton(top_buttons, "Build", {});
-		createTextButton(top_buttons, " B&R ", {});
+		createTextButton(top_buttons, "Clear", { job.msglog.clear; });
+		createTextButton(top_buttons, "Close", { job.needsClose = true; });
 
-		job.msglog.setClipboard = &window.clipboardString;
+		void startJob(JobType t)() { job.params.jobType = t; job.needsRestart = true; }
+
+		createTextButton(top_buttons, "Test",  &startJob!(JobType.test)).visible_if(&job_running);
+		createTextButton(top_buttons, " Run ", &startJob!(JobType.run)).visible_if(&job_running);
+		createTextButton(top_buttons, "Build", &startJob!(JobType.compile)).visible_if(&job_running);
+		createTextButton(top_buttons, " B&R ", &startJob!(JobType.compileAndRun)).visible_if(&job_running);
+		createTextButton(top_buttons, "Stop", { job.sendCommand("stop"); }).visible_if_not(&job_running);
+
+		job.onClose ~= { job_item.ctx.removeWidget(job_item.wid); };
+
+		job.msglog.setClipboard = parent.ctx.state.setClipboard;
 		auto msglogModel = new MessageLogTextModel(&job.msglog);
-		auto viewport = TextEditorViewportLogic.create(job_item, msglogModel, &textSettings).hvexpand;
+		auto viewport = TextEditorViewportLogic.create(job_item, msglogModel, textSettings).hvexpand;
 		viewport.get!TextEditorViewportData.autoscroll = true;
+		return job_item;
 	}
+
 }
 
 struct WorldList

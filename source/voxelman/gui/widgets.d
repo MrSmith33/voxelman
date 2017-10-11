@@ -116,11 +116,17 @@ struct Frame
 struct ConditionData
 {
 	bool delegate() condition;
+	bool invert;
 }
 
 WidgetProxy visible_if(WidgetProxy widget, bool delegate() condition)
 {
 	widget.set(ConditionData(condition)).handlers(&updateVisibility); return widget;
+}
+
+WidgetProxy visible_if_not(WidgetProxy widget, bool delegate() condition)
+{
+	widget.set(ConditionData(condition, true)).handlers(&updateVisibility); return widget;
 }
 
 void updateVisibility(WidgetProxy widget, ref GuiUpdateEvent event)
@@ -129,6 +135,7 @@ void updateVisibility(WidgetProxy widget, ref GuiUpdateEvent event)
 	auto data = widget.get!ConditionData;
 	if (data.condition is null) return;
 	bool isVisible = data.condition();
+	if (data.invert) isVisible = !isVisible;
 	if (isVisible)
 		widget.remove!hidden;
 	else
@@ -424,17 +431,17 @@ struct TextLogic
 			WidgetEvents(&drawText),
 			WidgetType("Text"))
 				.minSize(0, font.metrics.height);
-		setText(textWidget, text, font);
+		setText(textWidget, text);
 		return textWidget;
 	}
 
-	void setText(WidgetProxy widget, string text, FontRef font)
+	void setText(WidgetProxy widget, string text)
 	{
 		auto data = widget.get!TextData;
 		data.text = text;
 
 		TextMesherParams params;
-		params.font = font;
+		params.font = widget.ctx.style.font;
 		params.monospaced = false;
 		measureText(params, text);
 
@@ -510,7 +517,6 @@ struct IconTextButtonLogic
 
 		return button;
 	}
-
 
 	mixin ButtonPointerLogic!ButtonState;
 	mixin ButtonClickLogic!UserClickHandler;
@@ -650,7 +656,7 @@ struct DropDown
 			.set(
 				WidgetType("DropDown"),
 				DropDownData(handler, options, selectedOption))
-			.setHLayout(0, padding4(2));
+			.setHLayout(0, padding4(2), Alignment.center);
 
 		dropdown.createText(options[selectedOption]);
 		dropdown.hfill;
@@ -720,7 +726,7 @@ struct DropDown
 		auto data = dropdown.get!DropDownData;
 		data.onClick(index.index);
 		toggleDropDown(dropdown);
-		TextLogic.setText(dropdown.children[0], data.optionText, option.ctx.style.font);
+		TextLogic.setText(dropdown.children[0], data.optionText);
 	}
 
 	mixin ButtonPointerLogic!ButtonState;
@@ -1043,7 +1049,7 @@ struct ScrollBarParts
 struct ScrollBarLogic
 {
 	static:
-	WidgetProxy create(WidgetProxy parent, WidgetId eventReceiver = WidgetId(0)) {
+	ScrollBarParts create(WidgetProxy parent, WidgetId eventReceiver = WidgetId(0)) {
 		auto scroll = parent.createChild(WidgetType("ScrollBar"))
 			.vexpand.minSize(10, 20);
 		PanelLogic.attachTo(scroll, color_gray);
