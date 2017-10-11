@@ -539,7 +539,6 @@ struct TextButtonLogic
 		return button;
 	}
 
-
 	mixin ButtonPointerLogic!ButtonState;
 	mixin ButtonClickLogic!UserClickHandler;
 }
@@ -581,6 +580,24 @@ struct CheckIconLogic
 		event.renderQueue.drawRectLine(vec2(tran.absPos), vec2(tran.size), event.depth+1, color_wet_asphalt);
 		event.depth += 2;
 	}
+}
+
+WidgetProxy createCheckButton(WidgetProxy parent, string text, CheckHandler handler = null) {
+	return CheckButtonLogic.create(parent, text, handler);
+}
+
+WidgetProxy createCheckButton(WidgetProxy parent, string text, bool* flag) {
+	alias Del = ref bool delegate();
+	alias Fun = ref bool function();
+	Del dg;
+	dg.ptr = flag;
+	dg.funcptr = cast(Fun)&bool_delegate;
+	return CheckButtonLogic.create(parent, text, dg);
+}
+
+ref bool bool_delegate(bool* value)
+{
+	return *value;
 }
 
 struct CheckButtonLogic
@@ -753,6 +770,12 @@ mixin template ButtonPointerLogic(State)
 }
 
 alias CheckHandler = ref bool delegate();
+
+@Component("gui.BoolBinding", Replication.none)
+struct BoolBinding
+{
+	bool* value;
+}
 
 @Component("gui.UserCheckHandler", Replication.none)
 struct UserCheckHandler

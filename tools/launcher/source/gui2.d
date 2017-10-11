@@ -10,6 +10,9 @@ import std.format : formattedWrite;
 import std.stdio;
 import voxelman.math;
 import voxelman.gui;
+import voxelman.gui.textedit.messagelog;
+import voxelman.gui.textedit.textmodel;
+import voxelman.gui.textedit.texteditorview;
 import voxelman.graphics;
 import voxelman.text.scale;
 
@@ -26,6 +29,9 @@ class LauncherGui : GuiApp
 
 	AutoListModel!WorldList worldList;
 	AutoListModel!ServerList serverList;
+	WidgetProxy job_stack;
+	TextViewSettings textSettings;
+
 
 	this(string title, ivec2 windowSize)
 	{
@@ -39,13 +45,22 @@ class LauncherGui : GuiApp
 	override void load(string[] args)
 	{
 		super.load(args);
+		textSettings = TextViewSettings(renderQueue.defaultFont);
 		WidgetProxy root = WidgetProxy(guictx.roots[0], guictx);
 		createMain(root);
 	}
 
-	override void userUpdate(double delta)
+	override void userPreUpdate(double delta)
 	{
 		launcher.update();
+	}
+
+	override void closePressed()
+	{
+		if (!launcher.anyProcessesRunning)
+		{
+			isClosePressed = true;
+		}
 	}
 
 	void createMain(WidgetProxy root)
@@ -63,7 +78,7 @@ class LauncherGui : GuiApp
 		left_panel.createIconTextButton("hammer", "Debug", () => PagedWidget.switchPage(right_panel, 1)).hexpand;
 
 		createPlay(right_panel);
-		right_panel.createText("Debug page");
+		createDebug(right_panel);
 
 		PagedWidget.convert(right_panel, 0);
 	}
@@ -100,21 +115,70 @@ class LauncherGui : GuiApp
 		return play_panel;
 	}
 
+	WidgetProxy createDebug(WidgetProxy parent)
+	{
+		auto debug_panel = VLayout.create(parent, 0, padding4(0)).hvexpand;
+		auto top_buttons = HLayout.create(debug_panel, 2, padding4(1)).hexpand;
+
+		TextButtonLogic.create(top_buttons, "Client", &startClient_debug);
+		TextButtonLogic.create(top_buttons, "Server", &startServer_debug);
+		TextButtonLogic.create(top_buttons, "Combined", &startCombined_debug);
+
+		job_stack = VLayout.create(debug_panel, 0, padding4(0)).hvexpand;
+
+		return debug_panel;
+	}
+
 	void newWorld() {}
 	void removeWorld() {}
 	void refreshWorlds() {
 		launcher.refresh();
 	}
 	void startServer() {
-		launcher.startServer(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
+		auto job = launcher.startServer(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
+		if (job) onJobCreate(job);
 	}
 	void startClient() {
-		launcher.startCombined(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
+		auto job = launcher.startCombined(launcher.pluginPacks[0], launcher.saves[worldList.selectedRow]);
+		if (job) onJobCreate(job);
 	}
 
 	void newServer() {}
 	void removeServer() {}
 	void connetToServer() {}
+
+	void startClient_debug() { startJob(AppType.client); }
+	void startServer_debug() { startJob(AppType.server); }
+	void startCombined_debug() { startJob(AppType.combined); }
+
+	void startJob(AppType appType)
+	{
+		JobParams params;
+		params.appType = appType;
+		Job* job = launcher.createJob(params);
+		onJobCreate(job);
+	}
+
+	void onJobCreate(Job* job)
+	{
+		auto job_item = VLayout.create(job_stack, 0, padding4(0)).hvexpand;
+		auto top_buttons = HLayout.create(job_item, 2, padding4(1)).hexpand;
+		createCheckButton(top_buttons, "nodeps", cast(bool*)&job.params.nodeps);
+		createCheckButton(top_buttons, "force", cast(bool*)&job.params.force);
+		createCheckButton(top_buttons, "x64", cast(bool*)&job.params.arch64);
+		DropDown.create(top_buttons, buildTypeUiOptions, 0);
+		DropDown.create(top_buttons, compilerUiOptions, 0);
+		createTextButton(top_buttons, "Clear", {});
+		createTextButton(top_buttons, "Close", {});
+		createTextButton(top_buttons, " Run ", {});
+		createTextButton(top_buttons, "Build", {});
+		createTextButton(top_buttons, " B&R ", {});
+
+		job.msglog.setClipboard = &window.clipboardString;
+		auto msglogModel = new MessageLogTextModel(&job.msglog);
+		auto viewport = TextEditorViewportLogic.create(job_item, msglogModel, &textSettings).hvexpand;
+		viewport.get!TextEditorViewportData.autoscroll = true;
+	}
 }
 
 struct WorldList

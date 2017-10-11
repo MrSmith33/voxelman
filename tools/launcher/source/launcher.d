@@ -21,6 +21,7 @@ import std.conv : to;
 import voxelman.world.worlddb;
 import voxelman.text.messagewindow;
 import voxelman.text.linebuffer;
+import voxelman.gui.textedit.messagelog;
 import gui;
 
 enum DEFAULT_PORT = 1234;
@@ -91,9 +92,11 @@ enum BuildType
 
 string[] compilerExeNames = ["dmd", "ldc2", "gdc"];
 string compilerUiSelectionString = "dmd\0ldc\0gdc\0\0";
+string[] compilerUiOptions = ["dmd", "ldc", "gdc"];
 
 string[] buildTypeSwitches = ["debug", "release", "release-debug"];
 string buildTypeUiSelectionString = "dbg\0rel\0rel-deb\0\0";
+string[] buildTypeUiOptions = ["dbg", "rel", "rel-deb"];
 
 struct JobParams
 {
@@ -114,6 +117,7 @@ struct Job
 	JobParams params;
 	string command;
 	MessageWindow messageWindow;
+	MessageLog msglog;
 	ProcessPipes pipes;
 
 	JobState jobState = JobState.build;
@@ -199,6 +203,7 @@ struct Launcher
 		auto job = new Job(params);
 		job.messageWindow.init();
 		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
+		job.msglog.clear;
 		updateJobType(job);
 		restartJobState(job);
 		updateTitle(job);
@@ -327,6 +332,7 @@ struct Launcher
 			if (!job.isRunning && job.needsRestart)
 			{
 				job.messageWindow.lineBuffer.clear();
+				job.msglog.clear;
 				restartJobState(job);
 				startJob(job);
 			}
@@ -523,7 +529,7 @@ struct Launcher
 		sendCommand(clientProcess, format("connect --ip=%s --port=%s", server.ip, server.port));
 	}
 
-	void startCombined(PluginPack* pack, SaveInfo* save)
+	Job* startCombined(PluginPack* pack, SaveInfo* save)
 	{
 		if (!clientProcess)
 		{
@@ -537,10 +543,12 @@ struct Launcher
 			clientProcess.onClose = &onClientClose;
 			startJob(clientProcess);
 			infof("%s", clientProcess.command);
+			return clientProcess;
 		}
+		return null;
 	}
 
-	void startServer(PluginPack* pack, SaveInfo* save)
+	Job* startServer(PluginPack* pack, SaveInfo* save)
 	{
 		if (!serverProcess)
 		{
@@ -554,7 +562,9 @@ struct Launcher
 			serverProcess.onClose = &onServerClose;
 			startJob(serverProcess);
 			infof("$> %s", serverProcess.command);
+			return serverProcess;
 		}
+		return null;
 	}
 
 	void onClientClose()
@@ -620,7 +630,10 @@ string makeTestCommand(JobParams params)
 void onJobBuildCompletion(Job* job, bool success)
 {
 	if (job.params.jobType != JobType.test)
+	{
 		job.messageWindow.putln(success ? "Compilation successful" : "Compilation failed");
+		job.msglog.putln(success ? "Compilation successful" : "Compilation failed");
+	}
 }
 
 void sendCommand(Job* job, string command)
@@ -647,6 +660,7 @@ void logPipes(Job* job)
 				size_t charsToRead = min(pipe.size, buf.length);
 				char[] data = pipe.rawRead(buf[0..charsToRead]);
 				job.messageWindow.lineBuffer.put(data);
+				job.msglog.put(data);
 			}
 		}
 	}
