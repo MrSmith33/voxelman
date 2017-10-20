@@ -3,7 +3,7 @@ Copyright: Copyright (c) 2013-2017 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
-module voxelman.world.block.utils;
+module voxelman.world.block.blockinfo;
 
 import voxelman.log;
 
@@ -16,12 +16,6 @@ import voxelman.utils.mapping;
 import voxelman.world.block;
 import voxelman.world.mesh.chunkmesh;
 
-
-struct ChunkAndBlockAdjacent
-{
-	ubyte[27] chunks;
-	ubyte[3][27] blocks;
-}
 
 struct ChunkAndBlockAt
 {
@@ -36,6 +30,7 @@ ChunkAndBlockAt chunkAndBlockAt6(int x, int y, int z)
 	ubyte bx = cast(ubyte)x;
 	ubyte by = cast(ubyte)y;
 	ubyte bz = cast(ubyte)z;
+
 	if(x == -1) return ChunkAndBlockAt(CubeSide.xneg, CHUNK_SIZE-1, by, bz);
 	else if(x == CHUNK_SIZE) return ChunkAndBlockAt(CubeSide.xpos, 0, by, bz);
 
@@ -52,6 +47,7 @@ ChunkAndBlockAt chunkAndBlockAt6(int x, int y, int z)
 ubyte[34] position_in_target_chunk = [CHUNK_SIZE-1, // CHUNK_SIZE-1 is in adjacent chunk
 	0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
 	17,18,19,20,21,22,23,24,25,26,27,28,29,30,31, 0]; // 0 is in adjacent chunk
+
 // 0 chunk in neg direction, 1 this chunk, 1 pos dir
 ubyte[34] target_chunk =
 [0, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 2];
@@ -76,13 +72,6 @@ struct MeshVertex2
 	align(4):
 	float x, y, z;
 	ubyte[3] color;
-}
-
-ushort packColor(ubvec3 c) {
-	return (c.r>>3) | (c.g&31) << 5 | (c.b&31) << 10;
-}
-ushort packColor(ubyte r, ubyte g, ubyte b) {
-	return (r>>3) | (g&31) << 5 | (b&31) << 10;
 }
 
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);

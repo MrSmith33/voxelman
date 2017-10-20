@@ -145,7 +145,8 @@ class LauncherGui : GuiApp
 
 	void newServer() {}
 	void removeServer() {}
-	void connetToServer() {}
+	void connetToServer() {
+		launcher.connect(launcher.servers[serverList.selectedRow], launcher.pluginPacks[0]); }
 
 	void startClient_debug() { createJob(AppType.client); }
 	void startServer_debug() { createJob(AppType.server); }
@@ -182,7 +183,7 @@ struct JobItemWidget
 		DropDown.create(top_buttons, buildTypeUiOptions, 0);
 		DropDown.create(top_buttons, compilerUiOptions, 0);
 		createTextButton(top_buttons, "Clear", { job.msglog.clear; });
-		createTextButton(top_buttons, "Close", { job.needsClose = true; });
+		createTextButton(top_buttons, "Close", { job.needsClose = true; }).visible_if(&job_running);
 
 		void startJob(JobType t)() { job.params.jobType = t; job.needsRestart = true; }
 

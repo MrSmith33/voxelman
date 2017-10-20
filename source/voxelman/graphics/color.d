@@ -43,3 +43,10 @@ Color4ub rgb(ubyte r, ubyte g, ubyte b)
 {
 	return Color4ub(r, g, b, 255);
 }
+
+ushort packColor(ubvec3 c) {
+	return (c.r>>3) | (c.g&31) << 5 | (c.b&31) << 10;
+}
+ushort packColor(ubyte r, ubyte g, ubyte b) {
+	return (r>>3) | (g&31) << 5 | (b&31) << 10;
+}

@@ -12,6 +12,39 @@ import launcher;
 import std.getopt;
 import std.algorithm : countUntil;
 
+void ensureStdIo()
+{
+	version(Windows)
+	{
+		void reattach() {
+			import core.stdc.stdio;
+			core.stdc.stdio.freopen("CONOUT$", "w", stdout);
+			core.stdc.stdio.freopen("CONOUT$", "w", stderr);
+		}
+
+		import core.sys.windows.windows;
+		import std.stdio;
+		if (AttachConsole(ATTACH_PARENT_PROCESS))
+		{
+			// successfully attached to parent console
+			reattach;
+			return;
+		}
+		else
+		{
+			// allocate one
+			int success = AllocConsole();
+			if (success)
+			{
+				reattach;
+				auto handle = GetConsoleWindow();
+				if (handle) ShowWindow(handle, SW_HIDE);
+				writefln("Created console");
+			}
+		}
+	}
+}
+
 void main(string[] args)
 {
 	uint arch;
@@ -23,6 +56,8 @@ void main(string[] args)
 		"arch", &arch,
 		"compiler", &compiler,
 		"build", &buildType);
+
+	ensureStdIo();
 
 	if (arch == 32 || arch == 64)
 	{

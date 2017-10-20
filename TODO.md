@@ -73,7 +73,6 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 
 ----
 ### BLOCK ENTITIES
-- [ ] Problems with multichunk entities with unloaded parts.
 - [x] Add block entity rendering.
 - [x] Fix write buffer retrieval. Old snapshot was copied every time, not only when WB was created.
 - [x] Use block entity mesh handlers for meshing.
@@ -93,13 +92,10 @@ Reallocation can prevent changes to buffers obtained earlier than reallocation t
 ----
 ### EDITING
 
-- [ ] Editing of unloaded chunks.
-- [ ] Accumulate modifications, then apply. Possibly in parallel.
 
 ----
 ### OTHER
 
-- [ ] Color blind mode
 - [x] Use metadata in slope block.
 - [x] Add block metadata layer.
 - [x] Fill slope rail sides with faces when not occluded.

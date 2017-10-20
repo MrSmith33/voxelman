@@ -11,6 +11,7 @@
 
 	"targetPath" : "../../",
 	"workingDirectory" : "../../",
+	"lflags-windows" : ["/SUBSYSTEM:windows,6.00", "/ENTRY:mainCRTStartup"],
 
 	"sourcePaths" : [ "source" ]
 }

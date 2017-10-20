@@ -1,0 +1,7 @@
+name "minecraft_import"
+license "BSL-1.0"
+authors "Andrey Penechko"
+dependency "voxelman" path="../../"
+mainSourceFile "source/main.d"
+sourcePaths "source"
+targetType "executable"

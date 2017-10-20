@@ -11,6 +11,7 @@ import voxelman.graphics.vbo;
 import voxelman.math;
 import voxelman.model.vertex;
 import voxelman.graphics;
+public import voxelman.world.mesh.vertex;
 
 struct ChunkMesh
 {
@@ -60,8 +61,6 @@ struct ChunkMesh
 		return vbo.uploadedBytes;
 	}
 }
-
-alias MeshVertex = VertexPosColor!(float, 3, ubyte, 4);
 
 void freeChunkMeshData(ref MeshVertex[] data)
 {
