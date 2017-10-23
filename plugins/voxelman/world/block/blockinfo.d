@@ -73,6 +73,7 @@ struct BlockMeshingData
 	Buffer!MeshVertex* buffer;
 	ubyte[4] delegate(ushort blockIndex, CubeSide side) occlusionHandler;
 	ubvec3 color;
+	ubyte[2] uv;
 	ubvec3 chunkPos;
 	ubyte sides;
 	ushort blockIndex;
@@ -113,7 +114,8 @@ struct BlockInfo
 	RotationHandler rotationHandler;
 	bool shapeDependsOnMeta = false;
 	bool meshDependOnMeta = false;
-	irect atlasRect;
+	//irect atlasRect;
+	ubyte[2] uv;
 	size_t id;
 }
 

@@ -226,6 +226,7 @@ void multichunkMeshHandler(BlockEntityMeshingData meshingData)
 				&meshingData.output[Solidity.solid],
 				meshingData.occlusionHandler,
 				col,
+				[0,0],
 				ubvec3(meshingData.chunkPos),
 				meshingData.sides,
 				meshingData.blockIndex);

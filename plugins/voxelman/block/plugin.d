@@ -21,45 +21,20 @@ import voxelman.world.serverworld;
 import voxelman.world.clientworld;
 
 enum TEX_TILE_SIZE = 32;
-enum TEX_TILE_SIZE2 = ivec2(TEX_TILE_SIZE, TEX_TILE_SIZE);
+enum TEX_TILE_SIZE_VEC = ivec2(TEX_TILE_SIZE, TEX_TILE_SIZE);
 
 final class BlockManager : IResourceManager
 {
 private:
 	Mapping!BlockInfo blockMapping;
-	TextureAtlas texAtlas;
 
 public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
 	override void preInit()
 	{
-		texAtlas = new TextureAtlas(256);
 		regBaseBlocks(&regBlock);
 		sideTable = sideIntersectionTable(NUM_SIDE_MASKS);
 		setSideTable(sideTable);
-	}
-
-	override void loadResources()
-	{
-		SpriteRef[string] texMap = loadNamedSpriteSheet(BUILD_TO_ROOT_PATH~"res/tex/blocks", texAtlas, TEX_TILE_SIZE2);
-		Sprite sprite;
-		SpriteRef missingTexture = texMap.get("missing-texture", null);
-
-		if (missingTexture is null)
-		{
-			ivec2 atlasPos = texAtlas.insert(TEX_TILE_SIZE2, Color4ub(0, 255, 255));
-			sprite.atlasRect = irect(atlasPos, TEX_TILE_SIZE2);
-			missingTexture = &sprite;
-		}
-
-		irect getAtlasRect(string name) {
-			return texMap.get("missing-texture", missingTexture).atlasRect;
-		}
-
-		foreach(ref BlockInfo binfo; blockMapping.infoArray)
-		{
-			binfo.atlasRect = getAtlasRect(binfo.name);
-		}
 	}
 
 	BlockInfoSetter regBlock(string name)
@@ -104,11 +79,48 @@ final class BlockPluginClient : IPlugin
 	mixin BlockPluginCommonImpl;
 	// IPlugin stuff
 	mixin IdAndSemverFrom!"voxelman.block.plugininfo";
+	TextureAtlas texAtlas;
+
+	override void preInit()
+	{
+		texAtlas = new TextureAtlas(256);
+	}
 
 	override void init(IPluginManager pluginman)
 	{
 		auto clientWorld = pluginman.getPlugin!ClientWorld;
 		clientWorld.idMapManager.regIdMapHandler(dbKey.str, &handleBlockMap);
+		loadTextures();
+	}
+
+	void loadTextures()
+	{
+		// fill 0 texture with white color
+		texAtlas.insert(TEX_TILE_SIZE_VEC, Color4ub(255, 255, 255));
+
+		SpriteRef[string] texMap = loadNamedSpriteSheet(BUILD_TO_ROOT_PATH~"res/tex/blocks", texAtlas, TEX_TILE_SIZE_VEC);
+
+		Sprite sprite;
+		SpriteRef missingTexture = texMap.get("missing-texture", null);
+
+		if (missingTexture is null)
+		{
+			ivec2 atlasPos = texAtlas.insert(TEX_TILE_SIZE_VEC, Color4ub(0, 255, 255));
+			sprite.atlasRect = irect(atlasPos, TEX_TILE_SIZE_VEC);
+			missingTexture = &sprite;
+		}
+
+		irect getAtlasRect(string name) {
+			return texMap.get(name, missingTexture).atlasRect;
+		}
+
+		foreach(ref BlockInfo binfo; bm.blockMapping.infoArray)
+		{
+			irect rect = getAtlasRect(binfo.name);
+			ubyte[2] uv = [cast(ubyte)(rect.x / TEX_TILE_SIZE), cast(ubyte)(rect.y / TEX_TILE_SIZE)];
+			binfo.uv = uv;
+			infof("%s uv: %s", binfo.name, uv);
+		}
 	}
 
 	void handleBlockMap(string[] blocks)

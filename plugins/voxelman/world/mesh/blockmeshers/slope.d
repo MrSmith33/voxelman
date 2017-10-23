@@ -28,7 +28,7 @@ void makeColoredSlopeBlockMesh(BlockMeshingData data)
 
 	if (data.sides != 0)
 	{
-		SideParams sideParams = SideParams(data.chunkPos, color, 0, data.buffer);
+		SideParams sideParams = SideParams(data.chunkPos, color, data.uv, 0, data.buffer);
 		auto sideMasks = slopeShapeFromMeta(data.metadata).sideMasks;
 
 		foreach(ubyte i, sideMask; sideMasks)
@@ -71,6 +71,6 @@ void makeColoredSlopeBlockMesh(BlockMeshingData data)
 	immutable float mult = (shadowMultipliers[occlusionSides[0]] + shadowMultipliers[occlusionSides[1]])/2;
 	float[3] colorInternal = [mult * color[0], mult * color[1], mult * color[2]];
 
-	meshOccludedQuad(*data.buffer, occlusionInternal, colorInternal, data.chunkPos,
+	meshOccludedQuad(*data.buffer, occlusionInternal, colorInternal, data.uv, data.chunkPos,
 		slopeInternalIndicies[data.metadata], cubeVerticies.ptr);
 }

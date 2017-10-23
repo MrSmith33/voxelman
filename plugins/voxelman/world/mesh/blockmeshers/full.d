@@ -26,7 +26,7 @@ void makeColoredFullBlockMesh(BlockMeshingData data)
 		else
 			auto color = data.color;
 
-		SideParams sideParams = SideParams(data.chunkPos, color, 0, data.buffer);
+		SideParams sideParams = SideParams(data.chunkPos, color, data.uv, 0, data.buffer);
 
 		ubyte flag = 1;
 		foreach(CubeSide side; CubeSide.min..cast(CubeSide)(CubeSide.max+1))

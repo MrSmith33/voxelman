@@ -37,10 +37,14 @@
 			},
 
 			"libs-posix": ["lmdb", "lz4", "glfw3", "enet"],
-			"libs-windows": ["user32", "gdi32", "winmm", "ws2_32"],
+			"libs-windows": ["user32", "gdi32", "winmm"],
+			"libs-windows-dmd": ["ws2_32"],
 
 			"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib", "lib/32/cimgui.lib"],
-			"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib", "lib/64/cimgui.lib"],
+			"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib"],
+			"sourceFiles-windows-x86_64-dmd": ["lib/64/cimgui2013.lib"],
+			"sourceFiles-windows-x86_64-ldc": ["lib/64/cimgui2015.lib"],
+			"stringImportPaths" : ["res"],
 			"targetType": "library",
 			"excludedSourceFiles" : ["source/main.d"],
 			"sourcePaths" : ["source"],
@@ -51,7 +55,7 @@
 			"targetType": "library",
 			"sourcePaths": ["plugins"],
 			"importPaths": ["plugins"],
-			"lflags-windows": ["/ignore:4255"],
+			"lflags-windows": ["/ignore:4255", "/force:multiple"],
 			"dependencies" : {
 				"voxelman:engine": "*"
 			}
@@ -65,7 +69,7 @@
 			"mainSourceFile" : "source/main.d",
 			"targetName" : "voxelman",
 			"targetPath" : "builds/default",
-			"workingDirectory" : "builds/default",
+			"workingDirectory" : "builds/default"
 		},
 		{
 			"name": "lib",

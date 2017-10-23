@@ -114,10 +114,7 @@ void putMesh(V, VertRange)(ref Buffer!V output, VertRange vertices, vec3 offset)
 {
 	foreach(vert; vertices)
 	{
-		auto v = V(
-			vert.position + offset,
-			vert.color
-		);
-		output.put(v);
+		vert.addOffset(offset);
+		output.put(vert);
 	}
 }

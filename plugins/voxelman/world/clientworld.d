@@ -117,6 +117,7 @@ public:
 	bool isCullingEnabled = true;
 	bool wireframeMode = false;
 	ChunkShader8 chunkShader8;
+	Texture blockAtlasTexture;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -222,6 +223,7 @@ public:
 	{
 		renderer = graphics.renderer;
 		chunkShader8.compile(renderer);
+		blockAtlasTexture = renderer.createTexture(blockPlugin.texAtlas.bitmap);
 	}
 
 	WorldBox calcClampedBox(ChunkWorldPos cwp, int boxRadius)
@@ -514,6 +516,8 @@ public:
 		chunkShader8.bind;
 		chunkShader8.setTransparency(1.0f);
 
+		blockAtlasTexture.bind;
+
 		drawMeshes(chunkMeshMan.chunkMeshes[0].byValue,
 			chunkShader8,
 			dbg_meshesRenderedSolid);
@@ -526,6 +530,8 @@ public:
 		drawMeshes(chunkMeshMan.chunkMeshes[1].byValue,
 			chunkShader8,
 			dbg_meshesRenderedSemitransparent);
+
+		blockAtlasTexture.unbind;
 
 		chunkShader8.unbind;
 

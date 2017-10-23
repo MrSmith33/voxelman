@@ -53,6 +53,11 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 		this.color = color;
 	}
 
+	void addOffset(vec3 offset)
+	{
+		position += Vector!(PosType, pos_size)(offset);
+	}
+
 	align(4):
 	Vector!(PosType, pos_size) position;
 	Vector!(ColType, col_size) color;
@@ -76,6 +81,11 @@ align(4) struct VertexPosUvColor(PosType, uint pos_size, UvType, uint uv_size, C
 	Vector!(PosType, pos_size) position;
 	Vector!(UvType, uv_size) uv;
 	Vector!(ColType, col_size) color;
+
+	void addOffset(vec3 offset)
+	{
+		position += Vector!(PosType, pos_size)(offset);
+	}
 
 	void toString()(scope void delegate(const(char)[]) sink) const
 	{

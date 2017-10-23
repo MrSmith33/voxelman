@@ -48,6 +48,7 @@ void makeRailMesh(BlockEntityMeshingData meshingData)
 				SideParams sideParams = SideParams(
 					ubvec3(meshingData.chunkPos),
 					calcColor(meshingData.blockIndex, meshingData.color),
+					[0,0],
 					0,
 					&meshingData.output[Solidity.solid]);
 				meshFullSideOccluded(sideToMesh, occlusions, sideParams);
@@ -61,6 +62,7 @@ void makeRailMesh(BlockEntityMeshingData meshingData)
 		SideParams sideParams = SideParams(
 			ubvec3(meshingData.chunkPos),
 			calcColor(meshingData.blockIndex, meshingData.color),
+			[0,0],
 			0,
 			&meshingData.output[Solidity.solid]);
 		meshFullSideOccluded(CubeSide.yneg, occlusions, sideParams);
@@ -86,7 +88,7 @@ void putRailMesh(Vert, Sink)(ref Sink sink, ivec3 chunkPos, RailData data)
 		foreach(v; mesh)
 		{
 			vec3 pos = rotator(v.position, meshSize) + offset;
-			sink.put(Vert(pos, v.color));
+			sink.put(Vert(pos, [0,0], v.color.r));
 		}
 	}
 }

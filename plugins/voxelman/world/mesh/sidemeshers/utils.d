@@ -41,6 +41,7 @@ struct SideParams
 {
 	ubvec3 blockPos;
 	ubvec3 color;
+	ubyte[2] uv;
 	ubyte rotation;
 	Buffer!MeshVertex* buffer;
 }
@@ -113,32 +114,35 @@ void meshOccludedQuad(T)(
 	ref Buffer!MeshVertex buffer,
 	ubyte[4] cornerOcclusion,
 	const float[3] color,
+	ubyte[2] uv,
 	const ubvec3 offset,
 	const ubyte[4] indices,
 	const T[3]* vertieces)
 {
 	// Ambient occlusion multipliers
-	float vert0AoMult = occlusionTable[cornerOcclusion[0]];
-	float vert1AoMult = occlusionTable[cornerOcclusion[1]];
-	float vert2AoMult = occlusionTable[cornerOcclusion[2]];
-	float vert3AoMult = occlusionTable[cornerOcclusion[3]];
+	ubyte vert0AoMult = cast(ubyte)(255 * occlusionTable[cornerOcclusion[0]]);
+	ubyte vert1AoMult = cast(ubyte)(255 * occlusionTable[cornerOcclusion[1]]);
+	ubyte vert2AoMult = cast(ubyte)(255 * occlusionTable[cornerOcclusion[2]]);
+	ubyte vert3AoMult = cast(ubyte)(255 * occlusionTable[cornerOcclusion[3]]);
 
-	static if (AO_DEBUG_ENABLED)
-		immutable ubyte[3][4] finalColors = getDebugAOColors(cornerOcclusion);
-	else
-		immutable ubyte[3][4] finalColors = [
-			[cast(ubyte)(vert0AoMult * color[0]), cast(ubyte)(vert0AoMult * color[1]), cast(ubyte)(vert0AoMult * color[2])],
-			[cast(ubyte)(vert1AoMult * color[0]), cast(ubyte)(vert1AoMult * color[1]), cast(ubyte)(vert1AoMult * color[2])],
-			[cast(ubyte)(vert2AoMult * color[0]), cast(ubyte)(vert2AoMult * color[1]), cast(ubyte)(vert2AoMult * color[2])],
-			[cast(ubyte)(vert3AoMult * color[0]), cast(ubyte)(vert3AoMult * color[1]), cast(ubyte)(vert3AoMult * color[2])]];
+	//static if (AO_DEBUG_ENABLED)
+	//	immutable ubyte[3][4] finalColors = getDebugAOColors(cornerOcclusion);
+	//else
+	//	immutable ubyte[3][4] finalColors = [
+	//		[cast(ubyte)(vert0AoMult * color[0]), cast(ubyte)(vert0AoMult * color[1]), cast(ubyte)(vert0AoMult * color[2])],
+	//		[cast(ubyte)(vert1AoMult * color[0]), cast(ubyte)(vert1AoMult * color[1]), cast(ubyte)(vert1AoMult * color[2])],
+	//		[cast(ubyte)(vert2AoMult * color[0]), cast(ubyte)(vert2AoMult * color[1]), cast(ubyte)(vert2AoMult * color[2])],
+	//		[cast(ubyte)(vert3AoMult * color[0]), cast(ubyte)(vert3AoMult * color[1]), cast(ubyte)(vert3AoMult * color[2])]];
+	immutable ubyte[4] finalColors = [vert0AoMult, vert1AoMult, vert2AoMult, vert3AoMult];
+	immutable ubyte[2][4] uvs = [uv, [uv[0], cast(ubyte)(uv[1]+1)], [cast(ubyte)(uv[0]+1), cast(ubyte)(uv[1]+1)], [cast(ubyte)(uv[0]+1), uv[1]]];
 
 	if(vert0AoMult + vert2AoMult > vert1AoMult + vert3AoMult)
 	{
-		meshColoredQuad!true(buffer, finalColors, offset, indices, vertieces);
+		meshQuadUvGray!true(buffer, finalColors, uvs, offset, indices, vertieces);
 	}
 	else
 	{
-		meshColoredQuad!false(buffer, finalColors, offset, indices, vertieces);
+		meshQuadUvGray!false(buffer, finalColors, uvs, offset, indices, vertieces);
 	}
 }
 
@@ -186,6 +190,60 @@ void meshColoredQuad(bool flipped, T)(
 			vertieces[indices[ind.i5]][0] + offset.x,
 			vertieces[indices[ind.i5]][1] + offset.y,
 			vertieces[indices[ind.i5]][2] + offset.z,
+			cornerColors[ind.i5])
+	);
+}
+
+void meshQuadUvGray(bool flipped, T)(
+	ref Buffer!MeshVertex buffer,
+	ref const ubyte[4] cornerColors,
+	ref const ubyte[2][4] cornerUVs,
+	const ubvec3 offset,
+	const ubyte[4] indices,
+	const T[3]* vertieces)
+{
+	// index order
+	static if (flipped)
+		enum ind {i0=1, i1=2, i2=0, i3=0, i4=2, i5=3}
+	else
+		enum ind {i0=1, i1=3, i2=0, i3=1, i4=2, i5=3}
+
+	buffer.put(
+		MeshVertex(
+			vertieces[indices[ind.i0]][0] + offset.x,
+			vertieces[indices[ind.i0]][1] + offset.y,
+			vertieces[indices[ind.i0]][2] + offset.z,
+			cornerUVs[ind.i0],
+			cornerColors[ind.i0]),
+		MeshVertex(
+			vertieces[indices[ind.i1]][0] + offset.x,
+			vertieces[indices[ind.i1]][1] + offset.y,
+			vertieces[indices[ind.i1]][2] + offset.z,
+			cornerUVs[ind.i1],
+			cornerColors[ind.i1]),
+		MeshVertex(
+			vertieces[indices[ind.i2]][0] + offset.x,
+			vertieces[indices[ind.i2]][1] + offset.y,
+			vertieces[indices[ind.i2]][2] + offset.z,
+			cornerUVs[ind.i2],
+			cornerColors[ind.i2]),
+		MeshVertex(
+			vertieces[indices[ind.i3]][0] + offset.x,
+			vertieces[indices[ind.i3]][1] + offset.y,
+			vertieces[indices[ind.i3]][2] + offset.z,
+			cornerUVs[ind.i3],
+			cornerColors[ind.i3]),
+		MeshVertex(
+			vertieces[indices[ind.i4]][0] + offset.x,
+			vertieces[indices[ind.i4]][1] + offset.y,
+			vertieces[indices[ind.i4]][2] + offset.z,
+			cornerUVs[ind.i4],
+			cornerColors[ind.i4]),
+		MeshVertex(
+			vertieces[indices[ind.i5]][0] + offset.x,
+			vertieces[indices[ind.i5]][1] + offset.y,
+			vertieces[indices[ind.i5]][2] + offset.z,
+			cornerUVs[ind.i5],
 			cornerColors[ind.i5])
 	);
 }

@@ -50,8 +50,8 @@ SpriteRef[] loadIndexedSpriteSheet(string filename, TextureAtlas texAtlas, ivec2
 	ivec2 gridSize = imageSize / spriteSize;
 	sprites.length = gridSize.x * gridSize.y;
 
-	foreach(i; 0..gridSize.x)
 	foreach(j; 0..gridSize.y)
+	foreach(i; 0..gridSize.x)
 	{
 		irect spriteSubRect = irect(ivec2(i,j) * spriteSize, spriteSize);
 		cropImage(image, spriteSubRect.position, spriteSubRect.size);

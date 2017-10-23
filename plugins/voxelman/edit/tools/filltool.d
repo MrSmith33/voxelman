@@ -69,8 +69,12 @@ final class FillTool : ITool
 			//worldInteraction.drawCursor(worldInteraction.blockPos, Colors.red);
 			//worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
 
-			blockMesher.meshBlock(blockInfos[currentBlock.id], currentBlock.metadata);
-			graphics.transparentBuffer.putMesh(blockMesher.geometry.data, vec3(worldInteraction.sideBlockPos.xyz));
+			// TODO FIX: putting regular vertex into chunk vertex buffer is broken
+			//blockMesher.meshBlock(blockInfos[currentBlock.id], currentBlock.metadata);
+			//graphics.transparentBuffer.putMesh(
+			//	blockMesher.geometry.data,
+			//	vec3(worldInteraction.sideBlockPos.xyz));
+
 			//graphics.drawBuffer3d(cursorBuffer.data, GL_TRIANGLES);
 
 			//foreach(ref vert; cursorBuffer.data)

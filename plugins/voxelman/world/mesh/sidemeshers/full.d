@@ -20,10 +20,10 @@ void meshFullSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d)
 	immutable float mult = shadowMultipliers[side];
 	float[3] color = [mult * d.color.r, mult * d.color.g, mult * d.color.b];
 
-	meshOccludedQuad(*d.buffer, cornerOcclusion, color, d.blockPos,
+	meshOccludedQuad(*d.buffer, cornerOcclusion, color, d.uv, d.blockPos,
 		cubeSideVertIndices[side], cubeVerticies.ptr);
 }
-
+/*
 void meshFullSideOccluded2(CubeSide side, ubyte[4] cornerOcclusion, SideParams d)
 {
 	immutable float mult = shadowMultipliers[side];
@@ -92,3 +92,4 @@ void meshFullSideOccluded2(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 			finalColors[faceIndexes[5]])
 	);
 }
+*/
