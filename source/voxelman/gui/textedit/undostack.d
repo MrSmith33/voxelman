@@ -87,7 +87,7 @@ struct UndoStack(Item)
 // Test undo/redo.
 unittest
 {
-	import textedit.textbuffer;
+	import voxelman.gui.textedit.textbuffer;
 	PieceTable table = PieceTable("abcdef");
 	static struct UndoItem
 	{
