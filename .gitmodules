@@ -2,3 +2,7 @@
 	path = deps/dlib
 	url = https://github.com/MrSmith33/dlib
 	ignore = untracked
+[submodule "res"]
+	path = res
+	url = https://github.com/MrSmith33/voxelman-res
+	ignore = untracked
