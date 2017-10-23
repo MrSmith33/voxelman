@@ -14,7 +14,7 @@ import voxelman.graphics.textureatlas;
 
 import std.stdio;
 
-void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
+void loadBitmapFont(Font* font, TextureAtlas texAtlas, in string chars)
 {
 	auto image = new Bitmap(loadPNG(font.filename));
 	if (image.width == 0 || image.height == 0) return;
@@ -115,8 +115,12 @@ void loadBitmapFont(Font* font, TextureAtlas texAtlas, in dchar[] chars)
 		font.glyphs[glyph] = Glyph(atlasPos, metrics);
 	}
 
-	foreach (dchar glyph; chars)
+	import std.utf : byDchar;
+	foreach (dchar glyph; chars.byDchar)
 	{
+		import std.uni : isWhite;
+		if(isWhite(glyph)) continue;
+
 		checkNextChar();
 		checkNextLine();
 

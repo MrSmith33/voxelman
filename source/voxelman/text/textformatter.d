@@ -17,15 +17,15 @@ static this()
 	app = appender(buf[]);
 }
 
-static struct TextPtrs {
-	char* start;
-	char* end;
-}
-
 const(char)[] makeFormattedText(Args ...)(string fmt, Args args) {
 	app.clear();
 	formattedWrite(app, fmt, args);
 	return app.data;
+}
+/*
+static struct TextPtrs {
+	char* start;
+	char* end;
 }
 
 TextPtrs makeFormattedTextPtrs(Args ...)(string fmt, Args args) {
@@ -37,11 +37,10 @@ TextPtrs makeFormattedTextPtrs(Args ...)(string fmt, Args args) {
 
 void igTextf(Args ...)(string fmt, Args args)
 {
-	import derelict.imgui.imgui : igTextUnformatted;
 	TextPtrs pair = makeFormattedTextPtrs(fmt, args);
 	igTextUnformatted(pair.start, pair.end);
 }
-
+*/
 struct DigitSeparator(T, uint groupSize, char groupSeparator)
 {
 	T value;

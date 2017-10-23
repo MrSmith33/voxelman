@@ -9,7 +9,6 @@ module voxelman.gui.plugin;
 import voxelman.log;
 import std.string : format;
 import voxelman.math;
-import derelict.imgui.imgui;
 
 import voxelman.platform.iwindow;
 import voxelman.platform.glfwwindow;
@@ -18,7 +17,6 @@ import voxelman.graphics.irenderer;
 import voxelman.graphics.oglrenderer;
 
 import pluginlib;
-import voxelman.imgui_glfw;
 
 import voxelman.core.config;
 import voxelman.core.events;
@@ -42,7 +40,7 @@ private:
 public:
 	IWindow window;
 	IRenderer renderer;
-	ImguiState igState;
+	//ImguiState igState;
 	bool mouseLocked;
 
 	mixin IdAndSemverFrom!"voxelman.gui.plugininfo";
@@ -68,18 +66,18 @@ public:
 		reloadOpenGL();
 
 		renderer = new OglRenderer(window);
-		igState.init((cast(GlfwWindow)window).handle);
+		//igState.init((cast(GlfwWindow)window).handle);
 
 		// Bind events
 		window.windowResized.connect(&windowResized);
 		window.closePressed.connect(&closePressed);
 
-		window.keyPressed.connect(&igState.onKeyPressed);
-		window.keyReleased.connect(&igState.onKeyReleased);
-		window.charEntered.connect(&igState.charCallback);
-		window.mousePressed.connect(&igState.onMousePressed);
-		window.mouseReleased.connect(&igState.onMouseReleased);
-		window.wheelScrolled.connect(&igState.scrollCallback);
+		//window.keyPressed.connect(&igState.onKeyPressed);
+		//window.keyReleased.connect(&igState.onKeyReleased);
+		//window.charEntered.connect(&igState.charCallback);
+		//window.mousePressed.connect(&igState.onMousePressed);
+		//window.mouseReleased.connect(&igState.onMouseReleased);
+		//window.wheelScrolled.connect(&igState.scrollCallback);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -95,7 +93,7 @@ public:
 
 	private void showDebugSettings()
 	{
-		igCheckbox("[Q] Lock mouse", &mouseLocked);
+		//igCheckbox("[Q] Lock mouse", &mouseLocked);
 		updateMouseLock();
 	}
 
@@ -103,18 +101,18 @@ public:
 	{
 		updateMouseLock();
 		window.processEvents();
-		igState.newFrame();
+		//igState.newFrame();
 	}
 
 	private void onRender3Event(ref Render3Event event)
 	{
-		igState.render();
+		//igState.render();
 	}
 
 	private void onGameStopEvent(ref GameStopEvent stopEvent)
 	{
 		window.releaseWindow;
-		igState.shutdown();
+		//igState.shutdown();
 	}
 
 	private void windowResized(ivec2 newSize)

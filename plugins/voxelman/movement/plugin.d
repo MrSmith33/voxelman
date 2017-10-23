@@ -23,7 +23,6 @@ import voxelman.input.plugin;
 import voxelman.input.keybindingmanager;
 import voxelman.world.clientworld;
 
-import derelict.imgui.imgui;
 import voxelman.text.textformatter;
 
 
@@ -164,8 +163,8 @@ class MovementPlugin : IPlugin
 
 	private void showDebugSettings()
 	{
-		igCheckbox("[F]ly mode", &isFlying);
-		igCheckbox("[N]oclip", &noclip);
+		//igCheckbox("[F]ly mode", &isFlying);
+		//igCheckbox("[N]oclip", &noclip);
 	}
 
 	bool isCurrentChunkLoaded()

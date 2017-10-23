@@ -11,7 +11,6 @@ import voxelman.log;
 import voxelman.math;
 import dlib.math.matrix : Matrix4f;
 import derelict.enet.enet;
-import derelict.imgui.imgui;
 
 import voxelman.utils.fpshelper;
 import voxelman.graphics.gl;
@@ -123,7 +122,7 @@ public:
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("cl_stop|stop", &onStopCommand);
 
-		console.messageWindow.messageHandler = &onConsoleCommand;
+		//console.messageWindow.messageHandler = &onConsoleCommand;
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 	}
@@ -134,14 +133,14 @@ public:
 
 	void printFpsDebug()
 	{
-		igTextf("FPS: %s", fpsHelper.fps); igSameLine();
-		int fpsLimitVal = maxFpsOpt.get!int;
-		igPushItemWidth(60);
-		igSliderInt("##limit_val", &fpsLimitVal, 30, 240, null);
-		igPopItemWidth();
-		igSameLine();
-		igCheckbox("limit##limit_fps_toggle", &limitFps);
-		maxFpsOpt.set!int(fpsLimitVal);
+		//igTextf("FPS: %s", fpsHelper.fps); igSameLine();
+		//int fpsLimitVal = maxFpsOpt.get!int;
+		//igPushItemWidth(60);
+		//igSliderInt("##limit_val", &fpsLimitVal, 30, 240, null);
+		//igPopItemWidth();
+		//igSameLine();
+		//igCheckbox("limit##limit_fps_toggle", &limitFps);
+		//maxFpsOpt.set!int(fpsLimitVal);
 	}
 
 	void run(string[] args)

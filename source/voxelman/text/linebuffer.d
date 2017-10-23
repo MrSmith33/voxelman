@@ -7,7 +7,6 @@ module voxelman.text.linebuffer;
 
 struct LineBuffer
 {
-	import derelict.imgui.imgui;
 	import std.array : empty;
 	import std.format : formattedWrite;
 	import voxelman.container.buffer;
@@ -74,7 +73,7 @@ struct LineBuffer
 		put(str);
 		put("\n");
 	}
-
+/*
 	void draw()
 	{
 		char* lineStart = lines.data.ptr;
@@ -116,5 +115,5 @@ struct LineBuffer
 		if (scrollToBottom)
 			igSetScrollHere(1.0f);
 		scrollToBottom = false;
-	}
+	}*/
 }

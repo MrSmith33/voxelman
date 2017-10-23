@@ -19,10 +19,9 @@ struct MessageWindow
 		inputBuf = uninitializedArray!(char[])(1024);
 		inputBuf[0] = '\0';
 	}
-
+/*
 	void draw(bool drawBorder = true)
 	{
-		import derelict.imgui.imgui;
 		import std.string;
 
 		igPushStyleVarVec(ImGuiStyleVar_WindowPadding, ImVec2(0,0));
@@ -56,5 +55,5 @@ struct MessageWindow
 			if (igIsItemHovered() || (igIsRootWindowOrAnyChildFocused() && !igIsAnyItemActive() && !igIsMouseClicked(0)))
 				igSetKeyboardFocusHere(-2); // Auto focus input
 		}
-	}
+	}*/
 }

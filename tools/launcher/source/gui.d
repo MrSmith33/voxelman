@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 
 module gui;
-
+version(none){
 import std.algorithm;
 import std.array;
 import std.experimental.logger;
@@ -19,10 +19,8 @@ import std.datetime : MonoTime, Duration, usecs, dur;
 
 import voxelman.math;
 import derelict.glfw3.glfw3;
-import derelict.imgui.imgui;
 import voxelman.graphics.gl;
 import voxelman.platform.glfwwindow;
-import voxelman.imgui_glfw;
 import voxelman.utils.libloader;
 import voxelman.text.textformatter;
 import voxelman.text.linebuffer;
@@ -701,3 +699,4 @@ enum mainWindowFlags = ImGuiWindowFlags_NoTitleBar |
 	ImGuiWindowFlags_NoCollapse |
 	ImGuiWindowFlags_NoSavedSettings;
 	//ImGuiWindowFlags_MenuBar;
+}

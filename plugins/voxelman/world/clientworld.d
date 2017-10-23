@@ -6,7 +6,6 @@ Authors: Andrey Penechko.
 module voxelman.world.clientworld;
 
 import std.datetime : MonoTime, Duration, usecs, dur;
-import derelict.imgui.imgui;
 import voxelman.log;
 import netlib;
 import pluginlib;
@@ -292,33 +291,34 @@ public:
 	private void showDebugGuiPosition()
 	{
 		// heading
-		vec3 target = graphics.camera.target;
-		vec2 heading = graphics.camera.heading;
-		igTextf("Heading: %.1f %.1f", heading.x, heading.y);
-		igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
+		//vec3 target = graphics.camera.target;
+		//vec2 heading = graphics.camera.heading;
+		//igTextf("Heading: %.1f %.1f", heading.x, heading.y);
+		//igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
 
 		// position
-		vec3 pos = graphics.camera.position;
-		igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
-		ChunkWorldPos chunkPos = observerPosition;
-		igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+		//vec3 pos = graphics.camera.position;
+		//igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
+		//ChunkWorldPos chunkPos = observerPosition;
+		//igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
 	}
 
 	private void showDebugGuiSettings()
 	{
-		igTextf("Dimension: %s", observerPosition.w); igSameLine();
-			if (igButton("-##decDimension")) decDimension(); igSameLine();
-			if (igButton("+##incDimension")) incDimension();
+		//igTextf("Dimension: %s", observerPosition.w); igSameLine();
+			//if (igButton("-##decDimension")) decDimension(); igSameLine();
+			//if (igButton("+##incDimension")) incDimension();
 
-		igTextf("View radius: %s", viewRadius); igSameLine();
-			if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
-			if (igButton("+##incVRadius")) incViewRadius();
+		//igTextf("View radius: %s", viewRadius); igSameLine();
+			//if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
+			//if (igButton("+##incVRadius")) incViewRadius();
 
-		igCheckbox("[U]pdate observer pos", &doUpdateObserverPosition);
+		//igCheckbox("[U]pdate observer pos", &doUpdateObserverPosition);
 	}
 
 	private void showDebugGuiGraphics()
 	{
+		/*
 		if (igCollapsingHeader("Graphics"))
 		{
 			size_t dbg_meshesVisible = chunkMeshMan.chunkMeshes[0].length + chunkMeshMan.chunkMeshes[1].length;
@@ -332,7 +332,7 @@ public:
 			igTextf("Buffers: %s Mem: %s",
 				Vbo.numAllocated,
 				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
-		}
+		}*/
 		dbg_meshesRenderedSolid = 0;
 		dbg_meshesRenderedSemitransparent = 0;
 		dbg_vertsRendered = 0;
@@ -341,6 +341,7 @@ public:
 
 	private void showDebugGuiChunks()
 	{
+		/*
 		if (igCollapsingHeader("Chunks"))
 		{
 			drawDebugChunkInfoGui();
@@ -363,7 +364,7 @@ public:
 				float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
 				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
 			}
-		}
+		}*/
 	}
 
 	private bool chunkDebug_showGrid;
@@ -376,6 +377,7 @@ public:
 
 	private void drawDebugChunkInfoGui()
 	{
+		/*
 		// debug view radius
 		igTextf("Debug radius: %s", chunkDebug_viewRadius);
 		igSameLine();
@@ -391,6 +393,7 @@ public:
 		igCheckbox("show block entities", &chunkDebug_showBlockEntities);
 		igCheckbox("show wasted meshes", &chunkDebug_showWastedMeshes);
 		igCheckbox("show chunk layers", &chunkDebug_showChunkLayers);
+		*/
 	}
 
 	private void drawDebugChunkInfo()

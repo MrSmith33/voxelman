@@ -21,14 +21,14 @@ final class ChatPluginClient : IPlugin
 	private ClientSession session;
 	private NetClientPlugin connection;
 	private EventDispatcherPlugin evDispatcher;
-	MessageWindow messageWindow;
+	//MessageWindow messageWindow;
 	float alpha;
 
 	override void preInit()
 	{
-		messageWindow.init();
-		messageWindow.messageHandler =
-			(string msg) => connection.send(MessagePacket(msg), 1);
+		//messageWindow.init();
+		//messageWindow.messageHandler =
+		//	(string msg) => connection.send(MessagePacket(msg), 1);
 	}
 
 	override void init(IPluginManager pluginman)
@@ -46,16 +46,16 @@ final class ChatPluginClient : IPlugin
 		import std.format : formattedWrite;
 		auto packet = unpackPacket!MessagePacket(packetData);
 
-		if (packet.clientId == 0)
-			messageWindow.putln(packet.msg);
-		else {
-			messageWindow.putf("%s> %s\n", session.clientName(packet.clientId), packet.msg);
-		}
+		//if (packet.clientId == 0)
+		//	messageWindow.putln(packet.msg);
+		//else {
+		//	messageWindow.putf("%s> %s\n", session.clientName(packet.clientId), packet.msg);
+		//}
 	}
 
 	void onUpdateEvent(ref UpdateEvent event)
 	{
-		import derelict.imgui.imgui;
+		/*
 
 		float h = 200;
 		igSetNextWindowPos(ImVec2(0, igGetIO().DisplaySize.y-h), ImGuiSetCond_Always);
@@ -70,6 +70,7 @@ final class ChatPluginClient : IPlugin
 		//if (!igBegin("Chat")) return;
 		messageWindow.draw(false);
 		igEnd();
+		*/
 	}
 }
 

@@ -26,6 +26,7 @@ class LauncherGui : GuiApp
 	string pluginFolder = `./plugins`;
 	string pluginPackFolder = `./pluginpacks`;
 	string toolFolder = `./tools`;
+	string resFolder = `./res`;
 
 	AutoListModel!WorldList worldList;
 	AutoListModel!ServerList serverList;
@@ -42,9 +43,9 @@ class LauncherGui : GuiApp
 		launcher.refresh();
 	}
 
-	override void load(string[] args)
+	override void load(string[] args, string resPath)
 	{
-		super.load(args);
+		super.load(args, resFolder);
 		textSettings = TextViewSettings(renderQueue.defaultFont);
 		WidgetProxy root = WidgetProxy(guictx.roots[0], guictx);
 		createMain(root);

@@ -10,7 +10,6 @@ import voxelman.log;
 
 import pluginlib;
 import voxelman.core.events;
-import derelict.imgui.imgui;
 import dlib.math.utils;
 import voxelman.text.textformatter;
 
@@ -85,7 +84,7 @@ class EditPlugin : IPlugin
 	}
 
 	private void showToolName() {
-		igTextf("Tool: %s", currentTool.name);
+		//igTextf("Tool: %s", currentTool.name);
 	}
 
 	private void showToolHandler() {

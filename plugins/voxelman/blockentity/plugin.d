@@ -11,7 +11,6 @@ import pluginlib;
 import voxelman.container.buffer;
 import voxelman.math;
 
-import derelict.imgui.imgui;
 import voxelman.text.textformatter;
 
 import voxelman.world.block;
@@ -130,10 +129,10 @@ final class BlockEntityClient : IPlugin {
 					auto entityBwp = BlockWorldPos(cwp, blockIndex);
 					WorldBox eVol = eInfo.boxHandler(entityBwp, entity);
 
-					igTextf("Entity(main): id %s %s ind %s %s",
-						entity.id, eInfo.name, blockIndex, eVol);
+					//igTextf("Entity(main): id %s %s ind %s %s",
+					//	entity.id, eInfo.name, blockIndex, eVol);
 
-					igCheckbox("Debug entity", &blockEntityDebug);
+					//igCheckbox("Debug entity", &blockEntityDebug);
 					if (blockEntityDebug && eInfo.debugHandler)
 					{
 						auto context = BlockEntityDebugContext(entityBwp, entity, graphics);
@@ -152,10 +151,10 @@ final class BlockEntityClient : IPlugin {
 					BlockEntityInfo eInfo = blockEntityInfos[mainPtr.entityId];
 					WorldBox eVol = eInfo.boxHandler(mainBwp, mainEntity);
 
-					igTextf("Entity(other): ind %s mid %s mind %s moff %s",
-						blockIndex, mainPtr.entityId,
-						mainPtr.blockIndex, mainPtr.mainChunkOffset);
-					igTextf(" %s %s", eInfo.name, eVol);
+					//igTextf("Entity(other): ind %s mid %s mind %s moff %s",
+					//	blockIndex, mainPtr.entityId,
+					//	mainPtr.blockIndex, mainPtr.mainChunkOffset);
+					//igTextf(" %s %s", eInfo.name, eVol);
 
 					putCube(graphics.debugBatch, eVol, Colors.red, false);
 					break;
@@ -166,8 +165,8 @@ final class BlockEntityClient : IPlugin {
 		else
 		{
 			auto binfo = blockPlugin.getBlocks()[block.id];
-			igTextf("Block: %s:%s %s", block.id, block.metadata, binfo.name);
-			igTextf(" @ %s %s %s", bwp, cwp, BlockChunkPos(bwp));
+			//igTextf("Block: %s:%s %s", block.id, block.metadata, binfo.name);
+			//igTextf(" @ %s %s %s", bwp, cwp, BlockChunkPos(bwp));
 		}
 	}
 }

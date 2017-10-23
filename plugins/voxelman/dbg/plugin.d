@@ -9,7 +9,6 @@ import voxelman.log;
 import std.array;
 import std.container.rbtree;
 import pluginlib;
-import derelict.imgui.imgui;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
@@ -70,27 +69,27 @@ final class DebugClient : IPlugin
 
 	void handleDoGuiEvent(ref DoGuiEvent event)
 	{
-		igSetNextWindowSize(ImVec2(225, 380), ImGuiSetCond_Once);
-		igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
-		igBegin("Debug");
-		foreach(item; handlerList[])
-		{
-			item.handler();
-		}
-		igEnd();
+		//igSetNextWindowSize(ImVec2(225, 380), ImGuiSetCond_Once);
+		//igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
+		//igBegin("Debug");
+		//foreach(item; handlerList[])
+		//{
+		//	item.handler();
+		//}
+		//igEnd();
 	}
 
 	private void drawDebugGroup()
 	{
-		if (igCollapsingHeader("Debug"))
-		{
-			foreach(key, var; dbg.vars) {
-				igTextf("%s: %s", key, var);
-			}
-			foreach(key, ref buf; dbg.buffers) {
-				igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
-			}
-		}
+		//if (igCollapsingHeader("Debug"))
+		//{
+		//	foreach(key, var; dbg.vars) {
+		//		igTextf("%s: %s", key, var);
+		//	}
+		//	foreach(key, ref buf; dbg.buffers) {
+		//		igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
+		//	}
+		//}
 	}
 
 	private void handleTelemetryPacket(ubyte[] packetData)

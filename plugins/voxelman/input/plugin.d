@@ -50,7 +50,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyPressed(KeyCode keyCode, uint modifiers)
 	{
-		if (guiPlugin.igState.keyboardCaptured) return;
+		//if (guiPlugin.igState.keyboardCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -61,7 +61,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyReleased(KeyCode keyCode, uint modifiers)
 	{
-		if (guiPlugin.igState.keyboardCaptured) return;
+		//if (guiPlugin.igState.keyboardCaptured) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -72,7 +72,7 @@ final class InputPlugin : IPlugin
 
 	void onMousePressed(PointerButton button, uint modifiers)
 	{
-		if (guiPlugin.igState.mouseCaptured) return;
+		//if (guiPlugin.igState.mouseCaptured) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -83,7 +83,7 @@ final class InputPlugin : IPlugin
 
 	void onMouseReleased(PointerButton button, uint modifiers)
 	{
-		if (guiPlugin.igState.mouseCaptured) return;
+		//if (guiPlugin.igState.mouseCaptured) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -94,7 +94,7 @@ final class InputPlugin : IPlugin
 
 	bool isKeyPressed(string keyName)
 	{
-		if (guiPlugin.igState.keyboardCaptured) return false;
+		//if (guiPlugin.igState.keyboardCaptured) return false;
 		if (auto binding = keyName in keyBindingsMan.keyBindingsByName)
 		{
 			KeyBinding* b = *binding;
@@ -116,9 +116,8 @@ final class InputPlugin : IPlugin
 	}
 
 	private void showDebugInput()
-	{
+	{/*
 		import derelict.glfw3.glfw3;
-		import derelict.imgui.imgui;
 		import voxelman.text.textformatter;
 		import std.string : fromStringz;
 
@@ -163,6 +162,6 @@ final class InputPlugin : IPlugin
 				}
 				igTreePop();
 			}
-		}
+		}*/
 	}
 }

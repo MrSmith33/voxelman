@@ -46,7 +46,7 @@ class GuiApp
 		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
-		load(args);
+		load(args, "./");
 
 		MonoTime prevTime = MonoTime.currTime;
 
@@ -83,7 +83,7 @@ class GuiApp
 		stop();
 	}
 
-	void load(string[] args)
+	void load(string[] args, string resourcePath)
 	{
 		import std.string : fromStringz;
 		import voxelman.graphics.gl;
@@ -96,7 +96,7 @@ class GuiApp
 		reloadOpenGL();
 
 		renderer = new OglRenderer(window);
-		auto resourceManager = new ResourceManager(renderer);
+		auto resourceManager = new ResourceManager(resourcePath, renderer);
 		renderQueue = new RenderQueue(resourceManager);
 		guictx = new GuiContext(&debugText);
 		guictx.pointerMoved(window.mousePosition);
@@ -118,7 +118,7 @@ class GuiApp
 		window.windowResized.connect(&windowResized);
 		window.closePressed.connect(&closePressed);
 
-		guictx.style.iconMap = loadNamedSpriteSheet("icons", resourceManager.texAtlas, ivec2(16, 16));
+		guictx.style.iconMap = resourceManager.loadNamedSpriteSheet("icons", resourceManager.texAtlas, ivec2(16, 16));
 		guictx.style.iconPlaceholder = guictx.style.iconMap["no-icon"];
 
 		resourceManager.reuploadTexture();

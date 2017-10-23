@@ -10,31 +10,32 @@ import voxelman.math;
 import voxelman.graphics.font.font;
 import voxelman.graphics.textureatlas;
 
-enum string ascii = `�►▼!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_` ~ "abcdefghijklmnopqrstuvwxyz{|}~`";
-enum string cyrillic = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐабвгдежзийклмнопрстуфхцчшщъыьэюяєіїґ";
-//string glyphs = q"[!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_abcdefghijklmnopqrstuvwxyz{|}~`АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯЄІЇҐабвгдежзийклмнопрстуфхцчшщъыьэюяєіїґ]";
-enum string GLYPHS = ascii~cyrillic;
-
-ubyte[] fontData = cast(ubyte[])import("font/font_12_2.png");
-
 class FontManager
 {
 	public:
 
 	FontRef defaultFont;
+	string fontPath;
 
-	this(TextureAtlas texAtlas)
+	this(string fontPath, TextureAtlas texAtlas)
 	{
+		this.fontPath = fontPath;
 		this.texAtlas = texAtlas;
-		//defaultFont = createFont("font_12_1.png", 12, GLYPHS);
-		//defaultFont = createFont("font_13.png", 13, GLYPHS);
-		//defaultFont = createFont("font_14.png", 13, GLYPHS);
-		defaultFont = createFont("font_12_2.png", 12, GLYPHS);
+		//defaultFont = createFont("font_12_1.png", 12);
+		//defaultFont = createFont("font_13.png", 13);
+		//defaultFont = createFont("font_14.png", 13);
+		defaultFont = createFont(fontPath, "font_12_2.png", 12);
 	}
 
-	FontRef createFont(in string filename, in uint height, in dchar[] chars = GLYPHS)
+	FontRef createFont(string path, string filename, in uint height)
 	{
-		FontRef newFont = loadFont(filename, height, chars, texAtlas);
+		//import std.array : array;
+		import std.file : readText;
+		import std.path;// : chainPath, withExtension, asAbsolutePath;
+		string filenameAbs = buildPath(path, filename).absolutePath;
+		string descriptionFilename = filenameAbs.setExtension("txt");
+		string chars = readText(descriptionFilename);
+		FontRef newFont = loadFont(filenameAbs, height, chars, texAtlas);
 		newFont.sanitize();
 
 		fonts[filename] = newFont;
@@ -45,7 +46,7 @@ class FontManager
 	FontRef[string] fonts;
 }
 
-FontRef loadFont(in string filename, in uint height, in dchar[] chars, TextureAtlas texAtlas)
+FontRef loadFont(in string filename, in uint height, in string chars, TextureAtlas texAtlas)
 {
 	import voxelman.graphics.font.bitmapfontloader;
 	FontRef result = new Font(filename);
