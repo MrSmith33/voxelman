@@ -67,13 +67,6 @@ ChunkAndBlockAt chunkAndBlockAt27(int x, int y, int z)
 	return ChunkAndBlockAt(chunk_index, bx, by, bz);
 }
 
-struct MeshVertex2
-{
-	align(4):
-	float x, y, z;
-	ubyte[3] color;
-}
-
 alias BlockUpdateHandler = void delegate(BlockWorldPos bwp);
 struct BlockMeshingData
 {
@@ -120,6 +113,7 @@ struct BlockInfo
 	RotationHandler rotationHandler;
 	bool shapeDependsOnMeta = false;
 	bool meshDependOnMeta = false;
+	irect atlasRect;
 	size_t id;
 }
 

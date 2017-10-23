@@ -33,6 +33,20 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 		this.color.arrayof = color;
 	}
 
+	static if (col_size == 4 && is(ColType == ubyte))
+	this(Vector!(PosType, pos_size) p, ColType[3] color)
+	{
+		this.position = p;
+		this.color.arrayof = [color[0], color[1], color[2], 255];
+	}
+
+	static if (col_size == 4 && is(ColType == ubyte))
+	this(Vector!(PosType, pos_size) p, Vector!(ColType, 3) color)
+	{
+		this.position = p;
+		this.color.arrayof = [color.r, color.g, color.b, 255];
+	}
+
 	this(Vector!(PosType, pos_size) p, Vector!(ColType, col_size) color)
 	{
 		this.position = p;
@@ -51,8 +65,8 @@ align(4) struct VertexPosColor(PosType, uint pos_size, ColType, uint col_size)
 
 	static void setAttributes() {
 		enum Size = typeof(this).sizeof;
-		setupAttribute!(0, pos_size, PosType, false, Size, position.offsetof);
-		setupAttribute!(1, col_size, ColType, true, Size, color.offsetof);
+		setupAttribute!(0, pos_size, PosType, false, true, Size, position.offsetof);
+		setupAttribute!(1, col_size, ColType, true, true, Size, color.offsetof);
 	}
 }
 
@@ -73,17 +87,27 @@ align(4) struct VertexPosUvColor(PosType, uint pos_size, UvType, uint uv_size, C
 
 	static void setAttributes() {
 		enum Size = typeof(this).sizeof;
-		setupAttribute!(0, pos_size, PosType, false, Size, position.offsetof);
-		setupAttribute!(1, uv_size, UvType, true, Size, uv.offsetof);
-		setupAttribute!(2, col_size, ColType, true, Size, color.offsetof);
+		setupAttribute!(0, pos_size, PosType, false, true, Size, position.offsetof);
+		setupAttribute!(1, uv_size, UvType, true, true, Size, uv.offsetof);
+		setupAttribute!(2, col_size, ColType, true, true, Size, color.offsetof);
 	}
 }
 
-void setupAttribute(int index, int numComponents, AttrT, bool normalize, int totalSize, int offset)()
+void setupAttribute(int index, int numComponents, AttrT, bool normalize, bool isFloatAttrib, int totalSize, int offset)()
 {
 	glEnableVertexAttribArray(index);
-	enum bool doPosNomalization = normalize && normalizeAttributeType!AttrT;
-	glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalSize, cast(void*)offset);
+	static if (isFloatAttrib)
+	{
+		enum bool doPosNomalization = normalize && normalizeAttributeType!AttrT;
+		checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalSize, cast(void*)offset);
+	}
+	else
+	{
+		static if (normalizeAttributeType!AttrT) // only if integer
+			checkgl!glVertexAttribIPointer(index, numComponents, glTypeOf!AttrT, totalSize, cast(void*)offset);
+		else
+			checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, false, totalSize, cast(void*)offset);
+	}
 }
 
 enum glTypeOf(T) = glTypes[glTypeIndex!T];

@@ -12,6 +12,7 @@ import std.string : lineSplitter, stripLeft;
 import voxelman.container.buffer : Buffer;
 import voxelman.model.utils : Faces, unrollFaces;
 import voxelman.model.mesh : Mesh;
+import voxelman.math;
 
 enum HEADER_STR = "end_header";
 enum VERTEX_STR = "element vertex ";
@@ -62,14 +63,16 @@ Mesh!Vert parsePly(Vert)(string fileData)
 		auto line = lines.front;
 
 		Vert v;
-		v.position.x = parse!float(line); line = stripLeft(line);
-		v.position.y = parse!float(line); line = stripLeft(line);
-		v.position.z = parse!float(line); line = stripLeft(line);
-		v.color.r = parse!ubyte(line); line = stripLeft(line);
-		v.color.g = parse!ubyte(line); line = stripLeft(line);
-		v.color.b = parse!ubyte(line);
+		vec3 position;
+		ubvec3 color;
+		position.x = parse!float(line); line = stripLeft(line);
+		position.y = parse!float(line); line = stripLeft(line);
+		position.z = parse!float(line); line = stripLeft(line);
+		color.r = parse!ubyte(line); line = stripLeft(line);
+		color.g = parse!ubyte(line); line = stripLeft(line);
+		color.b = parse!ubyte(line);
 
-		vertices.put(v);
+		vertices.put(Vert(position, color));
 
 		lines.popFront;
 	}

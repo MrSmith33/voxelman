@@ -8,6 +8,7 @@ module voxelman.graphics.textureatlas;
 
 import voxelman.geometry.rectbinpacker;
 import voxelman.graphics.bitmap;
+import voxelman.graphics.color;
 import voxelman.math;
 
 
@@ -44,6 +45,14 @@ public:
 	}
 
 	/// Returns: position of inserted node, or throws if not enough space
+	ivec2 insert(ivec2 size, Color4ub color)
+	{
+		ivec2 pos = insert(size);
+		bitmap.fillSubRect(irect(pos, size), color);
+		return pos;
+	}
+
+	/// ditto
 	ivec2 insert(ivec2 size)
 	{
 		Node* node = binPacker.insert(size);

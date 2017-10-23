@@ -43,6 +43,7 @@ import voxelman.world.blockentity.blockentitydata;
 import voxelman.world.blockentity.blockentitymap;
 
 import voxelman.world.mesh.chunkmeshman;
+import voxelman.world.mesh.vertex;
 
 struct IdMapManagerClient
 {
@@ -115,6 +116,7 @@ public:
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool wireframeMode = false;
+	ChunkShader8 chunkShader8;
 
 	// Send position interval
 	double sendPositionTimer = 0;
@@ -219,6 +221,7 @@ public:
 	override void postInit()
 	{
 		renderer = graphics.renderer;
+		chunkShader8.compile(renderer);
 	}
 
 	WorldBox calcClampedBox(ChunkWorldPos cwp, int boxRadius)
@@ -501,30 +504,30 @@ public:
 		drawDebugChunkInfo();
 	}
 
-	import dlib.geometry.frustum;
 	void drawSolid(ref RenderSolid3dEvent event)
 	{
 		renderer.wireFrameMode(wireframeMode);
 
-		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
-		Frustum frustum;
-		frustum.fromMVP(vp);
-
 		renderer.faceCulling(true);
 		renderer.faceCullMode(FaceCullMode.back);
 
-		drawMeshes(chunkMeshMan.chunkMeshes[0].byValue, frustum,
-			graphics.solidShader3d,
+		chunkShader8.bind;
+		chunkShader8.setTransparency(1.0f);
+
+		drawMeshes(chunkMeshMan.chunkMeshes[0].byValue,
+			chunkShader8,
 			dbg_meshesRenderedSolid);
 
 		renderer.alphaBlending(true);
 		renderer.depthWrite(false);
 
-		graphics.transparentShader3d.bind;
-		graphics.transparentShader3d.setTransparency(0.5f);
-		drawMeshes(chunkMeshMan.chunkMeshes[1].byValue, frustum,
-			graphics.transparentShader3d,
+		chunkShader8.setTransparency(0.5f);
+
+		drawMeshes(chunkMeshMan.chunkMeshes[1].byValue,
+			chunkShader8,
 			dbg_meshesRenderedSemitransparent);
+
+		chunkShader8.unbind;
 
 		renderer.faceCulling(false);
 		renderer.depthWrite(true);
@@ -534,10 +537,13 @@ public:
 			renderer.wireFrameMode(false);
 	}
 
-	private void drawMeshes(R, S)(R meshes, Frustum frustum, ref S shader, ref size_t meshCounter)
+	private void drawMeshes(R, S)(R meshes, ref S shader, ref size_t meshCounter)
 	{
-		shader.bind;
-		shader.setVP(graphics.camera.cameraMatrix, graphics.camera.perspective);
+		import dlib.geometry.frustum;
+		Matrix4f vp = graphics.camera.perspective * graphics.camera.cameraToClipMatrix;
+
+		Frustum frustum;
+		frustum.fromMVP(vp);
 
 		foreach(const ref mesh; meshes)
 		{
@@ -551,8 +557,8 @@ public:
 				if (!intersects) continue;
 			}
 
-			Matrix4f modelMatrix = translationMatrix!float(mesh.position);
-			shader.setModel(modelMatrix);
+			Matrix4f mvp = vp * translationMatrix!float(mesh.position);
+			shader.setMvp(mvp);
 
 			mesh.render();
 
@@ -560,7 +566,6 @@ public:
 			dbg_vertsRendered += mesh.numVertexes;
 			dbg_trisRendered += mesh.numTris;
 		}
-		shader.unbind;
 	}
 
 	private void handleGameStopEvent(ref GameStopEvent gameStopEvent)

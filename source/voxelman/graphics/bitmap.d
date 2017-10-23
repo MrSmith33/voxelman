@@ -83,6 +83,13 @@ class Bitmap : ImageRGBA8
 		_height = newSize.y;
 	}
 
+	void fillSubRect(irect destRect, Color4ub color)
+	{
+		foreach(y; destRect.y..destRect.endY)
+		foreach(x; destRect.x..destRect.endX)
+		this[x, y] = color;
+	}
+
 	void putSubRect(in Bitmap source, irect sourceSubRect, ivec2 destPos)
 	{
 		auto sourceSize = ivec2(source._width * source._pixelSize, source._height);

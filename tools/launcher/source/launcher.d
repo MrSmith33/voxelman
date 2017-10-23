@@ -276,6 +276,8 @@ struct Launcher
 			workDir = buildFolder;
 		}
 
+		job.msglog.putln(command);
+
 		ProcessPipes pipes = pipeShell(command, Redirect.all, null, Config.suppressConsole, workDir);
 
 		job.command = command;

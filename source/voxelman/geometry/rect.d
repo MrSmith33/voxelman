@@ -122,6 +122,9 @@ struct irect
 		return width * height;
 	}
 
+	int endX() @property const { return x + width - 1; }
+	int endY() @property const { return y + height - 1; }
+
 	ivec2 endPosition() @property const
 	{
 		return position + size - ivec2(1,1);

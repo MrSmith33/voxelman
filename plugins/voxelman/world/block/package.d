@@ -7,4 +7,4 @@ module voxelman.world.block;
 
 public import voxelman.world.block.blocklayermetadata;
 public import voxelman.world.block.shape;
-public import voxelman.world.block.utils;
+public import voxelman.world.block.blockinfo;

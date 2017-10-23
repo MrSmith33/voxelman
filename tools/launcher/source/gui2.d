@@ -180,8 +180,8 @@ struct JobItemWidget
 		createCheckButton(top_buttons, "nodeps", cast(bool*)&job.params.nodeps);
 		createCheckButton(top_buttons, "force", cast(bool*)&job.params.force);
 		createCheckButton(top_buttons, "x64", cast(bool*)&job.params.arch64);
-		DropDown.create(top_buttons, buildTypeUiOptions, 0);
-		DropDown.create(top_buttons, compilerUiOptions, 0);
+		DropDown.create(top_buttons, buildTypeUiOptions, 0, (size_t opt){job.params.buildType = cast(BuildType)opt;});
+		DropDown.create(top_buttons, compilerUiOptions, 0, (size_t opt){job.params.compiler = cast(Compiler)opt;});
 		createTextButton(top_buttons, "Clear", { job.msglog.clear; });
 		createTextButton(top_buttons, "Close", { job.needsClose = true; }).visible_if(&job_running);
 

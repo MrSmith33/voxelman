@@ -7,8 +7,7 @@ module voxelman.world.mesh.sidemeshers.utils;
 
 import voxelman.math : ubvec3;
 import voxelman.container.buffer : Buffer;
-import voxelman.world.block.utils : MeshVertex2;
-import voxelman.world.mesh.chunkmesh : MeshVertex;
+import voxelman.world.mesh.vertex : MeshVertex;
 import voxelman.world.mesh.config;
 
 float random(uint num) pure nothrow
@@ -35,7 +34,7 @@ ubvec3 calcColor(ushort index, ubvec3 color) pure nothrow
 }
 
 immutable(float[]) shadowMultipliers = [
-	0.8, 0.85, 0.7, 0.75, 0.95, 0.65,
+	0.85, 0.9, 0.75, 0.8, 1, 0.7,
 ];
 
 struct SideParams
@@ -158,32 +157,32 @@ void meshColoredQuad(bool flipped, T)(
 		enum ind {i0=1, i1=3, i2=0, i3=1, i4=2, i5=3}
 
 	buffer.put(
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i0]][0] + offset.x,
 			vertieces[indices[ind.i0]][1] + offset.y,
 			vertieces[indices[ind.i0]][2] + offset.z,
 			cornerColors[ind.i0]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i1]][0] + offset.x,
 			vertieces[indices[ind.i1]][1] + offset.y,
 			vertieces[indices[ind.i1]][2] + offset.z,
 			cornerColors[ind.i1]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i2]][0] + offset.x,
 			vertieces[indices[ind.i2]][1] + offset.y,
 			vertieces[indices[ind.i2]][2] + offset.z,
 			cornerColors[ind.i2]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i3]][0] + offset.x,
 			vertieces[indices[ind.i3]][1] + offset.y,
 			vertieces[indices[ind.i3]][2] + offset.z,
 			cornerColors[ind.i3]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i4]][0] + offset.x,
 			vertieces[indices[ind.i4]][1] + offset.y,
 			vertieces[indices[ind.i4]][2] + offset.z,
 			cornerColors[ind.i4]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			vertieces[indices[ind.i5]][0] + offset.x,
 			vertieces[indices[ind.i5]][1] + offset.y,
 			vertieces[indices[ind.i5]][2] + offset.z,

@@ -8,7 +8,7 @@ module voxelman.world.block.shape;
 import voxelman.log;
 import voxelman.core.config;
 
-import voxelman.world.mesh.tables.slope;
+import slope = voxelman.world.mesh.tables.slope;
 
 /*
 block shapes:
@@ -106,7 +106,7 @@ const BlockShape emptyShape = BlockShape(emptyShapeSides, 0b_0000_0000, false, f
 
 BlockShape slopeShapeFromMeta(BlockMetadata metadata)
 {
-	return metaToShapeTable[metadata];
+	return slope.metaToShapeTable[metadata];
 }
 
 /*

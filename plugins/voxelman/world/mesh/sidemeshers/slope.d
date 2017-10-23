@@ -44,17 +44,17 @@ void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 	ubyte[3] indicies = slopeFaceIndicies[d.rotation][side];
 	ubyte[3] colorIndicies = slopeColorIndicies[d.rotation];
 	d.buffer.put(
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			cubeVerticies[indicies[0]][0] + d.blockPos.x,
 			cubeVerticies[indicies[0]][1] + d.blockPos.y,
 			cubeVerticies[indicies[0]][2] + d.blockPos.z,
 			finalColors[colorIndicies[0]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			cubeVerticies[indicies[1]][0] + d.blockPos.x,
 			cubeVerticies[indicies[1]][1] + d.blockPos.y,
 			cubeVerticies[indicies[1]][2] + d.blockPos.z,
 			finalColors[colorIndicies[1]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			cubeVerticies[indicies[2]][0] + d.blockPos.x,
 			cubeVerticies[indicies[2]][1] + d.blockPos.y,
 			cubeVerticies[indicies[2]][2] + d.blockPos.z,

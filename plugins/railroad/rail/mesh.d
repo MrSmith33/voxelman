@@ -11,6 +11,7 @@ import std.conv : to;
 import voxelman.container.buffer;
 import voxelman.math;
 
+import voxelman.model.vertex;
 import voxelman.graphics;
 import voxelman.geometry;
 
@@ -68,7 +69,6 @@ void makeRailMesh(BlockEntityMeshingData meshingData)
 
 void putRailMesh(Vert, Sink)(ref Sink sink, ivec3 chunkPos, RailData data)
 {
-	alias Pos = typeof(Vert.position);
 	ivec3 tilePos = railTilePos(chunkPos);
 	auto chunkPosF = vec3(tilePos);
 
@@ -85,13 +85,14 @@ void putRailMesh(Vert, Sink)(ref Sink sink, ivec3 chunkPos, RailData data)
 
 		foreach(v; mesh)
 		{
-			vec3 pos = rotator(vec3(v.position), meshSize) + offset;
-			sink.put(Vert(Pos(pos), v.color));
+			vec3 pos = rotator(v.position, meshSize) + offset;
+			sink.put(Vert(pos, v.color));
 		}
 	}
 }
 
-__gshared MeshVertex[][3] railMeshes;
+alias RailVertexT = VertexPosColor!(float, 3, ubyte, 3);
+__gshared RailVertexT[][3] railMeshes;
 ivec3[3] meshSizes = [
 	ivec3(4, 1, 8),
 	ivec3(6, 1, 6),

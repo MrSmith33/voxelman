@@ -167,6 +167,7 @@ final class BlockEntityClient : IPlugin {
 		{
 			auto binfo = blockPlugin.getBlocks()[block.id];
 			igTextf("Block: %s:%s %s", block.id, block.metadata, binfo.name);
+			igTextf(" @ %s %s %s", bwp, cwp, BlockChunkPos(bwp));
 		}
 	}
 }

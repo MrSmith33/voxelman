@@ -60,32 +60,32 @@ void meshFullSideOccluded2(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 	}
 
 	d.buffer.put(
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side  ] + d.blockPos.x,
 			faces[18*side+1] + d.blockPos.y,
 			faces[18*side+2] + d.blockPos.z,
 			finalColors[faceIndexes[0]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side+3] + d.blockPos.x,
 			faces[18*side+4] + d.blockPos.y,
 			faces[18*side+5] + d.blockPos.z,
 			finalColors[faceIndexes[1]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side+6] + d.blockPos.x,
 			faces[18*side+7] + d.blockPos.y,
 			faces[18*side+8] + d.blockPos.z,
 			finalColors[faceIndexes[2]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side+9] + d.blockPos.x,
 			faces[18*side+10] + d.blockPos.y,
 			faces[18*side+11] + d.blockPos.z,
 			finalColors[faceIndexes[3]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side+12] + d.blockPos.x,
 			faces[18*side+13] + d.blockPos.y,
 			faces[18*side+14] + d.blockPos.z,
 			finalColors[faceIndexes[4]]),
-		cast(MeshVertex)MeshVertex2(
+		MeshVertex(
 			faces[18*side+15] + d.blockPos.x,
 			faces[18*side+16] + d.blockPos.y,
 			faces[18*side+17] + d.blockPos.z,

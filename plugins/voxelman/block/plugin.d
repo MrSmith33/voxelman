@@ -5,7 +5,9 @@ Authors: Andrey Penechko.
 */
 module voxelman.block.plugin;
 
+import voxelman.graphics;
 import voxelman.log;
+import voxelman.math;
 import std.array : array;
 import cbor;
 import pluginlib;
@@ -13,36 +15,68 @@ import voxelman.core.config : BlockId;
 import voxelman.world.storage;
 import voxelman.world.block;
 import voxelman.utils.mapping;
+import voxelman.globalconfig;
 
 import voxelman.world.serverworld;
 import voxelman.world.clientworld;
+
+enum TEX_TILE_SIZE = 32;
+enum TEX_TILE_SIZE2 = ivec2(TEX_TILE_SIZE, TEX_TILE_SIZE);
 
 final class BlockManager : IResourceManager
 {
 private:
 	Mapping!BlockInfo blockMapping;
+	TextureAtlas texAtlas;
 
 public:
 	override string id() @property { return "voxelman.block.blockmanager"; }
 	override void preInit()
 	{
+		texAtlas = new TextureAtlas(256);
 		regBaseBlocks(&regBlock);
 		sideTable = sideIntersectionTable(NUM_SIDE_MASKS);
 		setSideTable(sideTable);
 	}
 
-	BlockInfoSetter regBlock(string name) {
+	override void loadResources()
+	{
+		SpriteRef[string] texMap = loadNamedSpriteSheet(BUILD_TO_ROOT_PATH~"res/tex/blocks", texAtlas, TEX_TILE_SIZE2);
+		Sprite sprite;
+		SpriteRef missingTexture = texMap.get("missing-texture", null);
+
+		if (missingTexture is null)
+		{
+			ivec2 atlasPos = texAtlas.insert(TEX_TILE_SIZE2, Color4ub(0, 255, 255));
+			sprite.atlasRect = irect(atlasPos, TEX_TILE_SIZE2);
+			missingTexture = &sprite;
+		}
+
+		irect getAtlasRect(string name) {
+			return texMap.get("missing-texture", missingTexture).atlasRect;
+		}
+
+		foreach(ref BlockInfo binfo; blockMapping.infoArray)
+		{
+			binfo.atlasRect = getAtlasRect(binfo.name);
+		}
+	}
+
+	BlockInfoSetter regBlock(string name)
+	{
 		size_t id = blockMapping.put(BlockInfo(name));
 		assert(id <= BlockId.max);
 		return BlockInfoSetter(&blockMapping, id);
 	}
 
-	BlockInfoTable getBlocks() {
+	BlockInfoTable getBlocks()
+	{
 		return BlockInfoTable(cast(immutable)blockMapping.infoArray, sideTable);
 	}
 
 	// returns size_t.max if not found
-	size_t getId(string name) {
+	size_t getId(string name)
+	{
 		return blockMapping.id(name);
 	}
 

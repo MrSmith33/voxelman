@@ -13,7 +13,7 @@ import voxelman.geometry;
 import voxelman.core.config;
 import voxelman.core.packets;
 import voxelman.world.storage;
-import voxelman.world.block.utils;
+import voxelman.world.block.blockinfo;
 import voxelman.world.mesh.meshgenerator : SingleBlockMesher;
 
 import voxelman.client.plugin;

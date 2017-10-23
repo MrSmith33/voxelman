@@ -168,6 +168,12 @@ struct BlockChunkPos
 	{
 		return mixin("vector." ~ s);
 	}
+
+	void toString()(scope void delegate(const(char)[]) sink)
+	{
+		import std.format : formattedWrite;
+		sink.formattedWrite("bcp(%(%s %))", vector.arrayof);
+	}
 }
 
 struct ChunkRegionIndex

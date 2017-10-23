@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.graphics.color;
 
 import voxelman.math : Vector;
+public import voxelman.math : ubvec3;
 
 alias Color4ub = Vector!(ubyte, 4);
 
@@ -29,7 +30,6 @@ enum Colors : Color4ub
 	violet = Color4ub(143, 0, 255, 255),
 }
 
-
 Color4ub[] colorsArray = [
 	Colors.black, Colors.white, Colors.red,
 	Colors.green, Colors.blue, Colors.cyan,
@@ -45,8 +45,11 @@ Color4ub rgb(ubyte r, ubyte g, ubyte b)
 }
 
 ushort packColor(ubvec3 c) {
-	return (c.r>>3) | (c.g&31) << 5 | (c.b&31) << 10;
+	return (c.r>>3) | (c.g>>3) << 5 | (c.b>>3) << 10;
+}
+ushort packColor(ubyte[3] c) {
+	return (c[0]>>3) | (c[1]>>3) << 5 | (c[2]>>3) << 10;
 }
 ushort packColor(ubyte r, ubyte g, ubyte b) {
-	return (r>>3) | (g&31) << 5 | (b&31) << 10;
+	return (r>>3) | (g>>3) << 5 | (b>>3) << 10;
 }
