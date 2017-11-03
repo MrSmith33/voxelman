@@ -105,15 +105,15 @@ struct TextEditor
 
 	void onCommand(EditorCommand com)
 	{
-		switch(com)
+		switch(com.type)
 		{
-			case EditorCommand.insert_eol:
+			case EditorCommandType.insert_eol:
 				replaceSelection("\n");
 				break;
-			case EditorCommand.insert_tab:
+			case EditorCommandType.insert_tab:
 				replaceSelection("\t");
 				break;
-			case EditorCommand.delete_left_char:
+			case EditorCommandType.delete_left_char:
 				if (selection.empty)
 				{
 					auto leftCur = moveCursor(selection.end, MoveCommand.move_left_char);
@@ -121,13 +121,13 @@ struct TextEditor
 				}
 				else removeAndUpdateSelection(selection);
 				break;
-			case EditorCommand.delete_left_word:
+			case EditorCommandType.delete_left_word:
 
 				break;
-			case EditorCommand.delete_left_line:
+			case EditorCommandType.delete_left_line:
 
 				break;
-			case EditorCommand.delete_right_char:
+			case EditorCommandType.delete_right_char:
 				if (selection.empty)
 				{
 					auto rightCur = moveCursor(selection.end, MoveCommand.move_right_char);
@@ -135,17 +135,17 @@ struct TextEditor
 				}
 				else removeAndUpdateSelection(selection);
 				break;
-			case EditorCommand.delete_right_word:
+			case EditorCommandType.delete_right_word:
 				break;
-			case EditorCommand.delete_right_line:
+			case EditorCommandType.delete_right_line:
 				break;
-			case EditorCommand.cut:
+			case EditorCommandType.cut:
 				cutSelection();
 				break;
-			case EditorCommand.copy:
+			case EditorCommandType.copy:
 				copySelection();
 				break;
-			case EditorCommand.paste:
+			case EditorCommandType.paste:
 				//MonoTime pasteStart = MonoTime.currTime;
 				auto str = clipboard;
 				replaceSelection(str);
@@ -153,13 +153,13 @@ struct TextEditor
 				//	scaledNumberFmt(str.length),
 				//	scaledNumberFmt(MonoTime.currTime-pasteStart));
 				break;
-			case EditorCommand.select_all:
+			case EditorCommandType.select_all:
 				selection = Selection(Cursor(0,0), Cursor(lines.textEnd, lines.lastLine));
 				break;
-			case EditorCommand.undo:
+			case EditorCommandType.undo:
 				undo();
 				break;
-			case EditorCommand.redo:
+			case EditorCommandType.redo:
 				redo();
 				break;
 			default:
@@ -221,6 +221,7 @@ mixin template ReadHelpers()
 	{
 		if (selection.empty)
 		{
+			// select whole line
 			auto line = selection.end.line;
 			auto info = lines[line];
 			return Selection(Cursor(info.startOffset, line),
@@ -356,9 +357,10 @@ mixin template WriteHelpers()
 
 	void removeAndUpdateSelection(Selection sel)
 	{
-		removeText(sel);
+		Selection normSel = sel.normalized;
+		removeText(normSel);
 		// position cursor at the start of removed text
-		selection = emptySelection(sel.start);
+		selection = emptySelection(normSel.start);
 	}
 
 	void removeText(Selection sel)

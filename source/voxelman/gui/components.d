@@ -74,6 +74,7 @@ struct hidden {}
 struct WidgetStyle
 {
 	Color4ub color;
+	Color4ub borderColor;
 }
 
 @Component("gui.WidgetName", Replication.none)

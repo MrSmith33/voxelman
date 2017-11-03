@@ -21,9 +21,9 @@ class FontManager
 	{
 		this.fontPath = fontPath;
 		this.texAtlas = texAtlas;
-		//defaultFont = createFont("font_12_1.png", 12);
-		//defaultFont = createFont("font_13.png", 13);
-		//defaultFont = createFont("font_14.png", 13);
+		//defaultFont = createFont(fontPath, "font_12_1.png", 12);
+		//defaultFont = createFont(fontPath, "font_13.png", 13);
+		//defaultFont = createFont(fontPath, "font_14.png", 13);
 		defaultFont = createFont(fontPath, "font_12_2.png", 12);
 	}
 

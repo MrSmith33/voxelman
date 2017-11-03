@@ -11,6 +11,7 @@ import std.stdio;
 import std.experimental.allocator.gc_allocator;
 alias allocator = GCAllocator.instance;
 import voxelman.math : nextPOT;
+import voxelman.container.chunkedrange;
 
 struct GapBuffer(T)
 {
@@ -25,7 +26,7 @@ struct GapBuffer(T)
 	private size_t capacity() { return gapLength + length; }
 	private alias gapEnd = secondChunkStart;
 
-	void putAt(size_t index, T[] items ...)
+	void putAt(size_t index, const T[] items ...)
 	{
 		reserve(items.length);
 		moveGapTo(index);
@@ -38,9 +39,9 @@ struct GapBuffer(T)
 		//printStructure();
 	}
 
-	void put(T[] items ...) { putAt(length, items); }
+	void put(const T[] items ...) { putAt(length, items); }
 	alias putBack = put;
-	void putFront(T[] items ...) { putAt(0, items); }
+	void putFront(const T[] items ...) { putAt(0, items); }
 
 	void remove(size_t from, size_t itemsToRemove)
 	{
@@ -91,6 +92,12 @@ struct GapBuffer(T)
 	auto opSlice(size_t from, size_t to)
 	{
 		return this[][from..to];
+	}
+
+	T[] getContinuousSlice(size_t from, size_t to)
+	{
+		moveGapTo(to);
+		return buffer[from..to];
 	}
 
 	private void moveItems(size_t from, size_t to, size_t length)
@@ -183,12 +190,63 @@ struct GapBufferSlice(T)
 
 	auto opSlice(size_t from, size_t to)
 	{
-		assert(from < length);
+		assert(from <= length, "From must be less than length");
 		assert(to <= length);
 		assert(from <= to);
 		immutable size_t len = to - from;
 		return GapBufferSlice(buf, start+from, len);
 	}
+
+	ChunkedRange!T toChunkedRange()
+	{
+		size_t end = start + length;
+		if (start < buf.gapStart)
+		{
+			if (end >= buf.gapStart)
+			{
+				// slice contains the gap
+				T[] first = buf.buffer[start..buf.gapStart];
+				T* secondPtr = &buf.buffer[buf.gapEnd];
+				size_t secondLength = length - (buf.gapStart-start);
+				return ChunkedRange!T(first, secondLength, secondPtr, null, &GapBufferSlice_popFront!T);
+			}
+			else
+			{
+				// slice if before gap
+				T[] first = buf.buffer[start..end];
+				return ChunkedRange!T(first, 0, null, null, &GapBufferSlice_popFront!T);
+			}
+		}
+		else
+		{
+			// slice if after gap
+			size_t from = start + buf.gapLength;
+			size_t to = from + length;
+			T[] first = buf.buffer[from..to];
+			return ChunkedRange!T(first, 0, null, null, &GapBufferSlice_popFront!T);
+		}
+	}
+}
+
+private static void GapBufferSlice_popFront(T)(
+	ref T[] front,
+	ref size_t secondLength,
+	ref void* secondPtr,
+	ref void* unused)
+{
+	front = (cast(T*)secondPtr)[0..secondLength];
+	secondPtr = null;
+	secondLength = 0;
+}
+
+unittest
+{
+	GapBuffer!char buf;
+
+	buf.put("ab");
+	buf.remove(1, 1);
+	assert(buf[].equal("a"));
+	assert(buf.length == 1);
 }
 
 unittest

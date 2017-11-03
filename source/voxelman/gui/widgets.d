@@ -55,6 +55,10 @@ struct WidgetProxy
 	void addChild(WidgetId child) { ctx.addChild(wid, child); }
 	bool postEvent(Event)(auto ref Event event) { return ctx.postEvent(this, event); }
 	void toggleFlag(Component)() { if (ctx.widgets.has!Component(wid)) ctx.widgets.remove!Component(wid); else ctx.widgets.set(wid, Component()); }
+
+	void focus() { ctx.focusedWidget = wid; }
+	void unfocus() { ctx.focusedWidget = 0; }
+	void setFocus(bool isFocused) { if (isFocused) ctx.focusedWidget = wid; else ctx.focusedWidget = 0; }
 }
 
 static struct ChildrenRange
@@ -100,11 +104,14 @@ struct Frame
 	static:
 	FrameParts create(WidgetProxy parent)
 	{
-		WidgetProxy frame = parent.createChild(WidgetType("Frame")).setVLayout(0, padding4(0)).consumeMouse;
-		PanelLogic.attachTo(frame, color_clouds);
+		WidgetProxy frame = parent.createChild(WidgetType("Frame"))
+			.setVLayout(0, padding4(0))
+			.addBackground(color_clouds)
+			.consumeMouse;
 
-		auto header = frame.createChild(WidgetType("Header")).hexpand;
-		PanelLogic.attachTo(header, color_white);
+		auto header = frame.createChild(WidgetType("Header"))
+			.addBackground(color_white)
+			.hexpand;
 
 		auto container = frame.createChild(WidgetType("Container")).hvexpand;
 
@@ -144,31 +151,30 @@ void updateVisibility(WidgetProxy widget, ref GuiUpdateEvent event)
 
 WidgetProxy addBackground(WidgetProxy widget, Color4ub color)
 {
-	PanelLogic.attachTo(widget, color); return widget;
+	widget.getOrCreate!WidgetStyle.color = color;
+	widget.handlers(&PanelLogic.drawBackground);
+	return widget;
 }
 
-WidgetProxy addBorder(WidgetProxy widget)
+WidgetProxy addBorder(WidgetProxy widget, Color4ub color)
 {
-	widget.handlers(&PanelLogic.drawBorder); return widget;
+	widget.getOrCreate!WidgetStyle.borderColor = color;
+	widget.handlers(&PanelLogic.drawBorder);
+	return widget;
 }
 
 struct PanelLogic
 {
 	static:
-	void attachTo(WidgetProxy widget, Color4ub color)
-	{
-		widget.set(WidgetStyle(color)).handlers(&drawWidget);
-	}
-
 	WidgetProxy create(WidgetProxy parent, Color4ub color)
 	{
 		WidgetProxy panel = parent.createChild(
-			WidgetEvents(&drawWidget),
+			WidgetEvents(&drawBackground),
 			WidgetStyle(color), WidgetType("Panel"));
 		return panel;
 	}
 
-	void drawWidget(WidgetProxy widget, ref DrawEvent event)
+	void drawBackground(WidgetProxy widget, ref DrawEvent event)
 	{
 		if (event.sinking) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -185,7 +191,8 @@ struct PanelLogic
 	{
 		if (event.sinking) {
 			auto transform = widget.getOrCreate!WidgetTransform;
-			event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth, color_wet_asphalt);
+			auto style = widget.get!WidgetStyle;
+			event.renderQueue.drawRectLine(vec2(transform.absPos), vec2(transform.size), event.depth, style.borderColor);
 			event.depth += 1;
 		}
 	}
@@ -1051,13 +1058,12 @@ struct ScrollBarLogic
 	static:
 	ScrollBarParts create(WidgetProxy parent, WidgetId eventReceiver = WidgetId(0)) {
 		auto scroll = parent.createChild(WidgetType("ScrollBar"))
-			.vexpand.minSize(10, 20);
-		PanelLogic.attachTo(scroll, color_gray);
+			.vexpand.minSize(10, 20).addBackground(color_gray);
 		auto slider = scroll.createChild(WidgetType("ScrollHandle"), WidgetReference(eventReceiver))
 			.minSize(10, 10)
 			.measuredSize(0, 100)
-			.handlers(&onSliderDrag, &DraggableLogic.onPress);
-		PanelLogic.attachTo(slider, color_asbestos);
+			.handlers(&onSliderDrag, &DraggableLogic.onPress)
+			.addBackground(color_asbestos);
 		return ScrollBarParts(scroll, slider);
 	}
 

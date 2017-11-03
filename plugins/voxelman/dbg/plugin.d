@@ -12,6 +12,7 @@ import pluginlib;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.net.plugin;
+import voxelman.graphics.plugin;
 import voxelman.text.textformatter;
 
 alias DebugGuiHandler = void delegate();
@@ -41,6 +42,7 @@ final class DebugClient : IPlugin
 	Debugger dbg;
 	NetClientPlugin connection;
 	RedBlackTree!(DebugGuiHandlerItem, "a>b") handlerList;
+	LineBuffer* debugText;
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
 	{
@@ -59,6 +61,8 @@ final class DebugClient : IPlugin
 		evDispatcher.subscribeToEvent(&handleDoGuiEvent);
 		connection = pluginman.getPlugin!NetClientPlugin;
 		connection.registerPacket!TelemetryPacket(&handleTelemetryPacket);
+		auto graphics = pluginman.getPlugin!GraphicsPlugin;
+		debugText = &graphics.debugText;
 	}
 
 	// bigger order items go lower in menu
@@ -72,10 +76,10 @@ final class DebugClient : IPlugin
 		//igSetNextWindowSize(ImVec2(225, 380), ImGuiSetCond_Once);
 		//igSetNextWindowPos(ImVec2(0, 0), ImGuiSetCond_Once);
 		//igBegin("Debug");
-		//foreach(item; handlerList[])
-		//{
-		//	item.handler();
-		//}
+		foreach(item; handlerList[])
+		{
+			item.handler();
+		}
 		//igEnd();
 	}
 
@@ -90,6 +94,10 @@ final class DebugClient : IPlugin
 		//		igPlotLines2(key.ptr, &get_val, cast(void*)&buf, cast(int)buf.maxLen, cast(int)buf.next);
 		//	}
 		//}
+
+		foreach(key, var; dbg.vars) {
+			debugText.putfln("%s: %s", key, var);
+		}
 	}
 
 	private void handleTelemetryPacket(ubyte[] packetData)

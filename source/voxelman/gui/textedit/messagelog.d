@@ -60,12 +60,12 @@ struct MessageLog
 
 	void onCommand(EditorCommand com)
 	{
-		switch(com)
+		switch(com.type)
 		{
-			case EditorCommand.copy:
+			case EditorCommandType.copy:
 				copySelection();
 				break;
-			case EditorCommand.select_all:
+			case EditorCommandType.select_all:
 				selection = Selection(Cursor(0,0), Cursor(lines.textEnd, lines.lastLine));
 				break;
 			default:

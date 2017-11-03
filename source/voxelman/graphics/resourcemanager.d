@@ -13,32 +13,21 @@ enum string fontPath = "font";
 
 final class ResourceManager
 {
-	Bitmap bitmap;
 	TextureAtlas texAtlas;
-	Texture atlasTexture;
 	FontManager fontManager;
-	IRenderer renderer;
 	string resourcePath;
 
 	// used for solid coloring
 	// allows rendering filled polygons together with textured polygons
 	ivec2 whitePixelPos;
 
-	this(string resourcePath, IRenderer renderer)
+	this(string resourcePath)
 	{
 		this.resourcePath = resourcePath;
-		this.renderer = renderer;
 
 		texAtlas = new TextureAtlas(256);
-		bitmap = texAtlas.bitmap;
-		atlasTexture = renderer.createTexture(bitmap);
 		fontManager = new FontManager(buildPath(resourcePath, fontPath), texAtlas);
 		findOrAddWhitePixel();
-	}
-
-	void reuploadTexture()
-	{
-		atlasTexture.loadFromImage(bitmap);
 	}
 
 	SpriteRef[string] loadNamedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize)
@@ -59,7 +48,7 @@ final class ResourceManager
 	void findOrAddWhitePixel()
 	{
 		import dlib.image.color : Color4f;
-		foreach (col, x, y; bitmap)
+		foreach (col, x, y; texAtlas.bitmap)
 		{
 			if (col == Color4f(1, 1, 1))
 			{
@@ -69,6 +58,6 @@ final class ResourceManager
 		}
 
 		whitePixelPos = texAtlas.insert(ivec2(1, 1));
-		bitmap[whitePixelPos.x, whitePixelPos.y] = Color4f(1, 1, 1);
+		texAtlas.bitmap[whitePixelPos.x, whitePixelPos.y] = Color4f(1, 1, 1);
 	}
 }

@@ -14,6 +14,8 @@ import derelict.enet.enet;
 
 import voxelman.utils.fpshelper;
 import voxelman.graphics.gl;
+import voxelman.gui;
+import voxelman.gui.textedit.lineedit;
 
 import netlib;
 import pluginlib;
@@ -67,10 +69,10 @@ private:
 	ClientWorld clientWorld;
 	NetClientPlugin connection;
 	Debugger dbg;
+	GuiContext guictx;
 
 public:
 	Console console;
-	bool isConsoleShown = false;
 
 	// Client data
 	bool isRunning = false;
@@ -95,14 +97,13 @@ public:
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &onConsoleToggleKey));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &console.onConsoleToggleKey));
 	}
 
 	override void preInit()
 	{
 		fpsHelper.maxFps = maxFpsOpt.get!uint;
 		limitFps = limitFpsOpt.get!bool;
-		console.init();
 	}
 
 	override void init(IPluginManager pluginman)
@@ -112,6 +113,7 @@ public:
 
 		graphics = pluginman.getPlugin!GraphicsPlugin;
 		guiPlugin = pluginman.getPlugin!GuiPlugin;
+		guictx = guiPlugin.guictx;
 		auto debugClient = pluginman.getPlugin!DebugClient;
 		debugClient.registerDebugGuiHandler(&printFpsDebug, FPS_ORDER, "Fps");
 
@@ -122,9 +124,36 @@ public:
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
 		commandPlugin.registerCommand("cl_stop|stop", &onStopCommand);
 
-		//console.messageWindow.messageHandler = &onConsoleCommand;
-
 		connection = pluginman.getPlugin!NetClientPlugin;
+
+		console.create(guictx, &onConsoleEnter);
+	}
+
+	void onConsoleEnter(string command)
+	{
+		infof("Executing command '%s'", command);
+		ExecResult res = commandPlugin.execute(command, SessionId(0));
+
+		if (res.status == ExecStatus.notRegistered)
+		{
+			if (connection.isConnected)
+			{
+				connection.send(CommandPacket(command));
+				console.messages.put("SV> ");
+				console.messages.putln(command);
+			}
+			else
+			{
+				console.messages.putfln("Unknown client command '%s', not connected to server", command);
+			}
+		}
+		else if (res.status == ExecStatus.error)
+			console.messages.putfln("Error executing command '%s': %s", command, res.error);
+		else
+		{
+			console.messages.put("CL> ");
+			console.messages.putln(command);
+		}
 	}
 
 	override void postInit() {}
@@ -141,6 +170,7 @@ public:
 		//igSameLine();
 		//igCheckbox("limit##limit_fps_toggle", &limitFps);
 		//maxFpsOpt.set!int(fpsLimitVal);
+		dbg.setVar("show console", console.isConsoleShown);
 	}
 
 	void run(string[] args)
@@ -164,6 +194,7 @@ public:
 
 				fpsHelper.update(delta, updateTime);
 
+				graphics.debugText.putfln("FPS: %.1f", fpsHelper.fps);
 				evDispatcher.postEvent(PreUpdateEvent(delta, frame));
 				evDispatcher.postEvent(UpdateEvent(delta, frame));
 				evDispatcher.postEvent(PostUpdateEvent(delta, frame));
@@ -214,35 +245,10 @@ public:
 			dbg.logVar("GC free", core.memory.GC.stats().freeSize, 128);
 		}
 
-		if (isConsoleShown)
-			console.draw();
 		dbg.logVar("delta, ms", delta*1000.0, 256);
 
 		if (guiPlugin.mouseLocked)
 			drawOverlay();
-	}
-
-	void onConsoleCommand(string command)
-	{
-		infof("Executing command '%s'", command);
-		ExecResult res = commandPlugin.execute(command, SessionId(0));
-
-		if (res.status == ExecStatus.notRegistered)
-		{
-			if (connection.isConnected)
-				connection.send(CommandPacket(command));
-			else
-				console.lineBuffer.putfln("Unknown client command '%s', not connected to server", command);
-		}
-		else if (res.status == ExecStatus.error)
-			console.lineBuffer.putfln("Error executing command '%s': %s", command, res.error);
-		else
-			console.lineBuffer.putln(command);
-	}
-
-	void onConsoleToggleKey(string)
-	{
-		isConsoleShown = !isConsoleShown;
 	}
 
 	void onClosePressedEvent(ref ClosePressedEvent event)

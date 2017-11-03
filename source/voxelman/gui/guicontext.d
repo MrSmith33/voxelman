@@ -16,6 +16,7 @@ import voxelman.math;
 import voxelman.text.linebuffer;
 public import voxelman.platform.cursoricon : CursorIcon;
 import voxelman.gui.textedit.texteditorview;
+import voxelman.gui.textedit.lineedit;
 
 struct GuiState
 {
@@ -80,6 +81,7 @@ class GuiContext
 		voxelman.gui.widgets.registerComponents(widgets);
 		voxelman.gui.components.registerComponents(widgets);
 		voxelman.gui.textedit.texteditorview.registerComponents(widgets);
+		widgets.registerComponent!LineEditData;
 
 		roots ~= createWidget(WidgetType("root")).hvexpand;
 		roots ~= createWidget(WidgetType("windows")).hvexpand;

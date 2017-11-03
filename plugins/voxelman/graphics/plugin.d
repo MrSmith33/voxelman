@@ -6,24 +6,31 @@ Authors: Andrey Penechko.
 
 module voxelman.graphics.plugin;
 
-import voxelman.log;
-import voxelman.container.buffer;
-import voxelman.math;
-
 import pluginlib;
-import voxelman.platform.iwindow;
-import voxelman.graphics.gl;
-import voxelman.graphics.irenderer;
-import voxelman.graphics.shaderprogram;
+import voxelman.container.buffer;
+import voxelman.globalconfig;
+import voxelman.log;
+import voxelman.math;
+public import voxelman.graphics;
+import voxelman.gui;
+public import voxelman.text.linebuffer;
+
+import voxelman.config.configmanager;
 import voxelman.core.config;
 import voxelman.core.events;
 import voxelman.eventdispatcher.plugin;
 import voxelman.gui.plugin;
-import voxelman.config.configmanager;
-import voxelman.graphics.fpscamera;
-public import voxelman.graphics;
+import voxelman.platform.iwindow;
+import voxelman.platform.glfwwindow;
+import voxelman.input.keybindingmanager;
 
-import voxelman.graphics.shaders;
+
+class GraphicsResources : IResourceManager
+{
+	override string id() @property { return "voxelman.graphics.graphicsresources"; }
+
+	GuiContext guictx;
+}
 
 final class GraphicsPlugin : IPlugin
 {
@@ -32,8 +39,17 @@ private:
 	uint vbo;
 	EventDispatcherPlugin evDispatcher;
 	Matrix4f ortho_projection;
+	GraphicsResources graphicsRes;
+	GuiContext guictx;
 
 public:
+	IWindow window;
+	IRenderer renderer;
+	ResourceManager resourceManager;
+	RenderQueue renderQueue;
+	LineBuffer debugText;
+	bool showDebugInfo;
+
 	FpsCamera camera;
 	Batch debugBatch;
 	Buffer!ColoredVertex transparentBuffer;
@@ -43,23 +59,70 @@ public:
 	TransparentShader3d transparentShader3d;
 	SolidShader2d solidShader2d;
 
-	IRenderer renderer;
-	IWindow window;
-
 	ConfigOption cameraSensivity;
 	ConfigOption cameraFov;
+	ConfigOption resolution;
 
 	mixin IdAndSemverFrom!"voxelman.graphics.plugininfo";
 
+	override void registerResourceManagers(void delegate(IResourceManager) registerResourceManager)
+	{
+		guictx = new GuiContext(&debugText);
+
+		resourceManager = new ResourceManager(BUILD_TO_ROOT_PATH~"res");
+
+		graphicsRes = new GraphicsResources;
+		graphicsRes.guictx = guictx;
+
+		registerResourceManager(graphicsRes);
+
+		guictx.style.iconMap = resourceManager.loadNamedSpriteSheet("icons", resourceManager.texAtlas, ivec2(16, 16));
+		guictx.style.iconPlaceholder = guictx.style.iconMap["no-icon"];
+	}
+
 	override void registerResources(IResourceManagerRegistry resmanRegistry)
 	{
+		auto keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F8, "key.showDebug", null, (s){showDebugInfo.toggle_bool;}));
+
 		auto config = resmanRegistry.getResourceManager!ConfigManager;
 		cameraSensivity = config.registerOption!double("camera_sensivity", 0.4);
 		cameraFov = config.registerOption!double("camera_fov", 60.0);
+		resolution = config.registerOption!(int[])("resolution", [1280, 720]);
 	}
 
 	override void preInit()
 	{
+		import voxelman.graphics.gl;
+
+		loadOpenGL();
+
+		window = new GlfwWindow();
+		window.init(ivec2(resolution.get!(int[])), "Voxelman client");
+
+		reloadOpenGL();
+
+		// Bind events
+		window.windowResized.connect(&windowResized);
+		window.closePressed.connect(&closePressed);
+
+		window.mousePressed.connect(&guictx.pointerPressed);
+		window.mouseReleased.connect(&guictx.pointerReleased);
+		window.mouseMoved.connect(&guictx.pointerMoved);
+		window.wheelScrolled.connect(&guictx.onScroll);
+		window.keyPressed.connect(&guictx.onKeyPress);
+		window.keyReleased.connect(&guictx.onKeyRelease);
+		window.charEntered.connect(&guictx.onCharEnter);
+		guictx.state.setClipboard = &window.clipboardString;
+		guictx.state.getClipboard = &window.clipboardString;
+
+		renderer = new OglRenderer(window);
+		renderQueue = new RenderQueue(resourceManager, renderer);
+
+		guictx.pointerMoved(window.mousePosition);
+		guictx.style.defaultFont = renderQueue.defaultFont;
+
+		// Camera
 		camera.move(vec3(0, 0, 0));
 		camera.sensivity = cameraSensivity.get!float;
 		camera.fov = cameraFov.get!float;
@@ -70,16 +133,18 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		auto gui = pluginman.getPlugin!GuiPlugin;
 
-		evDispatcher.subscribeToEvent(&onWindowResizedEvent);
+		// events
+		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
+		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&draw);
+		evDispatcher.subscribeToEvent(&onGameStopEvent);
 
-		renderer = gui.renderer;
-		window = gui.window;
-
+		// graphics
 		glGenVertexArrays(1, &vao);
 		glGenBuffers( 1, &vbo);
 
-		// Setup shaders
+		// - Setup shaders
 		solidShader3d.compile(renderer);
 		transparentShader3d.compile(renderer);
 		solidShader2d.compile(renderer);
@@ -95,15 +160,27 @@ public:
 
 	override void postInit()
 	{
+		renderQueue.reuploadTexture();
 		renderer.setClearColor(165,211,238);
 		camera.aspect = cast(float)renderer.framebufferSize.x/renderer.framebufferSize.y;
 		updateOrtoMatrix();
 	}
 
-	private void onWindowResizedEvent(ref WindowResizedEvent event)
+	private void windowResized(ivec2 newSize)
 	{
-		camera.aspect = cast(float)event.newSize.x/event.newSize.y;
+		camera.aspect = cast(float)newSize.x/newSize.y;
 		updateOrtoMatrix();
+		evDispatcher.postEvent(WindowResizedEvent(newSize));
+	}
+
+	private void closePressed()
+	{
+		evDispatcher.postEvent(ClosePressedEvent());
+	}
+
+	private void onGameStopEvent(ref GameStopEvent stopEvent)
+	{
+		window.releaseWindow;
 	}
 
 	void resetCamera()
@@ -114,6 +191,27 @@ public:
 		camera.update();
 	}
 
+	private void onPreUpdateEvent(ref PreUpdateEvent event)
+	{
+		window.processEvents();
+		renderQueue.beginFrame();
+	}
+
+	private void onUpdateEvent(ref UpdateEvent event)
+	{
+		guictx.state.canvasSize = renderer.framebufferSize;
+		guictx.update(event.deltaTime, renderQueue);
+		window.setCursorIcon(guictx.state.cursorIcon);
+	}
+
+	private void onPostUpdateEvent(ref PostUpdateEvent event)
+	{
+		//if (showDebugInfo)
+			drawDebugText();
+		debugText.clear();
+		renderQueue.endFrame();
+	}
+
 	private void draw(ref RenderEvent event)
 	{
 		checkgl!glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -122,13 +220,16 @@ public:
 		draw(debugBatch);
 		debugBatch.reset();
 
+		// 3d solid
 		evDispatcher.postEvent(RenderSolid3dEvent(renderer));
 
+		// 3d transparent
 		renderer.depthTest(false);
 		renderer.alphaBlending(true);
 
 		evDispatcher.postEvent(RenderTransparent3dEvent(renderer));
 
+		// debug drawings
 		transparentShader3d.bind;
 		transparentShader3d.setMVP(Matrix4f.identity, camera.cameraMatrix, camera.perspective);
 		transparentShader3d.setTransparency(0.3f);
@@ -142,10 +243,28 @@ public:
 		draw(overlayBatch);
 		overlayBatch.reset();
 
+		renderer.depthTest(true);
+		//checkgl!glClear(GL_DEPTH_BUFFER_BIT);
+		renderQueue.drawFrame();
+
 		evDispatcher.postEvent(Render3Event(renderer));
 
 		renderer.alphaBlending(false);
 		renderer.flush();
+	}
+
+	int overlayDepth = 1000;
+	void drawDebugText()
+	{
+		auto pos = vec2(renderer.framebufferSize.x, 0);
+
+		auto mesherParams = renderQueue.startTextAt(pos + vec2(-5,5));
+		mesherParams.depth = overlayDepth;
+		mesherParams.color = cast(Color4ub)Colors.white;
+
+		//info(debugText.lines.data);
+		mesherParams.meshText(debugText.lines.data);
+		mesherParams.alignMeshedText(Alignment.max);
 	}
 
 	void draw(Batch batch)

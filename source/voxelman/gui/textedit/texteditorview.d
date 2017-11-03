@@ -126,6 +126,7 @@ struct TextEditorViewportLogic
 		auto mesherParams = event.renderQueue.defaultText();
 		mesherParams.scissors = irect(transform.absPos, transform.size);
 		mesherParams.scale = settings.fontScale;
+		mesherParams.color = settings.color;
 		mesherParams.font = cast(FontRef)settings.font;
 		mesherParams.depth = event.depth+1;
 		mesherParams.origin = transform.absPos;
@@ -200,55 +201,12 @@ struct TextEditorViewportLogic
 	void keyPressed(WidgetProxy widget, ref KeyPressEvent event)
 	{
 		auto data = widget.get!TextEditorViewportData;
-
-		void moveCursor(MoveCommand com, bool extendSelection)
-		{
-			data.editor.moveSelectionCursor(com, extendSelection);
-		}
-
 		data.resetBlinkTimer();
+		auto command = keyPressToCommand(event);
+		data.editor.onCommand(command);
 
-		switch(event.keyCode) with(KeyCode)
-		{
-		case KEY_LEFT: moveCursor(MoveCommand.move_left_char, event.shift); break;
-		case KEY_RIGHT: moveCursor(MoveCommand.move_right_char, event.shift); break;
-		case KEY_UP: moveCursor(MoveCommand.move_up_line, event.shift); break;
-		case KEY_DOWN: moveCursor(MoveCommand.move_down_line, event.shift); break;
-		case KEY_HOME: moveCursor(MoveCommand.move_to_bol, event.shift); break;
-		case KEY_END: moveCursor(MoveCommand.move_to_eol, event.shift); break;
-		case KEY_TAB: data.editor.onCommand(EditorCommand.insert_tab); break;
-		case KEY_ENTER: case KEY_KP_ENTER: data.editor.onCommand(EditorCommand.insert_eol); break;
-		case KEY_BACKSPACE:
-			if (event.control)
-			{
-				if (event.shift) data.editor.onCommand(EditorCommand.delete_left_line);
-				else data.editor.onCommand(EditorCommand.delete_left_word);
-			}
-			else data.editor.onCommand(EditorCommand.delete_left_char);
-
-			break;
-		case KEY_DELETE:
-			if (event.control)
-			{
-				if (event.shift) data.editor.onCommand(EditorCommand.delete_right_line);
-				else data.editor.onCommand(EditorCommand.delete_right_word);
-			}
-			else data.editor.onCommand(EditorCommand.delete_right_char);
-			break;
-		case KEY_A: if (event.control) data.editor.onCommand(EditorCommand.select_all); break;
-		case KEY_C: if (event.control) data.editor.onCommand(EditorCommand.copy); break;
-		case KEY_X: if (event.control) data.editor.onCommand(EditorCommand.cut); break;
-		case KEY_V: if (event.control) data.editor.onCommand(EditorCommand.paste); break;
-		case KEY_M: if (event.control) data.settings.monospaced = !data.settings.monospaced; break;
-		case KEY_Z:
-			if (event.control)
-			{
-				if (event.shift) data.editor.onCommand(EditorCommand.redo);
-				else data.editor.onCommand(EditorCommand.undo);
-			}
-			break;
-		default: break;
-		}
+		if (event.keyCode == KeyCode.KEY_M && event.control)
+			data.settings.monospaced = !data.settings.monospaced;
 	}
 
 	void charTyped(WidgetProxy widget, ref CharEnterEvent event)
@@ -257,7 +215,8 @@ struct TextEditorViewportLogic
 		auto data = widget.get!TextEditorViewportData;
 		char[4] buf;
 		auto numBytes = encode!(Yes.useReplacementDchar)(buf, event.character);
-		data.editor.replaceSelection(buf[0..numBytes]);
+		data.editor.onCommand(EditorCommand(EditorCommandType.input, 0, buf[0..numBytes]));
+		//data.editor.replaceSelection(buf[0..numBytes]);
 		data.resetBlinkTimer();
 	}
 
@@ -405,6 +364,55 @@ struct GlyphWidthRange(R)
 		byteOffset = initialBytes - input.length;
 		return 0;
 	}
+}
+
+EditorCommand keyPressToCommand(ref KeyPressEvent event)
+{
+	alias ComType = EditorCommandType;
+
+	EditorCommand moveCommand(MoveCommand com, bool extendSelection)
+	{
+		return EditorCommand(cast(EditorCommandType)(com + EditorCommandType.cur_move_first), extendSelection);
+	}
+
+	switch(event.keyCode) with(KeyCode)
+	{
+	case KEY_LEFT:  return moveCommand(MoveCommand.move_left_char, event.shift);
+	case KEY_RIGHT: return moveCommand(MoveCommand.move_right_char, event.shift);
+	case KEY_UP:    return moveCommand(MoveCommand.move_up_line, event.shift);
+	case KEY_DOWN:  return moveCommand(MoveCommand.move_down_line, event.shift);
+	case KEY_HOME:  return moveCommand(MoveCommand.move_to_bol, event.shift);
+	case KEY_END:   return moveCommand(MoveCommand.move_to_eol, event.shift);
+	case KEY_TAB:   return EditorCommand(ComType.insert_tab);
+	case KEY_ENTER: case KEY_KP_ENTER: return EditorCommand(ComType.insert_eol);
+	case KEY_BACKSPACE:
+		if (event.control)
+		{
+			if (event.shift) return EditorCommand(ComType.delete_left_line);
+			else return EditorCommand(ComType.delete_left_word);
+		}
+		else return EditorCommand(ComType.delete_left_char);
+	case KEY_DELETE:
+		if (event.control)
+		{
+			if (event.shift) return EditorCommand(ComType.delete_right_line);
+			else return EditorCommand(ComType.delete_right_word);
+		}
+		else return EditorCommand(ComType.delete_right_char);
+	case KEY_A: if (event.control) return EditorCommand(ComType.select_all); break;
+	case KEY_C: if (event.control) return EditorCommand(ComType.copy); break;
+	case KEY_X: if (event.control) return EditorCommand(ComType.cut); break;
+	case KEY_V: if (event.control) return EditorCommand(ComType.paste); break;
+	case KEY_Z:
+		if (event.control)
+		{
+			if (event.shift) return EditorCommand(ComType.redo);
+			else return EditorCommand(ComType.undo);
+		}
+		break;
+	default: break;
+	}
+	return EditorCommand(ComType.none);
 }
 
 @Component("gui.TextEditorLineNumbersData", Replication.none)

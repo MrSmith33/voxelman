@@ -96,8 +96,8 @@ class GuiApp
 		reloadOpenGL();
 
 		renderer = new OglRenderer(window);
-		auto resourceManager = new ResourceManager(resourcePath, renderer);
-		renderQueue = new RenderQueue(resourceManager);
+		auto resourceManager = new ResourceManager(resourcePath);
+		renderQueue = new RenderQueue(resourceManager, renderer);
 		guictx = new GuiContext(&debugText);
 		guictx.pointerMoved(window.mousePosition);
 		guictx.style.defaultFont = renderQueue.defaultFont;
@@ -121,7 +121,7 @@ class GuiApp
 		guictx.style.iconMap = resourceManager.loadNamedSpriteSheet("icons", resourceManager.texAtlas, ivec2(16, 16));
 		guictx.style.iconPlaceholder = guictx.style.iconMap["no-icon"];
 
-		resourceManager.reuploadTexture();
+		renderQueue.reuploadTexture();
 	}
 
 	void update(double delta)

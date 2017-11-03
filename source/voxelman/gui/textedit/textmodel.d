@@ -21,10 +21,8 @@ interface TextModel
 	LineInfo lineInfo(int line);
 
 	void onCommand(EditorCommand com);
-	void replaceSelection(const(char)[] str);
 	ref Selection selection();
 	//ivec2 textSizeInGlyphs();
-	void moveSelectionCursor(MoveCommand com, bool extendSelection);
 }
 
 Selection emptySelection(Cursor cur) { return Selection(cur, cur); }
@@ -57,6 +55,7 @@ struct TextViewSettings
 	int fontScale = 1;
 	int tabSize = 4;
 	bool monospaced = true;
+	Color4ub color;
 
 	ivec2 scaledGlyphSize() const { return ivec2(scaledGlyphW, scaledGlyphH); }
 	int scaledGlyphW() const { return font.metrics.advanceX * fontScale; }
@@ -71,8 +70,10 @@ struct TextViewSettings
 	}
 }
 
-enum EditorCommand
+enum EditorCommandType
 {
+	none, // convertor function returns this if nothing matches
+
 	insert_eol,
 	insert_tab,
 	delete_left_char,
@@ -86,8 +87,47 @@ enum EditorCommand
 	copy,
 	paste,
 
+	input,
+
 	select_all,
 
 	undo,
 	redo,
+
+	cur_move_first,
+	cur_move_right_char = cur_move_first,
+	cur_move_right_word,
+	cur_move_left_char,
+	cur_move_left_word,
+	cur_move_up_line,
+	cur_move_up_page,
+	cur_move_down_line,
+	cur_move_down_page,
+	cur_move_to_bol,
+	cur_move_to_eol,
+	cur_move_last = cur_move_to_eol,
+}
+
+enum EditorCommandFlags
+{
+	extendSelection = 1, //
+}
+
+struct EditorCommand
+{
+	EditorCommandType type;
+	uint flags; // set of EditorCommandFlags
+	const(char)[] inputText; // must be copied when handling command
+
+	bool extendSelection() {
+		return (flags & EditorCommandFlags.extendSelection) != 0;
+	}
+
+	MoveCommand toMoveCommand()
+	{
+		assert(type >= EditorCommandType.cur_move_first);
+		assert(type <= EditorCommandType.cur_move_last);
+
+		return cast(MoveCommand)(type - EditorCommandType.cur_move_first);
+	}
 }
