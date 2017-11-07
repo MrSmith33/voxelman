@@ -13,6 +13,7 @@ import voxelman.core.packets;
 import voxelman.log;
 
 import voxelman.blockentity.blockentityman;
+import voxelman.command.plugin;
 import voxelman.blockentity.plugin;
 import voxelman.edit.plugin;
 import voxelman.entity.plugin;
@@ -153,6 +154,14 @@ final class RailroadPluginServer : IPlugin
 
 		auto evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&wagonLogic.process);
+
+		auto command = pluginman.getPlugin!CommandPluginServer;
+		command.registerCommand("remove_wagons", &handleRemoveWagons);
+	}
+
+	private void handleRemoveWagons(CommandParams params)
+	{
+		wagonLogic.removeWagons;
 	}
 
 	void handlePlaceRailPacket(ubyte[] packetData, SessionId sessionId)

@@ -19,6 +19,7 @@ struct MetaKeyBucket(Key)
 	bool empty() const { return type == BucketType.empty; }
 	bool used() const { return type == BucketType.used; }
 	bool deleted() const { return type == BucketType.deleted; }
+	bool corrupted() const { return type > cast(BucketType)2; }
 
 	bool canInsert(Key key) const {
 		return type == BucketType.empty || this.key == key;
@@ -47,6 +48,7 @@ struct KeyBucket(Key, Key emptyKey, Key deletedKey)
 	bool empty() const { return key == emptyKey; }
 	bool used() const { return key != emptyKey && key != deletedKey; }
 	bool deleted() const { return key == deletedKey; }
+	bool corrupted() const { return false; }
 
 	bool canInsert(Key key) const {
 		return this.key == emptyKey || this.key == key;

@@ -85,7 +85,6 @@ struct EntityObserverManager
 			auto observers = chunkObserverManager.getChunkObservers(cwp);
 			if (observers.length == 0) continue;
 
-			//auto entities = chunkToEntitySet[cwp];
 			eman.savePartial(netSaver, entities);
 			connection.sendTo(observers, ComponentSyncPacket(netSaver.data));
 			netSaver.reset();

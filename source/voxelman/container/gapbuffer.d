@@ -58,12 +58,15 @@ struct GapBuffer(T)
 		assert(cast(ptrdiff_t)(length - gapStart) >= 0); // invariant
 		if (gapLength < items)
 		{
+			import core.memory;
+			GC.removeRange(buffer);
 			size_t newCapacity = nextPOT(capacity + items);
 			void[] tmp = buffer[0..capacity];
 			allocator.reallocate(tmp, newCapacity*T.sizeof);
 			buffer = cast(T*)tmp.ptr;
 			moveItems(secondChunkStart, newCapacity-secondChunkLength, secondChunkLength);
 			gapLength = newCapacity - length;
+			GC.addRange(buffer, capacity * T.sizeof, typeid(T));
 		}
 	}
 

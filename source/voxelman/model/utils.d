@@ -8,6 +8,7 @@ module voxelman.model.utils;
 import voxelman.container.buffer : Buffer;
 import voxelman.model.mesh : Face3, Faces;
 
+// Doesn't mark with GC.addRange. T cannot contain pointers
 T[] allocate(T)(size_t size) {
 	import std.experimental.allocator.gc_allocator;
 	alias allocator = GCAllocator.instance;

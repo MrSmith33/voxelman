@@ -134,7 +134,10 @@ struct ChunkedBuffer(T, size_t pageSize = 4096)
 
 			foreach(_; 0..numExtraChunks)
 			{
-				chunkBuffer.put(cast(T*)allocator.allocate(pageBytes).ptr);
+				void* ptr = allocator.allocate(pageBytes).ptr;
+				chunkBuffer.put(cast(T*)ptr);
+				import core.memory;
+				GC.addRange(ptr, pageBytes, typeid(T));
 			}
 		}
 	}

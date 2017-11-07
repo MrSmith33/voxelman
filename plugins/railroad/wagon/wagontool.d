@@ -41,6 +41,15 @@ final class WagonTool : ITool
 		name = "entity.wagon_tool";
 	}
 
+	override void onRender(GraphicsPlugin renderer) {
+		if (isRailHovered)
+		{
+			auto box = RailPos(worldInteraction.blockPos).toBlockBox;
+			renderer.debugBatch.putCube(vec3(box.position) - cursorOffset,
+				vec3(box.size) + cursorOffset, Colors.yellow, false);
+		}
+	}
+
 	override void onSecondaryActionRelease() {
 		if (isRailHovered) connection.send(CreateWagonPacket(RailPos(worldInteraction.blockPos)));
 	}
@@ -70,3 +79,15 @@ final class WagonTool : ITool
 		return false;
 	}
 }
+
+// (1) x² + y² = R²
+// (2) x = t(x₁-x₂) + x₂
+// (3) y = t(y₁-y₂) + y₂
+// We substitute (2) and (3) into (1) and get quadratic equation
+// t²((x₁-x₂)² + (y₁-y₂)²) + t2((y₁-y₂)y₂ + (x₁-x₂)x₂) + x₂ + y₂ - R² = 0
+// solve for t
+
+// a = (x1 - x2)^2 + (y1 - y2)^2;
+// b = 2 * ((y1-y2)*y2 + (x1-x2)*x2);
+// c = x^2 + y^2 - R^2;
+// d = b*b - 4*a*c;

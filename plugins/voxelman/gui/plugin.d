@@ -49,7 +49,7 @@ public:
 	{
 		auto keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
 		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_Q, "key.lockMouse", null, &onLockMouse));
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F9, "key.lockMouse", null, (s){isGuiDebuggerShown.toggle_bool;}));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_F9, "key.toggle_gui_dbg", null, (s){isGuiDebuggerShown.toggle_bool;}));
 		auto res = resmanRegistry.getResourceManager!GraphicsResources;
 		guictx = res.guictx;
 	}
@@ -198,12 +198,12 @@ public:
 
 		auto model = new WidgetTreeModel;
 		auto tree_frame = Frame.create(guictx.getRoot(1));
-		tree_frame.minSize(250, 500).pos(300, 10).makeDraggable.moveToTop.visible_if(() => isGuiDebuggerShown);
+		tree_frame.minSize(250, 400).pos(10, 10).makeDraggable.moveToTop.visible_if(() => isGuiDebuggerShown);
 		tree_frame.container.setVLayout(2, padding4(2));
 		tree_frame.header.setHLayout(2, padding4(4), Alignment.center);
 		tree_frame.header.createIcon("tree", ivec2(16, 16), Colors.black);
 		tree_frame.header.createText("Widget tree");
-		auto widget_tree = ColumnListLogic.create(tree_frame.container, model).minSize(250, 400).hvexpand;
+		auto widget_tree = ColumnListLogic.create(tree_frame.container, model).minSize(250, 300).hvexpand;
 
 		void refillTree()
 		{

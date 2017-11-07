@@ -88,8 +88,12 @@ struct WagonLogicServer
 	void handleCreateWagonPacket(ubyte[] packetData, SessionId sessionId)
 	{
 		auto packet = unpackPacket!CreateWagonPacket(packetData);
+		createWagon(packet.pos);
+	}
 
-		auto rail = packet.pos in railGraph.rails;
+	void createWagon(RailPos pos)
+	{
+		auto rail = pos in railGraph.rails;
 
 		if (rail && !rail.empty)
 		{
@@ -100,11 +104,19 @@ struct WagonLogicServer
 			}
 
 			EntityId eid = eman.eidMan.nextEntityId;
-			infof("create wagon %s at %s", eid, packet.pos);
-			auto wagon = WagonServerComponent(packet.pos, segment);
+			infof("create wagon %s at %s", eid, pos);
+			auto wagon = WagonServerComponent(pos, segment);
 			eman.set(eid, wagon);
 			entityPlugin.entityObserverManager.addEntity(eid, wagon.chunk);
 		}
+	}
+
+	void removeWagons()
+	{
+		foreach(EntityId eid; eman.getComponentStorage!WagonServerComponent.byKey)
+			entityPlugin.entityObserverManager.removeEntity(eid);
+
+		eman.getComponentStorage!WagonServerComponent.removeAll;
 	}
 
 	void process(ref ProcessComponentsEvent event)

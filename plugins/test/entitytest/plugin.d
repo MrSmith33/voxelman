@@ -81,10 +81,7 @@ mixin template EntityTestPluginClient()
 				}
 
 				override void onUpdate() {
-					if (!worldInteraction.cameraInSolidBlock)
-					{
-						worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.green);
-					}
+					worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.green);
 				}
 			}
 		);

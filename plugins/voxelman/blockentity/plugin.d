@@ -100,10 +100,7 @@ final class BlockEntityClient : IPlugin {
 					graphics.debugBatch.putCube(vec3(selection.position) - cursorOffset,
 						vec3(selection.size) + cursorOffset, Colors.blue, false);
 				} else {
-					if (!worldInteraction.cameraInSolidBlock)
-					{
-						worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
-					}
+					worldInteraction.drawCursor(worldInteraction.sideBlockPos, Colors.blue);
 				}
 			}
 		};

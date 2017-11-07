@@ -18,6 +18,7 @@ mixin template HashTablePart(KeyBucketT, bool store_values)
 	version(DEBUG_TRACE) void* debugId;
 
 	alias allocator = Alloc.instance;
+	enum USES_GC = is(Alloc == GCAllocator);
 
 	static if (store_values)
 	{
@@ -88,6 +89,8 @@ mixin template HashTablePart(KeyBucketT, bool store_values)
 		auto index = getHash(key) & (capacity - 1);
 		version(DEBUG_TRACE) tracef("[%s] find %s at %s cap %s len %s", debugId, key, index, capacity, length);
 		while (true) {
+			//assert(!keyBuckets[index].corrupted);
+
 			if (keyBuckets[index].key == key && keyBuckets[index].used)
 			{
 				version(DEBUG_TRACE) tracef("* U @%s key %s", index, keyBuckets[index].key);
@@ -157,6 +160,12 @@ mixin template HashTablePart(KeyBucketT, bool store_values)
 			void[] array = allocator.allocate(Bucket_size * newCapacity);
 			setStorageArray(array, newCapacity);
 			keyBuckets[0..newCapacity] = KeyBucketT.init;
+
+			static if (store_values && USES_GC)
+			{
+				import core.memory;
+				GC.addRange(values, capacity * Value.sizeof, typeid(Value));
+			}
 
 			version(DEBUG_TRACE) tracef("[%s] resize from %s to %s, len %s", debugId, oldCapacity, newCapacity, length);
 			foreach (i, ref bucket; oldKeyBuckets[0..oldCapacity])
@@ -363,15 +372,15 @@ mixin template HashMapImpl()
 		foreach (index, bucket; keyBuckets[0..capacity])
 		{
 			if (bucket.empty)
-				writefln("E %s %s", bucket.key, values[index]);
+				tracef("E %s %s", bucket.key, values[index]);
 			else if (bucket.used) {
 				++totalUsed;
-				writefln("U %s %s", bucket.key, values[index]);
+				tracef("U %s %s", bucket.key, values[index]);
 			}
 			else if (bucket.deleted)
-				writefln("D %s %s", bucket.key, values[index]);
+				tracef("D %s %s", bucket.key, values[index]);
 		}
-		writefln("totalUsed %s length %s capacity %s", totalUsed, length, capacity);
+		tracef("totalUsed %s length %s capacity %s", totalUsed, length, capacity);
 	}
 
 	void toString()(scope void delegate(const(char)[]) sink)
@@ -447,5 +456,25 @@ mixin template HashSetImpl()
 			sink.formattedWrite("%s, ", key);
 		}
 		sink.formattedWrite("]");
+	}
+
+	void dumpBuckets() {
+		tracef("Buckets %s %s", cast(void*)keyBuckets, keyBuckets[0..capacity]);
+	}
+
+	void printBuckets() {
+		size_t totalUsed;
+		foreach (bucket; keyBuckets[0..capacity])
+		{
+			if (bucket.empty)
+				tracef("E %s", bucket.key);
+			else if (bucket.used) {
+				++totalUsed;
+				tracef("U %s", bucket.key);
+			}
+			else if (bucket.deleted)
+				tracef("D %s", bucket.key);
+		}
+		tracef("totalUsed %s length %s capacity %s", totalUsed, length, capacity);
 	}
 }

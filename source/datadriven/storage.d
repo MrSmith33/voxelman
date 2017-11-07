@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module datadriven.storage;
 
 import datadriven.api;
+import voxelman.log;
 import voxelman.container.buffer;
 import voxelman.container.hash.map;
 import voxelman.container.hash.set;
@@ -44,6 +45,10 @@ struct HashmapComponentStorage(_ComponentType)
 	ComponentType* getOrCreate(EntityId eid, ComponentType defVal = ComponentType.init)
 	{
 		return components.getOrCreate(eid, defVal);
+	}
+
+	auto byKey() {
+		return components.byKey;
 	}
 
 	int opApply(scope int delegate(in EntityId, ref ComponentType) del) {

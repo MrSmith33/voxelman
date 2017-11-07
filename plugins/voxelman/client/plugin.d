@@ -238,12 +238,12 @@ public:
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		import std.compiler;
-		static if (version_minor >= 72)
-		{
-			import core.memory;
-			dbg.logVar("GC used", core.memory.GC.stats().usedSize, 128);
-			dbg.logVar("GC free", core.memory.GC.stats().freeSize, 128);
-		}
+		//static if (version_minor >= 72)
+		//{
+		//	import core.memory;
+		//	dbg.logVar("GC used", core.memory.GC.stats().usedSize, 128);
+		//	dbg.logVar("GC free", core.memory.GC.stats().freeSize, 128);
+		//}
 
 		dbg.logVar("delta, ms", delta*1000.0, 256);
 

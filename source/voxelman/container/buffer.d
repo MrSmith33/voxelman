@@ -61,10 +61,13 @@ struct Buffer(T)
 	{
 		if (buf.length - length < items)
 		{
+			import core.memory;
+			GC.removeRange(buf.ptr);
 			size_t newCapacity = nextPOT(buf.length + items);
 			void[] tmp = buf;
 			allocator.reallocate(tmp, newCapacity*T.sizeof);
 			buf = cast(T[])tmp;
+			GC.addRange(buf.ptr, buf.length * T.sizeof, typeid(T));
 		}
 	}
 

@@ -455,6 +455,7 @@ mixin("0b"~
 "00000000"~
 "00000000")];
 
+// Rail tile can have a number of these. I.e. straight, diagonal rails are segments.
 struct SegmentInfo
 {
 	// Sides of rail tile that this segment connects to

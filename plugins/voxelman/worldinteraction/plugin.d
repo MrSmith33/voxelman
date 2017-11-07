@@ -8,7 +8,7 @@ module voxelman.worldinteraction.plugin;
 
 import voxelman.log;
 import core.time;
-import std.datetime : StopWatch;
+import std.datetime : MonoTime, Duration;
 
 import pluginlib;
 import voxelman.math;
@@ -89,8 +89,7 @@ class WorldInteractionPlugin : IPlugin
 
 	void traceCursor()
 	{
-		StopWatch sw;
-		sw.start();
+		MonoTime startTime = MonoTime.currTime;
 
 		traceBatch.reset();
 
@@ -114,7 +113,7 @@ class WorldInteractionPlugin : IPlugin
 
 		blockPos = BlockWorldPos(hitPosition, clientWorld.currentDimension);
 		sideBlockPos = BlockWorldPos(blockPos.xyz + hitNormal, clientWorld.currentDimension);
-		cursorTraceTime = cast(Duration)sw.peek;
+		cursorTraceTime = MonoTime.currTime - startTime;
 	}
 
 	void drawDebugCursor()
@@ -128,9 +127,12 @@ class WorldInteractionPlugin : IPlugin
 
 	void drawCursor(BlockWorldPos block, Color4ub color)
 	{
-		graphics.debugBatch.putCube(
-			vec3(block.xyz) - cursorOffset,
-			cursorSize, color, false);
+		if (!cameraInSolidBlock && cursorHit)
+		{
+			graphics.debugBatch.putCube(
+				vec3(block.xyz) - cursorOffset,
+				cursorSize, color, false);
+		}
 	}
 
 	void drawDebug(ref RenderSolid3dEvent event)
