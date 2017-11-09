@@ -217,9 +217,6 @@ public:
 		checkgl!glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		renderer.depthTest(true);
 
-		draw(debugBatch);
-		debugBatch.reset();
-
 		// 3d solid
 		evDispatcher.postEvent(RenderSolid3dEvent(renderer));
 
@@ -237,6 +234,9 @@ public:
 		drawBuffer(transparentBuffer.data, GL_TRIANGLES);
 		transparentShader3d.unbind;
 		transparentBuffer.clear();
+
+		draw(debugBatch);
+		debugBatch.reset();
 
 		evDispatcher.postEvent(Render2Event(renderer));
 

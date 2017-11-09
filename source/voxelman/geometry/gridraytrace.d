@@ -158,6 +158,7 @@ bool traceRay(
 
 		static if (drawDebug)
 		{
+			import voxelman.graphics.color;
 			batch.putLine(prevPos, startingPosition + rayDirection*t,
 				colorsArray[sideFromNormal(hitNormal)+2]);
 			prevPos = startingPosition + rayDirection*t;

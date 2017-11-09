@@ -94,7 +94,7 @@ final class RailroadPluginClient : IPlugin
 			connection, worldInteraction);
 
 		auto wagonTool = new WagonTool(clientWorld, blockEntityManager,
-			connection, worldInteraction);
+			connection, worldInteraction, graphics);
 
 		auto editPlugin = pluginman.getPlugin!EditPlugin;
 		editPlugin.registerTool(railTool);

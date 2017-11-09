@@ -12,7 +12,7 @@ import voxelman.world.blockentity.blockentitydata;
 import voxelman.world.blockentity.blockentityaccess;
 import voxelman.world.blockentity.utils;
 import voxelman.world.storage;
-import voxelman.world.mesh.utils : FaceSide;
+import voxelman.world.mesh.utils : FaceSide, oppFaceSides;
 
 enum RAIL_TILE_SIZE = 8;
 immutable ivec3 railSizeVector = ivec3(RAIL_TILE_SIZE, 1, RAIL_TILE_SIZE);
@@ -189,6 +189,7 @@ struct RailData
 		return SegmentRange(data);
 	}
 
+	// returns segments that connect to the side
 	SegmentBuffer getSegmentsFromSide(FaceSide side)
 	{
 		SegmentBuffer result;
@@ -196,6 +197,25 @@ struct RailData
 		{
 			if (segmentInfos[segment].sideConnections[side])
 				result.put(segment);
+		}
+		return result;
+	}
+
+	// returns segments that connect to the side
+	// and create smooth curve with adjacent segment
+	// adjacent segment is guaranteed to be connected to the side
+	SegmentBuffer getSegmentsFromSideSmooth(FaceSide side, RailSegment adjacent)
+	{
+		assert(segmentInfos[adjacent].sideConnections[oppFaceSides[side]],
+			"Adjacent segment must be connected to the side");
+		SegmentBuffer result;
+		foreach(RailSegment segment; getSegments)
+		{
+			if (segmentInfos[segment].sideConnections[side])
+			{
+				// TODO
+				result.put(segment);
+			}
 		}
 		return result;
 	}
@@ -262,10 +282,16 @@ struct SegmentRange
 	this(ubyte _data)
 	{
 		data = _data;
-		assert(data != 0);
 	}
 
 	private ubyte data;
+
+	int opApply(scope int delegate(size_t, RailSegment) del)
+	{
+		size_t index;
+		int proxyDel(RailSegment segment) { return del(index++, segment); }
+		return opApply(&proxyDel);
+	}
 
 	int opApply(scope int delegate(RailSegment) del)
 	{
@@ -275,7 +301,7 @@ struct SegmentRange
 			if (auto ret = del(cast(RailSegment)segment))
 				return ret;
 		}
-		else
+		else if (data != 0)
 		{
 			import core.bitop : bsf;
 
@@ -462,6 +488,8 @@ struct SegmentInfo
 	// 0 zneg, 1 xneg, 2 zpos, 3 xpos
 	FaceSide[2] sides;
 	bool[4] sideConnections;
+	// 0 - first connection (item at sides[0]), 1 - second connection (item at sides[1]). Non-connected sides also use 0.
+	// Only indicies stated in 'sides' are relevant
 	ubyte[4] sideIndicies;
 }
 
@@ -473,7 +501,7 @@ vec3[] railTileConnectionPoints = [
 	vec3(8, 0.5, 4),
 ];
 
-SegmentInfo[] segmentInfos = [
+SegmentInfo[10] segmentInfos = [
 	{cast(FaceSide[2])[0, 2], [true,  false, true,  false], [0, 0, 1, 0]}, // zneg,
 	{cast(FaceSide[2])[1, 3], [false, true,  false, true ], [0, 0, 0, 1]}, // xpos,
 
@@ -486,6 +514,19 @@ SegmentInfo[] segmentInfos = [
 	{cast(FaceSide[2])[1, 3], [false, true,  false, false], [0, 0, 0, 0]}, // xnegUp,
 	{cast(FaceSide[2])[2, 0], [false, false, true,  false], [0, 0, 0, 0]}, // zposUp,
 	{cast(FaceSide[2])[3, 1], [false, false, false, true ], [0, 0, 0, 0]}, // xposUp,
+];
+
+struct SmoothConnections
+{
+	ushort data;
+	bool isSmoothWith(RailSegment segment)
+	{
+		return true; // TODO
+	}
+}
+
+// Table which gives info on valid transitions between segments for wagons
+SmoothConnections[] segmentSmoothConnectionTbl = [
 ];
 
 

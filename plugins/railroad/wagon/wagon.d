@@ -70,6 +70,35 @@ struct WagonServerComponent
 	}
 }
 
+struct WagonPos
+{
+	RailPos railTilePos;
+	RailSegment currentSegment;
+
+	// 0 or 1
+	// 0 - from point 1 to point 0
+	// 1 - from point 0 to point 1
+	ubyte targetConnection;
+
+	float segmentPos = 0; // [0; segmentLength]
+
+	vec3 dimPosition()
+	{
+		// [0; 1]
+		float curSegmentProgress = segmentPos / segmentLengths[currentSegment];
+
+		auto sides = segmentInfos[currentSegment].sides;
+		FaceSide startSide = sides[1 - targetConnection];
+		FaceSide endSide = sides[targetConnection];
+
+		vec3 startPoint = railTileConnectionPoints[startSide];
+		vec3 endPoint = railTileConnectionPoints[endSide];
+		vec3 wagonTilePos = lerp(startPoint, endPoint, curSegmentProgress);
+		vec3 wagonDimPos = vec3(railTilePos.toBlockWorldPos.xyz) + wagonTilePos;
+		return wagonDimPos;
+	}
+}
+
 struct WagonLogicServer
 {
 	import datadriven;

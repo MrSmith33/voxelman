@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.math;
 
 public import std.algorithm : clamp, min, max, swap;
-public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt;
+public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt, PI, cos, sin;
 
 public import gfm.integers.half;
 
