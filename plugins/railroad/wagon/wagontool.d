@@ -82,14 +82,9 @@ final class WagonTool : ITool
 		foreach(adjSegment0; adjacentData0.getSegments)
 		if (segmentInfos[adjSegment0].sideConnections[connectedViaSide0])
 		{
-			RailPos adjacentPos0 = railPos.posInDirection(sides[0]);
-			FaceSide connectedViaSide0 = oppFaceSides[sides[0]];
-
 			foreach(adjSegment1; adjacentData1.getSegments)
 			if (segmentInfos[adjSegment1].sideConnections[connectedViaSide1])
 			{
-				RailPos adjacentPos1 = railPos.posInDirection(sides[1]);
-				FaceSide connectedViaSide1 = oppFaceSides[sides[1]];
 				// here we have a pair of segments connected to main segment
 				WagonPos[2] positions = createWagonPlacement(
 					segment,
@@ -144,6 +139,14 @@ final class WagonTool : ITool
 		}
 	}
 
+	float point_time_on_line_segment(vec3 a, vec3 b, vec3 p)
+	{
+		vec3 AB = b - a;
+		float AB_squared = dot(AB, AB);
+		if(AB_squared == 0) return 0;
+		else return dot(p - a, AB) / AB_squared;
+	}
+
 	vec3 pointSize = vec3(0.5f,0.5f,0.5f);
 	vec3 pointOffset = vec3(0.25f,0.25f,0.25f);
 
@@ -194,17 +197,29 @@ final class WagonTool : ITool
 	}
 
 	// Assumes non-empty rail
+	// Virtual wagon is placed at user's cursor position and has 'wagonRotation' rotation.
+	// The goal is to find positions of wagon's ends to be placed.
+	// Algorithm:
+	// 1. For hovered rail tile find closest segment
+	// 2. For best candidate, for each end calc:
+	//    - position and rail (vec3, RailPos, RailSegment, side of tile and segment end index)
+	//    - error (diff between end's position and virtual wagon position)
+	// 3. Iteratively try to build wagon placement closest to virtual wagon
+	// 3.1. If we hit the end of segment when placing one of the ends,
+	//      look into attached segments, replacing current selected segment with closer one
+	//      Repeat until we can place two ends
 	void findWagonPlacement()
 	{
 		assert(!data.empty);
 
 		vec3 railWorldPos = vec3(railPos.toBlockWorldPos.xyz);
-		vec3 pointC = vec3(worldInteraction.hitPosition - railPos.toBlockWorldPos.xyz);
+		// wagon center
+		vec3 wagonC = vec3(worldInteraction.hitPosition);
 
 		vec3 vertOff = vec3(0,1,0);
 		vec3 wagonVector = vec3(cos(wagonRotation), 0, sin(wagonRotation));
-		vec3 wagonA = railWorldPos + vertOff + pointC - wagonVector * wagonAxisDistance/2;
-		vec3 wagonB = railWorldPos + vertOff + pointC + wagonVector * wagonAxisDistance/2;
+		vec3 wagonA = vertOff + wagonC - wagonVector * wagonAxisDistance/2;
+		vec3 wagonB = vertOff + wagonC + wagonVector * wagonAxisDistance/2;
 		vec3[2] wagonPoints = [wagonA-vertOff, wagonB-vertOff];
 		graphics.debugText.putfln(" wagA %s wagB %s", wagonPoints[0], wagonPoints[1]);
 
@@ -214,14 +229,15 @@ final class WagonTool : ITool
 		graphics.debugBatch.putCube(wagonB-pointOffset, pointSize, Color4ub(0,0,0,64), true);
 		graphics.debugText.putfln("wagon rotation %.1f", radtodeg(wagonRotation));
 
-		vec3[2] resultPos;// = railWorldPos + railTileConnectionPoints[sidesC[0]];
+		vec3[2] resultPos;
 		RailPos[2] resultRail = [railPos, railPos];
 		RailSegment[2] resultSegment;
-		ubyte[2] resultOuterIndex;
+		FaceSide[2] resultSides;
+		size_t[2] resultOuterIndex;
 
 		// errors say how far is calculated position to the given one
 		float segmentError = float.infinity;
-		//float[2] errors;
+		float[2] errors;
 
 		// Find best central segment
 		foreach(i, segment; data.getSegments)
@@ -233,14 +249,27 @@ final class WagonTool : ITool
 			//graphics.debugText.putfln(" railA %s railB %s", railA, railB);
 
 			float errorAA = distancesqr(railA, wagonPoints[0]);
-			float errorAB = distancesqr(railA, wagonPoints[1]);
 			float errorBB = distancesqr(railB, wagonPoints[1]);
+
+			float errorAB = distancesqr(railA, wagonPoints[1]);
 			float errorBA = distancesqr(railB, wagonPoints[0]);
+
+			float[2] newErrors;
+			float newError;
 
 			float error0 = errorAA + errorBB;
 			float error1 = errorAB + errorBA;
 
-			float newError = min(error0, error1);
+			if (error0 < error1)
+			{
+				newError = error0;
+				newErrors = [errorAA, errorBB];
+			}
+			else
+			{
+				newError = error1;
+				newErrors = [errorAB, errorBA];
+			}
 
 			//graphics.debugText.putfln(" AA %s AB %s BB %s BA %s", errorAA, errorAB, errorBB, errorBA);
 			//graphics.debugText.putfln(" error of %s is %.1f", segment, newError);
@@ -249,8 +278,10 @@ final class WagonTool : ITool
 			{
 				resultPos[idx0] = railA;
 				resultPos[idx1] = railB;
-				//errors[idx0] = error0;
-				//errors[idx1] = error1;
+				resultSides[idx0] = sides[0];
+				resultSides[idx1] = sides[1];
+				errors[idx0] = newErrors[0];
+				errors[idx1] = newErrors[1];
 				segmentError = newError;
 				resultOuterIndex[idx0] = 0;
 				resultOuterIndex[idx1] = 1;
@@ -262,6 +293,91 @@ final class WagonTool : ITool
 				if (error0 < error1) setSegment(0, 1);
 				else setSegment(1, 0);
 			}
+		}
+
+		immutable float wagonLenSqr = wagonAxisDistance * wagonAxisDistance;
+
+		// Returns true if extension was successfull
+		// Returns false otherwise (i.e. no rail in given direction)
+		bool extendRails(size_t nextIdx)
+		{
+			RailPos adjacentPos = resultRail[nextIdx].posInDirection(resultSides[nextIdx]);
+			RailData adjacentData = railAt(adjacentPos);
+			FaceSide connectedViaSide = oppFaceSides[resultSides[nextIdx]];
+			vec3 adjRailWorldPos = vec3(adjacentPos.toBlockWorldPos.xyz);
+			graphics.debugText.putfln(" - extend in %s", resultSides[nextIdx]);
+
+			float pointError = float.infinity;
+
+			bool success = false;
+
+			// TODO smooth connection checking
+			foreach(adjSegment; adjacentData.getSegments)
+			if (segmentInfos[adjSegment].sideConnections[connectedViaSide])
+			{
+				size_t innerIndex = segmentInfos[adjSegment].sideIndicies[connectedViaSide];
+				size_t outerIndex = 1 - innerIndex;
+				FaceSide[2] sides = segmentInfos[adjSegment].sides;
+				vec3 railInnerEnd = adjRailWorldPos + railTileConnectionPoints[sides[innerIndex]]-vec3(0f,0.5f,0f);
+				vec3 railOuterEnd = adjRailWorldPos + railTileConnectionPoints[sides[outerIndex]]-vec3(0f,0.5f,0f);
+				vec3 closestPoint = project_point_to_line_segment(railInnerEnd, railOuterEnd, wagonPoints[nextIdx]);
+				float endError = distancesqr(closestPoint, wagonPoints[nextIdx]);
+
+				void setPoint()
+				{
+					// set attributes of outer end of the rail
+					resultOuterIndex[nextIdx] = outerIndex;
+					graphics.debugText.putfln("   - set side %s", outerIndex);
+					resultPos[nextIdx] = railOuterEnd;
+					resultSides[nextIdx] = sides[outerIndex];
+					segmentError = errors[1-nextIdx] + endError;
+					errors[nextIdx] = endError;
+					pointError = endError;
+					resultSegment[nextIdx] = adjSegment;
+					success = true;
+				}
+
+				if (endError < pointError) setPoint();
+			}
+
+			graphics.debugText.putfln(" - success %s", success);
+
+			return success;
+		}
+
+		// Reports true when wagon position is found
+		// Otherwise a new segment needs to be attached to one of the ends
+		bool tryPlaceWagon()
+		{
+			// Can potentially place
+			if (wagonLenSqr <= distancesqr(resultPos[0], resultPos[1]))
+			{
+				graphics.debugText.putfln(" - place success %s <= %s", wagonLenSqr, distancesqr(resultPos[0], resultPos[1]));
+				// TODO precise placement
+				return true;
+			}
+			else
+			{
+				// Extend points to adjacent segments as nesessary
+				size_t nextIdx;
+				// fail, need more space
+				// extend in direction closer to wagon center
+				graphics.debugText.putfln(" - place fail");
+				if (distancesqr(wagonC, resultPos[0]) < distancesqr(wagonC, resultPos[1]))
+				{
+					if (!extendRails(0)) extendRails(1);
+				}
+				else
+				{
+					if (!extendRails(1)) extendRails(0);
+				}
+				return false;
+			}
+		}
+
+		size_t iters;
+		while(!tryPlaceWagon()) {
+			if (iters++ > 10) break;
 		}
 
 		// Best first segment
