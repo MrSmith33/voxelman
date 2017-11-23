@@ -425,12 +425,12 @@ struct Launcher
 
 	void readServers()
 	{
-		import std.regex : matchFirst, ctRegex;
+		import std.regex : matchFirst, regex;
 		if (!exists(serversFname)) return;
 		string serversData = cast(string)read(serversFname);
 		foreach(line; serversData.lineSplitter)
 		{
-			auto serverInfoStr = matchFirst(line, ctRegex!(`(?P<ip>[^:]*):(?P<port>\d{1,5})\s*(?P<name>.*)`, "s"));
+			auto serverInfoStr = matchFirst(line, regex(`(?P<ip>[^:]*):(?P<port>\d{1,5})\s*(?P<name>.*)`, "s"));
 			auto sinfo = new ServerInfo;
 			sinfo.ip = serverInfoStr["ip"].toCString;
 			sinfo.port = to!ushort(serverInfoStr["port"]);
@@ -681,14 +681,14 @@ void logPipes(Job* job)
 
 PluginInfo* readPluginInfo(string fileData)
 {
-	import std.regex : matchFirst, ctRegex;
+	import std.regex : matchFirst, regex;
 
 	auto pinfo = new PluginInfo;
 
-	auto idCapture = matchFirst(fileData, ctRegex!(`id\s*=\s*"(?P<id>[^"]*)"`, "s"));
+	auto idCapture = matchFirst(fileData, regex(`id\s*=\s*"(?P<id>[^"]*)"`, "s"));
 	pinfo.id = idCapture["id"].toCString;
 
-	auto semverCapture = matchFirst(fileData, ctRegex!(`semver\s*=\s*"(?P<semver>[^"]*)"`, "s"));
+	auto semverCapture = matchFirst(fileData, regex(`semver\s*=\s*"(?P<semver>[^"]*)"`, "s"));
 	pinfo.semver = semverCapture["semver"].toCString;
 
 	return pinfo;
@@ -697,7 +697,7 @@ PluginInfo* readPluginInfo(string fileData)
 PluginPack* readPluginPack(string fileData)
 {
 	import std.array : empty;
-	import std.regex : matchFirst, ctRegex;
+	import std.regex : matchFirst, regex;
 	import std.string : lineSplitter;
 
 	auto pack = new PluginPack;
@@ -705,7 +705,7 @@ PluginPack* readPluginPack(string fileData)
 	auto input = fileData.lineSplitter;
 
 	if (!input.empty) {
-		auto packInfo = matchFirst(input.front, ctRegex!(`(?P<id>.*) (?P<semver>.*)`, "m"));
+		auto packInfo = matchFirst(input.front, regex(`(?P<id>.*) (?P<semver>.*)`, "m"));
 		pack.id = packInfo["id"].toCString;
 		pack.semver = packInfo["semver"].toCString;
 		input.popFront;
@@ -716,7 +716,7 @@ PluginPack* readPluginPack(string fileData)
 		if (line.empty)
 			continue;
 
-		auto pluginInfo = matchFirst(line, ctRegex!(`(?P<id>.*) (?P<semver>.*)`, "m"));
+		auto pluginInfo = matchFirst(line, regex(`(?P<id>.*) (?P<semver>.*)`, "m"));
 		auto pinfo = new PluginInfo;
 		pinfo.id = pluginInfo["id"].toCString;
 		pinfo.semver = pluginInfo["semver"].toCString;

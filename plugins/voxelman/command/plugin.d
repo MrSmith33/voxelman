@@ -74,12 +74,12 @@ mixin template CommandPluginCommon()
 
 	ExecResult execute(const(char)[] input, SessionId source = SessionId(0))
 	{
-		import std.regex : ctRegex, splitter;
+		import std.regex : regex, splitter;
 		import std.string : strip;
 		import std.array : array;
 
 		string stripped = cast(string)input.strip;
-		string[] args = splitter(stripped, ctRegex!`\s+`).array;
+		string[] args = splitter(stripped, regex(`\s+`)).array;
 
 		if (args.length == 0)
 			return ExecResult(args, ExecStatus.notRegistered);

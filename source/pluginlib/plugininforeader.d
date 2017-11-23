@@ -64,14 +64,14 @@ struct PluginPack
 
 PluginInfo* readPluginInfo(string fileData)
 {
-	import std.regex : matchFirst, ctRegex;
+	import std.regex : matchFirst, regex;
 
 	auto pinfo = new PluginInfo;
 
-	auto idCapture = matchFirst(fileData, ctRegex!(`id\s*=\s*"(?P<id>[^"]*)"`, "s"));
+	auto idCapture = matchFirst(fileData, regex(`id\s*=\s*"(?P<id>[^"]*)"`, "s"));
 	pinfo.id = idCapture["id"].idup;
 
-	auto semverCapture = matchFirst(fileData, ctRegex!(`semver\s*=\s*"(?P<semver>[^"]*)"`, "s"));
+	auto semverCapture = matchFirst(fileData, regex(`semver\s*=\s*"(?P<semver>[^"]*)"`, "s"));
 	pinfo.semver = semverCapture["semver"].idup;
 
 	return pinfo;
@@ -81,7 +81,7 @@ PluginPack* readPluginPack(string fileData)
 {
 	import std.algorithm : startsWith;
 	import std.array : empty;
-	import std.regex : matchFirst, ctRegex;
+	import std.regex : matchFirst, regex;
 	import std.string : lineSplitter;
 
 	auto pack = new PluginPack;
@@ -89,7 +89,7 @@ PluginPack* readPluginPack(string fileData)
 	auto input = fileData.lineSplitter;
 
 	if (!input.empty) {
-		auto packInfo = matchFirst(input.front, ctRegex!(`(?P<id>[^\s]*)\s+(?P<semver>.*)`, "m"));
+		auto packInfo = matchFirst(input.front, regex(`(?P<id>[^\s]*)\s+(?P<semver>.*)`, "m"));
 		pack.id = packInfo["id"].idup;
 		pack.semver = packInfo["semver"].idup;
 		input.popFront;
@@ -100,7 +100,7 @@ PluginPack* readPluginPack(string fileData)
 		if (line.empty || startsWith(line, "#"))
 			continue;
 
-		auto pluginInfo = matchFirst(line, ctRegex!(`(?P<id>[^\s]*)\s+(?P<semver>.*)`, "m"));
+		auto pluginInfo = matchFirst(line, regex(`(?P<id>[^\s]*)\s+(?P<semver>.*)`, "m"));
 		auto pinfo = new PluginInfo;
 		pinfo.id = pluginInfo["id"].idup;
 		pinfo.semver = pluginInfo["semver"].idup;

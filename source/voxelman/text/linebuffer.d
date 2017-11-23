@@ -23,12 +23,12 @@ struct LineBuffer
 
 	void put(in char[] str)
 	{
-		import std.regex : ctRegex, splitter;
+		import std.regex : regex, splitter;
 		import std.algorithm : map;
 		import std.range;
 
 		if (str.empty) return;
-		auto splittedLines = splitter(str, ctRegex!"(\r\n|\r|\n|\v|\f)");
+		auto splittedLines = splitter(str, regex("(\r\n|\r|\n|\v|\f)"));
 
 		foreach(first; splittedLines.takeOne())
 		{

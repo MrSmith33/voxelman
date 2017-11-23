@@ -101,7 +101,6 @@ struct LineInfoBuffer
 
 	int calc(R)(R text)
 	{
-		import std.regex : ctRegex, splitter;
 		import std.algorithm : map;
 		import std.range;
 		import std.string;

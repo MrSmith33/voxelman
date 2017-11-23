@@ -45,6 +45,23 @@ void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color4ub color)
 	}
 }
 
+void putFilledBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, vec3 off,
+	Quaternionf rotation, Color4ub color)
+{
+	output.reserve(6 * 6); // 6 faces, 6 points per edge
+
+	for (size_t i = 0; i!=18*6; i+=3)
+	{
+		vec3 point = rotation.rotate((vec3(cubeFaces[i], cubeFaces[i+1], cubeFaces[i+2]) + off) * size) + pos;
+		auto v = V(
+			point.x,
+			point.y,
+			point.z,
+			color);
+		output.put(v);
+	}
+}
+
 void putLineBlock(V)(ref Buffer!V output, vec3 pos, vec3 size, Color4ub color)
 {
 	output.reserve(12 * 2); // 12 edges, 2 points per edge

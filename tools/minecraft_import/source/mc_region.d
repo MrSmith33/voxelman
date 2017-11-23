@@ -111,13 +111,13 @@ struct McRegion
 
 	void parseRegionFilename(string regionFile)
 	{
-		import std.regex : matchFirst, ctRegex;
+		import std.regex : matchFirst, regex;
 		import std.conv : to;
 		enum regionPattern = `r\.([-]?[0-9]+)\.([-]?[0-9]+)`;
 
 		path = regionFile;
 		string name = regionFile.baseName.stripExtension;
-		auto c = matchFirst(name, ctRegex!(regionPattern, "m"));
+		auto c = matchFirst(name, regex(regionPattern, "m"));
 		x = to!int(c[1]);
 		z = to!int(c[2]);
 	}

@@ -62,13 +62,13 @@ final class RemoteControl(bool clientSide) : IPlugin
 		auto size = stdin.size;
 		if (size > 0 && size != ulong.max)
 		{
-			import std.regex : ctRegex, splitter;
+			import std.regex : regex, splitter;
 			import std.algorithm : min;
 			import std.array : array;
 
 			size_t charsToRead = min(size, buf.length);
 			char[] data = stdin.rawRead(buf[0..charsToRead]);
-			auto splittedLines = splitter(data, ctRegex!"(\r\n|\r|\n|\v|\f)").array;
+			auto splittedLines = splitter(data, regex("(\r\n|\r|\n|\v|\f)")).array;
 
 			while (splittedLines.length > 1)
 			{

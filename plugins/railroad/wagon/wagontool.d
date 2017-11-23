@@ -5,6 +5,7 @@ Authors: Andrey Penechko.
 */
 module railroad.wagon.wagontool;
 
+import dlib.geometry.plane;
 import voxelman.log;
 import voxelman.math;
 
@@ -38,6 +39,7 @@ final class WagonTool : ITool
 	RailData data;
 	RailPos railPos;
 	bool placeAllowed;
+	vec3 preciseHitPos;
 
 	float wagonAxisDistance = 12;
 	float wagonRotation = 0;
@@ -56,6 +58,13 @@ final class WagonTool : ITool
 
 	override void onUpdate()
 	{
+		auto plane = Plane(vec3(0,1,0), worldInteraction.hitPosition.y);
+		vec3 camPos = worldInteraction.cameraPos;
+		plane.intersectsLine(camPos, camPos+worldInteraction.cameraTraget, preciseHitPos);
+		preciseHitPos.y = worldInteraction.hitPosition.y;
+		graphics.debugText.putfln("hit %s", worldInteraction.hitPosition);
+		graphics.debugText.putfln("precise hit %s", preciseHitPos);
+
 		railPos = RailPos(worldInteraction.blockPos);
 		data = railAt(railPos);
 	}
@@ -64,36 +73,6 @@ final class WagonTool : ITool
 	{
 		ushort targetEntityId = blockEntityManager.getId("rail");
 		return getRailAt(pos, targetEntityId, clientWorld.worldAccess, clientWorld.entityAccess);
-	}
-
-	// Uses current railPos
-	WagonPos[2] iteratePairs(RailSegment segment)
-	{
-		FaceSide[2] sides = segmentInfos[segment].sides;
-
-		RailPos adjacentPos0 = railPos.posInDirection(sides[0]);
-		RailData adjacentData0 = railAt(adjacentPos0);
-		FaceSide connectedViaSide0 = oppFaceSides[sides[0]];
-
-		RailPos adjacentPos1 = railPos.posInDirection(sides[1]);
-		RailData adjacentData1 = railAt(adjacentPos1);
-		FaceSide connectedViaSide1 = oppFaceSides[sides[1]];
-
-		foreach(adjSegment0; adjacentData0.getSegments)
-		if (segmentInfos[adjSegment0].sideConnections[connectedViaSide0])
-		{
-			foreach(adjSegment1; adjacentData1.getSegments)
-			if (segmentInfos[adjSegment1].sideConnections[connectedViaSide1])
-			{
-				// here we have a pair of segments connected to main segment
-				WagonPos[2] positions = createWagonPlacement(
-					segment,
-					adjSegment0, connectedViaSide0,
-					adjSegment1, connectedViaSide1);
-				return positions;
-			}
-		}
-		return (WagonPos[2]).init;
 	}
 
 	// returns q the closest point to p on the line segment from a to b
@@ -150,52 +129,6 @@ final class WagonTool : ITool
 	vec3 pointSize = vec3(0.5f,0.5f,0.5f);
 	vec3 pointOffset = vec3(0.25f,0.25f,0.25f);
 
-	WagonPos[2] createWagonPlacement(
-		RailSegment segmentC,
-		RailSegment segment0, FaceSide connectedViaSide0,
-		RailSegment segment1, FaceSide connectedViaSide1)
-	{
-		if (segmentC == segment0 && segment0 == segment1 &&
-			(segment0 == RailSegment.zneg || segment0 == RailSegment.xpos))
-		{
-			// if all are straight rails
-			vec3 railWorldPos = vec3(railPos.toBlockWorldPos.xyz);
-
-			FaceSide[2] sides = segmentInfos[segmentC].sides;
-			vec3 pointA = railTileConnectionPoints[sides[0]];
-			vec3 pointB = railTileConnectionPoints[sides[1]];
-			vec3 pointC = vec3(worldInteraction.hitPosition);
-			vec3 cursorOnCenterRail = project_point_to_line_segment(pointA, pointB, pointC-railWorldPos);
-
-			vec3 railVector = pointB - pointA;
-			railVector.normalize;
-			vec3 wagonA = railWorldPos + vec3(0,1,0) + cursorOnCenterRail - railVector * wagonAxisDistance/2;
-			vec3 wagonB = railWorldPos + vec3(0,1,0) + cursorOnCenterRail + railVector * wagonAxisDistance/2;
-
-			//graphics.debugText.putfln("wagon %s");
-
-			graphics.debugBatch.putLine(wagonA, wagonB, Colors.black);
-			graphics.debugBatch.putCube(wagonA-pointOffset, pointSize, Colors.black, true);
-			graphics.debugBatch.putCube(wagonB-pointOffset, pointSize, Colors.black, true);
-
-			return (WagonPos[2]).init;
-		}
-		else
-		{
-			FaceSide[2] sides = segmentInfos[segmentC].sides;
-			vec3 pointA = railTileConnectionPoints[sides[0]];
-			vec3 pointB = railTileConnectionPoints[sides[1]];
-			vec3 pointC = vec3(worldInteraction.hitPosition - railPos.toBlockWorldPos.xyz);
-			vec3 cursorOnSegment = project_point_to_line_segment(pointA, pointB, pointC);
-
-			//graphics.debugBatch.putCube(railWorldPos+cursorOnSegment-pointOffset, pointSize, Colors.red, true);
-
-
-		}
-
-		return (WagonPos[2]).init;
-	}
-
 	// Assumes non-empty rail
 	// Virtual wagon is placed at user's cursor position and has 'wagonRotation' rotation.
 	// The goal is to find positions of wagon's ends to be placed.
@@ -208,13 +141,13 @@ final class WagonTool : ITool
 	// 3.1. If we hit the end of segment when placing one of the ends,
 	//      look into attached segments, replacing current selected segment with closer one
 	//      Repeat until we can place two ends
-	void findWagonPlacement()
+	vec3[2] findWagonPlacement()
 	{
 		assert(!data.empty);
 
 		vec3 railWorldPos = vec3(railPos.toBlockWorldPos.xyz);
 		// wagon center
-		vec3 wagonC = vec3(worldInteraction.hitPosition);
+		vec3 wagonC = vec3(preciseHitPos);
 
 		vec3 vertOff = vec3(0,1,0);
 		vec3 wagonVector = vec3(cos(wagonRotation), 0, sin(wagonRotation));
@@ -230,10 +163,12 @@ final class WagonTool : ITool
 		graphics.debugText.putfln("wagon rotation %.1f", radtodeg(wagonRotation));
 
 		vec3[2] resultPos;
+		vec3[2] resultInnerPos;
 		RailPos[2] resultRail = [railPos, railPos];
 		RailSegment[2] resultSegment;
 		FaceSide[2] resultSides;
 		size_t[2] resultOuterIndex;
+		bool[2] canExtend = [true, true];
 
 		// errors say how far is calculated position to the given one
 		float segmentError = float.infinity;
@@ -278,6 +213,8 @@ final class WagonTool : ITool
 			{
 				resultPos[idx0] = railA;
 				resultPos[idx1] = railB;
+				resultInnerPos[idx0] = railB;
+				resultInnerPos[idx1] = railA;
 				resultSides[idx0] = sides[0];
 				resultSides[idx1] = sides[1];
 				errors[idx0] = newErrors[0];
@@ -305,7 +242,7 @@ final class WagonTool : ITool
 			RailData adjacentData = railAt(adjacentPos);
 			FaceSide connectedViaSide = oppFaceSides[resultSides[nextIdx]];
 			vec3 adjRailWorldPos = vec3(adjacentPos.toBlockWorldPos.xyz);
-			graphics.debugText.putfln(" - extend in %s", resultSides[nextIdx]);
+			graphics.debugText.putfln(" - extend %s in %s at %s", nextIdx, resultSides[nextIdx], adjacentPos);
 
 			float pointError = float.infinity;
 
@@ -313,34 +250,41 @@ final class WagonTool : ITool
 
 			// TODO smooth connection checking
 			foreach(adjSegment; adjacentData.getSegments)
-			if (segmentInfos[adjSegment].sideConnections[connectedViaSide])
 			{
-				size_t innerIndex = segmentInfos[adjSegment].sideIndicies[connectedViaSide];
-				size_t outerIndex = 1 - innerIndex;
-				FaceSide[2] sides = segmentInfos[adjSegment].sides;
-				vec3 railInnerEnd = adjRailWorldPos + railTileConnectionPoints[sides[innerIndex]]-vec3(0f,0.5f,0f);
-				vec3 railOuterEnd = adjRailWorldPos + railTileConnectionPoints[sides[outerIndex]]-vec3(0f,0.5f,0f);
-				vec3 closestPoint = project_point_to_line_segment(railInnerEnd, railOuterEnd, wagonPoints[nextIdx]);
-				float endError = distancesqr(closestPoint, wagonPoints[nextIdx]);
-
-				void setPoint()
+				graphics.debugText.putfln("   - segm side %s conn %s", adjSegment, segmentInfos[adjSegment].sideConnections[connectedViaSide]);
+				if (segmentInfos[adjSegment].sideConnections[connectedViaSide])
 				{
-					// set attributes of outer end of the rail
-					resultOuterIndex[nextIdx] = outerIndex;
-					graphics.debugText.putfln("   - set side %s", outerIndex);
-					resultPos[nextIdx] = railOuterEnd;
-					resultSides[nextIdx] = sides[outerIndex];
-					segmentError = errors[1-nextIdx] + endError;
-					errors[nextIdx] = endError;
-					pointError = endError;
-					resultSegment[nextIdx] = adjSegment;
-					success = true;
-				}
+					size_t innerIndex = segmentInfos[adjSegment].sideIndicies[connectedViaSide];
+					size_t outerIndex = 1 - innerIndex;
+					FaceSide[2] sides = segmentInfos[adjSegment].sides;
+					vec3 railInnerEnd = adjRailWorldPos + railTileConnectionPoints[sides[innerIndex]]-vec3(0f,0.5f,0f);
+					vec3 railOuterEnd = adjRailWorldPos + railTileConnectionPoints[sides[outerIndex]]-vec3(0f,0.5f,0f);
+					vec3 closestPoint = project_point_to_line_segment(railInnerEnd, railOuterEnd, wagonPoints[nextIdx]);
+					float endError = distancesqr(closestPoint, wagonPoints[nextIdx]);
 
-				if (endError < pointError) setPoint();
+					void setPoint()
+					{
+						// set attributes of outer end of the rail
+						resultOuterIndex[nextIdx] = outerIndex;
+						graphics.debugText.putfln("   - set side %s", outerIndex);
+						resultInnerPos[nextIdx] = resultPos[nextIdx];
+						resultPos[nextIdx] = railOuterEnd;
+						resultRail[nextIdx] = adjacentPos;
+						resultSides[nextIdx] = sides[outerIndex];
+						segmentError = errors[1-nextIdx] + endError;
+						errors[nextIdx] = endError;
+						pointError = endError;
+						resultSegment[nextIdx] = adjSegment;
+						success = true;
+					}
+
+					if (endError < pointError) setPoint();
+				}
 			}
 
 			graphics.debugText.putfln(" - success %s", success);
+
+			canExtend[nextIdx] = success;
 
 			return success;
 		}
@@ -353,7 +297,43 @@ final class WagonTool : ITool
 			if (wagonLenSqr <= distancesqr(resultPos[0], resultPos[1]))
 			{
 				graphics.debugText.putfln(" - place success %s <= %s", wagonLenSqr, distancesqr(resultPos[0], resultPos[1]));
-				// TODO precise placement
+
+				vec3 inner0 = resultInnerPos[0];
+				vec3 outer0 = resultPos[0];
+				vec3 inner1 = resultInnerPos[1];
+				vec3 outer1 = resultPos[1];
+
+				if (resultOuterIndex[0] == 0) swap(inner0, outer0);
+				if (resultOuterIndex[1] == 0) swap(inner1, outer1);
+
+				graphics.debugBatch.putCube(vertOff*1.5f + outer0-pointOffset, pointSize, Color4ub(0,100,100,255), true);
+				graphics.debugBatch.putCube(vertOff*1.5f + inner0-pointOffset, pointSize, Color4ub(0,200,200,255), true);
+				graphics.debugBatch.putCube(vertOff*2.5f + inner1-pointOffset, pointSize, Color4ub(100,100,0,255), true);
+				graphics.debugBatch.putCube(vertOff*2.5f + outer1-pointOffset, pointSize, Color4ub(200,200,0,255), true);
+
+				float pos0t = equation2(inner0.xz, outer0.xz, preciseHitPos.xz, wagonAxisDistance/2.0);
+				vec3 pos0 = lerp(inner0, outer0, pos0t);
+
+				graphics.debugText.putfln("lerp 0 %s ext %s", pos0t, canExtend[0]);
+				if ((pos0t < 0 || pos0t > 1) && canExtend[0])
+				{
+					extendRails(0);
+					return false;
+				}
+
+				float pos1t = equation2(inner1.xz, outer1.xz, pos0.xz, wagonAxisDistance);
+				vec3 pos1 = lerp(inner1, outer1, pos1t);
+
+				graphics.debugText.putfln("lerp 1 %s ext %s", pos1t, canExtend[1]);
+				if ((pos1t < 0 || pos1t > 1) && canExtend[1])
+				{
+					extendRails(1);
+					return false;
+				}
+
+				resultPos = [pos0, pos1];
+				graphics.debugText.putfln("lerp 0 %s 1 %s", pos0t, pos1t);
+				graphics.debugText.putfln("final pos %s", resultPos);
 				return true;
 			}
 			else
@@ -384,6 +364,7 @@ final class WagonTool : ITool
 		graphics.debugBatch.putLine(vertOff + resultPos[0], vertOff + resultPos[1], Color4ub(0,255,0,255));
 		graphics.debugBatch.putCube(vertOff + resultPos[0]-pointOffset, pointSize, Color4ub(255,0,0,255), true);
 		graphics.debugBatch.putCube(vertOff + resultPos[1]-pointOffset, pointSize, Color4ub(0,255,0,255), true);
+		return resultPos;
 	}
 
 	override void onRender(GraphicsPlugin renderer)
@@ -396,26 +377,17 @@ final class WagonTool : ITool
 			renderer.debugBatch.putLine(pos0, pos1, color);
 		}
 
-		if (!data.empty)
+		void drawSegments()
 		{
 			vec3 railWorldPos = vec3(railPos.toBlockWorldPos.xyz);
-
-			findWagonPlacement();
 
 			// Segments of hovered rail tile
 			foreach(i, segment; data.getSegments)
 			{
 				enum layerDist = 0.25f;
-				//drawRailsAt(railWorldPos + vec3(0, i*layerDist, 0), segment, colorsArray[i+2]);
+				drawRailsAt(railWorldPos + vec3(0, i*layerDist, 0), segment, colorsArray[i+2]);
 
 				FaceSide[2] sides = segmentInfos[segment].sides;
-
-				// try placing a wagon
-				//WagonPos[2] positions = iteratePairs(segment);
-				//renderer.debugBatch.putLine(positions[0].dimPosition, positions[1].dimPosition, Colors.black);
-
-				//vec3 wagonPos0 = positions[0].dimPosition;
-				//vec3 wagonPos1 = positions[1].dimPosition;
 
 				foreach(side; sides)
 				{
@@ -430,10 +402,30 @@ final class WagonTool : ITool
 					if (segmentInfos[adjSegment].sideConnections[connectedViaSide])
 					{
 						vec3 adjRailWorldPos = vec3(adjacentPos.toBlockWorldPos.xyz);
-						//drawRailsAt(adjRailWorldPos + vec3(0, i*layerDist, 0), adjSegment, colorsArray[i+2]);
+						drawRailsAt(adjRailWorldPos + vec3(0, i*layerDist, 0), adjSegment, colorsArray[i+2]);
 					}
 				}
 			}
+		}
+
+		if (!data.empty)
+		{
+			graphics.debugText.putfln("hover %s", railPos);
+			vec3[2] ends = findWagonPlacement();
+			float angle = -atan2(ends[1].z - ends[0].z, ends[1].x - ends[0].x);
+			auto quat = rotationQuaternion(vec3(0,1,0), angle);
+			vec3 wagonCenter = (ends[0] + ends[1]) * 0.5f + vec3(0,1,0);
+			enum wagonWidth = 3.0f;
+			enum wagonHeight = 4.0f;
+			float wagonLength = wagonAxisDistance + 4.0f;
+
+			vec3 wagonSize = vec3(wagonLength, wagonHeight, wagonWidth);
+			vec3 centerOffset = -vec3(wagonSize.x*0.5f, 0, wagonSize.z*0.5f);
+
+			import voxelman.geometry.cubeutils;
+			putFilledBlock(renderer.debugBatch.triBuffer, wagonCenter, wagonSize, -vec3(0.5,0.5,0.5), quat, Color4ub(128, 128, 128, 255));
+
+			//drawSegments();
 		}
 	}
 
@@ -448,14 +440,40 @@ final class WagonTool : ITool
 	}
 }
 
+float equation2(vec2 p1, vec2 p2, vec2 circlePos, float radius)
+{
+	return equation(p1 - circlePos, p2 - circlePos, radius);
+}
+
+// for a circle at 0,0. calculate its intersection with a line segment
+// described with p1, p2 and return a position along the line as [0; 1]
+float equation(vec2 p1, vec2 p2, float radius)
+{
+	float dx = (p2.x - p1.x);
+	float dy = (p2.y - p1.y);
+	float a = dx*dx + dy*dy;
+	float b = 2*(dy*p1.y + dx*p1.x);
+	float c = p1.x*p1.x + p1.y*p1.y - radius*radius;
+	float d = b*b - 4*a*c;
+	float sqrt_d = sqrt(d);
+	float t1 = (-b + sqrt_d) / (2*a);
+	float t2 = (-b - sqrt_d) / (2*a);
+	if (std_abs(t2 - 0.5f) < std_abs(t1 - 0.5f)) return t2;
+	return t1;
+	//if (t1 < 0 || t1 > 1) return t2;
+	//return t1;
+}
+
+// t position on rail, R length between wagon points
+// x₁y₁, x₂y₂ rail ends
 // (1) x² + y² = R²
-// (2) x = t(x₁-x₂) + x₂
-// (3) y = t(y₁-y₂) + y₂
+// (2) x = x₁ + t(x₂-x₁)
+// (3) y = y₁ + t(y₂-y₁)
 // We substitute (2) and (3) into (1) and get quadratic equation
-// t²((x₁-x₂)² + (y₁-y₂)²) + t2((y₁-y₂)y₂ + (x₁-x₂)x₂) + x₂ + y₂ - R² = 0
+// t²((x₂-x₁)² + (y₂-y₁)²) + t2((y₂-y₁)y₂ + (x₁-x₁)x₂) + x₁ + y₁ - R² = 0
 // solve for t
 
-// a = (x1 - x2)^2 + (y1 - y2)^2;
-// b = 2 * ((y1-y2)*y2 + (x1-x2)*x2);
-// c = x^2 + y^2 - R^2;
+// a = (x2 - x1)^2 + (y2 - y1)^2;
+// b = 2 * ((y2 - y1)*y1 + (x2 - x1)*x1);
+// c = x1^2 + y1^2 - R^2;
 // d = b*b - 4*a*c;

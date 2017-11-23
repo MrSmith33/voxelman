@@ -41,6 +41,9 @@ class WorldInteractionPlugin : IPlugin
 	BlockPluginClient blockPlugin;
 	ClientWorld clientWorld;
 
+	vec3 cameraPos() { return graphics.camera.position; }
+	vec3 cameraTraget() { return graphics.camera.target; }
+
 	// Cursor
 	bool cursorHit;
 	bool cameraInSolidBlock;
