@@ -332,12 +332,12 @@ class MovementPlugin : IPlugin
 		return pos;
 	}
 
-	vec3 collide(ref vec3 point, float rad, float height)
+	vec3 collide(ref vec3 point, float radius, float height)
 	{
 		ivec3 cell = ivec3(floor(point.x), floor(point.y), floor(point.z));
 		vec3 speed_mult = vec3(1, 1, 1);
 
-		Aabb body_aabb = Aabb(point+vec3(0, height/2, 0), vec3(rad, height/2, rad));
+		Aabb body_aabb = Aabb(point+vec3(0, height/2, 0), vec3(radius, height/2, radius));
 
 		foreach(dy; -1..ceil(height+1)) {
 		foreach(dx; [0, -1, 1]) {
