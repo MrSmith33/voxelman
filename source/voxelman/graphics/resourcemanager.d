@@ -35,6 +35,11 @@ final class ResourceManager
 		return .loadNamedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
 	}
 
+	SpriteRef[] loadIndexedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize)
+	{
+		return .loadIndexedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
+	}
+
 	SpriteSheetAnimationRef loadAnimation(string name)
 	{
 		return .loadSpriteSheetAnimation(name, texAtlas);
