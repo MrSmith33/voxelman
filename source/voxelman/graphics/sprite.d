@@ -8,6 +8,7 @@ module voxelman.graphics.sprite;
 import dlib.image.io.png;
 import std.path : setExtension;
 import std.stdio;
+import std.string;
 import std.range : zip;
 import voxelman.math;
 import voxelman.graphics;
@@ -32,7 +33,7 @@ SpriteRef[string] loadNamedSpriteSheet(string filename, TextureAtlas texAtlas, i
 	SpriteRef[string] spriteMap;
 	foreach(nameValue; zip(file.byLineCopy(), spriteArray))
 	{
-		spriteMap[nameValue[0]] = nameValue[1];
+		spriteMap[strip(nameValue[0])] = nameValue[1];
 	}
 
 	return spriteMap;
