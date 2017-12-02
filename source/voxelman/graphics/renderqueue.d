@@ -59,11 +59,11 @@ final class RenderQueue
 
 	void draw(AnimationInstance animation, vec2 target, float depth, Color4ub color = Colors.white)
 	{
-		auto frameRect = animation.currentFrameRect;
+		auto sprite = animation.currentFrameSprite;
 		vec2 targetRectPos = target - vec2(animation.origin * animation.scale);
 		texBatch.putRect(
-			frect(targetRectPos, vec2(frameRect.size) * animation.scale),
-			frect(frameRect),
+			frect(targetRectPos, vec2(sprite.atlasRect.size) * animation.scale),
+			frect(sprite.atlasRect),
 			depth,
 			color,
 			atlasTexture);

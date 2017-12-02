@@ -6,6 +6,7 @@ Authors: Andrey Penechko.
 module datadriven.query;
 
 import std.conv : to;
+import std.meta : Filter, staticMap;
 import std.traits : TemplateArgsOf, Unqual;
 
 import datadriven.api;
@@ -15,10 +16,16 @@ auto componentQuery(ComponentStorages...)(ComponentStorages storages)
 	return ComponentQuery!(ComponentStorages)(storages);
 }
 
+template StorageComponentTypePtr(T)
+{
+	alias StorageComponentTypePtr = T.ComponentType*;
+}
+
 struct ComponentQuery(ComponentStorages...)
 {
 	mixin(genComponentStorages!ComponentStorages);
 	mixin(genRowDefinition!ComponentStorages);
+	alias Components = staticMap!(StorageComponentTypePtr, Filter!(isAnyComponentStorage, ComponentStorages));
 
 	// Sorts component storages by length.
 	// Then iterates by smallest storage to reduce number of lookups.
@@ -49,6 +56,18 @@ struct ComponentQuery(ComponentStorages...)
 		mixin(genComponentIterationCode!ComponentStorages);
 
 		return result;
+	}
+
+	// ditto
+	int opApply(scope int delegate(EntityId id, Components) dg)
+	{
+		int iterate(Row row)
+		{
+			if (auto res = dg(row.tupleof)) return res;
+			return 0;
+		}
+
+		return opApply(&iterate);
 	}
 }
 

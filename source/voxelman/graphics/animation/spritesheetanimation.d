@@ -10,7 +10,7 @@ import voxelman.graphics;
 
 struct AnimationFrame
 {
-	int x, y, w, h;
+	Sprite sprite;
 	float timelineStart;
 	float timelineEnd;
 }
@@ -56,10 +56,11 @@ AnimationFrame[] parseFrames(JSONValue[] framesArray)
 	foreach(frameJson; framesArray)
 	{
 		auto frame = AnimationFrame(
-			cast(int)frameJson["frame"]["x"].integer,
-			cast(int)frameJson["frame"]["y"].integer,
-			cast(int)frameJson["frame"]["w"].integer,
-			cast(int)frameJson["frame"]["h"].integer);
+			Sprite(irect(
+				cast(int)frameJson["frame"]["x"].integer,
+				cast(int)frameJson["frame"]["y"].integer,
+				cast(int)frameJson["frame"]["w"].integer,
+				cast(int)frameJson["frame"]["h"].integer)));
 		auto durationMsecs = cast(int)frameJson["duration"].integer;
 		frame.timelineStart = timelineStart;
 		timelineEnd = timelineStart + durationMsecs / 1000.0;
@@ -76,9 +77,8 @@ void putFramesIntoAtlas(Bitmap sourceBitmap, AnimationFrame[] frames, TextureAtl
 {
 	foreach(ref frame; frames)
 	{
-		ivec2 position = texAtlas.insert(sourceBitmap, irect(frame.x, frame.y, frame.w, frame.h));
-		frame.x = position.x;
-		frame.y = position.y;
+		ivec2 position = texAtlas.insert(sourceBitmap, frame.sprite.atlasRect);
+		frame.sprite.atlasRect.position = position;
 	}
 }
 
@@ -114,10 +114,9 @@ struct AnimationInstance
 		currentFrame = seekFrameIndex(timer);
 	}
 
-	irect currentFrameRect()
+	Sprite currentFrameSprite()
 	{
-		auto frame = sheet.frames[currentFrame];
-		return irect(frame.x, frame.y, frame.w, frame.h);
+		return sheet.frames[currentFrame].sprite;
 	}
 
 	void pause()

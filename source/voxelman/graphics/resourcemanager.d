@@ -30,24 +30,28 @@ final class ResourceManager
 		findOrAddWhitePixel();
 	}
 
-	SpriteRef[string] loadNamedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize)
-	{
+	SpriteRef[string] loadNamedSpriteSheet(string name, ivec2 spriteSize) {
+		return .loadNamedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
+	}
+	SpriteRef[string] loadNamedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize) {
 		return .loadNamedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
 	}
 
-	SpriteRef[] loadIndexedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize)
-	{
+	SpriteRef[] loadIndexedSpriteSheet(string name, ivec2 spriteSize) {
+		return .loadIndexedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
+	}
+	SpriteRef[] loadIndexedSpriteSheet(string name, TextureAtlas texAtlas, ivec2 spriteSize) {
 		return .loadIndexedSpriteSheet(buildPath(resourcePath, name), texAtlas, spriteSize);
 	}
 
 	SpriteSheetAnimationRef loadAnimation(string name)
 	{
-		return .loadSpriteSheetAnimation(name, texAtlas);
+		return .loadSpriteSheetAnimation(buildPath(resourcePath, name), texAtlas);
 	}
 
 	SpriteRef loadSprite(string name)
 	{
-		return .loadSprite(name, texAtlas);
+		return .loadSprite(buildPath(resourcePath, name), texAtlas);
 	}
 
 	void findOrAddWhitePixel()
