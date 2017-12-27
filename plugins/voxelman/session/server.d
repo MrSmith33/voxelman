@@ -94,6 +94,8 @@ struct ClientPositionManager
 			sendPositionToClient(*position, session.sessionId);
 
 		updateObserverBox(session);
+
+		cm.evDispatcher.postEvent(ClientMovedEvent(session.dbKey, dimPos, dimension));
 	}
 
 	void tpToDimension(Session* session, DimensionId dimension)
