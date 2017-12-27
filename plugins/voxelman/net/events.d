@@ -8,6 +8,7 @@ module voxelman.net.events;
 
 import netlib : SessionId;
 import datadriven : EntityId;
+import voxelman.world.storage.coordinates : ClientDimPos;
 
 struct ClientConnectedEvent {
 	SessionId sessionId;
@@ -27,3 +28,8 @@ struct ClientLoggedOutEvent {
 	EntityId clientId;
 }
 struct SendClientSettingsEvent {}
+struct ClientMovedEvent {
+	EntityId clientId;
+	ClientDimPos pos;
+	ushort dimension;
+}
