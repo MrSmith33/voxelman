@@ -267,10 +267,10 @@ public:
 		mesherParams.alignMeshedText(Alignment.max);
 	}
 
-	void draw(Batch batch)
+	void draw(Batch batch, Matrix4f modelMatrix = Matrix4f.identity)
 	{
 		solidShader3d.bind;
-		solidShader3d.setMVP(Matrix4f.identity, camera.cameraMatrix, camera.perspective);
+		solidShader3d.setMVP(modelMatrix, camera.cameraMatrix, camera.perspective);
 
 		drawBuffer(batch.triBuffer.data, GL_TRIANGLES);
 		drawBuffer(batch.lineBuffer.data, GL_LINES);
