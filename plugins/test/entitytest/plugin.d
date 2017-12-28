@@ -99,9 +99,9 @@ mixin template EntityTestPluginClient()
 	{
 		batch.reset();
 		auto query = eman.query!SandTransform();
-		foreach(row; query)
+		foreach(eid, sandTransform; query)
 		{
-			batch.putCube(vec3(row.sandTransform_0.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
+			batch.putCube(vec3(sandTransform.pos), vec3(1,1,1), Color4ub(225, 169, 95), true);
 		}
 		dbg.setVar("Sand entities", eman.getComponentStorage!SandTransform().length);
 	}
@@ -141,42 +141,42 @@ mixin template EntityTestPluginServer()
 			return wa.getBlock(BlockWorldPos(pos)) != 0;
 		}
 
-		foreach(row; query)
+		foreach(eid, sandTransform; query)
 		{
-			ivec4 pos = row.sandTransform_0.pos;
+			ivec4 pos = sandTransform.pos;
 			if (!isLoaded(pos) || !isLoaded(pos+ivec4(0, -1, 0, 0))) continue;
 			if (isFree(pos+ivec4(0, -1, 0, 0))) // lower
 			{
-				row.sandTransform_0.pos += ivec4(0,-1,0, 0);
+				sandTransform.pos += ivec4(0,-1,0, 0);
 			}
 			else if (isFree(pos+ivec4( 0, 0, -1, 0)) && // side and lower
 					isFree(pos+ivec4( 0, -1, -1, 0)))
 			{
-				row.sandTransform_0.pos = pos+ivec4( 0, 0, -1, 0);
+				sandTransform.pos = pos+ivec4( 0, 0, -1, 0);
 			}
 			else if (isFree(pos+ivec4( 0, 0,  1, 0)) && // side and lower
 					isFree(pos+ivec4( 0, -1,  1, 0)))
 			{
-				row.sandTransform_0.pos = pos+ivec4( 0, 0,  1, 0);
+				sandTransform.pos = pos+ivec4( 0, 0,  1, 0);
 			}
 			else if (isFree(pos+ivec4(-1, 0,  0, 0)) && // side and lower
 					isFree(pos+ivec4(-1, -1,  0, 0)))
 			{
-				row.sandTransform_0.pos = pos+ivec4(-1, 0,  0, 0);
+				sandTransform.pos = pos+ivec4(-1, 0,  0, 0);
 			}
 			else if (isFree(pos+ivec4( 1, 0,  0, 0)) && // side and lower
 					isFree(pos+ivec4( 1, -1,  0, 0)))
 			{
-				row.sandTransform_0.pos = pos+ivec4( 1, 0,  0, 0);
+				sandTransform.pos = pos+ivec4( 1, 0,  0, 0);
 			}
 			else // set sand
 			{
 				wa.setBlock(BlockWorldPos(pos), BlockId(5));
-				entitiesToRemove.put(row.id);
+				entitiesToRemove.put(eid);
 			}
 			entityPlugin.entityObserverManager.updateEntityPos(
-				row.id,
-				ChunkWorldPos(BlockWorldPos(row.sandTransform_0.pos)));
+				eid,
+				ChunkWorldPos(BlockWorldPos(sandTransform.pos)));
 		}
 
 		auto storage = eman.getComponentStorage!SandTransform();

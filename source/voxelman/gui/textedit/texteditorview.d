@@ -12,6 +12,7 @@ import std.array;
 import datadriven.entityman : EntityManager;
 import voxelman.container.buffer;
 import voxelman.graphics;
+import voxelman.log;
 import voxelman.gui;
 import voxelman.math;
 import voxelman.platform;
@@ -38,13 +39,28 @@ struct TextEditorViewportData
 
 	ivec2 textPos; // on text canvas, in pixels
 
+	int autoscrollY;
 	int firstVisibleLine;
 	int lastVisibleLine;
 	bool autoscroll;
+	// If true prevents scrolling up
+	// If false, scrolling up will disable autoscroll
+	bool hardAutoscroll;
 
 	void resetBlinkTimer()
 	{
 		blinkStart = MonoTime.currTime;
+	}
+
+	void scroll(ivec2 delta)
+	{
+		if (autoscroll && hardAutoscroll) return;
+
+		textPos += ivec2(0, delta.y * settings.scrollSpeedLines * settings.scaledGlyphH);
+		if (textPos.y < autoscrollY)
+		{
+			autoscroll = false;
+		}
 	}
 
 	void update(GuiContext ctx, ivec2 size)
@@ -53,10 +69,11 @@ struct TextEditorViewportData
 		ivec2 textSizeInPixels = textSizeInGlyphs * settings.scaledGlyphSize;
 
 		int maxVisibleLines = divCeil(size.y, settings.scaledGlyphH);
-
+		autoscrollY = (editor.numLines - maxVisibleLines) * settings.scaledGlyphH;
+		autoscrollY = clamp(autoscrollY, 0, textSizeInPixels.y);
 		if (autoscroll)
 		{
-			textPos.y = (editor.numLines - maxVisibleLines) * settings.scaledGlyphH;
+			textPos.y = autoscrollY;
 		}
 
 		textPos = vector_clamp(textPos, ivec2(0, 0), textSizeInPixels);
@@ -98,7 +115,7 @@ struct TextEditorViewportLogic
 	void onScroll(WidgetProxy widget, ref ScrollEvent event)
 	{
 		auto data = widget.get!TextEditorViewportData;
-		data.textPos += ivec2(event.delta * data.settings.scrollSpeedLines * data.settings.scaledGlyphH);
+		data.scroll(ivec2(event.delta));
 	}
 
 	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)

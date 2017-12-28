@@ -201,7 +201,6 @@ struct Launcher
 	Job* createJob(JobParams params = JobParams.init)
 	{
 		auto job = new Job(params);
-		job.messageWindow.init();
 		job.messageWindow.messageHandler = (string com)=>sendCommand(job,com);
 		job.msglog.clear;
 		updateJobType(job);

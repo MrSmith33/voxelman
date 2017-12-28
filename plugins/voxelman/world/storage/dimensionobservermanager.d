@@ -12,6 +12,9 @@ import voxelman.container.multihashset;
 import netlib : SessionId;
 import voxelman.core.config : DimensionId;
 
+/// Stores a list of observers (i.e. players), per dimension
+/// Can be used to notify players about some dimension local events,
+/// or change of dimension's parameters (like borders)
 struct DimensionObserverManager {
 	void delegate(DimensionId, SessionId) dimensionObserverAdded;
 	HashMap!(DimensionId, MultiHashSet!SessionId) dimObservers;

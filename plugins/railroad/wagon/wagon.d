@@ -151,9 +151,9 @@ struct WagonLogicServer
 	void process(ref ProcessComponentsEvent event)
 	{
 		auto query = eman.query!WagonServerComponent();
-		foreach(row; query)
+		foreach(id, wagonServer; query)
 		{
-			moveWagon(row.id, *row.wagonServerComponent_0, event.deltaTime);
+			moveWagon(id, *wagonServer, event.deltaTime);
 		}
 	}
 

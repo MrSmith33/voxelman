@@ -1678,3 +1678,139 @@ struct ColumnListLogic
 		}
 	}
 }
+
+/// Creates a frame that shows a tree of all widgets.
+/// Highlights clicked widgets
+WidgetProxy createGuiDebugger(WidgetProxy root)
+{
+	WidgetId highlightedWidget;
+
+	// Tree widget
+	struct TreeNode
+	{
+		WidgetId wid;
+		TreeLineType nodeType;
+		int indent;
+		int numExpandedChildren;
+	}
+
+	class WidgetTreeModel : ListModel
+	{
+		import std.format : formattedWrite;
+		import voxelman.container.gapbuffer;
+		GapBuffer!TreeNode nodeList;
+		WidgetProxy widgetAt(size_t i) { return WidgetProxy(nodeList[i].wid, root.ctx); }
+		int selectedLine = -1;
+		ColumnInfo[2] columnInfos = [ColumnInfo("Type", 200), ColumnInfo("Id", 50, Alignment.max)];
+
+		void clear()
+		{
+			nodeList.clear();
+			selectedLine = -1;
+		}
+
+		override int numLines() { return cast(int)nodeList.length; }
+		override int numColumns() { return 2; }
+		override ref ColumnInfo columnInfo(int column) {
+			return columnInfos[column];
+		}
+		override void getColumnText(int column, scope void delegate(const(char)[]) sink) {
+			if (column == 0) sink("Widget type");
+			else if (column == 1) sink("Widget id");
+			else assert(false);
+		}
+		override void getCellText(int column, int line, scope void delegate(const(char)[]) sink) {
+			if (column == 0) sink(widgetAt(line).widgetType);
+			else formattedWrite(sink, "%s", nodeList[line].wid);
+		}
+		override bool isLineSelected(int line) { return line == selectedLine; }
+		override void onLineClick(int line) {
+			selectedLine = line;
+			if (selectedLine == -1)
+				highlightedWidget = 0;
+			else
+				highlightedWidget = nodeList[line].wid;
+		}
+		override TreeLineType getLineType(int line) {
+			return nodeList[line].nodeType;
+		}
+		override int getLineIndent(int line) { return nodeList[line].indent; }
+		override void toggleLineFolding(int line) {
+			if (nodeList[line].nodeType == TreeLineType.collapsedNode) expandWidget(line);
+			else collapseWidget(line);
+		}
+		void expandWidget(int line)
+		{
+			//writefln("expand %s %s", line, nodeList[line].wid);
+			auto container = root.ctx.get!WidgetContainer(nodeList[line].wid);
+			if (container is null || container.children.length == 0) {
+				nodeList[line].nodeType = TreeLineType.leaf;
+				return;
+			}
+			auto insertPos = line+1;
+			auto indent = nodeList[line].indent+1;
+			foreach(wid; container.children)
+			{
+				TreeLineType nodeType = numberOfChildren(root.ctx, wid) ? TreeLineType.collapsedNode : TreeLineType.leaf;
+				nodeList.putAt(insertPos++, TreeNode(wid, nodeType, indent));
+			}
+			nodeList[line].nodeType = TreeLineType.expandedNode;
+		}
+		void collapseWidget(int line)
+		{
+			//writefln("collapse %s", line, nodeList[line].wid);
+			if (line+1 == nodeList.length) {
+				nodeList[line].nodeType = TreeLineType.leaf;
+				return;
+			}
+
+			auto parentIndent = nodeList[line].indent;
+			size_t numItemsToRemove;
+			foreach(node; nodeList[line+1..$])
+			{
+				if (node.indent <= parentIndent) break;
+				++numItemsToRemove;
+			}
+			nodeList.remove(line+1, numItemsToRemove);
+			nodeList[line].nodeType = TreeLineType.collapsedNode;
+		}
+	}
+
+	void drawHighlight(WidgetProxy widget, ref DrawEvent event)
+	{
+		if (event.bubbling) return;
+
+		// highlight widget
+		auto t = widget.ctx.get!WidgetTransform(highlightedWidget);
+		if (t)
+		{
+			event.renderQueue.pushClipRect(irect(ivec2(0,0), event.renderQueue.renderer.framebufferSize));
+			event.renderQueue.drawRectLine(vec2(t.absPos), vec2(t.size), 10_000, Colors.red);
+			event.renderQueue.popClipRect();
+		}
+	}
+
+	auto model = new WidgetTreeModel;
+	auto tree_frame = Frame.create(root);
+	tree_frame.getOrCreate!WidgetEvents.addEventHandler(&drawHighlight);
+	tree_frame.minSize(250, 400).pos(10, 10).makeDraggable.moveToTop;
+	tree_frame.container.setVLayout(2, padding4(2));
+	tree_frame.header.setHLayout(2, padding4(4), Alignment.center);
+	tree_frame.header.createIcon("tree", ivec2(16, 16), Colors.black);
+	tree_frame.header.createText("Widget tree");
+	auto widget_tree = ColumnListLogic.create(tree_frame.container, model).minSize(250, 300).hvexpand;
+
+	void refillTree()
+	{
+		model.clear;
+		foreach(rootId; root.ctx.roots)
+		{
+			TreeLineType nodeType = numberOfChildren(root.ctx, rootId) ? TreeLineType.collapsedNode : TreeLineType.leaf;
+			model.nodeList.put(TreeNode(rootId, nodeType));
+		}
+	}
+	refillTree();
+	createTextButton(tree_frame.container, "Refresh", &refillTree).hexpand;
+
+	return tree_frame;
+}

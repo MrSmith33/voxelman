@@ -11,6 +11,8 @@ import std.conv: to;
 import std.string : format;
 import std.typecons : tuple;
 
+mixin glFreeFuncs!(GLVersion.gl33);
+
 void loadOpenGL()
 {
 	DerelictGL3.load();
@@ -21,15 +23,19 @@ void reloadOpenGL()
 	// Load maximum avaliable OpenGL version
 	DerelictGL3.reload();
 	loadExtensions();
+
+	import std.string : fromStringz;
+	import voxelman.log;
+	infof("OpenGL %s", glGetString(GL_VERSION).fromStringz);
 }
 
 
-enum EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD = 0x9160;
-__gshared bool AMD_pinned_memory;
+//enum EXTERNAL_VIRTUAL_MEMORY_BUFFER_AMD = 0x9160;
+//__gshared bool AMD_pinned_memory;
 
 void loadExtensions()
 {
-	AMD_pinned_memory = DerelictGL3.isExtensionSupported("GL_AMD_pinned_memory");
+	//AMD_pinned_memory = DerelictGL3.isExtensionSupported("GL_AMD_pinned_memory");
 }
 
 

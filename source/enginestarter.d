@@ -68,20 +68,34 @@ struct EngineStarter
 
 	void startServer(string[] args, ServerMode serverMode)
 	{
-		auto pluginman = new PluginManager;
-		foreach(p; pluginRegistry.serverPlugins.byValue.filterEnabledPlugins(args))
-			pluginman.registerPlugin(p);
-		pluginman.initPlugins();
-		pluginRegistry.serverMain(args, serverMode);
+		infof("Server thread: %s", Thread.getThis.id);
+		try {
+			auto pluginman = new PluginManager;
+			foreach(p; pluginRegistry.serverPlugins.byValue.filterEnabledPlugins(args))
+				pluginman.registerPlugin(p);
+			pluginman.initPlugins();
+			pluginRegistry.serverMain(args, serverMode);
+		} catch(Throwable t) {
+			criticalf("Server failed with error");
+			criticalf("%s", t.msg);
+			criticalf("%s", t);
+		}
 	}
 
 	void startClient(string[] args)
 	{
-		auto pluginman = new PluginManager;
-		foreach(p; pluginRegistry.clientPlugins.byValue.filterEnabledPlugins(args))
-			pluginman.registerPlugin(p);
-		pluginman.initPlugins();
-		pluginRegistry.clientMain(args);
+		infof("Client thread: %s", Thread.getThis.id);
+		try {
+			auto pluginman = new PluginManager;
+			foreach(p; pluginRegistry.clientPlugins.byValue.filterEnabledPlugins(args))
+				pluginman.registerPlugin(p);
+			pluginman.initPlugins();
+			pluginRegistry.clientMain(args);
+		} catch(Throwable t) {
+			criticalf("Client failed with error");
+			criticalf("%s", t.msg);
+			criticalf("%s", t);
+		}
 	}
 
 	void startCombined(string[] args)
@@ -90,20 +104,12 @@ struct EngineStarter
 
 		void exec()
 		{
-			infof("Server thread: %s", Thread.getThis.id);
-			try {
-				startServer(args, ServerMode.internal);
-			} catch(Throwable t) {
-				criticalf("Server failed with error");
-				criticalf("%s", t.msg);
-				criticalf("%s", t);
-			}
+			startServer(args, ServerMode.internal);
 		}
 
 		Thread serverThread = new Thread(&exec);
 		serverThread.start();
 
-		infof("Client thread: %s", Thread.getThis.id);
 		startClient(args);
 		stopServer();
 	}

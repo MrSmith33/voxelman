@@ -48,7 +48,9 @@ public:
 
 		scope(failure) glfwTerminate();
 
-		//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+		version(linux) glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_VISIBLE, false);
 
 		//BUG: sometimes fails in Windows 8. Maybe because of old drivers.

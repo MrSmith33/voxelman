@@ -82,13 +82,13 @@ final class AvatarClient : IPlugin
 		// what time to expect between network updates
 		enum UpdateTime = 1 / 16.0;
 		auto query = eman.query!AvatarPosition;
-		foreach (row; query)
+		foreach (entityId, avatarPosition; query)
 		{
-			if (row.id != session.thisEntityId)
+			if (entityId != session.thisEntityId)
 			{
-				auto raw = row.avatarPosition_0.dimPos;
-				auto smooth = eman.getOrCreate(row.id, SmoothedAvatarPosition(raw, raw,
-						raw, row.avatarPosition_0.dimension, 0));
+				auto raw = avatarPosition.dimPos;
+				auto smooth = eman.getOrCreate(entityId, SmoothedAvatarPosition(raw, raw,
+						raw, avatarPosition.dimension, 0));
 				if ((smooth.endDimPos.pos - raw.pos).lengthsqr > 0.00001f
 						|| (smooth.endDimPos.heading - raw.heading).lengthsqr > 0.00001f)
 				{
@@ -100,8 +100,8 @@ final class AvatarClient : IPlugin
 						smooth.timeLeft / UpdateTime);
 				smooth.dimPos.heading = lerp(smooth.endDimPos.heading,
 						smooth.startDimPos.heading, smooth.timeLeft / UpdateTime);
-				smooth.dimension = row.avatarPosition_0.dimension;
-				eman.set(row.id, *smooth);
+				smooth.dimension = avatarPosition.dimension;
+				eman.set(entityId, *smooth);
 				if (smooth.timeLeft > 0)
 					smooth.timeLeft -= event.deltaTime;
 				if (smooth.timeLeft < 0)
@@ -114,12 +114,12 @@ final class AvatarClient : IPlugin
 	void drawEntities(ref RenderSolid3dEvent event)
 	{
 		auto query = eman.query!SmoothedAvatarPosition;
-		foreach (row; query)
+		foreach (entityId, smoothPos; query)
 		{
-			if (row.id != session.thisEntityId
-					&& row.smoothedAvatarPosition_0.dimension == clientWorld.currentDimension)
+			if (entityId != session.thisEntityId
+					&& smoothPos.dimension == clientWorld.currentDimension)
 			{
-				ClientDimPos p = row.smoothedAvatarPosition_0.dimPos;
+				ClientDimPos p = smoothPos.dimPos;
 				// TODO: add API for creating armatures/body groups & draw these instead of this cube
 				graphics.draw(batch,
 						translationMatrix(p.pos) * fromEuler(vec3(-p.heading.y.degtorad,

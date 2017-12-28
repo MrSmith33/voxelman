@@ -47,7 +47,6 @@ mixin template EntityPluginCommon()
 {
 	private EntityComponentRegistry componentRegistry;
 	private EntityManager eman;
-	private EntityObserverManager entityObserverManager;
 	private EntityIdManager eidMan;
 
 	override void registerResourceManagers(void delegate(IResourceManager) registerHandler)
