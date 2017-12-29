@@ -175,13 +175,13 @@ final class AvatarClient : IPlugin
 		// what time to expect between network updates
 		enum UpdateTime = 1 / 16.0;
 		auto query = eman.query!AvatarPosition;
-		foreach (row; query)
+		foreach (entityId, avatarPosition; query)
 		{
-			if (row.id != session.thisEntityId)
+			if (entityId != session.thisEntityId)
 			{
-				auto raw = row.avatarPosition_0.dimPos;
-				auto smooth = eman.getOrCreate(row.id, SmoothedAvatarPosition(raw, raw,
-						raw, row.avatarPosition_0.dimension, 0));
+				auto raw = avatarPosition.dimPos;
+				auto smooth = eman.getOrCreate(entityId, SmoothedAvatarPosition(raw, raw,
+						raw, avatarPosition.dimension, 0));
 				if ((smooth.endDimPos.pos - raw.pos).lengthsqr > 0.00001f
 						|| (smooth.endDimPos.heading - raw.heading).lengthsqr > 0.00001f)
 				{
@@ -193,10 +193,10 @@ final class AvatarClient : IPlugin
 						smooth.timeLeft / UpdateTime);
 				smooth.dimPos.heading = lerp(smooth.endDimPos.heading,
 						smooth.startDimPos.heading, smooth.timeLeft / UpdateTime);
-				smooth.dimension = row.avatarPosition_0.dimension;
+				smooth.dimension = avatarPosition.dimension;
 				float targetDistSq = (smooth.endDimPos.pos.xz - smooth.dimPos.pos.xz).lengthsqr;
 				float targetVelocity = targetDistSq < 0.00001f ? 0 : targetDistSq < 0.1f ? 0.5f : 1;
-				eman.set(row.id, *smooth);
+				eman.set(entityId, *smooth);
 				if (smooth.timeLeft > 0)
 					smooth.timeLeft -= event.deltaTime;
 				if (smooth.timeLeft < 0)
@@ -211,18 +211,18 @@ final class AvatarClient : IPlugin
 	void drawEntities(ref RenderSolid3dEvent event)
 	{
 		auto query = eman.query!SmoothedAvatarPosition;
-		foreach (row; query)
+		foreach (entityId, smoothPos; query)
 		{
-			if (row.id != session.thisEntityId
-					&& row.smoothedAvatarPosition_0.dimension == clientWorld.currentDimension)
+			if (entityId != session.thisEntityId
+					&& smoothPos.dimension == clientWorld.currentDimension)
 			{
-				ClientDimPos p = row.smoothedAvatarPosition_0.dimPos;
+				ClientDimPos p = smoothPos.dimPos;
 				// TODO: add API for creating armatures/body groups & draw these instead of this cube
 				playerArmature.armature.root.reset();
 				playerArmature.armature.root.rotate(vec3(0, (-p.heading.x).degtorad, 0));
 				playerArmature.head.reset();
 				playerArmature.head.rotate(vec3(-p.heading.y.degtorad, 0, 0));
-				playerArmature.walkAnimation(row.smoothedAvatarPosition_0.velocity, animationTime * 15);
+				playerArmature.walkAnimation(smoothPos.velocity, animationTime * 15);
 				playerArmature.addBreathing(animationTime * 5);
 				graphics.draw(playerArmature.armature, translationMatrix(p.pos));
 			}

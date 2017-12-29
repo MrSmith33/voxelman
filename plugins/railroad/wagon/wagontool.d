@@ -41,7 +41,7 @@ final class WagonTool : ITool
 	bool placeAllowed;
 	vec3 preciseHitPos;
 
-	float wagonAxisDistance = 12;
+	float wagonAxisDistance = 8;
 	float wagonRotation = 0;
 
 	this(ClientWorld clientWorld, BlockEntityManager blockEntityManager,

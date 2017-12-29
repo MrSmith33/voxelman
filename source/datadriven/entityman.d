@@ -187,6 +187,15 @@ struct EntityManager
 	}
 
 	/// Returns query object for given set of component types for iteration with foreach.
+	/// Will pass EntityId, followed by pointers to components. Flag components are omitted.
+	/// Example:
+	/// ---
+	/// auto query = eman.query!(Position, Velocity, IsMovable);
+	///	foreach(EntityId id, Position* position, Velocity* velocity; query)
+	/// {
+	/// 	position.vector += velocity.vector;
+	/// }
+	/// ---
 	auto query(Components...)()
 	{
 		// generate variables for typed storages

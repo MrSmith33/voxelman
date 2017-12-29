@@ -55,7 +55,7 @@ struct TextViewSettings
 	int fontScale = 1;
 	int tabSize = 4;
 	bool monospaced = true;
-	Color4ub color;
+	Color4ub color = Colors.black;
 
 	ivec2 scaledGlyphSize() const { return ivec2(scaledGlyphW, scaledGlyphH); }
 	int scaledGlyphW() const { return font.metrics.advanceX * fontScale; }

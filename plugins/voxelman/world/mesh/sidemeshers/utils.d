@@ -33,7 +33,7 @@ ubvec3 calcColor(ushort index, ubvec3 color) pure nothrow
 		color.b * randomTint);
 }
 
-immutable(float[]) shadowMultipliers = [
+immutable float[] shadowMultipliers = [
 	0.85, 0.9, 0.75, 0.8, 1, 0.7,
 ];
 
@@ -51,7 +51,7 @@ enum AO_VALUE_1 = 0.80f;
 enum AO_VALUE_2 = 0.9f;
 enum AO_VALUE_3 = 1.0f;
 
-__gshared immutable(float[]) occlusionTable = [
+immutable float[] occlusionTable = [
 	            // * C LT - center, corner, left, top
 	AO_VALUE_3, //   0 00 case 3
 	AO_VALUE_2, //   0 01 case 2
@@ -78,7 +78,7 @@ enum AO_COLOR_2 = Colors.orange;
 enum AO_COLOR_3 = Colors.white;
 
 import voxelman.graphics.color;
-Color4ub[] aoDebugColors = [
+immutable Color4ub[] aoDebugColors = [
 	            // * C LT - center, corner, left, top
 	AO_COLOR_3, //   0 00 case 3
 	AO_COLOR_2, //   0 01 case 2

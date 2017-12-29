@@ -108,11 +108,11 @@ final class RailroadPluginClient : IPlugin
 	{
 		batch.reset();
 		auto query = eman.query!WagonClientComponent;
-		foreach (row; query)
+		foreach (id, wagonClient; query)
 		{
-			if (row.wagonClientComponent_0.dimension == clientWorld.currentDimension)
+			if (wagonClient.dimension == clientWorld.currentDimension)
 			{
-				batch.putCube(row.wagonClientComponent_0.dimPos - vec3(0.5,0.5,0.5), vec3(1,1,1), Colors.black, true);
+				batch.putCube(wagonClient.dimPos - vec3(0.5,0.5,0.5), vec3(1,1,1), Colors.black, true);
 			}
 		}
 		graphics.draw(batch);

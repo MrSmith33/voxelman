@@ -32,7 +32,7 @@ class LauncherGui : GuiApp
 	AutoListModel!ServerList serverList;
 	WidgetProxy job_stack;
 	TextViewSettings textSettings;
-
+	bool isGuiDebuggerShown;
 
 	this(string title, ivec2 windowSize)
 	{
@@ -47,8 +47,12 @@ class LauncherGui : GuiApp
 	{
 		super.load(args, resFolder);
 		textSettings = TextViewSettings(renderQueue.defaultFont);
-		WidgetProxy root = WidgetProxy(guictx.roots[0], guictx);
-		createMain(root);
+		createMain(guictx.getRoot(0));
+		// showDebugInfo = true;
+		// isGuiDebuggerShown = true;
+
+		auto debugger_frame = createGuiDebugger(guictx.getRoot(1));
+		debugger_frame.visible_if(() => isGuiDebuggerShown);
 	}
 
 	override void userPreUpdate(double delta)
@@ -97,7 +101,7 @@ class LauncherGui : GuiApp
 				bottom_panel_worlds.createTextButton("New", &newWorld);
 				bottom_panel_worlds.createTextButton("Remove", &removeWorld).visible_if(&worldList.hasSelected);
 				bottom_panel_worlds.createTextButton("Refresh", &refreshWorlds);
-				HFill.create(bottom_panel_worlds);
+				bottom_panel_worlds.hfill;
 				bottom_panel_worlds.createTextButton("Server", &startServer).visible_if(&worldList.hasSelected);
 				bottom_panel_worlds.createTextButton("Start", &startClient).visible_if(&worldList.hasSelected);
 
@@ -110,7 +114,7 @@ class LauncherGui : GuiApp
 			WidgetProxy bottom_panel_servers = HLayout.create(servers_panel, 2, padding4(1)).hexpand.addBackground(color_gray);
 				bottom_panel_servers.createTextButton("New", &newServer);
 				bottom_panel_servers.createTextButton("Remove", &removeServer).visible_if(&serverList.hasSelected);
-				HFill.create(bottom_panel_servers);
+				bottom_panel_servers.hfill;
 				bottom_panel_servers.createTextButton("Connect", &connetToServer).visible_if(&serverList.hasSelected);
 
 		return play_panel;
@@ -168,7 +172,7 @@ struct JobItemWidget
 	WidgetProxy create(WidgetProxy parent, Job* job, TextViewSettingsRef textSettings)
 	{
 		auto job_item = VLayout.create(parent, 0, padding4(0)).hvexpand;
-		auto top_buttons = HLayout.create(job_item, 2, padding4(3,3,1,1), Alignment.center).hexpand.addBorder;
+		auto top_buttons = HLayout.create(job_item, 2, padding4(3,3,1,1), Alignment.center).hexpand.addBorder(color_gray);
 		bool job_running() { return !job.isRunning && !job.needsRestart; }
 
 		void updateStatusText(WidgetProxy widget, ref GuiUpdateEvent event)
@@ -199,7 +203,15 @@ struct JobItemWidget
 		job.msglog.setClipboard = parent.ctx.state.setClipboard;
 		auto msglogModel = new MessageLogTextModel(&job.msglog);
 		auto viewport = TextEditorViewportLogic.create(job_item, msglogModel, textSettings).hvexpand;
-		viewport.get!TextEditorViewportData.autoscroll = true;
+
+		void autoscroll_enable() { viewport.get!TextEditorViewportData.autoscroll = true; }
+		bool autoscroll_enabled() { return viewport.get!TextEditorViewportData.autoscroll; }
+
+		top_buttons.hfill;
+		createTextButton(top_buttons, "Autoscroll", &autoscroll_enable).visible_if_not(&autoscroll_enabled);
+
+		autoscroll_enable();
+
 		return job_item;
 	}
 
