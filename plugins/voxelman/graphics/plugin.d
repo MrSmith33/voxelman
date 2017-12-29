@@ -279,6 +279,29 @@ public:
 		solidShader3d.unbind;
 	}
 
+	void draw(ref Armature armature, Matrix4f modelMatrix = Matrix4f.identity)
+	{
+		solidShader3d.bind;
+		solidShader3d.setMVP(modelMatrix, camera.cameraMatrix, camera.perspective);
+
+		drawBone(armature.root, modelMatrix);
+
+		solidShader3d.unbind;
+	}
+
+	private void drawBone(ref Armature.Bone bone, Matrix4f model)
+	{
+		model = model * bone.transform;
+		solidShader3d.setModel(model);
+
+		drawBuffer(bone.mesh.triBuffer.data, GL_TRIANGLES);
+		drawBuffer(bone.mesh.lineBuffer.data, GL_LINES);
+		drawBuffer(bone.mesh.pointBuffer.data, GL_POINTS);
+
+		foreach (child; bone.children.data)
+			drawBone(child, model);
+	}
+
 	void draw(Batch2d batch)
 	{
 		solidShader2d.bind;
