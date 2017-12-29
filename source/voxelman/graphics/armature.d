@@ -108,17 +108,23 @@ struct Armature
 ///
 unittest
 {
-	Batch head;
-	head.putCube(vec3(-0.25f, -0.25f, -0.25f), vec3(0.5f, 0.5f, 0.5f), Colors.white, true);
-	Batch body_;
-	body_.putCube(vec3(-0.25f, -0.4f, -0.25f), vec3(0.5f, 0.8f, 0.5f), Colors.white, true);
+	import voxelman.graphics.color : Colors;
+
+	Batch head = Batch.cube(vec3(0.5f, 0.5f, 0.5f), Colors.white, true);
+	Batch body_ = Batch.cube(vec3(0.5f, 0.8f, 0.5f), Colors.white, true);
 
 	Armature armature = Armature("human", translationMatrix(vec3(0, 1.5f, 0)));
-	auto bodyBone = armature.addRoot("body", body_, Matrix4f.identity);
-	auto headBone = armature.addChild(bodyBone, "head", head, translationMatrix(0, 0.65f, 0));
+	armature.addRoot("body", body_, Matrix4f.identity);
+	armature.addChild("body", "head", head, translationMatrix(vec3(0, 0.65f, 0)));
 
-	bodyBone.rotate(vec3(degtorad(90), 0, 0));
-	headBone.rotate(vec3(0, degtorad(90), 0));
+	// after adding all bones
+
+	auto bodyBone = armature.findBoneByName("body");
+	auto headBone = armature.findBoneByName("head");
+	// bones should not be modified at this point as they might mess up bone references
+
+	bodyBone.rotate(vec3(degtorad(90.0f), 0, 0));
+	headBone.rotate(vec3(0, degtorad(90.0f), 0));
 
 	// should be bent down, looking left now
 }
