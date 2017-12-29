@@ -24,6 +24,38 @@ struct Batch
 		putMesh(triBuffer, vertices, offset);
 	}
 
+	/// Creates a batch with a centered cube with 3 radiuses (not dimensions).
+	static Batch cube(T)(Vector!(T, 3) halfSize, Color4ub color, bool fill)
+	{
+		Batch b;
+		b.putCube(-halfSize, halfSize * 2, color, fill);
+		return b;
+	}
+
+	/// Creates a batch with a centered cube with 3 radiuses (not dimensions) and offset.
+	static Batch cube(T)(Vector!(T, 3) halfSize, Color4ub color, bool fill, Vector!(T, 3) offset)
+	{
+		Batch b;
+		b.putCube(-halfSize + offset, halfSize * 2, color, fill);
+		return b;
+	}
+
+	/// Creates a batch with a centered cube with 3 radiuses (not dimensions) where all dimensions are 1/32th (1 pixel in a 32x32 texture).
+	static Batch cube32(T)(Vector!(T, 3) halfSize, Color4ub color, bool fill)
+	{
+		Batch b;
+		b.putCube(-halfSize / 32.0, halfSize / 16.0, color, fill);
+		return b;
+	}
+
+	/// Creates a batch with a centered cube with 3 radiuses (not dimensions) and offset where all dimensions are 1/32th (1 pixel in a 32x32 texture).
+	static Batch cube32(T)(Vector!(T, 3) halfSize, Color4ub color, bool fill, Vector!(T, 3) offset)
+	{
+		Batch b;
+		b.putCube((-halfSize + offset) / 32.0, halfSize / 16.0, color, fill);
+		return b;
+	}
+
 	void putCube(T1, T2)(Vector!(T1, 3) pos, Vector!(T2, 3) size, Color4ub color, bool fill)
 	{
 		if (fill)

@@ -7,6 +7,7 @@ module voxelman.graphics;
 
 
 public import voxelman.graphics.animation;
+public import voxelman.graphics.armature;
 public import voxelman.graphics.batch2d;
 public import voxelman.graphics.batch;
 public import voxelman.graphics.bitmap;
