@@ -21,6 +21,7 @@ abstract class IWindow
 	void processEvents(); // will emit signals
 	double elapsedTime() @property; // in seconds
 	void swapBuffers();
+	void setVsync(bool);
 	void releaseWindow();
 
 	void mousePosition(ivec2 newPosition) @property;

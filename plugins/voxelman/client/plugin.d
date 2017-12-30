@@ -127,6 +127,9 @@ public:
 		connection = pluginman.getPlugin!NetClientPlugin;
 
 		console.create(guictx, &onConsoleEnter);
+
+		if (graphics.vsync.get!bool)
+			limitFps = false;
 	}
 
 	void onConsoleEnter(string command)

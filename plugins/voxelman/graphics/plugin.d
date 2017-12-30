@@ -62,6 +62,7 @@ public:
 	ConfigOption cameraSensivity;
 	ConfigOption cameraFov;
 	ConfigOption resolution;
+	ConfigOption vsync;
 
 	mixin IdAndSemverFrom!"voxelman.graphics.plugininfo";
 
@@ -89,6 +90,7 @@ public:
 		cameraSensivity = config.registerOption!double("camera_sensivity", 0.4);
 		cameraFov = config.registerOption!double("camera_fov", 60.0);
 		resolution = config.registerOption!(int[])("resolution", [1280, 720]);
+		vsync = config.registerOption!bool("vsync", true);
 	}
 
 	override void preInit()
@@ -99,6 +101,7 @@ public:
 
 		window = new GlfwWindow();
 		window.init(ivec2(resolution.get!(int[])), "Voxelman client");
+		window.setVsync(vsync.get!bool);
 
 		reloadOpenGL();
 

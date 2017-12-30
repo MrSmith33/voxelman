@@ -48,7 +48,6 @@ public:
 
 		scope(failure) glfwTerminate();
 
-		version(linux) glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_VISIBLE, false);
@@ -66,7 +65,6 @@ public:
 		glfwShowWindow(glfwWindowPtr);
 
 		glfwMakeContextCurrent(glfwWindowPtr);
-		glfwSwapInterval(0);
 
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		glViewport(0, 0, size.x, size.y);
@@ -153,6 +151,11 @@ public:
 		double x, y;
 		glfwGetCursorPos(glfwWindowPtr, &x, &y);
 		return ivec2(x, y) * pixelSize;
+	}
+
+	override void setVsync(bool value)
+	{
+		glfwSwapInterval(value);
 	}
 
 	override void swapBuffers()
