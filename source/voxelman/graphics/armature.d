@@ -81,7 +81,7 @@ struct Armature
 	}
 
 	/// Iterates over each bone in the tree structure by ref
-	int opApply(int delegate(ref Bone) dg)
+	int opApply(scope int delegate(ref Bone) dg)
 	{
 		auto todo = fullBuffer;
 		todo.clear();

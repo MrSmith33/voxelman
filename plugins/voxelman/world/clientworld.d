@@ -291,25 +291,25 @@ public:
 	private void showDebugGuiPosition()
 	{
 		// heading
-		//vec3 target = graphics.camera.target;
-		//vec2 heading = graphics.camera.heading;
-		//igTextf("Heading: %.1f %.1f", heading.x, heading.y);
-		//igTextf("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
+		vec3 target = graphics.camera.target;
+		vec2 heading = graphics.camera.heading;
+		graphics.debugText.putfln("Heading: %.1f %.1f", heading.x, heading.y);
+		graphics.debugText.putfln("Target: X %.1f Y %.1f Z %.1f", target.x, target.y, target.z);
 
 		// position
-		//vec3 pos = graphics.camera.position;
-		//igTextf("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
-		//ChunkWorldPos chunkPos = observerPosition;
-		//igTextf("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
+		vec3 pos = graphics.camera.position;
+		graphics.debugText.putfln("Pos: X %.1f Y %.1f Z %.1f", pos.x, pos.y, pos.z);
+		ChunkWorldPos chunkPos = observerPosition;
+		graphics.debugText.putfln("Chunk: %s %s %s", chunkPos.x, chunkPos.y, chunkPos.z);
 	}
 
 	private void showDebugGuiSettings()
 	{
-		//igTextf("Dimension: %s", observerPosition.w); igSameLine();
+		graphics.debugText.putfln("Dimension: %s", observerPosition.w);// igSameLine();
 			//if (igButton("-##decDimension")) decDimension(); igSameLine();
 			//if (igButton("+##incDimension")) incDimension();
 
-		//igTextf("View radius: %s", viewRadius); igSameLine();
+		graphics.debugText.putfln("View radius: %s", viewRadius);// igSameLine();
 			//if (igButton("-##decVRadius")) decViewRadius(); igSameLine();
 			//if (igButton("+##incVRadius")) incViewRadius();
 
@@ -318,21 +318,20 @@ public:
 
 	private void showDebugGuiGraphics()
 	{
-		/*
-		if (igCollapsingHeader("Graphics"))
-		{
+		//if (igCollapsingHeader("Graphics"))
+		//{
 			size_t dbg_meshesVisible = chunkMeshMan.chunkMeshes[0].length + chunkMeshMan.chunkMeshes[1].length;
 			size_t dbg_totalRendered = dbg_meshesRenderedSemitransparent + dbg_meshesRenderedSolid;
-			igTextf("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
+			graphics.debugText.putfln("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
 				dbg_meshesRenderedSolid, dbg_meshesRenderedSemitransparent, dbg_totalRendered, dbg_meshesVisible,
 				dbg_meshesVisible ? cast(float)dbg_totalRendered/dbg_meshesVisible*100.0 : 0);
-			igTextf("Vertices %s", dbg_vertsRendered);
-			igTextf("Triangles %s", dbg_trisRendered);
+			graphics.debugText.putfln("Vertices %s", dbg_vertsRendered);
+			graphics.debugText.putfln("Triangles %s", dbg_trisRendered);
 			import voxelman.graphics.vbo;
-			igTextf("Buffers: %s Mem: %s",
+			graphics.debugText.putfln("Buffers: %s Mem: %s",
 				Vbo.numAllocated,
 				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
-		}*/
+		//}
 		dbg_meshesRenderedSolid = 0;
 		dbg_meshesRenderedSemitransparent = 0;
 		dbg_vertsRendered = 0;
@@ -341,30 +340,29 @@ public:
 
 	private void showDebugGuiChunks()
 	{
-		/*
-		if (igCollapsingHeader("Chunks"))
-		{
+		//if (igCollapsingHeader("Chunks"))
+		//{
 			drawDebugChunkInfoGui();
 
-			igTextf("Chunks per frame loaded: %s", dbg_totalLoadedChunks - dbg_lastFrameLoadedChunks);
+			graphics.debugText.putfln("Chunks per frame loaded: %s", dbg_totalLoadedChunks - dbg_lastFrameLoadedChunks);
 			dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
-			igTextf("Chunks total loaded: %s", dbg_totalLoadedChunks);
-			igTextf("Chunks tracked/loaded: %s/%s", chunkManager.numTrackedChunks, chunkManager.numLoadedChunks);
-			igTextf("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
+			graphics.debugText.putfln("Chunks total loaded: %s", dbg_totalLoadedChunks);
+			graphics.debugText.putfln("Chunks tracked/loaded: %s/%s", chunkManager.numTrackedChunks, chunkManager.numLoadedChunks);
+			graphics.debugText.putfln("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
 
 			with(chunkMeshMan) {
-				igTextf("Chunks to mesh: %s", numMeshChunkTasks);
-				igTextf("New meshes: %s", newChunkMeshes.length);
+				graphics.debugText.putfln("Chunks to mesh: %s", numMeshChunkTasks);
+				graphics.debugText.putfln("New meshes: %s", newChunkMeshes.length);
 				size_t sum;
 				foreach(ref w; meshWorkers.workers) sum += w.taskQueue.length;
-				igTextf("Task Queues: %s", sum);
+				graphics.debugText.putfln("Task Queues: %s", sum);
 				sum = 0;
 				foreach(ref w; meshWorkers.workers) sum += w.resultQueue.length;
-				igTextf("Res Queues: %s", sum);
+				graphics.debugText.putfln("Res Queues: %s", sum);
 				float percent = totalMeshedChunks > 0 ? cast(float)totalMeshes / totalMeshedChunks * 100 : 0.0;
-				igTextf("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
+				graphics.debugText.putfln("Meshed/Meshes %s/%s %.0f%%", totalMeshedChunks, totalMeshes, percent);
 			}
-		}*/
+		//}
 	}
 
 	private bool chunkDebug_showGrid;
@@ -377,23 +375,21 @@ public:
 
 	private void drawDebugChunkInfoGui()
 	{
-		/*
 		// debug view radius
-		igTextf("Debug radius: %s", chunkDebug_viewRadius);
-		igSameLine();
-			if (igButton("-##decDebugRadius"))
-				--chunkDebug_viewRadius;
-			igSameLine();
-			if (igButton("+##incDebugRadius"))
-				++chunkDebug_viewRadius;
+		graphics.debugText.putfln("Debug radius: %s", chunkDebug_viewRadius);
+		//igSameLine();
+		//	if (igButton("-##decDebugRadius"))
+		//		--chunkDebug_viewRadius;
+		//	igSameLine();
+		//	if (igButton("+##incDebugRadius"))
+		//		++chunkDebug_viewRadius;
 
-		igCheckbox("show grid", &chunkDebug_showGrid);
-		igCheckbox("show uniform", &chunkDebug_showUniform);
-		igCheckbox("show side meta", &chunkDebug_showSideMetadata);
-		igCheckbox("show block entities", &chunkDebug_showBlockEntities);
-		igCheckbox("show wasted meshes", &chunkDebug_showWastedMeshes);
-		igCheckbox("show chunk layers", &chunkDebug_showChunkLayers);
-		*/
+		//igCheckbox("show grid", &chunkDebug_showGrid);
+		//igCheckbox("show uniform", &chunkDebug_showUniform);
+		//igCheckbox("show side meta", &chunkDebug_showSideMetadata);
+		//igCheckbox("show block entities", &chunkDebug_showBlockEntities);
+		//igCheckbox("show wasted meshes", &chunkDebug_showWastedMeshes);
+		//igCheckbox("show chunk layers", &chunkDebug_showChunkLayers);
 	}
 
 	private void drawDebugChunkInfo()

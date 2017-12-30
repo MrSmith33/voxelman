@@ -66,7 +66,7 @@ final class ShaderProgram
 			switch(shaderType)
 			{
 				case GL_VERTEX_SHADER:   shaderTypeString = "vertex"; break;
-				case GL_GEOMETRY_SHADER: shaderTypeString = "geometry"; break;
+				//case GL_GEOMETRY_SHADER: shaderTypeString = "geometry"; break; // not supported in OpenGL 3.1
 				case GL_FRAGMENT_SHADER: shaderTypeString = "fragment"; break;
 				default: break;
 			}

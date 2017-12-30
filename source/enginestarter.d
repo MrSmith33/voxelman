@@ -77,7 +77,6 @@ struct EngineStarter
 			pluginRegistry.serverMain(args, serverMode);
 		} catch(Throwable t) {
 			criticalf("Server failed with error");
-			criticalf("%s", t.msg);
 			criticalf("%s", t);
 		}
 	}
@@ -93,7 +92,6 @@ struct EngineStarter
 			pluginRegistry.clientMain(args);
 		} catch(Throwable t) {
 			criticalf("Client failed with error");
-			criticalf("%s", t.msg);
 			criticalf("%s", t);
 		}
 	}

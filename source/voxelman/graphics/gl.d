@@ -11,7 +11,7 @@ import std.conv: to;
 import std.string : format;
 import std.typecons : tuple;
 
-mixin glFreeFuncs!(GLVersion.gl33);
+mixin glFreeFuncs!(GLVersion.gl31);
 
 void loadOpenGL()
 {

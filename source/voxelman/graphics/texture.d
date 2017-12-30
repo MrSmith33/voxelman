@@ -26,8 +26,8 @@ enum TextureTarget : uint
 	target1dArray = GL_TEXTURE_1D_ARRAY,
 	target2dArray = GL_TEXTURE_2D_ARRAY,
 	//targetCubeMapArray = GL_TEXTURE_CUBE_MAP_ARRAY,
-	target2dMultisample = GL_TEXTURE_2D_MULTISAMPLE,
-	target2dMultisampleArray = GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
+	//target2dMultisample = GL_TEXTURE_2D_MULTISAMPLE,
+	//target2dMultisampleArray = GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
 }
 
 enum TextureFormat : uint

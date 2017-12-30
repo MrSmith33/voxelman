@@ -22,6 +22,23 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - Unpack.
 - Follow instructions below.
 
+## Requirements
+- OpenGL 3.1 support
+- Multicore CPUs are utilized
+- Memory consumption
+<table>
+<thead>
+<tr> <th rowspan="2">Map name</th>
+<th colspan="2">10 (21^3) chunks</th>
+<th colspan="2">20 (41^3) chunks</th>
+<th colspan="2">30 (61^3) chunks</th> </tr>
+<tr> <th>RAM</th> <th>VRAM</th> <th>RAM</th> <th>VRAM</th> <th>RAM</th> <th>VRAM</th> </tr>
+</thead>
+<tr> <td>Default heightmap terrain</td> <td>300MB</td><td>150MB</td> <td>800MB</td><td>200MB</td> <td>1.8GB</td><td>400MB</td> </tr>
+<tr> <td>Default flat terrain</td> <td>80MB</td><td>18MB</td> <td>160MB</td><td>80MB</td> <td>400MB</td><td>170MB</td> </tr>
+<tr> <td>King's landing</td> <td>200MB</td><td>180MB</td> <td>500MB</td><td>550MB</td> <td>600MB</td><td>700MB</td> </tr>
+</table>
+
 ## Starting game with launcher
 ### Single player
 - Start launcher
@@ -35,11 +52,13 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - To stop the server, go to the `Code` menu and hit `Stop` button of your server instance.
 
 ## Starting game with command line
+- Executable must be started from `builds/default` folder.
 - `voxelman --app=[client|server|combined] --world_name="new world" --name="Player"`.
 - You can override any config options by passing switch in a form `--option=value`.
 - Array config options are passed using comma between items. Like `--resolution=1280,800`.
 
 ## Server commands
+- Can be inputted from server console inside launcher `Debug` menu, or from client console.
 - `tp <x> [<y>] <z> | tp <player name>` - teleports to position or other player's location
 - `tp u|d|l|r|f|b <num_blocks>` - teleports player in choosen direction
 - `spawn` teleports to starting world position
@@ -79,7 +98,7 @@ sudo apt-get install build-essential dmd-bin dub
 
 Install dependencies:
 ```
-sudo apt-get install liblmdb-dev liblz4-dev libglfw3 libenet-dev
+sudo apt-get install liblmdb-dev liblz4-dev libglfw3-dev libenet-dev
 ```
 
 Compile:
@@ -90,7 +109,6 @@ git submodule update --init --recursive
 dub build
 ```
 
-Download [cimgui.so](https://github.com/MrSmith33/voxelman/releases/download/v0.8.0-dev.1/cimgui.so) x86_64 and place it in `lib/64`.
 
 Run:
 ```
