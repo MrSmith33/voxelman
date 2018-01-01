@@ -1,5 +1,5 @@
 /**
-Copyright: Copyright (c) 2015-2017 Andrey Penechko.
+Copyright: Copyright (c) 2015-2018 Andrey Penechko.
 License: $(WEB boost.org/LICENSE_1_0.txt, Boost License 1.0).
 Authors: Andrey Penechko.
 */
@@ -50,7 +50,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyPressed(KeyCode keyCode, uint modifiers)
 	{
-		//if (guiPlugin.igState.keyboardCaptured) return;
+		if (guiPlugin.guictx.focusedWidget) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -61,7 +61,7 @@ final class InputPlugin : IPlugin
 
 	void onKeyReleased(KeyCode keyCode, uint modifiers)
 	{
-		//if (guiPlugin.igState.keyboardCaptured) return;
+		if (guiPlugin.guictx.focusedWidget) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -72,7 +72,7 @@ final class InputPlugin : IPlugin
 
 	void onMousePressed(PointerButton button, uint modifiers)
 	{
-		//if (guiPlugin.igState.mouseCaptured) return;
+		if (guiPlugin.guictx.inputOwnerWidget) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -83,7 +83,7 @@ final class InputPlugin : IPlugin
 
 	void onMouseReleased(PointerButton button, uint modifiers)
 	{
-		//if (guiPlugin.igState.mouseCaptured) return;
+		if (guiPlugin.guictx.inputOwnerWidget) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
@@ -94,7 +94,7 @@ final class InputPlugin : IPlugin
 
 	bool isKeyPressed(string keyName)
 	{
-		//if (guiPlugin.igState.keyboardCaptured) return false;
+		if (guiPlugin.guictx.focusedWidget) return false;
 		if (auto binding = keyName in keyBindingsMan.keyBindingsByName)
 		{
 			KeyBinding* b = *binding;
