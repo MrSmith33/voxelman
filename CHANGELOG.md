@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+- Add vsync option, true by default, disables manual fps limiting.
+- Add command help listing with help command.
+- New universal command handling logic. Commands can come from launcher, chat or ingame console.
 - Add cursor icon API for IWindow and GlfwWindow.
 - Add Font metrics advanceX and advanceY.
 - Add minimal size constraint to widget transform.

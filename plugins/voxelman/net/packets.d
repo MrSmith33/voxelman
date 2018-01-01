@@ -65,9 +65,25 @@ struct ClientLoggedOutPacket
 	EntityId clientId;
 }
 
+enum MessageEndpoint
+{
+	chat,
+	launcherConsole,
+	integratedConsole,
+}
+
+// Where server should send command output depending on client input method
+MessageEndpoint[4] commandSourceToMsgEndpoint = [
+	MessageEndpoint.integratedConsole, // <= clientConsole,
+	MessageEndpoint.chat,              // <= clientChat,
+	MessageEndpoint.launcherConsole,   // <= clientLauncher,
+	MessageEndpoint.integratedConsole  // <= localLauncher, shouldn't happen
+];
+
 // sent from client with peer == 0 and from server with userId of sender.
 struct MessagePacket
 {
 	string msg;
 	EntityId clientId; // from. Set to 0 when sending from client
+	MessageEndpoint endpoint; // Where message came from (if from client), or should be sent to (if to client)
 }

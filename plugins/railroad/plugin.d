@@ -156,7 +156,7 @@ final class RailroadPluginServer : IPlugin
 		evDispatcher.subscribeToEvent(&wagonLogic.process);
 
 		auto command = pluginman.getPlugin!CommandPluginServer;
-		command.registerCommand("remove_wagons", &handleRemoveWagons);
+		command.registerCommand(CommandInfo("remove_wagons", &handleRemoveWagons, null, "Removes all wagons from the world"));
 	}
 
 	private void handleRemoveWagons(CommandParams params)

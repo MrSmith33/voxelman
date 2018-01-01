@@ -28,6 +28,8 @@ struct Console
 
 	void create(GuiContext guictx, void delegate(string command) messageHandler)
 	{
+		guictx.style.pushColor(Colors.white);
+
 		this.messageHandler = messageHandler;
 
 		auto con = guictx.createWidget(WidgetType("console"))
@@ -35,7 +37,7 @@ struct Console
 			.minSize(0, 200)
 			.visible_if(() => isConsoleShown)
 			.addBackground(Color4ub(128, 128, 128, 128))
-			.setVLayout(2, padding4(2));
+			.setVLayout(0, padding4(0));
 
 		guictx.roots ~= con;
 
@@ -47,7 +49,12 @@ struct Console
 		messagesModel = new MessageLogTextModel(&messages);
 
 		viewport = TextEditorViewportLogic.create(con, messagesModel, &editorSettings).hvexpand;
+		hline(con);
 		input = LineEdit.create(con, &onInput).hexpand;
+
+		viewport.get!TextEditorViewportData.autoscroll = true;
+
+		guictx.style.popColor;
 	}
 
 	void onInput(string command)

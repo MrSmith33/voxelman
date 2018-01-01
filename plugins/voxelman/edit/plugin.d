@@ -80,7 +80,7 @@ class EditPlugin : IPlugin
 		debugClient.registerDebugGuiHandler(&showToolHandler, INFO_ORDER, "ToolDebug");
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginClient;
-		commandPlugin.registerCommand("pick", &onPickBlockName);
+		commandPlugin.registerCommand(CommandInfo("pick", &onPickBlockName, ["<block_name>"], "Picks a block by name"));
 	}
 
 	private void showToolName() {

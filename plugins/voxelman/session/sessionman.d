@@ -31,7 +31,7 @@ struct Session
 
 	// used when type is registeredClient
 	string _name;
-	EntityId dbKey; // ditto
+	EntityId dbKey; // clientId for this session when type is registeredClient
 }
 
 struct SessionManager

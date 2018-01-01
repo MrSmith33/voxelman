@@ -87,7 +87,16 @@ struct SpawnPacket
 {
 }
 
+enum CommandSourceType
+{
+	clientConsole,
+	clientChat,
+	clientLauncher,
+	localLauncher,
+}
+
 struct CommandPacket
 {
 	string command;
+	CommandSourceType sourceType;
 }

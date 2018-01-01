@@ -75,14 +75,8 @@ final class RemoteControl(bool clientSide) : IPlugin
 				char[] command = splittedLines[0];
 				splittedLines = splittedLines[1..$];
 
-				ExecResult res = commandPlugin.execute(command, SessionId(0));
-
-				if (res.status == ExecStatus.notRegistered)
-				{
-					warningf("Unknown command '%s'", command);
-				}
-				else if (res.status == ExecStatus.error)
-					warningf("Error executing command '%s': %s", command, res.error);
+				commandPlugin.execute(command, CommandSourceType.localLauncher, SessionId(0));
+				info(commandPlugin.commandTextOutput.text);
 			}
 
 			if (splittedLines.length == 1)

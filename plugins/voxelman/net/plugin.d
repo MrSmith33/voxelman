@@ -25,6 +25,7 @@ import voxelman.eventdispatcher.plugin;
 import voxelman.command.plugin;
 import voxelman.dbg.plugin;
 import voxelman.config.configmanager;
+import voxelman.session;
 
 
 mixin template NetCommon()
@@ -89,9 +90,10 @@ final class NetClientPlugin : IPlugin
 		evDispatcher.subscribeToEvent(&handleThisClientDisconnected);
 
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
-		commandPlugin.registerCommand("connect", &connectCommand);
+		commandPlugin.registerCommand(CommandInfo("connect", &connectCommand, ["[--ip=<ip_address>] [--port=<port_number>]"], "Connects to the specified server"));
 
 		connection.registerPacketHandler!PacketMapPacket(&handlePacketMapPacket);
+		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 	}
 
 	void handleGameStartEvent(ref GameStartEvent event)
@@ -164,6 +166,20 @@ final class NetClientPlugin : IPlugin
 		connection.printPacketMap();
 	}
 
+	void handleMessagePacket(ubyte[] packetData)
+	{
+		auto packet = unpackPacket!MessagePacket(packetData);
+
+		if (packet.endpoint == MessageEndpoint.launcherConsole)
+		{
+			infof(packet.msg);
+		}
+		else
+		{
+			evDispatcher.postEvent(MessageEvent(packet));
+		}
+	}
+
 	void onGameStopEvent(ref GameStopEvent gameStopEvent)
 	{
 		if (!connection.isConnected) return;
@@ -190,6 +206,7 @@ final class NetServerPlugin : IPlugin
 private:
 	ConfigOption portOpt;
 	ConfigOption maxPlayers;
+	ClientManager clientMan;
 	EventDispatcherPlugin evDispatcher;
 	string[][string] idMaps;
 
@@ -213,11 +230,14 @@ public:
 
 	override void init(IPluginManager pluginman)
 	{
+		clientMan = pluginman.getPlugin!ClientManager;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handleGameStartEvent);
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&handleGameStopEvent);
+
+		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 	}
 
 	override void postInit()
@@ -258,6 +278,14 @@ public:
 	void onPostUpdateEvent(ref PostUpdateEvent event)
 	{
 		connection.flush();
+	}
+
+	void handleMessagePacket(ubyte[] packetData, SessionId sessionId)
+	{
+		auto packet = unpackPacket!MessagePacket(packetData);
+		Session* session = clientMan.sessions[sessionId];
+		packet.clientId = session.dbKey;
+		evDispatcher.postEvent(MessageEvent(packet, session.name));
 	}
 
 	void handleGameStopEvent(ref GameStopEvent event)

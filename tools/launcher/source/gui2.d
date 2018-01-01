@@ -10,6 +10,7 @@ import std.format : formattedWrite;
 import std.stdio;
 import voxelman.math;
 import voxelman.gui;
+import voxelman.gui.textedit.lineedit;
 import voxelman.gui.textedit.messagelog;
 import voxelman.gui.textedit.textmodel;
 import voxelman.gui.textedit.texteditorview;
@@ -171,6 +172,8 @@ struct JobItemWidget
 	static:
 	WidgetProxy create(WidgetProxy parent, Job* job, TextViewSettingsRef textSettings)
 	{
+		parent.ctx.style.pushColor(color_wet_asphalt);
+
 		auto job_item = VLayout.create(parent, 0, padding4(0)).hvexpand;
 		auto top_buttons = HLayout.create(job_item, 2, padding4(3,3,1,1), Alignment.center).hexpand.addBorder(color_gray);
 		bool job_running() { return !job.isRunning && !job.needsRestart; }
@@ -204,6 +207,17 @@ struct JobItemWidget
 		auto msglogModel = new MessageLogTextModel(&job.msglog);
 		auto viewport = TextEditorViewportLogic.create(job_item, msglogModel, textSettings).hvexpand;
 
+		hline(job_item);
+		auto input = LineEdit.create(job_item).hexpand;
+
+		void enterHandler(string com)
+		{
+			sendCommand(job, com);
+			LineEdit.clear(input);
+		}
+
+		LineEdit.setEnterHandler(input, &enterHandler);
+
 		void autoscroll_enable() { viewport.get!TextEditorViewportData.autoscroll = true; }
 		bool autoscroll_enabled() { return viewport.get!TextEditorViewportData.autoscroll; }
 
@@ -212,9 +226,10 @@ struct JobItemWidget
 
 		autoscroll_enable();
 
+		parent.ctx.style.popColor;
+
 		return job_item;
 	}
-
 }
 
 struct WorldList

@@ -202,7 +202,7 @@ struct TextEditorViewportLogic
 				int cursorX = textWidth(settings, editor[lineInfo.startOffset..sel.end.byteOffset].byItem);
 				vec2 pos = vec2(transform.absPos) + vec2(cursorX, viewportTopOffset*glyphSize.y);
 				vec2 size = vec2(1, glyphSize.y);
-				event.renderQueue.drawRectFill(pos, size, event.depth+1, rgb(0,0,0));
+				event.renderQueue.drawRectFill(pos, size, event.depth+1, settings.color);
 			}
 		}
 

@@ -633,8 +633,9 @@ void onJobBuildCompletion(Job* job, bool success)
 {
 	if (job.params.jobType != JobType.test)
 	{
-		job.messageWindow.putln(success ? "Compilation successful" : "Compilation failed");
-		job.msglog.putln(success ? "Compilation successful" : "Compilation failed");
+		auto msg = success ? "Compilation successful" : "Compilation failed";
+		job.messageWindow.putln(msg);
+		job.msglog.putln(msg);
 	}
 }
 

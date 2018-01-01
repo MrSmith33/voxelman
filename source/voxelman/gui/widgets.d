@@ -415,12 +415,16 @@ struct TextData
 	string text;
 	Alignment halign;
 	Alignment valign;
+	Color4ub color;
 }
 
 WidgetProxy createText(WidgetProxy parent, string text,
 	Alignment halign = Alignment.center, Alignment valign = Alignment.center)
 {
-	return TextLogic.create(parent, text, halign, valign);
+	return TextLogic.create(parent, text,
+		parent.ctx.style.font,
+		parent.ctx.style.color,
+		halign, valign);
 }
 
 struct TextLogic
@@ -429,12 +433,13 @@ struct TextLogic
 	WidgetProxy create(
 		WidgetProxy parent,
 		string text,
-		Alignment halign = Alignment.center,
-		Alignment valign = Alignment.center)
+		FontRef font,
+		Color4ub color,
+		Alignment halign,
+		Alignment valign)
 	{
-		FontRef font = parent.ctx.style.font;
 		WidgetProxy textWidget = parent.createChild(
-			TextData(text, halign, valign),
+			TextData(text, halign, valign, color),
 			WidgetEvents(&drawText),
 			WidgetType("Text"))
 				.minSize(0, font.metrics.height);
@@ -466,7 +471,7 @@ struct TextLogic
 		auto params = event.renderQueue.startTextAt(vec2(transform.absPos));
 		params.monospaced = false;
 		params.depth = event.depth;
-		params.color = color_wet_asphalt;
+		params.color = data.color;
 		params.origin += alignmentOffset;
 		params.meshText(data.text);
 
@@ -839,7 +844,7 @@ struct Line(bool horizontal)
 	static:
 	static if (horizontal) {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("HLine")).hexpand;
+			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("HLine"), WidgetStyle(parent.ctx.style.color)).hexpand;
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -847,7 +852,7 @@ struct Line(bool horizontal)
 		}
 	} else {
 		WidgetProxy create(WidgetProxy parent) {
-			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("VLine")).vexpand;
+			return parent.createChild(WidgetEvents(&drawWidget, &measure), WidgetType("VLine"), WidgetStyle(parent.ctx.style.color)).vexpand;
 		}
 		void measure(WidgetProxy widget, ref MeasureEvent event) {
 			auto transform = widget.getOrCreate!WidgetTransform;
@@ -857,7 +862,8 @@ struct Line(bool horizontal)
 	void drawWidget(WidgetProxy widget, ref DrawEvent event) {
 		if (event.bubbling) return;
 		auto transform = widget.getOrCreate!WidgetTransform;
-		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, color_wet_asphalt);
+		auto color = widget.get!WidgetStyle.color;
+		event.renderQueue.drawRectFill(vec2(transform.absPos), vec2(transform.size), event.depth, color);
 	}
 }
 

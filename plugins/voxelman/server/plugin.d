@@ -41,8 +41,8 @@ public:
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
-		commandPlugin.registerCommand("sv_stop|stop", &onStopCommand);
-		commandPlugin.registerCommand("save", &onSaveCommand);
+		commandPlugin.registerCommand(CommandInfo("sv_stop|stop", &onStopCommand, null, "Stops the server"));
+		commandPlugin.registerCommand(CommandInfo("save", &onSaveCommand, null, "Saves the world"));
 	}
 
 	void onStopCommand(CommandParams) { isRunning = false; }

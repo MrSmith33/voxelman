@@ -56,6 +56,15 @@ struct ImplicitGuiStyle
 	void pushFont(FontRef font) { fontStack.push(font); }
 	void popFont() { fontStack.pop(); }
 
+	ChunkedBuffer!(Color4ub, 16) colorStack;
+	Color4ub defaultColor = Colors.black;
+	Color4ub color() {
+		if (colorStack.length) return colorStack.top;
+		return defaultColor;
+	}
+	void pushColor(Color4ub color) { colorStack.push(color); }
+	void popColor() { colorStack.pop(); }
+
 	SpriteRef iconPlaceholder;
 	SpriteRef[string] iconMap;
 

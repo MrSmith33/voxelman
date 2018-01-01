@@ -244,18 +244,21 @@ struct LineEdit
 {
 	static:
 
+	enum vmargin = 2;
+
 	WidgetProxy create(WidgetProxy parent, void delegate(string) enterHandler = null)
 	{
-		auto font = parent.ctx.style.font;
+		TextViewSettings settings;
+		settings.font = parent.ctx.style.font;
+		settings.color = parent.ctx.style.color;
 		return parent.createChild(
-			LineEditData(TextViewSettings(font), enterHandler),
+			LineEditData(settings, enterHandler),
 			WidgetEvents(
 				&enterWidget, &drawWidget,
 				&pointerPressed, &pointerReleased, &pointerMoved,
-				&keyPressed, &charTyped
-				),
+				&keyPressed, &charTyped),
 			WidgetIsFocusable()
-		).minSize(0, font.metrics.height);
+		).minSize(0, settings.font.metrics.height + vmargin*2);
 	}
 
 	void enterWidget(WidgetProxy widget, ref PointerEnterEvent event)
@@ -272,13 +275,15 @@ struct LineEdit
 		Selection sel = data.selection;
 		ivec2 glyphSize = data.settings.scaledGlyphSize;
 
+		ivec2 textPos = transform.absPos + ivec2(0, vmargin);
+
 		auto mesherParams = event.renderQueue.defaultText();
 		mesherParams.scissors = irect(transform.absPos, transform.size);
-		mesherParams.color = cast(Color4ub)Colors.white;
+		mesherParams.color = data.settings.color;
 		mesherParams.scale = data.settings.fontScale;
 		mesherParams.font = cast(FontRef)data.settings.font;
 		mesherParams.depth = event.depth+1;
-		mesherParams.origin = transform.absPos;
+		mesherParams.origin = textPos;
 		mesherParams.monospaced = data.settings.monospaced;
 
 		mesherParams.meshText(data.textData[]);
@@ -290,7 +295,7 @@ struct LineEdit
 			int selStartX = textWidth(&data.settings, data.textData[0..normSel.start.byteOffset]);
 			int selEndX = textWidth(&data.settings, data.textData[0..normSel.end.byteOffset]);
 			vec2 size = vec2(selEndX - selStartX, glyphSize.y);
-			vec2 pos = vec2(transform.absPos) + vec2(selStartX, 0);
+			vec2 pos = vec2(textPos) + vec2(selStartX, 0);
 			event.renderQueue.drawRectFill(pos, size, event.depth, selCol);
 		}
 
@@ -301,9 +306,9 @@ struct LineEdit
 			if (sinceBlinkStart.total!"msecs" % 1000 < 500)
 			{
 				int cursorX = textWidth(&data.settings, data.textData[0..sel.end.byteOffset]);
-				vec2 pos = vec2(transform.absPos) + vec2(cursorX, 0);
+				vec2 pos = vec2(textPos) + vec2(cursorX, 0);
 				vec2 size = vec2(1, glyphSize.y);
-				event.renderQueue.drawRectFill(pos, size, event.depth+1, Colors.white);
+				event.renderQueue.drawRectFill(pos, size, event.depth+1, data.settings.color);
 			}
 		}
 
@@ -341,12 +346,31 @@ struct LineEdit
 
 	void pointerPressed(WidgetProxy widget, ref PointerPressEvent event)
 	{
+		if (event.button == PointerButton.PB_LEFT)
+		{
+			auto transform = widget.getOrCreate!WidgetTransform;
+			auto data = widget.get!LineEditData;
+			auto logic = LineEditLogic(data, widget.ctx);
+			Cursor cursorPos = logic.calcCursorPos(event.pointerPosition, transform.absPos);
+
+			data.selection.end = cursorPos;
+
+			bool extendSelection = event.shift;
+			if (!extendSelection)
+				data.selection.start = cursorPos;
+		}
 		event.handled = true;
 	}
 
 	void pointerReleased(WidgetProxy widget, ref PointerReleaseEvent event)
 	{
 		event.handled = true;
+	}
+
+	void setEnterHandler(WidgetProxy widget, void delegate(string) enterHandler)
+	{
+		auto data = widget.get!LineEditData;
+		data.enterHandler = enterHandler;
 	}
 
 	void pointerMoved(WidgetProxy widget, ref PointerMoveEvent event)

@@ -192,17 +192,17 @@ public:
 		connection.registerPacketHandler!GameStartPacket(&handleGameStartPacket);
 
 		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
-		commandPlugin.registerCommand("spawn", &onSpawnCommand);
-		commandPlugin.registerCommand("dim_spawn", &onDimensionSpawnCommand);
-		commandPlugin.registerCommand("tp", &onTeleport);
-		commandPlugin.registerCommand("dim", &changeDimensionCommand);
-		commandPlugin.registerCommand("add_active", &onAddActive);
-		commandPlugin.registerCommand("remove_active", &onRemoveActive);
-		commandPlugin.registerCommand("preload_box", &onPreloadBox);
+		commandPlugin.registerCommand(CommandInfo("spawn", &onSpawnCommand, ["[set]"], "Teleports user to or set a world spawn point"));
+		commandPlugin.registerCommand(CommandInfo("dim_spawn", &onDimensionSpawnCommand, ["[set]"], "Teleports user to or set a dimension spawn point"));
+		commandPlugin.registerCommand(CommandInfo("tp", &onTeleport, ["<x> [<y>] <z>", "<player_name>", "u|d|l|r|f|b <num_blocks>"], "Teleports user to coordinates, to another player, or in choosen direction"));
+		commandPlugin.registerCommand(CommandInfo("dim", &changeDimensionCommand, ["<dimension_number>"], "Teleports user to the spawn point of specified dimension"));
+		commandPlugin.registerCommand(CommandInfo("add_active", &onAddActive, null, "Marks user's current chunk as active. (Chunk is always loaded)"));
+		commandPlugin.registerCommand(CommandInfo("remove_active", &onRemoveActive, null, "Unmarks user's current chunk as active. (Chunk is no longer always loaded)"));
+		commandPlugin.registerCommand(CommandInfo("preload_box", &onPreloadBox, ["<radius>"], "Adds server observer to all chunks in specified radius. Chunks will stay loaded, until server restarts"));
 	}
 
 	void onAddActive(CommandParams params) {
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		auto position = db.get!ClientPosition(session.dbKey);
 		auto cwp = position.chunk;
 		serverWorld.activeChunks.add(cwp);
@@ -210,7 +210,7 @@ public:
 	}
 
 	void onRemoveActive(CommandParams params) {
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		auto position = db.get!ClientPosition(session.dbKey);
 		auto cwp = position.chunk;
 		serverWorld.activeChunks.remove(cwp);
@@ -220,7 +220,7 @@ public:
 	void onPreloadBox(CommandParams params) {
 		import std.regex : matchFirst, regex;
 		import std.conv : to;
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		auto position = db.get!ClientPosition(session.dbKey);
 		auto cwp = position.chunk;
 
@@ -240,7 +240,7 @@ public:
 
 	void onSpawnCommand(CommandParams params)
 	{
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		if(session is null) return;
 
 		auto position = db.get!ClientPosition(session.dbKey);
@@ -266,7 +266,7 @@ public:
 
 	void onDimensionSpawnCommand(CommandParams params)
 	{
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		if(session is null) return;
 
 		auto position = db.get!ClientPosition(session.dbKey);
@@ -293,7 +293,7 @@ public:
 	{
 		import std.regex : matchFirst, regex;
 		import std.conv : to;
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		if(session is null) return;
 		auto position = db.get!ClientPosition(session.dbKey);
 
@@ -353,7 +353,7 @@ public:
 			Session* destination = sessions[destName];
 			if(destination is null)
 			{
-				connection.sendTo(params.source, MessagePacket(
+				connection.sendTo(params.sourceSession, MessagePacket(
 					format(`Player "%s" is not online`, destName)));
 				return;
 			}
@@ -361,7 +361,7 @@ public:
 			return;
 		}
 
-		connection.sendTo(params.source, MessagePacket(
+		connection.sendTo(params.sourceSession, MessagePacket(
 			`Wrong syntax: "tp <x> [<y>] <z>" | "tp <player>" | "tp u|d|l|r|f|b <num_blocks>"`));
 	}
 
@@ -369,6 +369,17 @@ public:
 	{
 		Session* session = sessions[sessionId];
 		return session.isLoggedIn;
+	}
+
+	/// Returns ClientId for specified SessionId
+	EntityId sessionClientId(SessionId sessionId)
+	{
+		Session* session = sessions[sessionId];
+		if (session)
+		{
+			return session.dbKey;
+		}
+		return EntityId(0);
 	}
 
 	bool isSpawned(SessionId sessionId)
@@ -423,11 +434,12 @@ public:
 		sessions.remove(event.sessionId);
 	}
 
+	// dim <dimension_number>
 	private void changeDimensionCommand(CommandParams params)
 	{
 		import std.conv : to, ConvException;
 
-		Session* session = sessions[params.source];
+		Session* session = sessions[params.sourceSession];
 		if (isSpawned(session))
 		{
 			if (params.args.length > 1)
@@ -461,7 +473,7 @@ public:
 			{
 				bool hasConflict(string name) {
 					EntityId clientId = db.getIdForName(name);
-					if (clientId == 0) return false;
+					if (clientId == EntityId(0)) return false;
 					return db.has!ClientSessionInfo(clientId);
 				}
 

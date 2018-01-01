@@ -325,12 +325,12 @@ public:
 			graphics.debugText.putfln("(S/ST)/total (%s/%s)/%s/%s %.0f%%",
 				dbg_meshesRenderedSolid, dbg_meshesRenderedSemitransparent, dbg_totalRendered, dbg_meshesVisible,
 				dbg_meshesVisible ? cast(float)dbg_totalRendered/dbg_meshesVisible*100.0 : 0);
-			graphics.debugText.putfln("Vertices %s", dbg_vertsRendered);
-			graphics.debugText.putfln("Triangles %s", dbg_trisRendered);
+			graphics.debugText.putfln("Vertices %,?s", ' ', dbg_vertsRendered);
+			graphics.debugText.putfln("Triangles %,?s", ' ', dbg_trisRendered);
 			import voxelman.graphics.vbo;
-			graphics.debugText.putfln("Buffers: %s Mem: %s",
+			graphics.debugText.putfln("Buffers: %s Mem: %,?s",
 				Vbo.numAllocated,
-				DigitSeparator!(long, 3, ' ')(chunkMeshMan.totalMeshDataBytes));
+				' ', chunkMeshMan.totalMeshDataBytes);
 		//}
 		dbg_meshesRenderedSolid = 0;
 		dbg_meshesRenderedSemitransparent = 0;
@@ -348,7 +348,7 @@ public:
 			dbg_lastFrameLoadedChunks = dbg_totalLoadedChunks;
 			graphics.debugText.putfln("Chunks total loaded: %s", dbg_totalLoadedChunks);
 			graphics.debugText.putfln("Chunks tracked/loaded: %s/%s", chunkManager.numTrackedChunks, chunkManager.numLoadedChunks);
-			graphics.debugText.putfln("Chunk mem %s", DigitSeparator!(long, 3, ' ')(chunkManager.totalLayerDataBytes));
+			graphics.debugText.putfln("Chunk mem %,?s", ' ', chunkManager.totalLayerDataBytes);
 
 			with(chunkMeshMan) {
 				graphics.debugText.putfln("Chunks to mesh: %s", numMeshChunkTasks);

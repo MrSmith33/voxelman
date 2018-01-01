@@ -5,6 +5,7 @@ import pluginlib;
 import voxelman.text.messagewindow : MessageWindow;
 
 import voxelman.core.events;
+import voxelman.net.events;
 import voxelman.net.packets;
 
 import voxelman.command.plugin;
@@ -35,27 +36,18 @@ final class ChatPluginClient : IPlugin
 	{
 		session = pluginman.getPlugin!ClientSession;
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
-		evDispatcher.subscribeToEvent(&onUpdateEvent);
+		evDispatcher.subscribeToEvent(&onMessageEvent);
 
 		connection = pluginman.getPlugin!NetClientPlugin;
-		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 	}
 
-	void handleMessagePacket(ubyte[] packetData)
+	void onMessageEvent(ref MessageEvent event)
 	{
-		import std.format : formattedWrite;
-		auto packet = unpackPacket!MessagePacket(packetData);
-
-		//if (packet.clientId == 0)
-		//	messageWindow.putln(packet.msg);
-		//else {
-		//	messageWindow.putf("%s> %s\n", session.clientName(packet.clientId), packet.msg);
-		//}
-	}
-
-	void onUpdateEvent(ref UpdateEvent event)
-	{
-
+		if (event.endpoint == MessageEndpoint.chat)
+		{
+			// TODO
+			info(event.msg);
+		}
 	}
 }
 
@@ -66,30 +58,27 @@ final class ChatPluginServer : IPlugin
 
 	private NetServerPlugin connection;
 	private ClientManager clientMan;
-	CommandPluginServer commandPlugin;
 
 	override void init(IPluginManager pluginman)
 	{
 		connection = pluginman.getPlugin!NetServerPlugin;
-		connection.registerPacketHandler!MessagePacket(&handleMessagePacket);
 		clientMan = pluginman.getPlugin!ClientManager;
-		commandPlugin = pluginman.getPlugin!CommandPluginServer;
-		commandPlugin.registerCommand("msg", &messageCommand);
-	}
-
-	void handleMessagePacket(ubyte[] packetData, SessionId sessionId)
-	{
-		auto packet = unpackPacket!MessagePacket(packetData);
-		Session* session = clientMan.sessions[sessionId];
-		packet.clientId = session.dbKey;
-		connection.sendToAll(packet);
-		infof("%s> %s", clientMan.clientName(sessionId), packet.msg);
+		auto commandPlugin = pluginman.getPlugin!CommandPluginServer;
+		commandPlugin.registerCommand(CommandInfo("msg", &messageCommand, ["<message>"], "Sends a chat message to all clients"));
 	}
 
 	void messageCommand(CommandParams params)
 	{
-		auto stripped = params.rawStrippedArgs;
-		connection.sendToAll(MessagePacket(stripped));
-		infof("> %s", stripped);
+		auto strippedMsg = params.rawStrippedArgs;
+		connection.sendToAll(MessagePacket(strippedMsg, params.sourceType));
+	}
+
+	void onMessageEvent(ref MessageEvent event)
+	{
+		if (event.endpoint == MessageEndpoint.chat)
+		{
+			connection.sendToAll(event.packet);
+			infof("%s> %s", event.clientName, event.msg);
+		}
 	}
 }

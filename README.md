@@ -22,6 +22,9 @@ See [youtube channel](https://www.youtube.com/channel/UCFiCQez_ZT2ZoBBJadUv3cA) 
 - Unpack.
 - Follow instructions below.
 
+## Compiler
+Any D compiler with frontend version of 2.075 and newer.
+
 ## Requirements
 - OpenGL 3.1 support
 - Multicore CPUs are utilized

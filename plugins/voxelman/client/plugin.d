@@ -120,9 +120,10 @@ public:
 		evDispatcher.subscribeToEvent(&onPreUpdateEvent);
 		evDispatcher.subscribeToEvent(&onPostUpdateEvent);
 		evDispatcher.subscribeToEvent(&onClosePressedEvent);
+		evDispatcher.subscribeToEvent(&onMessageEvent);
 
 		commandPlugin = pluginman.getPlugin!CommandPluginClient;
-		commandPlugin.registerCommand("cl_stop|stop", &onStopCommand);
+		commandPlugin.registerCommand(CommandInfo("stop|cl_stop", &onStopCommand, null, "Stops the client"));
 
 		connection = pluginman.getPlugin!NetClientPlugin;
 
@@ -132,31 +133,18 @@ public:
 			limitFps = false;
 	}
 
+	void onMessageEvent(ref MessageEvent event)
+	{
+		if (event.endpoint == MessageEndpoint.integratedConsole)
+		{
+			console.messages.putln(event.msg);
+		}
+	}
+
 	void onConsoleEnter(string command)
 	{
-		infof("Executing command '%s'", command);
-		ExecResult res = commandPlugin.execute(command, SessionId(0));
-
-		if (res.status == ExecStatus.notRegistered)
-		{
-			if (connection.isConnected)
-			{
-				connection.send(CommandPacket(command));
-				console.messages.put("SV> ");
-				console.messages.putln(command);
-			}
-			else
-			{
-				console.messages.putfln("Unknown client command '%s', not connected to server", command);
-			}
-		}
-		else if (res.status == ExecStatus.error)
-			console.messages.putfln("Error executing command '%s': %s", command, res.error);
-		else
-		{
-			console.messages.put("CL> ");
-			console.messages.putln(command);
-		}
+		commandPlugin.execute(command, CommandSourceType.clientConsole, SessionId(0));
+		console.messages.putln(commandPlugin.commandTextOutput.text);
 	}
 
 	override void postInit() {}

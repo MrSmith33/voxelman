@@ -9,6 +9,7 @@ module voxelman.net.events;
 import netlib : SessionId;
 import datadriven : EntityId;
 import voxelman.world.storage.coordinates : ClientDimPos;
+import voxelman.net.packets : MessagePacket;
 
 struct ClientConnectedEvent {
 	SessionId sessionId;
@@ -32,4 +33,11 @@ struct ClientMovedEvent {
 	EntityId clientId;
 	ClientDimPos pos;
 	ushort dimension;
+}
+
+struct MessageEvent
+{
+	MessagePacket packet;
+	string clientName;
+	alias packet this;
 }
