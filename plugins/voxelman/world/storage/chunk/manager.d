@@ -191,7 +191,10 @@ final class ChunkManager {
 					}
 					else
 					{
-						// BUG: memory leak
+						// BUG: memory leak. Memory is allocated and returned, but not assigned to the snapshot
+						// This way, when snapshot data is deleted, uncompressed data is not deleted.
+						// a) store owner info inside ChunkLayerSnap, so that user can free resources when done.
+						// b) store both compressed and uncompressed data here in snapshots.
 						ChunkLayerSnap res = *snap;
 						res.dataPtr = decompressedData.ptr;
 						res.dataLength = cast(LayerDataLenType)decompressedData.length;

@@ -171,7 +171,7 @@ struct RailData
 		}
 		else
 		{
-			data &= ~newRail.data;
+			data &= ~cast(int)(newRail.data);
 		}
 	}
 

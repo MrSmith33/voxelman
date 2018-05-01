@@ -62,6 +62,7 @@ public:
 	ConfigOption cameraSensivity;
 	ConfigOption cameraFov;
 	ConfigOption resolution;
+	ConfigOption gl_debug_context;
 	ConfigOption vsync;
 
 	mixin IdAndSemverFrom!"voxelman.graphics.plugininfo";
@@ -90,6 +91,7 @@ public:
 		cameraSensivity = config.registerOption!double("camera_sensivity", 0.4);
 		cameraFov = config.registerOption!double("camera_fov", 60.0);
 		resolution = config.registerOption!(int[])("resolution", [1280, 720]);
+		gl_debug_context = config.registerOption!bool("gl_debug_context", false);
 		vsync = config.registerOption!bool("vsync", true);
 	}
 
@@ -97,13 +99,21 @@ public:
 	{
 		import voxelman.graphics.gl;
 
+		bool debugCtx = gl_debug_context.get!bool;
+
 		loadOpenGL();
 
 		window = new GlfwWindow();
-		window.init(ivec2(resolution.get!(int[])), "Voxelman client");
+		WindowParams windowParams;
+		windowParams.size = ivec2(resolution.get!(int[]));
+		windowParams.title = "Voxelman client";
+		windowParams.debugCtx = debugCtx;
+		window.init(windowParams);
 		window.setVsync(vsync.get!bool);
 
 		reloadOpenGL();
+
+		if (debugCtx) setupGLDebugLogging();
 
 		// Bind events
 		window.windowResized.connect(&windowResized);

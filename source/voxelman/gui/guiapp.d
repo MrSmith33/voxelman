@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.gui.guiapp;
 
 import std.stdio : writefln, writeln;
-import std.datetime : MonoTime, Duration, usecs, dur;
+import core.time : MonoTime, Duration, usecs, dur;
 import std.string : format;
 import voxelman.container.gapbuffer;
 import voxelman.graphics;
@@ -43,7 +43,6 @@ class GuiApp
 
 	void run(string[] args)
 	{
-		import std.datetime : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
 		load(args, "./");
@@ -91,7 +90,10 @@ class GuiApp
 		loadOpenGL();
 
 		window = new GlfwWindow();
-		window.init(windowSize, title);
+		WindowParams windowParams;
+		windowParams.size = windowSize;
+		windowParams.title = title;
+		window.init(windowParams);
 
 		reloadOpenGL();
 

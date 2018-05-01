@@ -8,7 +8,7 @@ module voxelman.worldinteraction.plugin;
 
 import voxelman.log;
 import core.time;
-import std.datetime : MonoTime, Duration;
+import core.time : MonoTime, Duration;
 
 import pluginlib;
 import voxelman.math;

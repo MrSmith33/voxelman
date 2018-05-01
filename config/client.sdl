@@ -1,8 +1,9 @@
 ip "localhost"
 port 1234
-name "Player"
+name "Mr.Smith"
 
 num_workers 4
+gl_debug_context on
 
 resolution 1280 720
 max_fps 120

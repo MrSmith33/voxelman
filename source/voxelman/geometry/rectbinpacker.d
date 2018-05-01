@@ -15,7 +15,7 @@ struct Node
 	Node* left, right;
 }
 
-class RectBinPacker
+struct RectBinPacker
 {
 	this(in uint width, in uint height, in uint x = 0, in uint y = 0)
 	{

@@ -149,7 +149,9 @@ class LauncherGui : GuiApp
 		if (job) JobItemWidget.create(job_stack, job, &textSettings);
 	}
 
-	void newServer() {}
+	void newServer() {
+
+	}
 	void removeServer() {}
 	void connetToServer() {
 		launcher.connect(launcher.servers[serverList.selectedRow], launcher.pluginPacks[0]); }
@@ -272,4 +274,21 @@ struct ServerRow
 	string ip;
 	@Column!ServerRow("Port", 40, (ServerRow r, scope SinkT s){ formattedWrite(s, "%s", r.port); })
 	ushort port;
+}
+
+// TODO
+/// Returns a rect that is attached to button on the top or bottom
+/// alignment preference chooses where a resulting rect should connect
+/// If pref is min, then result.x == button.x
+/// If pref is max, then result.endx == button.endx
+irect choosePopupRectVert(irect button, irect totalArea, Alignment preference)
+{
+	return irect();
+}
+
+// TODO
+/// Returns a rect that is attached to button on the left or right
+irect choosePopupRectHori(irect button, irect totalArea)
+{
+	return irect();
 }

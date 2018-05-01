@@ -166,7 +166,7 @@ public:
 
 	void run(string[] args)
 	{
-		import std.datetime : MonoTime, Duration, usecs, dur;
+		import core.time : MonoTime, Duration, usecs, dur;
 		import core.thread : Thread;
 
 		version(manualGC) GC.disable;

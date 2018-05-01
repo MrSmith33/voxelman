@@ -7,7 +7,7 @@ Authors: Andrey Penechko.
 module voxelman.server.plugin;
 
 import voxelman.log;
-import std.datetime : MonoTime, Duration, msecs, usecs, dur;
+import core.time : MonoTime, Duration, msecs, usecs, dur;
 
 import pluginlib;
 

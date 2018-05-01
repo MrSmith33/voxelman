@@ -6,7 +6,7 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.chunkmeshman;
 
 import voxelman.log;
-import std.datetime : Duration;
+import core.time : Duration;
 import std.typecons : Nullable;
 import voxelman.platform.isharedcontext;
 

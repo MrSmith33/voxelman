@@ -133,7 +133,7 @@ auto scaledNumberFmt(T)(T value)
 	return ScaledNumberFmt!T(value);
 }
 
-import std.datetime : Duration;
+import core.time : Duration;
 auto scaledNumberFmt(Duration value)
 {
 	double seconds = value.total!"hnsecs" / 10_000_000.0;

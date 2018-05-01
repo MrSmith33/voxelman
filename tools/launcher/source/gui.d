@@ -15,7 +15,7 @@ import std.range;
 import std.stdio;
 import std.string : format, fromStringz;
 import std.typecons : Flag, Yes, No;
-import std.datetime : MonoTime, Duration, usecs, dur;
+import core.time : MonoTime, Duration, usecs, dur;
 
 import voxelman.math;
 import derelict.glfw3.glfw3;
@@ -83,7 +83,10 @@ class LauncherGui
 		loadOpenGL();
 
 		window = new GlfwWindow();
-		window.init(windowSize, title);
+		WindowParams windowParams;
+		windowParams.size = windowSize;
+		windowParams.title = title;
+		window.init(windowParams);
 
 		reloadOpenGL();
 

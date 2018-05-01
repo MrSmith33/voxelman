@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.world.clientworld;
 
-import std.datetime : MonoTime, Duration, usecs, dur;
+import core.time : MonoTime, Duration, usecs, dur;
 import voxelman.log;
 import netlib;
 import pluginlib;

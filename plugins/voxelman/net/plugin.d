@@ -8,7 +8,7 @@ module voxelman.net.plugin;
 
 import voxelman.log;
 import derelict.enet.enet;
-import std.datetime : MonoTime, Duration, usecs, dur;
+import core.time : MonoTime, Duration, usecs, dur;
 import core.thread;
 
 import pluginlib;

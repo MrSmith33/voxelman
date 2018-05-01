@@ -6,9 +6,8 @@ Authors: Andrey Penechko.
 module voxelman.world.mesh.meshgen;
 
 import voxelman.log;
-import std.datetime;
+import core.time;
 import std.conv : to;
-import core.exception : Throwable;
 import voxelman.platform.isharedcontext;
 
 import voxelman.container.buffer;

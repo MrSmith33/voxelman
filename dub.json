@@ -15,7 +15,7 @@
 			"name": "engine",
 
 			"dependencies" : {
-				"cbor-d" : "==0.5.4",
+				"cbor-d" : ">=0.5.5",
 				"dlib" : {"path" : "./deps/dlib"},
 				"derelict-glfw3" : ">=4.0.0-beta.1 <4.1.0",
 				"derelict-gl3" : ">=2.0.0-beta.5 <2.1.0",

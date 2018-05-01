@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.gui.textedit.lineedit;
 
-import std.datetime : MonoTime;
+import core.time : MonoTime;
 import std.format : formattedWrite;
 import voxelman.container.gapbuffer;
 import voxelman.log;
@@ -328,7 +328,8 @@ struct LineEdit
 
 	void charTyped(WidgetProxy widget, ref CharEnterEvent event)
 	{
-		import std.utf : encode, Yes;
+		import std.utf : encode;
+		import std.typecons : Yes;
 		auto data = widget.get!LineEditData;
 		auto logic = LineEditLogic(data, widget.ctx);
 		char[4] buf;

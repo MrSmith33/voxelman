@@ -34,13 +34,13 @@ public:
 
 	this(in uint size)
 	{
-		binPacker = new RectBinPacker(size, size);
+		binPacker = RectBinPacker(size, size);
 		bitmap = new Bitmap(size, size);
 	}
 
 	this(in uint width, in uint height)
 	{
-		binPacker = new RectBinPacker(width, height);
+		binPacker = RectBinPacker(width, height);
 		bitmap = new Bitmap(width, height);
 	}
 
@@ -61,17 +61,16 @@ public:
 		{
 			if (autoGrow) // Atlas can grow.
 			{
-				delete binPacker;
 				if (bitmap.width >= bitmap.height) // Growing vertically.
 				{
-					binPacker = new RectBinPacker(bitmap.width, bitmap.height, 0, bitmap.height);
+					binPacker = RectBinPacker(bitmap.width, bitmap.height, 0, bitmap.height);
 					if (bitmap.height >= _maxAtlasSize)
 						throw new InsertException("Texture atlas is full. Max atlas size reached");
 					bitmap.resize(ivec2(bitmap.width, bitmap.height*2));
 				}
 				else // Growing horizontally.
 				{
-					binPacker = new RectBinPacker(bitmap.width, bitmap.height, bitmap.width, 0);
+					binPacker = RectBinPacker(bitmap.width, bitmap.height, bitmap.width, 0);
 					bitmap.resize(ivec2(bitmap.width*2, bitmap.height));
 				}
 

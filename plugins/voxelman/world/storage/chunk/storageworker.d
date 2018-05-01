@@ -8,7 +8,7 @@ module voxelman.world.storage.chunk.storageworker;
 import voxelman.log;
 import voxelman.container.sharedhashset;
 import std.conv : to;
-import std.datetime : MonoTime, Duration, usecs, dur, seconds;
+import core.time : MonoTime, Duration, usecs, dur, seconds;
 import core.atomic;
 import core.sync.condition;
 

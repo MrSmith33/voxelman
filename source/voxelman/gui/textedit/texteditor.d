@@ -170,7 +170,7 @@ struct TextEditor
 
 mixin template ReadHelpers()
 {
-	//import std.datetime : MonoTime;
+	//import core.time : MonoTime;
 	import std.utf : stride, strideBack;
 	import std.stdio : writefln, writeln;
 	import voxelman.text.scale;
@@ -318,7 +318,7 @@ mixin template ReadHelpers()
 
 mixin template WriteHelpers()
 {
-	//import std.datetime : MonoTime;
+	//import core.time : MonoTime;
 	// uses
 	// T textData;
 	// L lines;

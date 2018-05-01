@@ -13,7 +13,7 @@ import derelict.glfw3.glfw3;
 import voxelman.graphics.gl;
 import voxelman.log;
 import voxelman.math;
-import voxelman.platform.iwindow : IWindow, CursorIcon;
+import voxelman.platform.iwindow : IWindow, CursorIcon, WindowParams;
 import voxelman.platform.isharedcontext;
 import voxelman.platform.input : KeyCode, PointerButton;
 
@@ -41,33 +41,34 @@ private:
 	GLFWcursor*[6] cursors;
 
 public:
-	override void init(ivec2 size, in string caption, bool center = false)
+	override void init(WindowParams params)
 	{
 		if (!glfwInited)
 			initGlfw();
 
 		scope(failure) glfwTerminate();
 
+		if (params.debugCtx) glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 		glfwWindowHint(GLFW_VISIBLE, false);
 
 		//BUG: sometimes fails in Windows 8. Maybe because of old drivers.
-		glfwWindowPtr = glfwCreateWindow(size.x, size.y, toStringz(caption), null,  null);
+		glfwWindowPtr = glfwCreateWindow(params.size.x, params.size.y, toStringz(params.title), null,  null);
 
 		if (glfwWindowPtr is null)
 		{
 			throw new Error("Error creating GLFW3 window");
 		}
 
-		if (center) moveToCenter();
+		if (params.center) moveToCenter();
 
 		glfwShowWindow(glfwWindowPtr);
 
 		glfwMakeContextCurrent(glfwWindowPtr);
 
 		glClearColor(1.0, 1.0, 1.0, 1.0);
-		glViewport(0, 0, size.x, size.y);
+		glViewport(0, 0, params.size.x, params.size.y);
 
 		glfwSetWindowUserPointer(glfwWindowPtr, cast(void*)this);
 		glfwSetWindowPosCallback(glfwWindowPtr, &windowposfun);

@@ -11,7 +11,7 @@ import voxelman.math;
 import voxelman.core.config : DimensionId;
 import netlib : SessionId;
 import voxelman.world.storage.coordinates : ChunkWorldPos;
-import voxelman.world.storage.worldbox : WorldBox, TrisectResult,
+import voxelman.world.storage.worldbox : WorldBox,
 	trisect4d, calcBox, shiftAndClampBoxByBorders;
 
 

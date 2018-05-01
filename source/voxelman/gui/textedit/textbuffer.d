@@ -12,10 +12,10 @@ import std.format : formattedWrite;
 import std.exception : assumeUnique, assertThrown;
 import std.string : format;
 import std.range : isForwardRange, isBidirectionalRange, hasSlicing, dropExactly;
-import std.typecons : Tuple;
+import std.typecons : Tuple, Yes;
 import std.traits : isSomeString;
 import std.uni : byGrapheme;
-import std.utf : byDchar, count, stride, strideBack, decode, decodeFront, Yes;
+import std.utf : byDchar, count, stride, strideBack, decode, decodeFront;
 
 import core.exception : AssertError;
 

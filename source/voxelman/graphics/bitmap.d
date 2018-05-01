@@ -77,7 +77,6 @@ class Bitmap : ImageRGBA8
 		setSubArray2d(_data, sourceSize, sourceSubRect,
 			newData, destSize, destSubRectPos);
 
-		delete _data;
 		_data = newData;
 		_width = newSize.x;
 		_height = newSize.y;

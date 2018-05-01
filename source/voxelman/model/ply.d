@@ -10,8 +10,8 @@ import std.conv : to, parse;
 import std.string : lineSplitter, stripLeft;
 
 import voxelman.container.buffer : Buffer;
-import voxelman.model.utils : Faces, unrollFaces;
-import voxelman.model.mesh : Mesh;
+import voxelman.model.utils : unrollFaces;
+import voxelman.model.mesh : Faces, Mesh;
 import voxelman.math;
 
 enum HEADER_STR = "end_header";

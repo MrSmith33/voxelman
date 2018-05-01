@@ -7,7 +7,6 @@ module voxelman.world.mesh.meshgenerator;
 
 import voxelman.log;
 import std.conv : to;
-import core.exception : Throwable;
 
 import voxelman.container.buffer;
 import voxelman.math;

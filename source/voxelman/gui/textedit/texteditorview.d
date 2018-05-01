@@ -5,7 +5,7 @@ Authors: Andrey Penechko.
 */
 module voxelman.gui.textedit.texteditorview;
 
-import std.datetime : MonoTime;
+import core.time : MonoTime;
 import std.stdio : writefln, writeln;
 import std.array;
 
@@ -228,7 +228,8 @@ struct TextEditorViewportLogic
 
 	void charTyped(WidgetProxy widget, ref CharEnterEvent event)
 	{
-		import std.utf : encode, Yes;
+		import std.utf : encode;
+		import std.typecons : Yes;
 		auto data = widget.get!TextEditorViewportData;
 		char[4] buf;
 		auto numBytes = encode!(Yes.useReplacementDchar)(buf, event.character);
@@ -316,7 +317,8 @@ auto glyphWidthRange(R)(TextViewSettingsRef settings, R text)
 
 struct GlyphWidthRange(R)
 {
-	import std.utf : decodeFront, Yes;
+	import std.utf : decodeFront;
+	import std.typecons : Yes;
 	TextViewSettingsRef settings;
 	R input;
 	int x;
