@@ -11,13 +11,28 @@ import voxelman.platform.isharedcontext;
 import voxelman.utils.signal;
 public import voxelman.platform.cursoricon : CursorIcon;
 public import voxelman.platform.input : KeyCode, PointerButton;
+public import derelict.opengl.types : GLVersion;
 
 struct WindowParams
 {
 	ivec2 size;
 	string title;
 	bool center = false;
-	bool debugCtx = false;
+	bool openglDebugContext = false;
+
+	version(Windows) {
+		bool openglForwardCompat = false;
+		bool openglCoreProfile = false;
+		GLVersion openglVersion = GLVersion.gl31;
+	} else version(OSX) {
+		bool openglForwardCompat = true;
+		bool openglCoreProfile = true;
+		GLVersion openglVersion = GLVersion.gl32;
+	} else version(linux) {
+		bool openglForwardCompat = true;
+		bool openglCoreProfile = false;
+		GLVersion openglVersion = GLVersion.gl31;
+	}
 }
 
 abstract class IWindow

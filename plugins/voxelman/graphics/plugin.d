@@ -107,7 +107,7 @@ public:
 		WindowParams windowParams;
 		windowParams.size = ivec2(resolution.get!(int[]));
 		windowParams.title = "Voxelman client";
-		windowParams.debugCtx = debugCtx;
+		windowParams.openglDebugContext = debugCtx;
 		window.init(windowParams);
 		window.setVsync(vsync.get!bool);
 

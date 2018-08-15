@@ -27,6 +27,9 @@ void reloadOpenGL()
 	auto loaded = DerelictGL3.reload(); // calls loadExtensions below
 
 	infof("OpenGL %s", glGetString(GL_VERSION).fromStringz);
+	infof("Vendor %s", glGetString(GL_VENDOR).fromStringz);
+	infof("Renderer %s", glGetString(GL_RENDERER).fromStringz);
+
 }
 
 
@@ -187,4 +190,75 @@ static this()
 		//GL_STACK_UNDERFLOW : "stack underflow",
 		//GL_STACK_OVERFLOW : "stack overflow",
 		];
+}
+
+int openglMajorVersion(GLVersion openglVersion) {
+	final switch(openglVersion) with (GLVersion) {
+		case gl11, gl12, gl13, gl14, gl15: return 1;
+		case gl20, gl21: return 2;
+		case gl30, gl31, gl32, gl33: return 3;
+		case gl40, gl41, gl42, gl43, gl44, gl45: return 4;
+		case none: return 0;
+	}
+}
+
+int openglMinorVersion(GLVersion openglVersion) {
+	final switch(openglVersion) with (GLVersion) {
+		case gl20, gl30, gl40: return 0;
+		case gl11, gl21, gl31, gl41: return 1;
+		case gl12, gl32, gl42: return 2;
+		case gl13, gl33, gl43: return 3;
+		case gl14, gl44: return 4;
+		case gl15, gl45: return 5;
+		case none: return 0;
+	}
+}
+
+GLVersion toGLVersion(int major, int minor)
+{
+	switch(major) {
+		case 4:
+			if(minor == 5) return GLVersion.gl45;
+			else if(minor == 4) return GLVersion.gl44;
+			else if(minor == 3) return GLVersion.gl43;
+			else if(minor == 2) return GLVersion.gl42;
+			else if(minor == 1) return GLVersion.gl41;
+			else if(minor == 0) return GLVersion.gl40;
+
+			/* No default condition here, since its possible for new
+			 minor versions of the 4.x series to be released before
+			 support is added to Derelict. That case is handled outside
+			 of the switch. When no more 4.x versions are released, this
+			 should be changed to return GL40 by default. */
+			break;
+
+		case 3:
+			if(minor == 3) return GLVersion.gl33;
+			else if(minor == 2) return GLVersion.gl32;
+			else if(minor == 1) return GLVersion.gl31;
+			else return GLVersion.gl30;
+
+		case 2:
+			if(minor == 1) return GLVersion.gl21;
+			else return GLVersion.gl20;
+
+		case 1:
+			if(minor == 5) return GLVersion.gl15;
+			else if(minor == 4) return GLVersion.gl14;
+			else if(minor == 3) return GLVersion.gl13;
+			else if(minor == 2) return GLVersion.gl12;
+			else return GLVersion.gl11;
+
+		default:
+			/* glGetString(GL_VERSION) is guaranteed to return a result
+			 of a specific format, so if this point is reached it is
+			 going to be because a major version higher than what Derelict
+			 supports was encountered. That case is handled outside the
+			 switch. */
+			break;
+	}
+
+	/* It's highly likely at this point that the version is higher than
+	 what Derelict supports, so return the highest supported version. */
+	return GLVersion.highestSupported;
 }
