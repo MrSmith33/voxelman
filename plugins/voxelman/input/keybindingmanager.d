@@ -12,13 +12,14 @@ import voxelman.config.configmanager;
 import voxelman.platform.keynamemap;
 public import voxelman.platform.input : KeyCode, PointerButton;
 
-
+enum FireBeforeInput : bool { no = false, yes = true }
 struct KeyBinding
 {
 	uint keyCode;
 	string keyName;
 	KeyHandler pressHandler;
 	KeyHandler releaseHandler;
+	FireBeforeInput fireBeforeInput = FireBeforeInput.no;
 }
 
 alias KeyHandler = void delegate(string key);

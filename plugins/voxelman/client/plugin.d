@@ -97,7 +97,7 @@ public:
 		dbg = resmanRegistry.getResourceManager!Debugger;
 
 		KeyBindingManager keyBindingMan = resmanRegistry.getResourceManager!KeyBindingManager;
-		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", null, &console.onConsoleToggleKey));
+		keyBindingMan.registerKeyBinding(new KeyBinding(KeyCode.KEY_GRAVE_ACCENT, "key.toggle_console", &console.onConsolePressKey, &console.onConsoleReleaseKey, FireBeforeInput.yes));
 	}
 
 	override void preInit()
@@ -183,34 +183,34 @@ public:
 			delta = (newTime - prevTime).total!"usecs" / 1_000_000.0;
 			prevTime = newTime;
 
-				fpsHelper.update(delta, updateTime);
+			fpsHelper.update(delta, updateTime);
 
-				graphics.debugText.putfln("FPS: %.1f", fpsHelper.fps);
-				evDispatcher.postEvent(PreUpdateEvent(delta, frame));
-				evDispatcher.postEvent(UpdateEvent(delta, frame));
-				evDispatcher.postEvent(PostUpdateEvent(delta, frame));
-				evDispatcher.postEvent(DoGuiEvent(frame));
-				evDispatcher.postEvent(RenderEvent());
+			graphics.debugText.putfln("FPS: %.1f", fpsHelper.fps);
+			evDispatcher.postEvent(PreUpdateEvent(delta, frame));
+			evDispatcher.postEvent(UpdateEvent(delta, frame));
+			evDispatcher.postEvent(PostUpdateEvent(delta, frame));
+			evDispatcher.postEvent(DoGuiEvent(frame));
+			evDispatcher.postEvent(RenderEvent());
 
-				version(manualGC) {
-					auto collectStartTime = MonoTime.currTime;
-					GC.collect();
-					GC.minimize();
-					auto collectDur = MonoTime.currTime - collectStartTime;
-					double collectDurFloat = collectDur.total!"usecs" / 1_000.0;
-					dbg.logVar("GC, ms", collectDurFloat, 512);
-				}
+			version(manualGC) {
+				auto collectStartTime = MonoTime.currTime;
+				GC.collect();
+				GC.minimize();
+				auto collectDur = MonoTime.currTime - collectStartTime;
+				double collectDurFloat = collectDur.total!"usecs" / 1_000.0;
+				dbg.logVar("GC, ms", collectDurFloat, 512);
+			}
 
-				Duration updateTimeDur = MonoTime.currTime - newTime;
-				updateTime = updateTimeDur.total!"usecs" / 1_000_000.0;
+			Duration updateTimeDur = MonoTime.currTime - newTime;
+			updateTime = updateTimeDur.total!"usecs" / 1_000_000.0;
 
-				if (limitFps) {
-					Duration sleepTime = targetFrameTime - updateTimeDur;
-					if (sleepTime > Duration.zero)
-						Thread.sleep(sleepTime);
-				}
+			if (limitFps) {
+				Duration sleepTime = targetFrameTime - updateTimeDur;
+				if (sleepTime > Duration.zero)
+					Thread.sleep(sleepTime);
+			}
 
-				++frame;
+			++frame;
 		}
 
 		infof("Stopping...");

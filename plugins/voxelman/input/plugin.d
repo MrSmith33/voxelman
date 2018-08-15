@@ -50,10 +50,11 @@ final class InputPlugin : IPlugin
 
 	void onKeyPressed(KeyCode keyCode, uint modifiers)
 	{
-		if (guiPlugin.guictx.focusedWidget) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
+			if (guiPlugin.guictx.focusedWidget && !b.fireBeforeInput) return;
+
 			if (b.pressHandler)
 				b.pressHandler(b.keyName);
 		}
@@ -61,10 +62,10 @@ final class InputPlugin : IPlugin
 
 	void onKeyReleased(KeyCode keyCode, uint modifiers)
 	{
-		if (guiPlugin.guictx.focusedWidget) return;
 		if (auto binding = keyCode in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
+			if (guiPlugin.guictx.focusedWidget && !b.fireBeforeInput) return;
 			if (b.releaseHandler)
 				b.releaseHandler(b.keyName);
 		}
@@ -72,10 +73,10 @@ final class InputPlugin : IPlugin
 
 	void onMousePressed(PointerButton button, uint modifiers)
 	{
-		if (guiPlugin.guictx.inputOwnerWidget) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
+			if (guiPlugin.guictx.focusedWidget && !b.fireBeforeInput) return;
 			if (b.pressHandler)
 				b.pressHandler(b.keyName);
 		}
@@ -83,10 +84,10 @@ final class InputPlugin : IPlugin
 
 	void onMouseReleased(PointerButton button, uint modifiers)
 	{
-		if (guiPlugin.guictx.inputOwnerWidget) return;
 		if (auto binding = button in keyBindingsMan.keyBindingsByCode)
 		{
 			KeyBinding* b = *binding;
+			if (guiPlugin.guictx.focusedWidget && !b.fireBeforeInput) return;
 			if (b.releaseHandler)
 				b.releaseHandler(b.keyName);
 		}

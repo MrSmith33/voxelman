@@ -22,6 +22,7 @@ struct Console
 
 	void delegate(string command) messageHandler;
 	bool isConsoleShown;
+	bool wasJustHidden;
 
 	WidgetProxy viewport;
 	WidgetProxy input;
@@ -63,9 +64,24 @@ struct Console
 		LineEdit.clear(input);
 	}
 
-	void onConsoleToggleKey(string)
+	// These two handlers consume console char event
+	void onConsolePressKey(string)
 	{
-		isConsoleShown = !isConsoleShown;
-		input.setFocus(isConsoleShown);
+		if (isConsoleShown)
+		{
+			isConsoleShown = false;
+			wasJustHidden = true;
+			input.setFocus(isConsoleShown);
+		}
+	}
+
+	void onConsoleReleaseKey(string)
+	{
+		if (!isConsoleShown && !wasJustHidden)
+		{
+			isConsoleShown = true;
+			input.setFocus(isConsoleShown);
+		}
+		wasJustHidden = false;
 	}
 }
