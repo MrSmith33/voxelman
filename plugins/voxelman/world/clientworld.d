@@ -115,7 +115,7 @@ public:
 	// Graphics stuff
 	bool isCullingEnabled = true;
 	bool wireframeMode = false;
-	ChunkShader8 chunkShader8;
+	ChunkShader chunkShader;
 	Texture blockAtlasTexture;
 
 	// Send position interval
@@ -221,7 +221,7 @@ public:
 	override void postInit()
 	{
 		renderer = graphics.renderer;
-		chunkShader8.compile(renderer);
+		chunkShader.compile(renderer);
 		blockAtlasTexture = renderer.createTexture(blockPlugin.texAtlas.bitmap);
 	}
 
@@ -512,27 +512,27 @@ public:
 		renderer.faceCulling(true);
 		renderer.faceCullMode(FaceCullMode.back);
 
-		chunkShader8.bind;
-		chunkShader8.setTransparency(1.0f);
+		chunkShader.bind;
+		chunkShader.setTransparency(1.0f);
 
 		blockAtlasTexture.bind;
 
 		drawMeshes(chunkMeshMan.chunkMeshes[0].byValue,
-			chunkShader8,
+			chunkShader,
 			dbg_meshesRenderedSolid);
 
 		renderer.alphaBlending(true);
 		renderer.depthWrite(false);
 
-		chunkShader8.setTransparency(0.5f);
+		chunkShader.setTransparency(0.5f);
 
 		drawMeshes(chunkMeshMan.chunkMeshes[1].byValue,
-			chunkShader8,
+			chunkShader,
 			dbg_meshesRenderedSemitransparent);
 
 		blockAtlasTexture.unbind;
 
-		chunkShader8.unbind;
+		chunkShader.unbind;
 
 		renderer.faceCulling(false);
 		renderer.depthWrite(true);

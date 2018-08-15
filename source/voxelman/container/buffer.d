@@ -38,6 +38,14 @@ struct Buffer(T)
 		buf[length] = item;
 	}
 
+	/// Increases length and returns void-initialized slice to be filled by user
+	T[] voidPut(size_t howMany)
+	{
+		reserve(howMany);
+		length += howMany;
+		return buf[length-howMany..length];
+	}
+
 	ref T opIndex(size_t at)
 	{
 		return buf[at];

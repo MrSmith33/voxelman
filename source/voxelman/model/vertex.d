@@ -103,20 +103,20 @@ align(4) struct VertexPosUvColor(PosType, uint pos_size, UvType, uint uv_size, C
 	}
 }
 
-void setupAttribute(int index, int numComponents, AttrT, bool normalize, bool isFloatAttrib, int totalSize, int offset)()
+void setupAttribute(int index, int numComponents, AttrT, bool normalize, bool isFloatAttrib, int totalVertSize, int offset)()
 {
 	glEnableVertexAttribArray(index);
 	static if (isFloatAttrib)
 	{
 		enum bool doPosNomalization = normalize && normalizeAttributeType!AttrT;
-		checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalSize, cast(void*)offset);
+		checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, doPosNomalization, totalVertSize, cast(void*)offset);
 	}
 	else
 	{
 		static if (normalizeAttributeType!AttrT) // only if integer
-			checkgl!glVertexAttribIPointer(index, numComponents, glTypeOf!AttrT, totalSize, cast(void*)offset);
+			checkgl!glVertexAttribIPointer(index, numComponents, glTypeOf!AttrT, totalVertSize, cast(void*)offset);
 		else
-			checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, false, totalSize, cast(void*)offset);
+			checkgl!glVertexAttribPointer(index, numComponents, glTypeOf!AttrT, false, totalVertSize, cast(void*)offset);
 	}
 }
 

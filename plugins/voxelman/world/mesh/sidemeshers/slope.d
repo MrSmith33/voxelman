@@ -49,24 +49,23 @@ void meshSlopeSideOccluded(CubeSide side, ubyte[4] cornerOcclusion, SideParams d
 
 	ubyte[3] indicies = slopeFaceIndicies[d.rotation][side];
 	ubyte[3] colorIndicies = slopeColorIndicies[d.rotation];
-	d.buffer.put(
-		MeshVertex(
-			cubeVerticies[indicies[0]][0] + d.blockPos.x,
-			cubeVerticies[indicies[0]][1] + d.blockPos.y,
-			cubeVerticies[indicies[0]][2] + d.blockPos.z,
-			uvs[colorIndicies[0]],
-			finalColors[colorIndicies[0]]),
-		MeshVertex(
-			cubeVerticies[indicies[1]][0] + d.blockPos.x,
-			cubeVerticies[indicies[1]][1] + d.blockPos.y,
-			cubeVerticies[indicies[1]][2] + d.blockPos.z,
-			uvs[colorIndicies[1]],
-			finalColors[colorIndicies[1]]),
-		MeshVertex(
-			cubeVerticies[indicies[2]][0] + d.blockPos.x,
-			cubeVerticies[indicies[2]][1] + d.blockPos.y,
-			cubeVerticies[indicies[2]][2] + d.blockPos.z,
-			uvs[colorIndicies[2]],
-			finalColors[colorIndicies[2]])
-	);
+	MeshVertex[] buf = d.buffer.voidPut(3);
+	buf[0].set(
+		cubeVerticies[indicies[0]][0] + d.blockPos.x,
+		cubeVerticies[indicies[0]][1] + d.blockPos.y,
+		cubeVerticies[indicies[0]][2] + d.blockPos.z,
+		uvs[colorIndicies[0]],
+		finalColors[colorIndicies[0]]);
+	buf[1].set(
+		cubeVerticies[indicies[1]][0] + d.blockPos.x,
+		cubeVerticies[indicies[1]][1] + d.blockPos.y,
+		cubeVerticies[indicies[1]][2] + d.blockPos.z,
+		uvs[colorIndicies[1]],
+		finalColors[colorIndicies[1]]);
+	buf[2].set(
+		cubeVerticies[indicies[2]][0] + d.blockPos.x,
+		cubeVerticies[indicies[2]][1] + d.blockPos.y,
+		cubeVerticies[indicies[2]][2] + d.blockPos.z,
+		uvs[colorIndicies[2]],
+		finalColors[colorIndicies[2]]);
 }

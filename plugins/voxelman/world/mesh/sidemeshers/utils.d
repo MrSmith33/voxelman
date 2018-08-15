@@ -208,42 +208,41 @@ void meshQuadUvGray(bool flipped, T)(
 	else
 		enum ind {i0=1, i1=3, i2=0, i3=1, i4=2, i5=3}
 
-	buffer.put(
-		MeshVertex(
-			vertieces[indices[ind.i0]][0] + offset.x,
-			vertieces[indices[ind.i0]][1] + offset.y,
-			vertieces[indices[ind.i0]][2] + offset.z,
-			cornerUVs[ind.i0],
-			cornerColors[ind.i0]),
-		MeshVertex(
-			vertieces[indices[ind.i1]][0] + offset.x,
-			vertieces[indices[ind.i1]][1] + offset.y,
-			vertieces[indices[ind.i1]][2] + offset.z,
-			cornerUVs[ind.i1],
-			cornerColors[ind.i1]),
-		MeshVertex(
-			vertieces[indices[ind.i2]][0] + offset.x,
-			vertieces[indices[ind.i2]][1] + offset.y,
-			vertieces[indices[ind.i2]][2] + offset.z,
-			cornerUVs[ind.i2],
-			cornerColors[ind.i2]),
-		MeshVertex(
-			vertieces[indices[ind.i3]][0] + offset.x,
-			vertieces[indices[ind.i3]][1] + offset.y,
-			vertieces[indices[ind.i3]][2] + offset.z,
-			cornerUVs[ind.i3],
-			cornerColors[ind.i3]),
-		MeshVertex(
-			vertieces[indices[ind.i4]][0] + offset.x,
-			vertieces[indices[ind.i4]][1] + offset.y,
-			vertieces[indices[ind.i4]][2] + offset.z,
-			cornerUVs[ind.i4],
-			cornerColors[ind.i4]),
-		MeshVertex(
-			vertieces[indices[ind.i5]][0] + offset.x,
-			vertieces[indices[ind.i5]][1] + offset.y,
-			vertieces[indices[ind.i5]][2] + offset.z,
-			cornerUVs[ind.i5],
-			cornerColors[ind.i5])
-	);
+	MeshVertex[] buf = buffer.voidPut(6);
+	buf[0].set(
+		vertieces[indices[ind.i0]][0] + offset.x,
+		vertieces[indices[ind.i0]][1] + offset.y,
+		vertieces[indices[ind.i0]][2] + offset.z,
+		cornerUVs[ind.i0],
+		cornerColors[ind.i0]);
+	buf[1].set(
+		vertieces[indices[ind.i1]][0] + offset.x,
+		vertieces[indices[ind.i1]][1] + offset.y,
+		vertieces[indices[ind.i1]][2] + offset.z,
+		cornerUVs[ind.i1],
+		cornerColors[ind.i1]);
+	buf[2].set(
+		vertieces[indices[ind.i2]][0] + offset.x,
+		vertieces[indices[ind.i2]][1] + offset.y,
+		vertieces[indices[ind.i2]][2] + offset.z,
+		cornerUVs[ind.i2],
+		cornerColors[ind.i2]);
+	buf[3].set(
+		vertieces[indices[ind.i3]][0] + offset.x,
+		vertieces[indices[ind.i3]][1] + offset.y,
+		vertieces[indices[ind.i3]][2] + offset.z,
+		cornerUVs[ind.i3],
+		cornerColors[ind.i3]);
+	buf[4].set(
+		vertieces[indices[ind.i4]][0] + offset.x,
+		vertieces[indices[ind.i4]][1] + offset.y,
+		vertieces[indices[ind.i4]][2] + offset.z,
+		cornerUVs[ind.i4],
+		cornerColors[ind.i4]);
+	buf[5].set(
+		vertieces[indices[ind.i5]][0] + offset.x,
+		vertieces[indices[ind.i5]][1] + offset.y,
+		vertieces[indices[ind.i5]][2] + offset.z,
+		cornerUVs[ind.i5],
+		cornerColors[ind.i5]);
 }
