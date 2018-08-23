@@ -21,7 +21,7 @@ class MessageLogTextModel : TextModel
 
 	int numLines() { return text.lines.numLines; }
 	int lastLine() { return text.lines.lastLine; }
-	ChunkedRange!char opSlice(ulong from, ulong to) { return (*text)[from..to]; }
+	ChunkedRange!char opSlice(size_t from, size_t to) { return (*text)[from..to]; }
 	LineInfo lineInfo(int line) { return text.lineInfo(line); }
 
 	void onCommand(EditorCommand com) { text.onCommand(com); }
@@ -53,7 +53,7 @@ struct MessageLog
 	alias opDollar = length;
 	LineInfo lineInfo(int line) { return lines.lineInfo(line); }
 
-	ChunkedRange!char opSlice(ulong from, ulong to)
+	ChunkedRange!char opSlice(size_t from, size_t to)
 	{
 		return textData[from..to].toChunkedRange;
 	}

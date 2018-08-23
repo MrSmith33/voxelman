@@ -23,10 +23,10 @@ struct LineInfo
 		this.numBytesStorage = ((numBytesEol-1) << 31) | numBytes;
 	}
 
-	int startOffset;
-	int numBytesStorage;  // excluding newline
+	size_t startOffset;
+	size_t numBytesStorage;  // excluding newline
 
-	int endOffset() { return startOffset + numBytes; }
+	size_t endOffset() { return startOffset + numBytes; }
 	int nextStartOffset() { return startOffset + numBytesTotal; }
 	int numBytesEol() { return (numBytesStorage >> 31) + 1; }
 	int numBytes() { return numBytesStorage & NUM_BYTES_MASK; } // excluding newline

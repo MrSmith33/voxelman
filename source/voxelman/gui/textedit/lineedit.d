@@ -54,16 +54,16 @@ struct LineEditLogic
 		copyText(sel.start.byteOffset, sel.end.byteOffset);
 	}
 
-	void copyText(ulong from, ulong to)
+	void copyText(size_t from, size_t to)
 	{
 		auto copiedText = textData[from..to].toChunkedRange.byItem;
 		ctx.clipboard = copiedText;
 	}
 
-	ulong length() { return textData.length; }
+	size_t length() { return textData.length; }
 	alias opDollar = length;
 
-	ChunkedRange!char opSlice(ulong from, ulong to)
+	ChunkedRange!char opSlice(size_t from, size_t to)
 	{
 		return textData[from..to].toChunkedRange;
 	}
@@ -174,20 +174,20 @@ struct LineEditLogic
 	}
 	import std.utf : stride, strideBack;
 
-	uint strideAt(ulong offset)
+	uint strideAt(size_t offset)
 	{
 		auto str = textData[offset..$];
 		return stride(str);
 	}
 
-	ulong nextOffset(ulong offset)
+	size_t nextOffset(size_t offset)
 	{
 		return offset + strideAt(offset);
 	}
 
-	ulong prevOffset(ulong offset)
+	size_t prevOffset(size_t offset)
 	{
-		return offset - strideBack(textData[0..offset]);
+		return offset - strideBack(textData[0u..offset]);
 	}
 
 	Cursor moveCursor(Cursor cur, MoveCommand com)
