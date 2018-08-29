@@ -122,7 +122,7 @@ sudo apt-get install liblmdb-dev liblz4-dev libglfw3-dev libenet-dev
 
 #### Windows
 
-Download compiled static libs [from here]()
+Download compiled static libs [from here](https://github.com/MrSmith33/voxelman/releases/download/v0.8.0/static-libs-win32-win64.zip)
 
 Unpack `lib` folder inside `voxelman` folder
 
