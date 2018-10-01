@@ -16,7 +16,7 @@ enum int NUM_BYTES_MASK = NUM_BYTES_HIGH_BIT - 1;
 
 struct LineInfo
 {
-	this(int startOffset, int numBytes, int numBytesEol)
+	this(size_t startOffset, size_t numBytes, size_t numBytesEol)
 	{
 		assert(numBytesEol > 0 && numBytesEol < 3);
 		this.startOffset = startOffset;
@@ -27,11 +27,11 @@ struct LineInfo
 	size_t numBytesStorage;  // excluding newline
 
 	size_t endOffset() { return startOffset + numBytes; }
-	int nextStartOffset() { return startOffset + numBytesTotal; }
-	int numBytesEol() { return (numBytesStorage >> 31) + 1; }
-	int numBytes() { return numBytesStorage & NUM_BYTES_MASK; } // excluding newline
+	size_t nextStartOffset() { return startOffset + numBytesTotal; }
+	size_t numBytesEol() { return (numBytesStorage >> 31) + 1; }
+	size_t numBytes() { return numBytesStorage & NUM_BYTES_MASK; } // excluding newline
 	void numBytes(int bytes) { numBytesStorage = numBytesStorage & NUM_BYTES_HIGH_BIT | bytes; } // excluding newline
-	int numBytesTotal() { return numBytes + numBytesEol; }
+	size_t numBytesTotal() { return numBytes + numBytesEol; }
 
 	void toString(scope void delegate(const(char)[]) sink)
 	{
@@ -70,7 +70,7 @@ struct LineInfoBuffer
 	}
 	alias opIndex = lineInfo;
 
-	int lineStartOffset(int lineIndex)
+	size_t lineStartOffset(int lineIndex)
 	{
 		if (numLines == 0) return 0;
 		updateOffsetsToLine(lineIndex);
@@ -78,21 +78,21 @@ struct LineInfoBuffer
 	}
 
 	// Does not include newline bytes
-	int numLineBytes(int lineIndex)
+	size_t numLineBytes(int lineIndex)
 	{
 		if (numLines == 0) return 0;
 		updateOffsetsToLine(lineIndex);
 		return lines[lineIndex].numBytes;
 	}
 
-	int numLineTotalBytes(int lineIndex)
+	size_t numLineTotalBytes(int lineIndex)
 	{
 		if (numLines == 0) return 0;
 		updateOffsetsToLine(lineIndex);
 		return lines[lineIndex].numBytesTotal;
 	}
 
-	int lineEndOffset(int lineIndex)
+	size_t lineEndOffset(int lineIndex)
 	{
 		if (numLines == 0) return 0;
 		updateOffsetsToLine(lineIndex);
@@ -166,7 +166,7 @@ struct LineInfoBuffer
 				{
 					// first line
 					auto totalNewBytes = oldBytesLeft + lineBytes;
-					lines[at.line] = LineInfo(firstLine.startOffset, cast(int)totalNewBytes, cast(int)eolBytes);
+					lines[at.line] = LineInfo(firstLine.startOffset, totalNewBytes, eolBytes);
 				}
 				else
 					lines.putAt(lineIndex, LineInfo(cast(int)(at.byteOffset + startOffset), cast(int)lineBytes, cast(int)eolBytes));
@@ -188,7 +188,7 @@ struct LineInfoBuffer
 		{
 			// and first line. no trailing newline
 			auto totalNewBytes = oldBytesLeft + lineBytes + oldBytesRight;
-			lines[at.line] = LineInfo(firstLine.startOffset, cast(int)totalNewBytes, cast(int)oldEolBytes);
+			lines[at.line] = LineInfo(firstLine.startOffset, totalNewBytes, oldEolBytes);
 		}
 		else
 		{
@@ -230,7 +230,7 @@ struct LineInfoBuffer
 		//-writefln("totalFirstBytes %s", totalFirstBytes);
 
 		// update data in first line
-		lines[from.line] = LineInfo(first.startOffset, cast(int)totalFirstBytes, last.numBytesEol);
+		lines[from.line] = LineInfo(first.startOffset, totalFirstBytes, last.numBytesEol);
 		//-writefln("lines[from.line] = %s", lines[from.line]);
 
 		// remove extra lines
