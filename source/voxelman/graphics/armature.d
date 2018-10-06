@@ -4,7 +4,7 @@ import voxelman.graphics.batch;
 import voxelman.container.buffer;
 import voxelman.math;
 
-import dlib.math.affine : fromEuler;
+import dlib.math.transformation : fromEuler;
 
 struct Armature
 {

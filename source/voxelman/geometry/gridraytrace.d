@@ -15,6 +15,7 @@ enum bool drawDebug = false;
 
 // Implementation of algorithm found at
 // http://playtechs.blogspot.co.uk/2007/03/raytracing-on-grid.html
+// Also Real-time Collision Detection: 7.4.2 Uniform Grid Intersection Test
 
 /// Returns true if block was hit
 bool traceRay(

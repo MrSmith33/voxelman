@@ -28,9 +28,9 @@ Join Discord servers:
 * [Voxelgamedev discord](https://discord.gg/kg47XNV)
 
 ## Installing game
-- Download [latest build](https://github.com/MrSmith33/voxelman/releases);
-- Unpack;
-- Follow instructions below.
+- Download [latest build](https://github.com/MrSmith33/voxelman/releases)
+- Unpack
+- Follow instructions below
 
 ## Compiler
 Any D compiler with frontend version of 2.075 and newer.
@@ -59,45 +59,45 @@ Any D compiler with frontend version of 2.075 and newer.
 - Select new world and press `Start`
 
 ### Multiplayer
-- To start a server select world and press `Server` button;
-- Connect to your server in `Connect` tab of `Play` menu;
-- Select local server and press `Connect` at the bottom;
-- To stop the server, go to the `Code` menu and hit `Stop` button of your server instance.
+- To start a server select world and press `Server` button
+- Connect to your server in `Connect` tab of `Play` menu
+- Select local server and press `Connect` at the bottom
+- To stop the server, go to the `Code` menu and hit `Stop` button of your server instance
 
 ## Starting game from command line
-- Executable must be started from `builds/default` folder;
-- `voxelman --app=[client|server|combined] --world_name="new world" --name="Player"`;
-- You can override any config option with a switch of a form: `--option=value`;
-- Array config options are passed using comma between items. Like `--resolution=1280,800`.
+- Executable must be started from `builds/default` folder
+- `voxelman --app=[client|server|combined] --world_name="new world" --name="Player"`
+- You can override any config option with a switch of a form: `--option=value`
+- Array config options are passed using comma between items. Like `--resolution=1280,800`
 
 ## Server commands
-- Can be inputted from server console inside launcher `Debug` menu, or from client's in-game console;
-- `tp <x> [<y>] <z> | tp <player name>` - teleports to position or other player's location;
+- Can be inputted from server console inside launcher `Debug` menu, or from client's in-game console
+- `tp <x> [<y>] <z> | tp <player name>` - teleports to position or other player's location
 - `tp u|d|l|r|f|b <num_blocks>` - teleports player in choosen direction
-- `spawn` teleports to starting world position;
-- `spawn set` sets world spawn;
-- `dim_spawn` teleports to dimension spawn pos;
-- `dim_spawn set` sets dimension spawn pos.
+- `spawn` teleports to starting world position
+- `spawn set` sets world spawn
+- `dim_spawn` teleports to dimension spawn pos
+- `dim_spawn set` sets dimension spawn pos
 
 ## Controls (Can be changed in `config/client.sdl`)
-- `Q` to lock mouse;
-- `WASD`, `LCtrl`, `Space` to move. `LShift` to boost;
-- `Right` and `Left` to switch tools;
-- `R` to rotate blocks;
-- `RMB` to place;
-- `LMB` to remove;
-- `MMB` to pick block;
-- `~` open console;
-- `[` and `]` to change view distance;
-- Keypad `-` and `+` to change movement speed;
-- `U` disable position update;
-- `F` flying mode;
-- `N` noclip;
-- `KP+`, `KP-` change movement speed;
-- `F2` chunk grid;
-- `F5` update all meshes;
-- `C` toggle frustum culling;
-- `Y` toggle wireframe mode.
+- `Q` to lock mouse
+- `WASD`, `LCtrl`, `Space` to move. `LShift` to boost
+- `Right` and `Left` to switch tools
+- `R` to rotate blocks
+- `RMB` to place
+- `LMB` to remove
+- `MMB` to pick block
+- `~` open console
+- `[` and `]` to change view distance
+- Keypad `-` and `+` to change movement speed
+- `U` disable position update
+- `F` flying mode
+- `N` noclip
+- `KP+`, `KP-` change movement speed
+- `F2` chunk grid
+- `F5` update all meshes
+- `C` toggle frustum culling
+- `Y` toggle wireframe mode
 
 ## Building from sources
 
@@ -111,7 +111,8 @@ sudo apt-get install build-essential dmd-bin dub
 ```
 
 #### Windows
-https://dlang.org/download.html
+* Compilers https://dlang.org/download.html
+* Visual studio https://visualstudio.microsoft.com/
 
 ### Installing dependencies
 
@@ -124,7 +125,7 @@ sudo apt-get install liblmdb-dev liblz4-dev libglfw3-dev libenet-dev
 
 Download compiled static libs [from here](https://github.com/MrSmith33/voxelman/releases/download/v0.8.0/static-libs-win32-win64.zip)
 
-Unpack `lib` folder inside `voxelman` folder
+Unpack `lib` folder inside `voxelman` folder.
 
 ### Compile
 

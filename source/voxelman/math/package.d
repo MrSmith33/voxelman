@@ -10,7 +10,7 @@ public import std.math : std_abs = abs, isNaN, floor, ceil, sqrt, PI, cos, sin, 
 
 public import gfm.integers.half;
 
-public import dlib.math.affine : translationMatrix, orthoMatrix, perspectiveMatrix;
+public import dlib.math.transformation : translationMatrix, orthoMatrix, perspectiveMatrix;
 public import dlib.math.interpolation : lerp;
 public import dlib.math.matrix;
 public import dlib.math.quaternion;
