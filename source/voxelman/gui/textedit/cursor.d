@@ -9,7 +9,7 @@ import voxelman.gui.textedit.linebuffer;
 
 struct Cursor
 {
-	ulong byteOffset;
+	size_t byteOffset;
 	int line;
 }
 

@@ -72,7 +72,7 @@ class EditorTextModel : TextModel
 
 	int numLines() { return editor.lines.numLines; }
 	int lastLine() { return editor.lines.lastLine; }
-	ChunkedRange!char opSlice(ulong from, ulong to) { return editor.textData[from..to].toChunkedRange; }
+	ChunkedRange!char opSlice(size_t from, size_t to) { return editor.textData[from..to].toChunkedRange; }
 	LineInfo lineInfo(int line) { return editor.lines.lineInfo(line); }
 
 	void onCommand(EditorCommand com) { editor.onCommand(com); }
@@ -206,7 +206,7 @@ mixin template ReadHelpers()
 		copyText(sel.start.byteOffset, sel.end.byteOffset);
 	}
 
-	void copyText(ulong from, ulong to)
+	void copyText(size_t from, size_t to)
 	{
 		//MonoTime copyStart = MonoTime.currTime;
 		auto copiedText = textData[from..to].toChunkedRange.byItem;
@@ -231,20 +231,20 @@ mixin template ReadHelpers()
 			return selection.normalized;
 	}
 
-	uint strideAt(ulong offset)
+	uint strideAt(size_t offset)
 	{
 		auto str = textData[offset..$];
 		return stride(str);
 	}
 
-	ulong nextOffset(ulong offset)
+	size_t nextOffset(size_t offset)
 	{
 		return offset + strideAt(offset);
 	}
 
-	ulong prevOffset(ulong offset)
+	size_t prevOffset(size_t offset)
 	{
-		return offset - strideBack(textData[0..offset]);
+		return offset - strideBack(textData[0u..offset]);
 	}
 
 	Cursor moveCursor(Cursor cur, MoveCommand com)

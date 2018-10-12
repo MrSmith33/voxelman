@@ -17,7 +17,7 @@ interface TextModel
 
 	int numLines();
 	int lastLine();
-	ChunkedRange!char opSlice(ulong from, ulong to);
+	ChunkedRange!char opSlice(size_t from, size_t to);
 	LineInfo lineInfo(int line);
 
 	void onCommand(EditorCommand com);

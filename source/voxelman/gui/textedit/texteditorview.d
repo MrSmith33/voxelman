@@ -165,8 +165,8 @@ struct TextEditorViewportLogic
 
 			foreach(line; firstVisibleSelectedLine..lastVisibleSelectedLine+1)
 			{
-				ulong lineStart = 0;
-				ulong lineEnd;
+				size_t lineStart = 0;
+				size_t lineEnd;
 
 				auto lineInfo = editor.lineInfo(line);
 
