@@ -52,8 +52,6 @@ static int mdb_cmp_long(const MDB_val *a, const MDB_val *b)
 	}
 }
 
-void mdb_load_libs();
-
 alias mdb_mode_t = uint;
 struct mdb_filehandle_ts {}
 alias mdb_filehandle_t = mdb_filehandle_ts*;

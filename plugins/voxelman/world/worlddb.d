@@ -23,7 +23,6 @@ final class WorldDb
 
 	//-----------------------------------------------
 	void open(string filename) {
-		version(Windows) mdb_load_libs();
 		db.open(filename);
 	}
 	void close() {

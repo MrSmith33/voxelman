@@ -28,7 +28,7 @@
 			},
 			"buildTypes": {
 				"debug": {
-					"buildOptions": ["debugMode", "debugInfoC", "alwaysStackFrame"]
+					"buildOptions": ["debugMode", "alwaysStackFrame"]
 				},
 				"unittest": {
 					"buildOptions": ["unittests", "debugMode", "debugInfo"],
@@ -41,7 +41,6 @@
 			"libs-windows": ["user32", "gdi32", "winmm"],
 			"libs-windows-dmd": ["ws2_32"],
 
-			"sourceFiles-windows-x86_mscoff": ["lib/32/lz4.lib", "lib/32/lmdb.lib", "lib/32/glfw3.lib", "lib/32/enet.lib"],
 			"sourceFiles-windows-x86_64": ["lib/64/lz4.lib", "lib/64/lmdb.lib", "lib/64/glfw3.lib", "lib/64/enet.lib"],
 			"targetType": "library",
 			"excludedSourceFiles" : ["source/main.d"],
@@ -53,7 +52,6 @@
 			"targetType": "library",
 			"sourcePaths": ["plugins"],
 			"importPaths": ["plugins"],
-			"lflags-windows-dmd": ["/ignore:4255", "/force:multiple"],
 			"dependencies" : {
 				"voxelman:engine": "*"
 			}
@@ -66,6 +64,7 @@
 			"mainSourceFile" : "source/main.d",
 			"targetName" : "voxelman",
 			"targetPath" : "builds/default",
+			"lflags-windows": ["/nodefaultlib:libcmt", "/nodefaultlib:libvcruntime"],
 			"workingDirectory" : "builds/default"
 		},
 		{
