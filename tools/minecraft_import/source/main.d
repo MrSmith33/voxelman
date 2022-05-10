@@ -155,6 +155,9 @@ void serverMain2(PluginManager pluginman, ImportParams params)
 	BlockInfoTable blocks = bm.getBlocks();
 	auto serverWorld = pluginman.getPlugin!ServerWorld;
 
+	// disable load chunk callback, so we don't request world generation when chunk gets observed
+	serverWorld.chunkManager.loadChunkHandler = null;
+
 	evDispatcher.postEvent(GameStartEvent());
 
 	transferRegions(params, serverWorld, blocks);
@@ -190,7 +193,7 @@ void transferRegionsImpl(ImportParams params, ChunkEditor chunkEditor,
 	size_t numChunkColumns;
 
 	// Rectangle that contains all region positions. Used to center imported map.
-	Rect regionRect;
+	irect regionRect;
 
 	foreach(regionName; regionIterator(params.regionDir))
 	{
@@ -198,7 +201,7 @@ void transferRegionsImpl(ImportParams params, ChunkEditor chunkEditor,
 		++numRegions;
 
 		if (numRegions == 1)
-			regionRect = Rect(ivec2(region.x, region.z));
+			regionRect = irect(region.x, region.z, 1, 1);
 		else
 			regionRect.add(ivec2(region.x, region.z));
 	}
@@ -218,7 +221,7 @@ void transferRegionsImpl(ImportParams params, ChunkEditor chunkEditor,
 	{
 		region.parseRegionFilename(regionName);
 
-		writef("%s/%s\tregion %s %s -> ", currentRegionIndex, numRegions, region.x, region.z);
+		writef("%s/%s\tregion %s %s -> ", currentRegionIndex+1, numRegions, region.x, region.z);
 
 		region.x += regionOffset.x;
 		region.z += regionOffset.y;
@@ -272,7 +275,7 @@ void importChunk(ref McRegion region, McChunkInfo chunkInfo, ChunkEditor chunkEd
 		switch(tag.name)
 		{
 			case "Blocks":
-				blocks = readBytes(input, tag.length);
+				blocks = nbt.readBytes(input, tag.length);
 				++blocks_counter;
 				trySection();
 				return VisitRes.r_continue;

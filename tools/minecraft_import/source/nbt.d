@@ -14,11 +14,16 @@ private import std.conv : to;
 private import std.utf : byChar;
 private import std.range : isInputRange, isOutputRange, ElementType;
 private import std.typecons : isTuple;
+		import std.stdio;
+
+//version = little;
+version = big;
 
 enum VisitRes {r_break, r_continue}
+
 unittest
 {
-	enum testFile = `D:\voxelman\tools\minecraft_import\extra\test.data`;
+	enum testFile = `extra\test.data`;
 	import std.file;
 	auto fileData = cast(ubyte[])read(testFile);
 	printNbtStream(fileData[]);
@@ -47,7 +52,6 @@ unittest
 	visitNbtStream(fileData, &visitor);
 }
 
-
 enum NbtTagType : ubyte {
 	tag_end,
 	tag_byte,
@@ -61,6 +65,7 @@ enum NbtTagType : ubyte {
 	tag_list,
 	tag_compound, // map
 	tag_int_array,
+	tag_long_array,
 }
 
 struct NbtTag
@@ -150,15 +155,20 @@ NbtTag decodeNbtTag(R)(auto ref R input, NbtTagType type, string name)
 			__DoubleRep dr = {u : readInteger!ulong(input)};
 			return NbtTag(type, name, dr.d);
 		case tag_byte_array:
-			return NbtTag(type, name, cast(uint)readInteger!uint(input));
+			return NbtTag(type, name, cast(long)readInteger!int(input));
 		case tag_string:
-			return NbtTag(type, name, cast(uint)readInteger!ushort(input));
+			return NbtTag(type, name, cast(long)readInteger!ushort(input));
 		case tag_list:
-			return NbtTag(type, name, cast(NbtTagType)readInteger!ubyte(input), cast(uint)readInteger!uint(input));
+			auto itemType = cast(NbtTagType)readInteger!ubyte(input);
+			int listLength = readInteger!int(input);
+			if (listLength < 0) listLength = 0;
+			return NbtTag(type, name, itemType, listLength);
 		case tag_compound:
 			return NbtTag(type, name);
 		case tag_int_array:
-			return NbtTag(type, name, cast(uint)readInteger!uint(input));
+			return NbtTag(type, name, cast(long)readInteger!uint(input));
+		case tag_long_array:
+			return NbtTag(type, name, cast(long)readInteger!ulong(input));
 	}
 	assert(false);
 }
@@ -200,6 +210,7 @@ VisitRes visitNbtValue(R, V)(auto ref R input, NbtTag tag, V visitor)
 		case tag_list: return visitNbtList(input, visitor, tag.itemType, tag.length);
 		case tag_compound: return visitNbtStream(input, visitor);
 		case tag_int_array: readBytes(input, tag.length*4); return VisitRes.r_continue;
+		case tag_long_array: readBytes(input, tag.length*8); return VisitRes.r_continue;
 	}
 }
 
@@ -241,6 +252,7 @@ void printNbtStream(string singleIndent="  ", Sink, R)(
 	while(input.length > 0 && numItems > 0)
 	{
 		NbtTag tag = decodeNbtNamedTag(input);
+		stdout.flush;
 		if (tag.type == NbtTagType.tag_end)
 			return;
 		printNbtValue!singleIndent(input, sink, tag, ulong.max, indent);
@@ -258,12 +270,12 @@ void printNbtList(string singleIndent="  ", Sink, R)(
 	if(isInputRange!R && is(ElementType!R == ubyte) && isOutputRange!(Sink, char))
 {
 	foreach(i; 0..length) {
-		NbtTag tag = decodeNbtTag(input, type, "");
+		NbtTag tag = decodeNbtTag(input, type, null);
 		printNbtValue!singleIndent(input, sink, tag, ulong.max, indent);
 	}
 }
 
-void printNbtIntArray(string singleIndent="  ", Sink, R)(
+void printNbtIntegerArray(T, string singleIndent="  ", Sink, R)(
 		auto ref R input,
 		auto ref Sink sink,
 		uint length,
@@ -274,16 +286,16 @@ void printNbtIntArray(string singleIndent="  ", Sink, R)(
 	import std.format : formattedWrite;
 	if (length)
 	{
-		uint integer = readInteger!uint(input);
+		T integer = readInteger!T(input);
 		formattedWrite(sink, "%s(%s", indent, integer);
 	}
 	else
 		formattedWrite(sink, "%s(", indent);
 
 
-	auto bytes = readBytes(input, (length-1)*4);
+	auto bytes = readBytes(input, (length-1)*T.sizeof);
 	//foreach(i; 1..length) {
-	//	uint integer = readInteger!uint(input);
+	//	T integer = readInteger!T(input);
 	//	formattedWrite(sink, ", %s", integer);
 	//}
 	formattedWrite(sink, ")\n");
@@ -331,7 +343,11 @@ void printNbtValue(string singleIndent="  ", Sink, R)(
 			break;
 		case tag_int_array:
 			formattedWrite(sink, "%sint array(%s): %s\n", indent, tag.name, tag.length);
-			printNbtIntArray!singleIndent(input, sink, tag.length, indent~singleIndent);
+			printNbtIntegerArray!(int, singleIndent)(input, sink, tag.length, indent~singleIndent);
+			break;
+		case tag_long_array:
+			formattedWrite(sink, "%slong array(%s): %s\n", indent, tag.name, tag.length);
+			printNbtIntegerArray!(long, singleIndent)(input, sink, tag.length, indent~singleIndent);
 			break;
 	}
 }
@@ -341,7 +357,7 @@ private T readInteger(T, R)(auto ref R input)
 {
 	enum ubyte size = T.sizeof;
 	import std.algorithm : copy;
-	import std.bitmanip : bigEndianToNative;
+	import std.bitmanip : bigEndianToNative, littleEndianToNative;
 	import std.range : dropExactly, take;
 
 	static assert(T.sizeof == size);
@@ -352,7 +368,8 @@ private T readInteger(T, R)(auto ref R input)
 
 	copy(take(input, size), data[]);
 	input = input.dropExactly(size);
-	T result = bigEndianToNative!(T, size)(data);
+	version(little) T result = littleEndianToNative!(T, size)(data);
+	version(big) T result = bigEndianToNative!(T, size)(data);
 
 	return result;
 }
@@ -365,7 +382,11 @@ ubyte[] readBytes(R)(auto ref R input, ulong length)
 {
 	import std.array;
 	import std.range : take;
-	if (input.length < length) onInsufficientInput();
+	if (input.length < length)
+	{
+		writefln("Input length: %s, read length: %s", input.length, length);
+		onInsufficientInput();
+	}
 
 	static if (size_t.sizeof < ulong.sizeof)
 		if (length > size_t.max)
@@ -397,32 +418,33 @@ class NbtException : Exception
 
 private:
 
-auto customEmplace(T, A...)(void[] buffer, A args) @nogc
+auto customEmplace(T, A...)(void[] buffer, A args)
 {
 	buffer[] = typeid(T).initializer;
 	return (cast(T)buffer.ptr).__ctor(args);
 }
 
-NbtException getException(A...)(string file, size_t line, string fmt, A args) @nogc
+NbtException getException(A...)(string file, size_t line, string fmt, A args)
 {
+	import std.format : formattedWrite;
 	static ubyte[__traits(classInstanceSize, NbtException)] exceptionBuffer;
 	static char[512] charBuffer;
-	import core.stdc.stdio : snprintf;
-	int written = snprintf(charBuffer.ptr, charBuffer.length, fmt.ptr, args);
-	return customEmplace!NbtException(exceptionBuffer, cast(string)charBuffer[0..written], file, line);
+	char[] buf = charBuffer[];
+	buf.formattedWrite(fmt, args);
+	return customEmplace!NbtException(exceptionBuffer, cast(string)charBuffer[0..$-buf.length], file, line);
 }
 
-void onCastErrorToFrom(To)(NbtTagType from, string file = __FILE__, size_t line = __LINE__) @nogc
+void onCastErrorToFrom(To)(NbtTagType from, string file = __FILE__, size_t line = __LINE__)
 {
 	throw getException(file, line, "Attempt to cast %s to %s", from, typeid(To));
 }
 
-void onInsufficientInput(string file = __FILE__, size_t line = __LINE__) @nogc
+void onInsufficientInput(string file = __FILE__, size_t line = __LINE__)
 {
 	throw getException(file, line, "Input range is too short");
 }
 
-void onUnsupportedTag(ubyte tag, string file = __FILE__, size_t line = __LINE__) @nogc
+void onUnsupportedTag(NbtTagType tag, string file = __FILE__, size_t line = __LINE__)
 {
-	throw getException(file, line, "Unsupported tag found: %02x", tag);
+	throw getException(file, line, "Unsupported tag found: %s", tag);
 }
