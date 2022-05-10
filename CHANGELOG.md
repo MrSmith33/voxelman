@@ -1,6 +1,9 @@
 # Change Log
 
 ## [Unreleased]
+
+
+## [0.9.0] - 2022-05-10
 ### Added
 - Add vsync option, true by default, disables manual fps limiting.
 - Add command help listing with help command.
