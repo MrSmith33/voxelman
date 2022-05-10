@@ -61,7 +61,6 @@ T divCeil(T)(T a, T b)
 }
 
 T distance(T) (Vector!(T,2) a, Vector!(T,2) b)
-body
 {
 	T dx = a.x - b.x;
 	T dy = a.y - b.y;

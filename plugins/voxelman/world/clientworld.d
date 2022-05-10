@@ -178,9 +178,9 @@ public:
 	override void init(IPluginManager pluginman)
 	{
 		import std.algorithm.comparison : clamp;
-		numWorkersOpt.set(clamp(numWorkersOpt.get!uint, 1, 16));
+		numWorkersOpt.set(clamp(numWorkersOpt.get!int, 1, 16));
 
-		viewRadius = viewRadiusOpt.get!uint;
+		viewRadius = viewRadiusOpt.get!int;
 		// duplicated code
 		viewRadius = clamp(viewRadius, MIN_VIEW_RADIUS, MAX_VIEW_RADIUS);
 
@@ -196,7 +196,7 @@ public:
 		blockPlugin = pluginman.getPlugin!BlockPluginClient;
 		blockEntityPlugin = pluginman.getPlugin!BlockEntityClient;
 		chunkMeshMan.init(chunkManager, blockPlugin.getBlocks(),
-			blockEntityPlugin.blockEntityInfos(), numWorkersOpt.get!uint);
+			blockEntityPlugin.blockEntityInfos(), numWorkersOpt.get!int);
 
 		evDispatcher = pluginman.getPlugin!EventDispatcherPlugin;
 		evDispatcher.subscribeToEvent(&handlePreUpdateEvent);
@@ -270,7 +270,7 @@ public:
 			infof("No snapshot for %s", cwp);
 			return;
 		}
-		printChunkMetadata(snap.metadata);
+		printChunkMetadata(snap.get.metadata);
 	}
 
 	private void handlePreUpdateEvent(ref PreUpdateEvent event)
@@ -415,7 +415,7 @@ public:
 			if (snap.isNull) continue;
 
 			foreach(ubyte side; 0..6) {
-				Solidity solidity = chunkSideSolidity(snap.metadata, cast(CubeSide)side);
+				Solidity solidity = chunkSideSolidity(snap.get.metadata, cast(CubeSide)side);
 				static Color4ub[3] colors = [Colors.white, Colors.gray, Colors.black];
 				Color4ub color = colors[solidity];
 				graphics.debugBatch.putCubeFace(blockPos + CHUNK_SIZE/2, vec3(2,2,2), cast(CubeSide)side, color, true);
@@ -428,7 +428,7 @@ public:
 		foreach(pos; box.positions) {
 			vec3 blockPos = pos * CHUNK_SIZE;
 			auto snap = chunkManager.getChunkSnapshot(ChunkWorldPos(pos, box.dimension), BLOCK_LAYER);
-			if (!snap.isNull && snap.isUniform) {
+			if (!snap.isNull && snap.get.isUniform) {
 				graphics.debugBatch.putCube(blockPos + CHUNK_SIZE/2-2, vec3(6,6,6), Colors.green, false);
 			}
 		}
@@ -444,7 +444,7 @@ public:
 				ChunkWorldPos(pos, box.dimension), ENTITY_LAYER, Yes.Uncompress);
 
 			if (snap.isNull) continue;
-			auto map = getHashMapFromLayer(snap);
+			auto map = getHashMapFromLayer(snap.get);
 			foreach(id, entity; map)
 			{
 				if (BlockEntityData(entity).type == BlockEntityType.localBlockEntity)

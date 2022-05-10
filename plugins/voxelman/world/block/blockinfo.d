@@ -189,20 +189,20 @@ struct BlockInfoSetter
 	private size_t blockId;
 	private ref BlockInfo info() {return (*mapping)[blockId]; }
 
-	ref BlockInfoSetter meshHandler(MeshHandler val) { info.meshHandler = val; return this; }
-	ref BlockInfoSetter color(ubyte[3] color ...) { info.color = ubvec3(color); return this; }
-	ref BlockInfoSetter colorHex(uint hex) { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
-	ref BlockInfoSetter isVisible(bool val) { info.isVisible = val; return this; }
-	ref BlockInfoSetter solidity(Solidity val) { info.solidity = val; return this; }
-	ref BlockInfoSetter blockShape(BlockShape val) { info.shape = val; return this; }
-	ref BlockInfoSetter shapeMetaHandler(ShapeMetaHandler val) {
+	ref BlockInfoSetter meshHandler(MeshHandler val) return { info.meshHandler = val; return this; }
+	ref BlockInfoSetter color(ubyte[3] color ...) return { info.color = ubvec3(color); return this; }
+	ref BlockInfoSetter colorHex(uint hex) return { info.color = ubvec3((hex>>16)&0xFF,(hex>>8)&0xFF,hex&0xFF); return this; }
+	ref BlockInfoSetter isVisible(bool val) return { info.isVisible = val; return this; }
+	ref BlockInfoSetter solidity(Solidity val) return { info.solidity = val; return this; }
+	ref BlockInfoSetter blockShape(BlockShape val) return { info.shape = val; return this; }
+	ref BlockInfoSetter shapeMetaHandler(ShapeMetaHandler val) return {
 		info.shapeMetaHandler = val;
 		info.shapeDependsOnMeta = true;
 		return this;
 	}
-	//ref BlockInfoSetter shapeDependsOnMeta(bool val) { info.shapeDependsOnMeta = val; return this; }
-	ref BlockInfoSetter meshDependOnMeta(bool val) { info.meshDependOnMeta = val; return this; }
-	ref BlockInfoSetter rotationHandler(RotationHandler val) { info.rotationHandler = val; return this; }
+	//ref BlockInfoSetter shapeDependsOnMeta(bool val) return { info.shapeDependsOnMeta = val; return this; }
+	ref BlockInfoSetter meshDependOnMeta(bool val) return { info.meshDependOnMeta = val; return this; }
+	ref BlockInfoSetter rotationHandler(RotationHandler val) return { info.rotationHandler = val; return this; }
 }
 
 import voxelman.world.mesh.blockmeshers.full;

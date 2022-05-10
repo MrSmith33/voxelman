@@ -105,15 +105,15 @@ class MovementPlugin : IPlugin
 
 	void speedUp(string) {
 		if (isFlying)
-			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!uint + 1, 1, 200));
+			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!int + 1, 1, 200));
 		else
-			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint + 1, 1, 100));
+			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!int + 1, 1, 100));
 	}
 	void speedDown(string) {
 		if (isFlying)
-			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!uint - 1, 1, 200));
+			flightCameraSpeedOpt.set(clamp(flightCameraSpeedOpt.get!int - 1, 1, 200));
 		else
-			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!uint - 1, 1, 100));
+			fpsCameraSpeedOpt.set(clamp(fpsCameraSpeedOpt.get!int - 1, 1, 100));
 	}
 	void toggleFlying(string) {
 		isFlying = !isFlying;
@@ -186,9 +186,9 @@ class MovementPlugin : IPlugin
 		vec3 inputSpeed = vec3(0,0,0);
 		vec3 inputAccel = vec3(0,0,0);
 
-		uint cameraSpeed = fpsCameraSpeedOpt.get!uint;
+		uint cameraSpeed = fpsCameraSpeedOpt.get!int;
 		if (state.boost)
-			cameraSpeed *= fpsCameraBoostOpt.get!uint;
+			cameraSpeed *= fpsCameraBoostOpt.get!int;
 
 		vec3 horInputs = vec3(state.inputs.x, 0, state.inputs.z);
 		if (horInputs != vec3(0,0,0))
@@ -231,9 +231,9 @@ class MovementPlugin : IPlugin
 	vec3 handleFlight(ref vec3 speed, float dt)
 	{
 		InputState state = gatherInputs();
-		uint cameraSpeed = flightCameraSpeedOpt.get!uint;
+		uint cameraSpeed = flightCameraSpeedOpt.get!int;
 		if (state.boost)
-			cameraSpeed *= flightCameraBoostOpt.get!uint;
+			cameraSpeed *= flightCameraBoostOpt.get!int;
 
 		vec3 inputs = vec3(state.inputs);
 		if (inputs != vec3(0,0,0))

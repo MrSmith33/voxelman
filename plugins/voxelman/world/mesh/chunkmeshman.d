@@ -279,7 +279,7 @@ struct ChunkMeshMan
 			{
 				if (!adj.isNull())
 				{
-					Solidity adjSideSolidity = chunkSideSolidity(adj.metadata, oppSide[side]);
+					Solidity adjSideSolidity = chunkSideSolidity(adj.get.metadata, oppSide[side]);
 					if (solidity.isMoreSolidThan(adjSideSolidity)) return true;
 				}
 				// otherwise it is unknown blocks, which are solid
@@ -326,7 +326,7 @@ struct ChunkMeshMan
 
 		++numMeshChunkTasks;
 
-		if (!producesMesh(snapsBlocks.adjacent6, snapsBlocks.central))
+		if (!producesMesh(snapsBlocks.adjacent6, snapsBlocks.central.get))
 		{
 			version(DBG) tracef("meshChunk %s produces no mesh", cwp);
 

@@ -131,7 +131,7 @@ struct AnimationInstance
 
 	void gotoFrame(int frame)
 	{
-		currentFrame = clamp(frame, 0, sheet.frames.length-1);
+		currentFrame = clamp(frame, 0, cast(int)sheet.frames.length - 1);
 		timer = sheet.frames[currentFrame].timelineStart;
 	}
 

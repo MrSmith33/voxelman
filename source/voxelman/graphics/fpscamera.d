@@ -72,7 +72,7 @@ struct FpsCamera
 		isUpdated = true;
 	}
 
-	ref Matrix4f cameraMatrix()
+	ref Matrix4f cameraMatrix() return
 	{
 		if(!isUpdated) update();
 		return cameraToClipMatrix;

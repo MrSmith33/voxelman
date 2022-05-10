@@ -126,7 +126,7 @@ final class Generator2d : IGenerator
 			foreach(i; 0..CHUNK_SIZE_CUBE)
 			{
 				int bx = i & CHUNK_SIZE_BITS;
-				int by = (i / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+				int by = i / CHUNK_SIZE_SQR;
 				int bz = (i / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 				int blockY = chunkOffset.y + by;
 				int height = heightMap.heightMap[bz * CHUNK_SIZE + bx];

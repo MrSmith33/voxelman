@@ -76,7 +76,7 @@ struct BlockWorldPos
 {
 	this(ChunkWorldPos cwp, ushort index) {
 		ubyte bx = index & CHUNK_SIZE_BITS;
-		ubyte by = (index / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		ubyte by = index / CHUNK_SIZE_SQR;
 		ubyte bz = (index / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 		vector = ivec4(
 			cwp.x * CHUNK_SIZE + bx,
@@ -154,7 +154,7 @@ struct BlockChunkPos
 	this(ushort blockIndex)
 	{
 		vector.x = blockIndex & CHUNK_SIZE_BITS;
-		vector.y = (blockIndex / CHUNK_SIZE_SQR) & CHUNK_SIZE_BITS;
+		vector.y = blockIndex / CHUNK_SIZE_SQR;
 		vector.z = (blockIndex / CHUNK_SIZE) & CHUNK_SIZE_BITS;
 	}
 

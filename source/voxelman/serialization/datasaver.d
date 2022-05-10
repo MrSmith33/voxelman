@@ -18,7 +18,7 @@ struct PluginDataSaver
 	private Buffer!ubyte buffer;
 	private size_t prevDataLength;
 
-	Buffer!ubyte* beginWrite() {
+	Buffer!ubyte* beginWrite() return {
 		prevDataLength = buffer.data.length;
 		return &buffer;
 	}

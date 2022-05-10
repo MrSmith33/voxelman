@@ -423,7 +423,7 @@ struct ChunkLayerSnap
 	}
 }
 
-enum isSomeLayer(Layer) = is(Layer == ChunkLayerSnap) || is(Layer == ChunkLayerItem) || is(Layer == Nullable!ChunkLayerSnap);
+enum isSomeLayer(Layer) = is(Layer == ChunkLayerSnap) || is(Layer == ChunkLayerItem);
 
 T[] getArray(T, Layer)(const ref Layer layer)
 	if (isSomeLayer!Layer)

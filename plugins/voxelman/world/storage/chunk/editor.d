@@ -82,7 +82,7 @@ final class ChunkEditor
 			if (writeBuffer && policy == WriteBufferPolicy.copySnapshotArray) {
 				auto old = chunkManager.getChunkSnapshot(cwp, layer);
 				if (!old.isNull) {
-					applyLayer(old, writeBuffer.layer);
+					applyLayer(old.get, writeBuffer.layer);
 				}
 			}
 		}

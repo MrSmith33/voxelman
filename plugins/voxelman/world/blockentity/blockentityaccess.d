@@ -176,9 +176,9 @@ final class BlockEntityAccess
 		assert((blockIndex & BLOCK_ENTITY_FLAG) == 0);
 		auto entities = chunkManager.getChunkSnapshot(cwp, ENTITY_LAYER, Yes.Uncompress);
 		if (entities.isNull) return BlockEntityData.init;
-		if (entities.type == StorageType.uniform) return BlockEntityData.init;
+		if (entities.get.type == StorageType.uniform) return BlockEntityData.init;
 
-		BlockEntityMap map = getHashMapFromLayer(entities);
+		BlockEntityMap map = getHashMapFromLayer(entities.get);
 
 		ulong* entity = blockIndex in map;
 		if (entity is null) return BlockEntityData.init;

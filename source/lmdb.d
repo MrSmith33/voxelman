@@ -23,7 +23,7 @@ void checkCode(int code, string file = __FILE__, int line = __LINE__) @nogc
 	{
 		//errorf("%s@%s: MDB error: %s", file, line, mdb_strerror(code).fromStringz);
 		import core.stdc.stdio;
-		printf("%s@%s: MDB error: %s", file.ptr, line, mdb_strerror(code));
+		printf("%s@%d: MDB error: %s", file.ptr, line, mdb_strerror(code));
 		assert(false);
 	}
 }

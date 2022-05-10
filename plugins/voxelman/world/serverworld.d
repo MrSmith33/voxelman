@@ -184,7 +184,7 @@ public:
 		connection.registerPacketHandler!PlaceBlockEntityPacket(&handlePlaceBlockEntityPacket);
 		connection.registerPacketHandler!RemoveBlockEntityPacket(&handleRemoveBlockEntityPacket);
 
-		chunkProvider.init(worldDb, numGenWorkersOpt.get!uint,
+		chunkProvider.init(worldDb, numGenWorkersOpt.get!int,
 			blockPlugin.getBlocks(), saveUnmodifiedChunksOpt.get!bool);
 		worldDb = null;
 		activeChunks.loadActiveChunks();
@@ -373,8 +373,7 @@ public:
 		{
 			if (!chunkManager.hasSnapshot(cwp, layerId)) continue;
 
-			auto layer = chunkManager.getChunkSnapshot(cwp, layerId);
-			assert(!layer.isNull);
+			auto layer = chunkManager.getChunkSnapshot(cwp, layerId).get;
 
 			version(DBG_COMPR)if (layer.type != StorageType.uniform)
 			{

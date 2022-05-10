@@ -137,7 +137,7 @@ struct ClientPositionManager
 }
 
 immutable vec3[string] dirToVec;
-static this()
+shared static this()
 {
 	dirToVec = [
 		"u" : vec3( 0, 1, 0),

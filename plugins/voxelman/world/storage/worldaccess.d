@@ -81,9 +81,9 @@ final class WorldAccess
 		auto oldBlocks = chunkManager.getChunkSnapshot(cwp, BLOCK_LAYER);
 		if (oldBlocks.isNull) return false;
 
-		if (oldBlocks.type == StorageType.uniform)
+		if (oldBlocks.get.type == StorageType.uniform)
 		{
-			if (oldBlocks.getUniform!BlockId() == blockId) {
+			if (oldBlocks.get.getUniform!BlockId() == blockId) {
 				return false;
 			}
 		}
@@ -113,10 +113,11 @@ final class WorldAccess
 
 	private void fillChunkBoxMetadata(ChunkWorldPos cwp, Box blockBox, BlockMetadata blockMeta) {
 		auto oldMetas = chunkManager.getChunkSnapshot(cwp, METADATA_LAYER);
+		if (oldMetas.isNull) return;
 
-		if (oldMetas.type == StorageType.uniform)
+		if (oldMetas.get.type == StorageType.uniform)
 		{
-			if (oldMetas.getUniform!BlockMetadata == blockMeta) {
+			if (oldMetas.get.getUniform!BlockMetadata == blockMeta) {
 				return;
 			}
 		}
@@ -149,7 +150,7 @@ final class WorldAccess
 		auto chunkPos = ChunkWorldPos(bwp);
 		auto snap = chunkManager.getChunkSnapshot(chunkPos, BLOCK_LAYER, Yes.Uncompress);
 		if (!snap.isNull) {
-			return snap.getBlockId(blockIndex);
+			return snap.get.getBlockId(blockIndex);
 		}
 		return 0;
 	}
@@ -159,7 +160,7 @@ final class WorldAccess
 		auto chunkPos = ChunkWorldPos(bwp);
 		auto snap = chunkManager.getChunkSnapshot(chunkPos, METADATA_LAYER, Yes.Uncompress);
 		if (!snap.isNull) {
-			return snap.getLayerItemNoncompressed!BlockMetadata(blockIndex);
+			return snap.get.getLayerItemNoncompressed!BlockMetadata(blockIndex);
 		}
 		return 0;
 	}
@@ -171,12 +172,12 @@ final class WorldAccess
 
 		auto blocks = chunkManager.getChunkSnapshot(chunkPos, BLOCK_LAYER, Yes.Uncompress);
 		if (!blocks.isNull) {
-			result.id = blocks.getBlockId(blockIndex);
+			result.id = blocks.get.getBlockId(blockIndex);
 		}
 
 		auto metas = chunkManager.getChunkSnapshot(chunkPos, METADATA_LAYER, Yes.Uncompress);
 		if (!metas.isNull) {
-			result.metadata = metas.getLayerItemNoncompressed!BlockMetadata(blockIndex);
+			result.metadata = metas.get.getLayerItemNoncompressed!BlockMetadata(blockIndex);
 		}
 
 		return result;

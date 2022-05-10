@@ -31,7 +31,7 @@ struct LoadedChunkData
 	private ChunkLayerItem[MAX_CHUNK_LAYERS] _layers;
 
 	ChunkWorldPos cwp() { return header.cwp; }
-	ChunkLayerItem[] layers() { return _layers[0..header.numLayers]; }
+	ChunkLayerItem[] layers() return { return _layers[0..header.numLayers]; }
 
 	static LoadedChunkData getFromQueue(shared SharedQueue* queue) {
 		LoadedChunkData data;
@@ -57,7 +57,7 @@ struct SavedChunkData
 	private ChunkLayerTimestampItem[MAX_CHUNK_LAYERS] _layers;
 
 	ChunkWorldPos cwp() { return header.cwp; }
-	ChunkLayerTimestampItem[] layers() { return _layers[0..header.numLayers]; }
+	ChunkLayerTimestampItem[] layers() return { return _layers[0..header.numLayers]; }
 
 	static SavedChunkData getFromQueue(shared SharedQueue* queue) {
 		SavedChunkData data;

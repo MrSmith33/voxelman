@@ -180,7 +180,7 @@ struct NetworkSaver
 
 	IoStorageType storageType() { return IoStorageType.network; }
 
-	Buffer!ubyte* beginWrite() {
+	Buffer!ubyte* beginWrite() return {
 		prevDataLength = buffer.data.length;
 		return &buffer;
 	}

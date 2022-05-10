@@ -102,7 +102,7 @@ public:
 
 	override void preInit()
 	{
-		fpsHelper.maxFps = maxFpsOpt.get!uint;
+		fpsHelper.maxFps = maxFpsOpt.get!int;
 		limitFps = limitFpsOpt.get!bool;
 	}
 
@@ -219,7 +219,7 @@ public:
 
 	Duration targetFrameTime()
 	{
-		return (1_000_000 / maxFpsOpt.get!uint).usecs;
+		return (1_000_000 / maxFpsOpt.get!int).usecs;
 	}
 
 	void onPreUpdateEvent(ref PreUpdateEvent event)

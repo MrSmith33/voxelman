@@ -248,8 +248,8 @@ public:
 
 	void handleGameStartEvent(ref GameStartEvent event)
 	{
-		ConnectionSettings settings = {null, maxPlayers.get!uint, 2, 0, 0};
-		connection.start(settings, ENET_HOST_ANY, portOpt.get!ushort);
+		ConnectionSettings settings = {null, maxPlayers.get!int, 2, 0, 0};
+		connection.start(settings, ENET_HOST_ANY, cast(ushort)portOpt.get!int);
 		static if (ENABLE_RLE_PACKET_COMPRESSION)
 			enet_host_compress_with_range_coder(connection.host);
 	}
