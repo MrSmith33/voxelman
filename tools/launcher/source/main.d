@@ -12,6 +12,15 @@ import launcher;
 import std.getopt;
 import std.algorithm : countUntil;
 
+version(Windows)
+version(CRuntime_Microsoft) {
+	pragma(linkerDirective, "/subsystem:windows");
+	version(LDC)
+		pragma(linkerDirective, "/entry:wmainCRTStartup");
+	else
+		pragma(linkerDirective, "/entry:mainCRTStartup");
+}
+
 void ensureStdIo()
 {
 	version(Windows)

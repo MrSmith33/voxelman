@@ -525,7 +525,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			clientProcess = createJob(params);
 			clientProcess.autoClose = true;
-			clientProcess.onClose ~= &onClientClose;
+			() @trusted { serverProcess.onClose ~= &onServerClose; }();
 			startJob(clientProcess);
 		}
 		sendCommand(clientProcess, format("connect --ip=%s --port=%s", server.ip, server.port));
@@ -542,7 +542,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			clientProcess = createJob(params);
 			clientProcess.autoClose = true;
-			clientProcess.onClose ~= &onClientClose;
+			() @trusted { clientProcess.onClose ~= &onClientClose; }();
 			startJob(clientProcess);
 			infof("%s", clientProcess.command);
 			return clientProcess;
@@ -561,7 +561,7 @@ struct Launcher
 			params.jobType = JobType.run;
 			serverProcess = createJob(params);
 			serverProcess.autoClose = true;
-			serverProcess.onClose ~= &onServerClose;
+			() @trusted { serverProcess.onClose ~= &onServerClose; }();
 			startJob(serverProcess);
 			infof("$> %s", serverProcess.command);
 			return serverProcess;
